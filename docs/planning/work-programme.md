@@ -1,5 +1,8 @@
 # Initial work programme (draft)
 
+For the proposed execution order, see the [initial implementation plan](implementation-plan.md).
+The numbered entries below retain their identities as a backlog inventory.
+
 These are candidate GitHub issues. Their sequence is a proposal, not a settled
 architecture. Each should become a concrete issue after the relevant design
 discussion; unresolved choices should remain explicit in the published issues.

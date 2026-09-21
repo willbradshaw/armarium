@@ -19,6 +19,8 @@ worked out. Proposed designs in the planning documents are not final decisions.
 - [Source review](docs/planning/source-review.md): lessons from existing projects.
 - [Draft work programme](docs/planning/work-programme.md): candidate implementation
   issues and acceptance criteria.
+- [Initial implementation plan](docs/planning/implementation-plan.md): proposed
+  numbered sequence, dependencies, and completion criteria.
 - [Agent portability](docs/planning/agent-portability.md): Claude Code and Codex as
   the minimum, with broader skill portability and optional API support to investigate.
 - [Conventions for review](docs/planning/conventions-review.md): candidate defaults,
