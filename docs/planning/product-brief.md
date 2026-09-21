@@ -13,9 +13,9 @@ require reconstructing tooling and conventions from a previous campaign.
 Terminal-based setup is acceptable, including with an AI assistant's help.
 
 The setup mechanism copies a canonical starter vault and populates campaign-specific
-values. The starter contains the agreed structure, templates, type/status pages,
-navigation, and default instructions/configuration, with example campaign content
-kept separately. Shared executable utilities are installed outside the copied
+values. The first increment contains source-derived structure, templates and
+type/status pages. Navigation, default instructions/configuration and separate
+example content are delivered in follow-on PRs. Shared executable utilities are installed outside the copied
 content. Every implementation issue must deliver an inspectable artifact with
 explicit acceptance tests and recorded results; design prose alone is insufficient.
 
@@ -109,3 +109,12 @@ audio, maintain entities without processing a transcript, or use the vault manua
 System-specific importers are possible later additions, not prerequisites for the
 general workflow. No plugin framework or system-profile mechanism is yet proposed
 as an implementation requirement.
+
+## Initial implementation boundary
+
+The first implementation PR is narrowed to a minimal Isles-derived, single-campaign
+starter and exact-copy fresh-path installer. The system-general, multi-campaign
+product goal is unchanged. Added navigation, multi-campaign schema/examples and
+source-record templates are separate deliverables in #13–15. Runtime configuration
+and agent integration remain #2/#3; inherited Dataview queries remain until #5
+provides evaluated replacements. Earlier expanded starter choices are not defaults.

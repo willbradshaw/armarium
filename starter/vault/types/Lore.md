@@ -1,3 +1,1 @@
-# Lore
-
-Established world information; campaign candidates remain on their clue pages.
+Pages with `type: "[[types/Lore]]"` follow `templates/Lore.md`.

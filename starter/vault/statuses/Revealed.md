@@ -1,3 +1,1 @@
-# Revealed
-
-The clue has been revealed in play. Fold established facts into substantive subject pages with a clue back-reference.
+The clue has been revealed in play. Fold established facts into subject pages with a clue back-reference.

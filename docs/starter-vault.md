@@ -1,161 +1,90 @@
-# Create a basic setting vault
+# Minimal Isles-derived starter
 
-The basic installer copies the canonical starter into a **new path outside the
-Armarium checkout**. The setting vault is an independent directory and can have
-its own Git repository. Python 3.10 or later is the only installation dependency;
-the installer uses no model API, network access, Obsidian plugins, or third-party
-Python libraries.
-
-## Install
-
-From the Armarium checkout:
+With Python 3.10 or later:
 
 ```sh
-python3 scripts/create_vault.py /path/to/my-setting \
-  --name "My Setting" \
-  --campaign 1 "First Campaign"
+python3 scripts/create_vault.py /path/to/new-setting
 ```
 
-The parent directory must already exist. The destination itself must not exist,
-even as an empty directory or symlink. The installer will not merge into, repair,
-or overwrite an existing vault. It renders into a temporary staging directory
-first, then copies to the fresh destination. A filesystem failure during the final
-copy can leave an incomplete destination; inspect it before manually removing it
-or choosing another path. Rerunning will refuse that existing directory.
+The parent must exist. The new setting folder must be outside this checkout.
+The installer copies `starter/vault/` exactly, including empty directories preserved
+by `.gitkeep`. It refuses existing directories, files, and symlinks. A filesystem
+failure during copying may leave an incomplete destination; inspect it before
+removing anything or retrying at a different path.
 
-Use an absolute script path to run from another directory. Campaign IDs are stable
-lowercase letters/digits with optional internal hyphens (at most 40 characters).
-Display names may contain spaces, punctuation, and Unicode. IDs are unique within
-a vault; display names do not determine filesystem paths.
-
-Omitting `--campaign` creates ID `1`, named `First Campaign`. Repeat the flag to
-create several campaigns at installation:
-
-```sh
-python3 scripts/create_vault.py /path/to/my-setting \
-  --name "My Setting" \
-  --campaign expedition "The Survey" \
-  --campaign homecoming "The Return"
-```
-
-Open the resulting directory as a vault in Obsidian and open `Home.md`. No fictional
-setting or campaign content is installed. The displayed campaign names and empty
-indexes are the only campaign-specific initialization.
-
-## Installed structure
+Open the resulting folder as an Obsidian vault. Use the file browser to find
+`campaign_1/Campaign.md`, edit its description, and copy templates into the relevant
+content folders. Name sessions `S-1-001.md`, `S-1-002.md`, etc.; clues use
+`C-1-0001.md`, `C-1-0002.md`, etc. Set the session number and other known metadata.
+The directory name is the setting vault's name; there is no separate identity file.
 
 ```text
-my-setting/
-  Home.md
-  Vault Guide.md
-  armarium.json
-  AGENTS.md
-  CLAUDE.md
-  .gitignore
-  .obsidian/app.json
-  world/
-    World.md
-    locations/ npcs/ factions/ lore/ objects/
-  campaigns/
-    Campaigns.md
-    <id>/
-      Campaign-<id>.md
-      Sessions-<id>.md
-      Clues-<id>.md
-      sessions/ transcripts/ pcs/ players/ npcs/
-      locations/ factions/ lore/ objects/ clues/
-  reference/
-    Reference.md
-    sources/
-  templates/
-  types/
-  statuses/
-  bases/Views.md
-  assets/
-    Assets.md
-    maps/ handouts/ images/
-  .input/
-    unprocessed/ processed/
-  .scratch/
+world/{locations,npcs,factions,lore,objects}/
+campaign_1/
+  Campaign.md
+  index/Clues.md
+  {sessions,transcripts,pcs,players,npcs,locations,factions,lore,objects,clues}/
+reference/
+templates/
+types/
+statuses/
+assets/
+.scratch/
 ```
 
-Empty content folders contain `.gitkeep` so they survive version control. Input
-and scratch folders are entirely ignored, including their markers; recreate them
-as needed after a clone. Durable embeddable assets live in a visible folder.
+World entities are shared setting records; campaign-bound entities and play records
+live under `campaign_1/`. Entity state retains Isles' top-level `campaign_1:` block.
+This increment installs one blank campaign. Adding campaigns and evaluating shared
+history across them are follow-on work, not limitations of the intended product.
 
-The JSON configuration records the setting name, campaign IDs/paths, and starter
-version/content hash. It contains no absolute machine paths. Its toolkit repository
-reference identifies Armarium, but `revision: null` explicitly means no shared
-runtime dependency has been installed or pinned yet. Do not interpret the starter
-hash as runtime validation or an update mechanism.
+The inherited Active Clues, clue-session, and clue-index queries require the
+Dataview community plugin, which this installer does not install or enable. Without
+it, the Markdown and properties remain available but these sections do not render
+as live tables. Session preparation retains Isles' table headings; automatic inline
+summary expressions are not supplied by its source Session template. The Bases
+replacement remains tracked separately in issue #5. There are no replacement
+manual indexes to maintain in this increment.
 
-## Scope of this increment
+The vault contains no private examples, generated navigation, agent instructions,
+shared skills, utility scripts, or runtime configuration. Installed files are
+user-owned. The vault can be moved or initialized as its own Git repository.
+Scratch files and local Obsidian settings are ignored; assets are trackable.
 
-Included:
+## Extraction record
 
-- Static navigation and canonical system-general templates.
-- Linked page types and all six accepted clue-status pages.
-- Per-campaign state using a `campaigns` map, even on campaign-bound entities.
-- Recent Isles session organization with generic encounters/rewards instead of
-  required classes, levels, XP tables, or a setting calendar.
-- Separate world/reference/campaign/asset/input/scratch responsibilities.
-- Local agent instructions preserving canon, review, and Git workflow conventions.
+| Artifact | Isles source | Deliberate changes |
+| --- | --- | --- |
+| Entity and Content templates | `templates/{Content,Faction,Location,Lore,NPC,Object,PC}.md` | Resolve `{{campaign}}` to 1; qualify type/status links; remove species/class/subclass/level fields. Retain NPC `stats` and `birth_year`. |
+| Session template | `templates/Session.md` | Replace private campaign link; qualify type; replace D&D encounter/XP and magic-item sections with generic encounter/reward placeholders. Remaining section order and table headings retained. |
+| Clue template | `templates/Clue.md` | Qualify type/status links; resolve campaign query to 1. No new ID, campaign, or GM Notes fields. |
+| Campaign reference | `campaign_1/Ghosts of Szamasz.md` | Generic filename/description; retain Reference type. |
+| Clue index | `campaign_1/index/Clues.md` | Replace private campaign identity; qualify links; apply the reviewed candidate-fact correction to status explanation. Queries retained. |
+| Type/status pages | Corresponding `types/` and `statuses/` pages | Short generic descriptions; reviewed candidate-fact semantics replace older canon assumptions. No new Setting or Campaign type. |
+| Content directories | Isles root and `campaign_1/` | Group shared entities under agreed `world/`; omit system-specific and private content directories. |
+| Obsidian settings | `.obsidian/app.json` | Keep automatic link updating; omit Isles' deletion preference. |
+| Git ignores | `.gitignore` | Retain relevant scratch/settings ignores; generic credential and machine-file exclusions. |
 
-Live views are intentionally not implemented here. Clue indexes and Active Clues
-contain ordinary links, and session prep tables hold links/session-specific notes
-without copying source summaries. The explicit `prepared_*` lists prepare for the
-Bases evaluation in issue #5. Dataview and Bases are not required for this increment.
+The installer, its tests, and this documentation are new implementation support.
+No proposed metadata map, party-holder flag, preparation-selection fields, extra
+Player/Transcript templates, or new navigation structure is included.
 
-No utilities or shared skills are copied into the vault. `AGENTS.md` and `CLAUDE.md`
-are local orientation, not a claim of installed or tested agent skills. Shared
-runtime/skill discovery, updates, adding a campaign to an existing vault, and
-full lint commands belong to later issues. No Git repository is initialized and
-no existing setting is migrated.
-
-The installed templates and instructions are user-owned. Moving the vault does not
-break its paths or require the Armarium checkout for reading and ordinary editing.
-
-## Original example
-
-Follow [the two-campaign example](../examples/two-campaigns/README.md) to populate a
-separate test vault. The ordinary installer does not copy this fixture.
-
-The example demonstrates a shared place and NPC across two campaign eras, separate
-PC histories, a still-pending candidate clue, and an abandoned unrevealed candidate
-that has not been promoted into world canon.
-
-## Automated acceptance checks
-
-The smoke tests need PyYAML only for parsing installed Markdown frontmatter:
+## Verification
 
 ```sh
-uv run --no-project --with 'PyYAML>=6,<7' python -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v
 ```
 
-Alternatively, install `requirements-dev.txt` in a development environment and run
-`python -m unittest discover -s tests -v`. The installer itself has no dependency on
-that environment.
+See [acceptance evidence](starter-acceptance.md) for recorded results.
 
-The suite exercises an unrelated working directory, a fresh path with spaces,
-multiple campaigns, metadata/link integrity, original example semantics, malformed
-input, existing targets, failed rendering, repeatable output, relocation, and
-preservation of customized files. These tests are a starter-specific smoke check,
-not the full planned vault validator.
+Manual Obsidian checklist (still pending):
 
-## Manual Obsidian acceptance checklist
+- Open a fresh installed folder and inspect the campaign reference and templates.
+- Copy a Session, NPC, and Clue template into their campaign directories. Confirm
+  properties and type/status links resolve and no private setting names remain.
+- If testing live queries, enable Dataview explicitly and record its version.
+  Populate an original clue linked to the NPC and a session linked to the clue;
+  confirm entity Active Clues, clue Sessions, and the campaign index render.
+- Change the clue to Abandoned; confirm it leaves active results without adding
+  its candidate text to the NPC's Notes.
 
-Record the Obsidian version and observed results when executing this checklist.
-File-level tests do not establish that this in-app check has passed.
-
-- Open the blank vault at its independent path; Home navigation and campaign hubs
-  should work without installing community plugins.
-- Open templates and their type links; same-named templates/type pages must resolve
-  to the intended full-path target.
-- Copy the Session template into a campaign, fill its identity, and verify the
-  Preparation/Notes organization and generic tables are usable.
-- Open the example, follow both campaign session indexes to the shared observatory
-  and NPC, and verify separate histories are understandable.
-- Follow the pending clue from Active Clues and the abandoned clue from its closed
-  index; the abandoned passage claim must not appear as world fact.
-- Confirm empty folders and the assets location are usable. No Base or Dataview
-  output is expected in this basic increment.
+File-level tests do not establish that query rendering works in Obsidian.

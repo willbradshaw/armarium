@@ -1,18 +1,17 @@
 ---
 type: "[[types/Clue]]"
-id:
-campaign:
 status: "[[statuses/Pending]]"
 text: ""
-subjects: []
+subjects:
 first_session:
 last_session:
-superseded_by:
 ---
-## GM Notes
-
-- N/A
-
 ## Sessions
-
-- N/A
+```dataview
+TABLE WITHOUT ID
+  file.link as "Session",
+  date as "Date"
+FROM "campaign_1/sessions"
+WHERE contains(file.outlinks, this.file.link)
+SORT date ASC
+```

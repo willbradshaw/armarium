@@ -1,3 +1,1 @@
-# PC
-
-A player character, with noteworthy contributions recorded in its appearances.
+Pages with `type: "[[types/PC]]"` follow `templates/PC.md`.

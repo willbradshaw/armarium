@@ -1,3 +1,1 @@
-# Object
-
-An in-world object. Track stable identity separately from each campaign's possession and history.
+Pages with `type: "[[types/Object]]"` follow `templates/Object.md`.

@@ -1,73 +1,45 @@
 ---
 type: "[[types/Session]]"
-id:
 date:
-campaign:
+campaign: "[[campaign_1/Campaign]]"
 session_number:
 aliases:
+  -
 players_absent:
 in_game_start_date:
 in_game_end_date:
-prepared_npcs: []
-prepared_locations: []
-prepared_clues: []
 ---
 # Preparation
-
 ## Starting scene
-
 - N/A
-
 ## Other scenes
-
 - N/A
-
 ## Secrets & Clues
-
-| Clue | Session prep |
-| --- | --- |
-| | |
-
+| ID  | Text |
+| --- | ---- |
+|     |      |
 ## Locations
-
-| Location | Session prep |
-| --- | --- |
-| | |
-
+| Location | Description |
+| -------- | ----------- |
+|          |             |
 ## Important NPCs
 
-| Name | Session prep |
-| --- | --- |
-| | |
-
+| Name | Summary |
+| ---- | ------- |
+|      |         |
 ## Scene notes
-
 - N/A
-
 ## Encounters
-
 - N/A
-
 ## Prepared rewards
-
 - N/A
-
 # Notes
-
 ## Preamble
-
 - N/A
-
 ## Events
-
 - N/A
-
 ## Rewards
-
-- N/A
-
 ### Loot
-
 | Item | Acquired by |
-| --- | --- |
-| | |
+| ---- | ----------- |
+| N/A  |             |

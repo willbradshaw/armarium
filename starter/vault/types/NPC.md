@@ -1,3 +1,1 @@
-# NPC
-
-A non-player character; record actual participation separately from mentions.
+Pages with `type: "[[types/NPC]]"` follow `templates/NPC.md`.

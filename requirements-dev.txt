@@ -1,2 +1,0 @@
-# Needed only to validate installed frontmatter in the starter smoke tests.
-PyYAML>=6,<7

@@ -13,22 +13,36 @@ All work uses branches and user-merged PRs. Keep private source vaults unchanged
 and use original fixtures. The canonical starter vault is copied and populated
 by setup; reusable executable utilities are installed separately.
 
-## 1. Build the canonical starter vault
+## 1. Extract the minimal Isles-derived starter
 
 **Issue:** [#1](https://github.com/willbradshaw/armarium/issues/1)
 
-**Deliverable:** A copyable starter vault with world and campaign scaffolds, canonical page templates, linked type/status pages, navigation, default instructions, and documented configuration placeholders. Keep sample campaign content in a separate original example vault.
+**Deliverable:** An exact-copy starter with one blank campaign, agreed `world/`
+grouping, source-derived templates/type/status pages, and a fresh-path installer.
+Retain Isles' `campaign_1:` metadata and live Dataview queries pending evaluated
+replacements. Remove private content and required game mechanics. Include an
+explicit [extraction record](../starter-vault.md#extraction-record).
 
-Combine layout decisions and template extraction in this artifact. Follow accepted conventions, including campaign-qualified IDs, per-campaign metadata, candidate clues, and recent Isles session structure without required game mechanics. Shared executable utilities remain outside the copied vault content. Define reference, intake, scratch, and durable asset locations. Live views are delivered in step 4; label their integration points explicitly.
+**Acceptance:** Test fresh installation from an unrelated directory, relocation,
+resolving links, absence of unresolved placeholders, preservation of existing
+content and independent Git use. Open the installed vault in Obsidian and record
+actual property/link/query behavior; file-level checks alone do not pass that gate.
 
-**Acceptance tests:**
+**Dependencies:** No preceding implementation work.
 
-- Instantiate the scaffolds manually in an isolated example vault with two campaigns and shared world entities; document the exact substitutions setup will later automate.
-- Open the example in Obsidian and verify navigation, templates, metadata shapes, and static links; check for unresolved placeholders and private source identifiers.
-- Demonstrate separate campaign histories, an abandoned candidate clue that never became canon, and both shared and campaign-bound entities.
-- Commit repeatable structural smoke checks with synthetic fixtures; these are not a prerequisite to building the full validator in step 5.
+### Separate starter follow-ons
 
-**Dependencies:** None.
+| Issue | Evaluable deliverable | Coordination |
+| --- | --- | --- |
+| [#13](https://github.com/willbradshaw/armarium/issues/13) | Two-campaign fixture and tested shared state/history conventions | Required for final add-campaign and two-campaign live-view integration. |
+| [#14](https://github.com/willbradshaw/armarium/issues/14) | Minimal navigation justified by an Obsidian walkthrough | Develop independently; integrate against the multi-campaign fixture. |
+| [#15](https://github.com/willbradshaw/armarium/issues/15) | Source-derived Player/Transcript templates and tested intake/storage example | Supplies records to #8; coordinate campaign paths with #13. |
+
+Each is a separate PR after the baseline, and each requires actual acceptance
+evidence. They can be developed alongside one another and #5. No removed schema,
+landing page, manifest, or agent wrapper is presumed accepted. Metadata versions
+and package configuration belong to #2, agent integration to #3, and preparation
+selection and live replacements to #5.
 
 ## 2. Ship installable shared tooling and vault setup commands
 
@@ -45,7 +59,7 @@ Choose and implement packaging, command entry points, vault configuration, recor
 - Exercise existing destination, duplicate campaign, missing/ambiguous campaign selection, and retry cases; no existing user files are silently overwritten.
 - Invoke a packaged utility against an explicit vault from outside its directory; verify version/configuration records identify the installed materials.
 
-**Dependencies:** Steps 1.
+**Dependencies:** Step 1 and #13 for final add-campaign integration.
 
 ## 3. Deliver and test portable agent integration
 
@@ -79,7 +93,7 @@ Execute the existing Bases-first prototype specification. Use explicit prep-sele
 - Demonstrate adding/removing prep entries and carryover without altering Events or deleting entities.
 - Re-run the chosen implementation in the starter example; document required plugins and any fallback semantics, including live versus historical snapshots.
 
-**Dependencies:** Steps 1.
+**Dependencies:** Step 1; coordinate final two-campaign integration with #13.
 
 ## 5. Ship vault validation and the post-session entity sweep
 
@@ -181,7 +195,7 @@ Exercise the complete experience using contrasting game styles, two campaigns sh
 - Verify docs and package artifacts match the tested installation paths and declared optional dependencies.
 - Record results and known limits; do not claim an independent-user trial unless someone actually performs it.
 
-**Dependencies:** Steps 1, 2, 3, 4, 5, 6, 7, 8, 9.
+**Dependencies:** Steps 1, 2, 3, 4, 5, 6, 7, 8, 9, plus #13–15.
 
 ## Scope and sequencing
 

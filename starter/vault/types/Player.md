@@ -1,3 +1,1 @@
-# Player
-
-A player record linked to the characters they play.
+A player record linking to the PCs they play.

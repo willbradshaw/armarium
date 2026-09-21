@@ -1,3 +1,1 @@
-# Transcript
-
-Attributed source material for a session; uncertainties remain explicit.
+A cleaned session transcript linked to its Session page.

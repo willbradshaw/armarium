@@ -1,3 +1,1 @@
-# Location
-
-A place; an appearance records an actual visit rather than a passing mention.
+Pages with `type: "[[types/Location]]"` follow `templates/Location.md`.

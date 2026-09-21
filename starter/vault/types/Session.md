@@ -1,3 +1,1 @@
-# Session
-
-Preparation and actual play recorded separately for a single session.
+Pages with `type: "[[types/Session]]"` follow `templates/Session.md`.
