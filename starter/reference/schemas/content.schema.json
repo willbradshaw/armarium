@@ -63,7 +63,7 @@
         }
       },
       "additionalProperties": true,
-      "description": "Additional custom fields are allowed. Pronouns and birth information normally belong in Notes; no standard birth-year/calendar constraint. A campaign block is needed only when recording state for that campaign.",
+      "description": "Additional custom fields are allowed. A campaign block is needed only when recording state for that campaign.",
       "allOf": [
         {
           "if": {

@@ -68,8 +68,7 @@ Copy a template from `reference/templates/`, rename it, and fill in its properti
 Content has one body structure: Notes, Active Clues, Appearances. Its `subtype`
 selects NPC, PC, Location, Faction, Object or Lore and determines the additional
 frontmatter fields. For example, an NPC needs a `stats` key (possibly empty), while
-a PC needs a nonempty link to a Player. Put pronouns and birth information in Notes
-when relevant. The [JSON Schema](starter/reference/schemas/content.schema.json) defines common and
+a PC needs a nonempty link to a Player. The [JSON Schema](starter/reference/schemas/content.schema.json) defines common and
 subtype fields, nullable values, campaign-state conditions and body heading order.
 A future validator will parse a note into `{frontmatter, body}`; actual files remain
 Markdown with YAML frontmatter. The schema targets completed records and stubs,
@@ -83,7 +82,7 @@ URI format assertions must be enabled to validate external URL syntax; no networ
 request is needed. YAML parsers should preserve strings/nulls/lists/mappings and
 report malformed or duplicate fields before schema validation.
 
-Keep each shared entity in one Content page. Campaign state remains in separate
+Keep each shared entity in one Content page. Store campaign state in separate
 `campaign_1:`, `campaign_2:`, etc. blocks on that page. The initial template includes
 campaign 1; retain, remove or add blocks according to the entry's recorded state.
 A Clue is a candidate fact; creating or preparing it does not make it world canon.
@@ -98,10 +97,6 @@ The included links and queries target campaign 1. When adding another campaign,
 update the campaign paths and record IDs in copied records and indexes. On a shared
 Content page, give each campaign's Active Clues and Appearances their own labeled
 subsections. No campaign-creation command is included yet.
-
-Existing vaults are not migrated automatically. This revision changes paths and
-replaces the separate NPC/PC/Location/Faction/Object/Lore types with Content plus
-`subtype`; copying it over an existing vault would not perform that conversion.
 
 Follow-on work is tracked in the
 [repository issues](https://github.com/willbradshaw/armarium/issues).

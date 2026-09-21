@@ -14,8 +14,8 @@ Object or Lore, then add its fields. All share Notes, Active Clues and Appearanc
 | Object | `held_by` inside each campaign block: holder link(s) or `GONE`; may be empty before entering play. |
 | Lore | None. |
 
-Use bare `field:` for null and quote YAML wikilinks. Pronouns and birth information
-belong in Notes when useful; additional custom fields are allowed.
+Use bare `field:` for null and quote YAML wikilinks. Additional custom fields are
+allowed.
 
 Object holders are PC, NPC or Faction Content. Shared-party possession links to the
 party's Faction. `GONE` means out of play, not unknown; lists represent split sets.
