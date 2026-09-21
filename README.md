@@ -37,7 +37,7 @@ campaigns/
       indexes/
         Clues.md
 reference/
-  Content schema.md
+  schemas/
   templates/
   types/
   statuses/
@@ -59,7 +59,7 @@ Copy a template from `reference/templates/`, rename it, and fill in its properti
 
 | Record | Destination and setup |
 | --- | --- |
-| Content | `content/` for shared setting information, or the campaign's `content/`. Choose a subtype and add its required fields from the [Content schema](starter/reference/Content%20schema.md). |
+| Content | `content/` for shared setting information, or the campaign's `content/`. Choose a subtype and add its required fields from the [Content fields](starter/reference/types/Content.md). |
 | Clue | The campaign's `clues/`, named `C-1-0001.md`, `C-1-0002.md`, etc. |
 | Session | The campaign's `sessions/`, named `S-1-001.md`, `S-1-002.md`, etc. Set `session_number` and the campaign link. |
 | Player | The campaign's `reference/players/`, named for the player. Link their PCs in `plays`. |
@@ -69,9 +69,19 @@ Content has one body structure: Notes, Active Clues, Appearances. Its `subtype`
 selects NPC, PC, Location, Faction, Object or Lore and determines the additional
 frontmatter fields. For example, an NPC needs a `stats` key (possibly empty), while
 a PC needs a nonempty link to a Player. Put pronouns and birth information in Notes
-when relevant. The schema specifies common fields, subtype fields, unknown values,
-links and campaign history. It documents requirements; this starter does not yet
-include an automated validator.
+when relevant. The [JSON Schema](starter/reference/schemas/content.schema.json) defines common and
+subtype fields, nullable values, campaign-state conditions and body heading order.
+A future validator will parse a note into `{frontmatter, body}`; actual files remain
+Markdown with YAML frontmatter. The schema targets completed records and stubs,
+not unfinished templates. This starter does not include a validation command.
+
+The body regex requires Notes, Active Clues and Appearances in order. It does not
+parse Markdown: matching headings inside code fences can satisfy it, and it does
+not enforce heading uniqueness. Link existence, target record types, campaign
+agreement and appearance-history consistency need separate vault-aware checks.
+URI format assertions must be enabled to validate external URL syntax; no network
+request is needed. YAML parsers should preserve strings/nulls/lists/mappings and
+report malformed or duplicate fields before schema validation.
 
 Keep each shared entity in one Content page. Campaign state remains in separate
 `campaign_1:`, `campaign_2:`, etc. blocks on that page. The initial template includes
