@@ -33,6 +33,15 @@ separate historical acquisition records and current possession, consistent entit
 linking, defined metadata types and empty values, and canonical link targets with
 explicit display aliases.
 
+Conventions 17–29 are also accepted: use recent Isles session structure and
+preparation/transcript-processing workflows, extracting them without mandatory
+system mechanics. Clues are candidate facts: an unrevealed clue may be abandoned
+and never become canon. The reviewed session account drives entity updates, with
+explicit GM approval of revised Events before propagation. Campaign users are
+offered a branch/PR workflow (36); Armarium development requires branches and
+user-merged PRs for all changes. See the review for remaining items and concrete
+clarification proposals for validation, edit protection, and working-file storage.
+
 The resource must work without a system adapter and without assumptions about
 classes, levels, XP, spellcasting, a particular calendar, setting, or campaign.
 Existing projects are design references, with Isles the primary example. Their

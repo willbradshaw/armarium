@@ -46,9 +46,10 @@ prerequisites remain to be decided.
 Build a minimal, coherent set of page types from the source examples, removing
 game, setting, and campaign assumptions rather than merely replacing their names.
 
-Review input: [conventions inventory](conventions-review.md). Items 1–15 are
-accepted; 16–36 await review. Reconcile source guidance with those decisions
-before extraction.
+Review input: [conventions inventory](conventions-review.md). Items 1–15, 17–29,
+and 36 are accepted with the recorded qualifications. Items 16 and 30–32 remain
+unreviewed; 33–35 need clarification. Reconcile source guidance with those decisions
+before extraction, particularly the distinction between candidate clues and canon.
 
 Acceptance:
 - Cover sessions, transcripts, PCs, NPCs, locations, factions, lore, objects, and

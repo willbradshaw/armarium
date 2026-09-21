@@ -1,7 +1,8 @@
 # Conventions for owner review
 
-Status: items **1–15 accepted** as default conventions, with **`world/` preferred**
-for non-campaign-specific world content. Items **16–36 await review**.
+Status: **1–15, 17–29, and 36 accepted**, subject to the decisions below.
+**16 and 30–32 await review.** **33 and 35 need concrete proposals; 34 has agreement
+in principle but needs clarification.** Prefer **`world/`** for shared world content.
 Based on inspection of Isles' conventions,
 templates, skills, and tooling runbooks. This is a behavioral inventory, not a
 completed audit of whether the current code enforces every instruction.
@@ -18,6 +19,81 @@ of 3 and 5 selects per-campaign metadata blocks on shared pages and linked type
 pages. Detailed naming, layout, and multi-campaign history rendering still need
 specification. Accepting Active Clues in the common shape does not settle the
 later questions about clue behavior or Dataview.
+
+## Subsequent owner decisions
+
+- **17–19:** follow recent Isles session structure and preparation conventions.
+  Use the current Session template and preparation/writing skills as the extraction
+  baseline. Preserve the Preparation/Notes split, starting scene, other scenes,
+  secrets and clues, locations, important NPCs, scene notes, and the post-play
+  preamble/events/rewards organization. Extract encounter/reward support without
+  making D&D mechanics mandatory. Carryover precedes collaborative new preparation.
+- **20:** accepted canon discipline.
+- **21:** a clue is a persistent GM-known **candidate fact** not fully known to
+  players. It may be abandoned without revelation and may never become canon.
+  Writing or approving a clue for prep does not by itself establish world truth.
+- **22–24:** accepted lifecycle, canonical clue text/subjects, and revelation
+  updates, subject to the candidate-fact correction. An abandoned candidate must
+  not be promoted into world/entity facts. Retiring a clue is not itself evidence
+  for undoing facts already established independently.
+- **25–29:** follow recent Isles transcript/session workflow, including actual
+  draft Events review, explicit go-ahead after corrections, propagation from the
+  reviewed session, entity sweep, cast/name glossary, and uncertainty handling.
+  Source claims are checked against the transcript and previous session before
+  presenting the draft. Remove fixed campaign IDs and system rules; adapt execution
+  to host capabilities. This does not settle the separately unreviewed prose/style
+  items 30–31 or introduce the session workflow's checkpoints into project planning.
+- **33:** too generic as written; review a concrete proposed check set below.
+- **34:** protection principle sounds good; clarify its behavior with examples below.
+- **35:** too generic as written; review concrete storage responsibilities below.
+- **36:** accepted the offered branch/PR workflow for campaign users. Armarium's
+  own development requires working branches and user-merged PRs for every change.
+
+## Clarifications proposed for 33–35 (not yet accepted)
+
+**33 — Concrete integrity checks:**
+
+- Report missing or ambiguous link targets and malformed links in Markdown tables.
+- Check page metadata against the agreed type schema and campaign namespace.
+- Check session IDs, campaign links, and corresponding session numbers agree.
+- Check each clue's subject list matches its canonical text's entity links and its
+  state is allowed. A checker cannot decide whether a candidate is true or revealed.
+- Check first/last-session fields agree with qualifying appearance records under
+  the chosen conventions; preserve type-specific semantics for clue tracking.
+- Keep the post-session sweep as a review aid for missing/stale entity updates;
+  a reference alone does not prove an appearance.
+
+These are candidate extracted checks, not a claim that all exist today. Report
+file locations and distinguish structural errors from review questions. D&D XP
+arithmetic, the Isles calendar, and personal prose rules do not become universal
+checks. Define exception handling and test the checks against ordinary valid pages.
+
+**34 — Repeatable operations without lost edits:**
+
+- Adding a campaign or refreshing shared materials cannot overwrite an existing
+  session, entity, or customized template silently.
+- If an operation generates part of a page, declare what it owns. For example,
+  refreshing a reference section preserves the GM's Notes and campaign metadata.
+- If the GM edited the generated portion itself, surface a conflict for review
+  rather than guessing which version to keep.
+- Repeating an operation with unchanged inputs should not rewrite files or append
+  duplicate appearance bullets. Shared-material updates should show a reviewable diff.
+
+Isles' import renderers supply a useful example of protecting human edits; Armarium
+does not need to adopt their precise hash mechanism or include importers to keep
+this behavior. One-time starter templates can simply become user-owned files.
+
+**35 — Distinct storage responsibilities:**
+
+- Incoming recordings, raw transcripts, and source documents have an intake area
+  with an explicit processed/unprocessed distinction.
+- Working beat extractions, draft text, and sweep checklists have a scratch area;
+  their presence does not make them canonical knowledge-base pages.
+- Cleaned Transcript and Session pages live in the relevant campaign; durable
+  maps, images, and handouts live in a visible assets folder suitable for embedding.
+- Exclude temporary working material from normal Git publication by default.
+  Raw-source retention and any deletion require a defined policy; marking input
+  processed does not authorize deleting it. Exact folder names remain open.
 
 ## Organization and identity
 
@@ -63,7 +139,7 @@ later questions about clue behavior or Dataview.
 
 | ID | Convention to review | Recommendation |
 | --- | --- | --- |
-| 21 | A clue is a persistent GM-known fact not fully known to the players, rather than any discovery, event, quest, or open question. | Optional workflow with this definition when enabled. Do not silently treat clues and open threads as interchangeable. |
+| 21 | A clue is a persistent GM-known candidate fact not fully known to the players. It may be abandoned without revelation and never become canon. | Accepted with the owner's candidate-fact correction. Do not treat a prep clue as established world truth or conflate clues with generic open threads. |
 | 22 | Clues have a lifecycle: Pending, Hinted, Revealed, Abandoned, with Dormant and Superseded also referenced in newer templates/specs. | Optional workflow; reconcile the exact vocabulary and transitions. |
 | 23 | Each clue has one canonical text field and a subject list matching its entity links; subject and session pages display that text rather than copying it. | Default within the clue workflow. |
 | 24 | Unrevealed clue text stays in its clue page; on revelation, incorporate relevant facts into substantive subject pages with a clue back-reference. | Default within the clue workflow, but specify which parts of world truth versus campaign knowledge can safely be shared across campaigns. |
@@ -73,7 +149,7 @@ later questions about clue behavior or Dataview.
 | ID | Convention to review | Recommendation |
 | --- | --- | --- |
 | 25 | Process a recording through transcription/cleanup, event extraction, GM review, session writing, and related-entity updates; allow entry at a later stage with existing notes or a transcript. | Default workflow. |
-| 26 | The GM reviews the actual proposed Events text before it updates the session and other entities. Isles requires a separate explicit go-ahead after corrections, not just answers to clarification questions. | GM review as a default; review the exact strictness and number of checkpoints separately. |
+| 26 | The GM reviews the actual proposed Events text before it updates the session and other entities. Isles requires a separate explicit go-ahead after corrections, not just answers to clarification questions. | Accepted: follow the recent Isles session workflow. |
 | 27 | After review, the session account is the authoritative source for derived appearance logs. Later corrections propagate from the revised account, not working drafts or memory. | Default; retain links to underlying source material for later factual re-checking. |
 | 28 | A post-session sweep checks related entities, including those referenced through newly created pages; update both history and newly established durable facts. | Default; tools identify candidates, with judgment determining which actually need updates. |
 | 29 | Maintain a campaign-local cast/name glossary, normalize transcription errors, label speakers, preserve uncertainty, and ask about unresolved significant claims. Clean filler without turning the transcript into a summary. | Default when transcription is used; labels, chunk sizes, and execution strategy need not be universal. |
