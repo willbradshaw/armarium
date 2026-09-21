@@ -9,11 +9,27 @@ notes and related entities. It is not tied to a particular game, setting, or cam
 Terminal-based setup is in scope, including use with an AI assistant's help.
 A vault can hold multiple campaigns sharing world information.
 
-## Project status
+## Try the basic starter
 
-Early planning. There is no installable toolkit or starter vault yet. Distribution,
-the detailed vault layout, agent integration, and the initial release scope are being
-worked out. Proposed designs in the planning documents are not final decisions.
+With Python 3.10 or later, create a new independent setting vault:
+
+```sh
+python3 scripts/create_vault.py /path/to/my-setting \
+  --name "My Setting" --campaign 1 "First Campaign"
+```
+
+The parent directory must exist and the destination must be new. Open the resulting
+folder in Obsidian and start at `Home.md`. The installer refuses existing paths and
+does not copy campaign content, shared skills, or executable utilities.
+
+See the [starter guide](docs/starter-vault.md) for the layout, multiple campaigns,
+tests, and an original example. This first implementation provides static pages
+and templates; live views, packaged tooling, agent skill installation, and updates
+remain later work. It has no runtime dependencies beyond Python's standard library.
+
+## Project planning
+
+Proposed designs in the planning documents are not final decisions.
 
 - [Product brief](docs/planning/product-brief.md): agreed scope and open questions.
 - [Source review](docs/planning/source-review.md): lessons from existing projects.

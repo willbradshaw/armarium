@@ -1,6 +1,8 @@
 # Initial implementation plan
 
-Status: proposed programme of work; implementation has not begun. Every numbered
+Status: proposed programme of work; the basic starter/fresh-path installer increment
+is now implemented for review (see [acceptance evidence](../starter-acceptance.md)).
+The remaining implementation work is not included in that increment. Every numbered
 item maps to one issue and must deliver an inspectable artifact with recorded
 acceptance evidence. A design document alone does not complete an implementation
 item. Automated tests cover deterministic behavior; Obsidian and agent workflows

@@ -59,8 +59,10 @@ classes, levels, XP, spellcasting, a particular calendar, setting, or campaign.
 Existing projects are design references, with Isles the primary example. Their
 particular structures and editorial conventions are not automatically defaults.
 
-This session is for planning, repository creation, and an initial issue programme.
-It is not an instruction to implement the toolkit or migrate existing campaigns.
+The initial session established the plan, repository, and issue programme. The owner
+has subsequently authorized the first implementation increment: basic starter
+structure and installation into a fresh independent path. Other implementation
+issues and migration of existing campaigns are not included in that increment.
 
 ## Proposed default journey
 

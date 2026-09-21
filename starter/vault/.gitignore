@@ -1,0 +1,13 @@
+# Local inputs and working files are not campaign canon or published assets.
+/.input/
+/.scratch/
+/.armarium/
+/.venv/
+.env
+.env.*
+*.cookie
+.DS_Store
+.obsidian/workspace*.json
+.obsidian/cache/
+.obsidian/plugins/
+__pycache__/
