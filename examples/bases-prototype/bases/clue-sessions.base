@@ -1,0 +1,16 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("types/Session")'
+    - 'file.inFolder(this.view_campaign + "/sessions")'
+    - 'campaign == this.campaign'
+    - 'file.hasLink(this.file)'
+views:
+  - type: table
+    name: Sessions
+    order: [file.name, date, session_number]
+    sort:
+      - property: date
+        direction: ASC
+      - property: session_number
+        direction: ASC

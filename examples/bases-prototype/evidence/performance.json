@@ -1,0 +1,260 @@
+{
+  "files": 3353,
+  "trials": [
+    {
+      "round": 0,
+      "path": "world/npcs/Mira.md",
+      "expected": 1,
+      "ready": true,
+      "ms": 176
+    },
+    {
+      "round": 0,
+      "path": "world/npcs/Corpus/N-00001.md",
+      "expected": 0,
+      "ready": true,
+      "ms": 60.19999998807907
+    },
+    {
+      "round": 1,
+      "path": "world/npcs/Mira.md",
+      "expected": 1,
+      "ready": true,
+      "ms": 122.40000003576279
+    },
+    {
+      "round": 1,
+      "path": "world/npcs/Corpus/N-00001.md",
+      "expected": 0,
+      "ready": true,
+      "ms": 60.89999997615814
+    },
+    {
+      "round": 2,
+      "path": "world/npcs/Mira.md",
+      "expected": 1,
+      "ready": true,
+      "ms": 126
+    },
+    {
+      "round": 2,
+      "path": "world/npcs/Corpus/N-00001.md",
+      "expected": 0,
+      "ready": true,
+      "ms": 65.09999996423721
+    },
+    {
+      "round": 3,
+      "path": "world/npcs/Mira.md",
+      "expected": 1,
+      "ready": true,
+      "ms": 121
+    },
+    {
+      "round": 3,
+      "path": "world/npcs/Corpus/N-00001.md",
+      "expected": 0,
+      "ready": true,
+      "ms": 66.5
+    },
+    {
+      "round": 4,
+      "path": "world/npcs/Mira.md",
+      "expected": 1,
+      "ready": true,
+      "ms": 130.30000001192093
+    },
+    {
+      "round": 4,
+      "path": "world/npcs/Corpus/N-00001.md",
+      "expected": 0,
+      "ready": true,
+      "ms": 61.89999997615814
+    }
+  ],
+  "repeated": [
+    {
+      "src": "world/npcs/Corpus/N-00000#Active Clues",
+      "expected": 1,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-1000\nUnconfirmed signal 0.",
+      "height": 404.15625
+    },
+    {
+      "src": "world/npcs/Corpus/N-00001#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00002#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00003#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00004#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00005#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00006#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00007#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00008#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00009#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00010#Active Clues",
+      "expected": 1,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-1001\nUnconfirmed signal 10.",
+      "height": 404.15625
+    },
+    {
+      "src": "world/npcs/Corpus/N-00011#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00012#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00013#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00014#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00015#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00016#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00017#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00018#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00019#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00020#Active Clues",
+      "expected": 1,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-1002\nUnconfirmed signal 20.",
+      "height": 404.15625
+    },
+    {
+      "src": "world/npcs/Corpus/N-00021#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00022#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00023#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00024#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00025#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00026#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00027#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00028#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    },
+    {
+      "src": "world/npcs/Corpus/N-00029#Active Clues",
+      "expected": 0,
+      "text": "Active Clues\n\nContext: view_campaign is a display choice, not ownership. Change it between campaign_1 and campaign_2.\n\nActive Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext",
+      "height": 193
+    }
+  ],
+  "heapBefore": 61212615,
+  "repeatedScrollMs": 3973.800000011921,
+  "heapAfter": 50529621
+}

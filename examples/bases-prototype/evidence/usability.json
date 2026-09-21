@@ -1,0 +1,134 @@
+{
+  "property_widget_removal": [
+    "[[world/npcs/Mira|Lantern Keeper]]"
+  ],
+  "after_widget_removal": {
+    "embed": "bases/prepared-npcs.base",
+    "text": "Prepared NPCs\n1 result\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\nworld/npcs/Mira.md\nMira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. \n0\nworld/npcs/Mira.md\nMira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. \n0",
+    "rows": [
+      [
+        {
+          "property": "formula.page",
+          "text": "world/npcs/Mira.md",
+          "links": [
+            "world/npcs/Mira.md"
+          ]
+        },
+        {
+          "property": "note.summary",
+          "text": "Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. ",
+          "links": []
+        },
+        {
+          "property": "formula.prep_order",
+          "text": "0",
+          "links": []
+        }
+      ]
+    ],
+    "cells": [
+      {
+        "clientHeight": 300,
+        "scrollHeight": 512,
+        "whiteSpace": "pre-wrap",
+        "overflow": "auto"
+      }
+    ],
+    "table": {
+      "height": 240,
+      "scrollHeight": 240
+    },
+    "errors": [
+      ""
+    ]
+  },
+  "base_link_navigation": "campaign_1/clues/C-1-0001.md",
+  "long_text": {
+    "embed": "bases/prepared-clues.base",
+    "text": "Prepared Clues\n2 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nprep_order\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \n1\nC-1-0002\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\n0\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \n1",
+    "rows": [
+      [
+        {
+          "property": "file.name",
+          "text": "C-1-0002",
+          "links": [
+            "campaign_1/clues/C-1-0002.md"
+          ]
+        },
+        {
+          "property": "note.text",
+          "text": "Campaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+          "links": []
+        },
+        {
+          "property": "formula.prep_order",
+          "text": "0",
+          "links": []
+        }
+      ],
+      [
+        {
+          "property": "file.name",
+          "text": "C-1-0001",
+          "links": [
+            "campaign_1/clues/C-1-0001.md"
+          ]
+        },
+        {
+          "property": "note.text",
+          "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+          "links": []
+        },
+        {
+          "property": "formula.prep_order",
+          "text": "1",
+          "links": []
+        }
+      ]
+    ],
+    "cells": [
+      {
+        "clientHeight": 71,
+        "scrollHeight": 71,
+        "whiteSpace": "pre-wrap",
+        "overflow": "auto"
+      },
+      {
+        "clientHeight": 300,
+        "scrollHeight": 491,
+        "whiteSpace": "pre-wrap",
+        "overflow": "auto"
+      }
+    ],
+    "table": {
+      "height": 480,
+      "scrollHeight": 480
+    },
+    "errors": [
+      ""
+    ]
+  },
+  "fallback": {
+    "text": "Page\tText\ncampaign_1/clues/C-1-0002\tCampaign 1, candidate 2: the keeper may have hidden the gauge. Unconfirmed.\ncampaign_1/clues/C-1-0001\tCampaign 1, candidate 1: the keeper may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon.",
+    "links": [
+      "campaign_1/clues/C-1-0002",
+      "world/npcs/Mira",
+      "campaign_1/clues/C-1-0001",
+      "world/npcs/Mira"
+    ],
+    "width": 616,
+    "scrollWidth": 616
+  },
+  "fallback_link_navigation": "campaign_1/clues/C-1-0002.md",
+  "snapshot_unchanged_before_refresh": true,
+  "snapshot_updated_on_disk": true,
+  "snapshot_render_after_refresh": {
+    "updated": true,
+    "links": [
+      "campaign_1/clues/C-1-0002",
+      "world/npcs/Mira",
+      "campaign_1/clues/C-1-0001",
+      "world/locations/Quay"
+    ]
+  }
+}

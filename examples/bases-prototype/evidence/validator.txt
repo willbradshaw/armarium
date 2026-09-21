@@ -1,0 +1,8 @@
+Validator: PR #19 at f30a60163185754ee1d823ca8fa3a0bd03456245
+Python 3.14.2
+uv run --python 3.14 --with PyYAML python /private/tmp/armarium-bases-validator/scripts/validate_vault.py /private/tmp/armarium-bases-contract-small
+Vault validation passed.
+Exit status: 0
+uv run --python 3.14 --with PyYAML python /private/tmp/armarium-bases-validator/scripts/validate_vault.py /private/tmp/armarium-bases-contract-scale
+Vault validation passed.
+Exit status: 0

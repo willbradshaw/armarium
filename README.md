@@ -55,3 +55,8 @@ properties remain usable without Dataview.
 
 Evaluated Bases replacements and other follow-on work are tracked in the
 [repository issues](https://github.com/willbradshaw/armarium/issues).
+
+The isolated [Bases prototype](examples/bases-prototype/README.md) includes a
+reproducible two-campaign fixture, actual Obsidian evaluation evidence, and an
+explicit-refresh Markdown fallback for rich preparation text. Its recommendations
+are for review before production starter integration.

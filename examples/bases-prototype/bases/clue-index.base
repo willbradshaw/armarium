@@ -1,0 +1,23 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("types/Clue")'
+    - 'file.inFolder(this.view_campaign + "/clues")'
+    - 'campaign == link(this.view_campaign + "/Campaign")'
+views:
+  - type: table
+    name: Active
+    filters: 'status == link("statuses/Pending") || status == link("statuses/Hinted")'
+    order: [file.name, status, text]
+    sort:
+      - property: file.name
+        direction: ASC
+    rowHeight: extra
+  - type: table
+    name: Closed
+    filters: '[link("statuses/Revealed"), link("statuses/Abandoned"), link("statuses/Dormant"), link("statuses/Superseded")].contains(status)'
+    order: [file.name, status, text]
+    sort:
+      - property: file.name
+        direction: ASC
+    rowHeight: extra

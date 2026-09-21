@@ -1,0 +1,13 @@
+test_build_never_overwrites (test_prototype.PrototypeTests) ... ok
+test_conflicts_fail_without_partial_write (test_prototype.PrototypeTests) ... ok
+test_corpus_preserves_record_identity_and_state_defaults (test_prototype.PrototypeTests) ... ok
+test_duplicate_and_missing_markers_refused (test_prototype.PrototypeTests) ... ok
+test_invalid_selections_fail_without_write (test_prototype.PrototypeTests) ... ok
+test_original_contract (test_prototype.PrototypeTests) ... ok
+test_refresh_order_alias_long_text_and_idempotence (test_prototype.PrototypeTests) ... ok
+test_remove_add_carry_forward_preserves_events_and_sources (test_prototype.PrototypeTests) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.713s
+
+OK

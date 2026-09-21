@@ -1,0 +1,664 @@
+[
+  {
+    "label": "qualified alias matches keeper, excludes visiting duplicate",
+    "pass": true,
+    "expected": [
+      "C-1-0001"
+    ],
+    "absent": [
+      "C-1-0002",
+      "C-2-"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+      "rows": [
+        [
+          {
+            "property": "file.name",
+            "text": "C-1-0001",
+            "links": [
+              "campaign_1/clues/C-1-0001.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 260,
+          "scrollHeight": 260,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 240,
+        "scrollHeight": 240
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "change shared entity display context without ownership",
+    "pass": true,
+    "expected": [
+      "C-2-0001"
+    ],
+    "absent": [
+      "C-1-"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-2-0001\nCampaign 2, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-2-0001\nCampaign 2, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+      "rows": [
+        [
+          {
+            "property": "file.name",
+            "text": "C-2-0001",
+            "links": [
+              "campaign_2/clues/C-2-0001.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "Campaign 2, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 260,
+          "scrollHeight": 260,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 240,
+        "scrollHeight": 240
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "alias label cannot impersonate canonical subject",
+    "pass": true,
+    "expected": [
+      "0 results"
+    ],
+    "absent": [
+      "C-1-0001"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\n",
+      "rows": [],
+      "cells": [],
+      "table": {
+        "height": 0,
+        "scrollHeight": 0
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "subject restored with different display alias",
+    "pass": true,
+    "expected": [
+      "C-1-0001"
+    ],
+    "absent": null,
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+      "rows": [
+        [
+          {
+            "property": "file.name",
+            "text": "C-1-0001",
+            "links": [
+              "campaign_1/clues/C-1-0001.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 260,
+          "scrollHeight": 260,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 240,
+        "scrollHeight": 240
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "open entity status -> Hinted",
+    "pass": true,
+    "expected": [
+      "C-1-0001"
+    ],
+    "absent": [],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+      "rows": [
+        [
+          {
+            "property": "file.name",
+            "text": "C-1-0001",
+            "links": [
+              "campaign_1/clues/C-1-0001.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 260,
+          "scrollHeight": 260,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 240,
+        "scrollHeight": 240
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "open entity status -> Revealed",
+    "pass": true,
+    "expected": [
+      "0 results"
+    ],
+    "absent": [
+      "C-1-0001"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\n",
+      "rows": [],
+      "cells": [],
+      "table": {
+        "height": 0,
+        "scrollHeight": 0
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "open entity status -> Abandoned",
+    "pass": true,
+    "expected": [
+      "0 results"
+    ],
+    "absent": [
+      "C-1-0001"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\n",
+      "rows": [],
+      "cells": [],
+      "table": {
+        "height": 0,
+        "scrollHeight": 0
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "open entity status -> Dormant",
+    "pass": true,
+    "expected": [
+      "0 results"
+    ],
+    "absent": [
+      "C-1-0001"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\n",
+      "rows": [],
+      "cells": [],
+      "table": {
+        "height": 0,
+        "scrollHeight": 0
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "open entity status -> Superseded",
+    "pass": true,
+    "expected": [
+      "0 results"
+    ],
+    "absent": [
+      "C-1-0001"
+    ],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\n",
+      "rows": [],
+      "cells": [],
+      "table": {
+        "height": 0,
+        "scrollHeight": 0
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "open entity status -> Pending",
+    "pass": true,
+    "expected": [
+      "C-1-0001"
+    ],
+    "absent": [],
+    "capture": {
+      "embed": "bases/entity-clues.base",
+      "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+      "rows": [
+        [
+          {
+            "property": "file.name",
+            "text": "C-1-0001",
+            "links": [
+              "campaign_1/clues/C-1-0001.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 260,
+          "scrollHeight": 260,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 240,
+        "scrollHeight": 240
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "source Clue text edited while prep open",
+    "pass": true,
+    "expected": [
+      "TEXT-EDIT-OBSERVED"
+    ],
+    "absent": null,
+    "capture": {
+      "embed": "bases/prepared-clues.base",
+      "text": "Prepared Clues\n2 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nprep_order\nC-1-0001\nTEXT-EDIT-OBSERVED [[world/locations/Quay|quay]]\n1\nC-1-0002\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\n0\nC-1-0001\nTEXT-EDIT-OBSERVED [[world/locations/Quay|quay]]\n1",
+      "rows": [
+        [
+          {
+            "property": "file.name",
+            "text": "C-1-0002",
+            "links": [
+              "campaign_1/clues/C-1-0002.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "Campaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "0",
+            "links": []
+          }
+        ],
+        [
+          {
+            "property": "file.name",
+            "text": "C-1-0001",
+            "links": [
+              "campaign_1/clues/C-1-0001.md"
+            ]
+          },
+          {
+            "property": "note.text",
+            "text": "TEXT-EDIT-OBSERVED [[world/locations/Quay|quay]]",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "1",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 71,
+          "scrollHeight": 71,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        },
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 480,
+        "scrollHeight": 480
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "source summary edited while prep open",
+    "pass": true,
+    "expected": [
+      "SUMMARY-EDIT-OBSERVED"
+    ],
+    "absent": [
+      "Events Only"
+    ],
+    "capture": {
+      "embed": "bases/prepared-npcs.base",
+      "text": "Prepared NPCs\n2 results\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\nworld/npcs/Mira.md\nSUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]\n1\nworld/npcs/Visitors/Mira.md\nA visiting glassblower, unrelated to the keeper.\n0\nworld/npcs/Mira.md\nSUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]\n1",
+      "rows": [
+        [
+          {
+            "property": "formula.page",
+            "text": "world/npcs/Visitors/Mira.md",
+            "links": [
+              "world/npcs/Visitors/Mira.md"
+            ]
+          },
+          {
+            "property": "note.summary",
+            "text": "A visiting glassblower, unrelated to the keeper.",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "0",
+            "links": []
+          }
+        ],
+        [
+          {
+            "property": "formula.page",
+            "text": "world/npcs/Mira.md",
+            "links": [
+              "world/npcs/Mira.md"
+            ]
+          },
+          {
+            "property": "note.summary",
+            "text": "SUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "1",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        },
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 480,
+        "scrollHeight": 480
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "remove all prep without changing Events",
+    "pass": true,
+    "expected": [
+      "0 results"
+    ],
+    "absent": null,
+    "capture": {
+      "embed": "bases/prepared-npcs.base",
+      "text": "Prepared NPCs\n0 results\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\n",
+      "rows": [],
+      "cells": [],
+      "table": {
+        "height": 0,
+        "scrollHeight": 0
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "add and reorder prep",
+    "pass": true,
+    "expected": [
+      "2 results",
+      "SUMMARY-EDIT-OBSERVED"
+    ],
+    "absent": [
+      "Events Only"
+    ],
+    "capture": {
+      "embed": "bases/prepared-npcs.base",
+      "text": "Prepared NPCs\n2 results\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\nworld/npcs/Visitors/Mira.md\nA visiting glassblower, unrelated to the keeper.\n1\nworld/npcs/Mira.md\nSUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]\n0\nworld/npcs/Visitors/Mira.md\nA visiting glassblower, unrelated to the keeper.\n1",
+      "rows": [
+        [
+          {
+            "property": "formula.page",
+            "text": "world/npcs/Mira.md",
+            "links": [
+              "world/npcs/Mira.md"
+            ]
+          },
+          {
+            "property": "note.summary",
+            "text": "SUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "0",
+            "links": []
+          }
+        ],
+        [
+          {
+            "property": "formula.page",
+            "text": "world/npcs/Visitors/Mira.md",
+            "links": [
+              "world/npcs/Visitors/Mira.md"
+            ]
+          },
+          {
+            "property": "note.summary",
+            "text": "A visiting glassblower, unrelated to the keeper.",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "1",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        },
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 480,
+        "scrollHeight": 480
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "carried selections render on next session",
+    "pass": true,
+    "expected": [
+      "2 results",
+      "SUMMARY-EDIT-OBSERVED"
+    ],
+    "absent": null,
+    "capture": {
+      "embed": "bases/prepared-npcs.base",
+      "text": "Prepared NPCs\n2 results\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\nworld/npcs/Mira.md\nSUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]\n0\nworld/npcs/Visitors/Mira.md\nA visiting glassblower, unrelated to the keeper.\n1",
+      "rows": [
+        [
+          {
+            "property": "formula.page",
+            "text": "world/npcs/Mira.md",
+            "links": [
+              "world/npcs/Mira.md"
+            ]
+          },
+          {
+            "property": "note.summary",
+            "text": "SUMMARY-EDIT-OBSERVED [[world/locations/Quay|quay]]",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "0",
+            "links": []
+          }
+        ],
+        [
+          {
+            "property": "formula.page",
+            "text": "world/npcs/Visitors/Mira.md",
+            "links": [
+              "world/npcs/Visitors/Mira.md"
+            ]
+          },
+          {
+            "property": "note.summary",
+            "text": "A visiting glassblower, unrelated to the keeper.",
+            "links": []
+          },
+          {
+            "property": "formula.prep_order",
+            "text": "1",
+            "links": []
+          }
+        ]
+      ],
+      "cells": [
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        },
+        {
+          "clientHeight": 50,
+          "scrollHeight": 50,
+          "whiteSpace": "pre-wrap",
+          "overflow": "auto"
+        }
+      ],
+      "table": {
+        "height": 480,
+        "scrollHeight": 480
+      },
+      "errors": [
+        ""
+      ]
+    }
+  },
+  {
+    "label": "Events preserved: campaign_1/sessions/S-1-001.md",
+    "pass": true
+  },
+  {
+    "label": "Events preserved: campaign_1/sessions/S-1-002.md",
+    "pass": true
+  }
+]

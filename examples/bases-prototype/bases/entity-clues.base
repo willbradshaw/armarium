@@ -1,0 +1,16 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("types/Clue")'
+    - 'file.inFolder(this.view_campaign + "/clues")'
+    - 'campaign == link(this.view_campaign + "/Campaign")'
+    - 'list(subjects).contains(this.file)'
+    - 'status == link("statuses/Pending") || status == link("statuses/Hinted")'
+views:
+  - type: table
+    name: Active Clues
+    order: [file.name, text]
+    sort:
+      - property: file.name
+        direction: ASC
+    rowHeight: extra

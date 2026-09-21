@@ -1,0 +1,16 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("types/Clue")'
+    - 'campaign == this.campaign'
+    - 'list(this.prepared_clues).contains(file)'
+formulas:
+  prep_order: 'list(this.prepared_clues).map(if(value == file, index, -1)).filter(value >= 0)[0]'
+views:
+  - type: table
+    name: Prepared Clues
+    order: [file.name, text, formula.prep_order]
+    sort:
+      - property: formula.prep_order
+        direction: ASC
+    rowHeight: extra

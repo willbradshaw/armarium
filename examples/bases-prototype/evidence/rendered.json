@@ -1,0 +1,840 @@
+{
+  "version": "1.13.7 (installer 1.12.7)",
+  "plugins": "backlink\t\nbases\t\nbookmarks\t\ncanvas\t\nfile-explorer\t\nglobal-search\t\noutgoing-link\t\npage-preview\t\nproperties",
+  "cases": [
+    {
+      "path": "campaign_1/index/Clues.md",
+      "openWith300msWait": 311.30000001192093,
+      "views": [
+        {
+          "embed": "bases/clue-index.base#Active",
+          "text": "Active\n2 results\nSort\nFilter\nProperties\nSearch\nNew\nname\nstatus\ntext\nC-1-0002\nstatuses/Hinted\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0001\nstatuses/Pending\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-1-0002\nstatuses/Hinted\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0001",
+                "links": [
+                  "campaign_1/clues/C-1-0001.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Pending",
+                "links": [
+                  "statuses/Pending"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0002",
+                "links": [
+                  "campaign_1/clues/C-1-0002.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Hinted",
+                "links": [
+                  "statuses/Hinted"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 300,
+              "scrollHeight": 428,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 50,
+              "scrollHeight": 50,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 480,
+            "scrollHeight": 480
+          },
+          "errors": [
+            ""
+          ]
+        },
+        {
+          "embed": "bases/clue-index.base#Closed",
+          "text": "Closed\n4 results\nSort\nFilter\nProperties\nSearch\nNew\nname\nstatus\ntext\nC-1-0005\nstatuses/Dormant\nCampaign 1, candidate 5: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0006\nstatuses/Superseded\nCampaign 1, candidate 6: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0003\nstatuses/Revealed\nCampaign 1, candidate 3: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0004\nstatuses/Abandoned\nCampaign 1, candidate 4: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0005\nstatuses/Dormant\nCampaign 1, candidate 5: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0006\nstatuses/Superseded\nCampaign 1, candidate 6: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0003",
+                "links": [
+                  "campaign_1/clues/C-1-0003.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Revealed",
+                "links": [
+                  "statuses/Revealed"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 3: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0004",
+                "links": [
+                  "campaign_1/clues/C-1-0004.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Abandoned",
+                "links": [
+                  "statuses/Abandoned"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 4: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0005",
+                "links": [
+                  "campaign_1/clues/C-1-0005.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Dormant",
+                "links": [
+                  "statuses/Dormant"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 5: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0006",
+                "links": [
+                  "campaign_1/clues/C-1-0006.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Superseded",
+                "links": [
+                  "statuses/Superseded"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 6: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 960,
+            "scrollHeight": 960
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "campaign_2/index/Clues.md",
+      "openWith300msWait": 318.5,
+      "views": [
+        {
+          "embed": "bases/clue-index.base#Active",
+          "text": "Active\n2 results\nSort\nFilter\nProperties\nSearch\nNew\nname\nstatus\ntext\nC-2-0002\nstatuses/Hinted\nCampaign 2, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-2-0001\nstatuses/Pending\nCampaign 2, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-2-0002\nstatuses/Hinted\nCampaign 2, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-2-0001",
+                "links": [
+                  "campaign_2/clues/C-2-0001.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Pending",
+                "links": [
+                  "statuses/Pending"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 2, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-2-0002",
+                "links": [
+                  "campaign_2/clues/C-2-0002.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Hinted",
+                "links": [
+                  "statuses/Hinted"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 2, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 300,
+              "scrollHeight": 428,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 50,
+              "scrollHeight": 50,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 480,
+            "scrollHeight": 480
+          },
+          "errors": [
+            ""
+          ]
+        },
+        {
+          "embed": "bases/clue-index.base#Closed",
+          "text": "Closed\n4 results\nSort\nFilter\nProperties\nSearch\nNew\nname\nstatus\ntext\nC-2-0005\nstatuses/Dormant\nCampaign 2, candidate 5: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-2-0006\nstatuses/Superseded\nCampaign 2, candidate 6: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-2-0003\nstatuses/Revealed\nCampaign 2, candidate 3: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-2-0004\nstatuses/Abandoned\nCampaign 2, candidate 4: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-2-0005\nstatuses/Dormant\nCampaign 2, candidate 5: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-2-0006\nstatuses/Superseded\nCampaign 2, candidate 6: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-2-0003",
+                "links": [
+                  "campaign_2/clues/C-2-0003.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Revealed",
+                "links": [
+                  "statuses/Revealed"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 2, candidate 3: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-2-0004",
+                "links": [
+                  "campaign_2/clues/C-2-0004.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Abandoned",
+                "links": [
+                  "statuses/Abandoned"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 2, candidate 4: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-2-0005",
+                "links": [
+                  "campaign_2/clues/C-2-0005.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Dormant",
+                "links": [
+                  "statuses/Dormant"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 2, candidate 5: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-2-0006",
+                "links": [
+                  "campaign_2/clues/C-2-0006.md"
+                ]
+              },
+              {
+                "property": "note.status",
+                "text": "statuses/Superseded",
+                "links": [
+                  "statuses/Superseded"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 2, candidate 6: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 960,
+            "scrollHeight": 960
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "world/npcs/Mira.md",
+      "openWith300msWait": 312.30000001192093,
+      "views": [
+        {
+          "embed": "bases/entity-clues.base",
+          "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0001",
+                "links": [
+                  "campaign_1/clues/C-1-0001.md"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 260,
+              "scrollHeight": 260,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 240,
+            "scrollHeight": 240
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "world/npcs/Visitors/Mira.md",
+      "openWith300msWait": 313.5999999642372,
+      "views": [
+        {
+          "embed": "bases/entity-clues.base",
+          "text": "Active Clues\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nC-1-0002\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\nC-1-0002\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0002",
+                "links": [
+                  "campaign_1/clues/C-1-0002.md"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 50,
+              "scrollHeight": 50,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 240,
+            "scrollHeight": 240
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "world/locations/Empty.md",
+      "openWith300msWait": 320.69999998807907,
+      "views": [
+        {
+          "embed": "bases/entity-clues.base",
+          "text": "Active Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\n",
+          "rows": [],
+          "cells": [],
+          "table": {
+            "height": 0,
+            "scrollHeight": 0
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "campaign_1/clues/C-1-0001.md",
+      "openWith300msWait": 320.60000002384186,
+      "views": [
+        {
+          "embed": "bases/clue-sessions.base",
+          "text": "Sessions\n3 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ndate\nsession_number\nS-1-001\nS-1-002\nS-1-003\nS-1-001\n\n\nS-1-002\n\n\nS-1-003\n\n",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "S-1-001",
+                "links": [
+                  "campaign_1/sessions/S-1-001.md"
+                ]
+              },
+              {
+                "property": "note.date",
+                "text": "",
+                "links": []
+              },
+              {
+                "property": "note.session_number",
+                "text": "",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "S-1-002",
+                "links": [
+                  "campaign_1/sessions/S-1-002.md"
+                ]
+              },
+              {
+                "property": "note.date",
+                "text": "",
+                "links": []
+              },
+              {
+                "property": "note.session_number",
+                "text": "",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "S-1-003",
+                "links": [
+                  "campaign_1/sessions/S-1-003.md"
+                ]
+              },
+              {
+                "property": "note.date",
+                "text": "",
+                "links": []
+              },
+              {
+                "property": "note.session_number",
+                "text": "",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [],
+          "table": {
+            "height": 90,
+            "scrollHeight": 90
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "campaign_2/clues/C-2-0001.md",
+      "openWith300msWait": 319.39999997615814,
+      "views": [
+        {
+          "embed": "bases/clue-sessions.base",
+          "text": "Sessions\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\ndate\nsession_number\nS-2-001\nS-2-001\n\n",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "S-2-001",
+                "links": [
+                  "campaign_2/sessions/S-2-001.md"
+                ]
+              },
+              {
+                "property": "note.date",
+                "text": "",
+                "links": []
+              },
+              {
+                "property": "note.session_number",
+                "text": "",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [],
+          "table": {
+            "height": 30,
+            "scrollHeight": 30
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "campaign_1/sessions/S-1-001.md",
+      "openWith300msWait": 323.30000001192093,
+      "views": [
+        {
+          "embed": "bases/prepared-clues.base",
+          "text": "Prepared Clues\n2 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nprep_order\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \n1\nC-1-0002\nCampaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.\n0\nC-1-0001\nCampaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. \n1",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0002",
+                "links": [
+                  "campaign_1/clues/C-1-0002.md"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 2: [[world/npcs/Mira|the keeper]] may have hidden the gauge. Unconfirmed.",
+                "links": []
+              },
+              {
+                "property": "formula.prep_order",
+                "text": "0",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "file.name",
+                "text": "C-1-0001",
+                "links": [
+                  "campaign_1/clues/C-1-0001.md"
+                ]
+              },
+              {
+                "property": "note.text",
+                "text": "Campaign 1, candidate 1: [[world/npcs/Mira|the keeper]] may have hidden the gauge. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. This is an unconfirmed lead, not world canon. ",
+                "links": []
+              },
+              {
+                "property": "formula.prep_order",
+                "text": "1",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 71,
+              "scrollHeight": 71,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 300,
+              "scrollHeight": 491,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 480,
+            "scrollHeight": 480
+          },
+          "errors": [
+            ""
+          ]
+        },
+        {
+          "embed": "bases/prepared-locations.base",
+          "text": "Prepared Locations\n1 result\nSort\nFilter\nProperties\nSearch\nNew\nname\nsummary\nprep_order\nQuay\nA stone quay with a broken gauge.\nAt low tide, a brass ladder appears.\n0\nQuay\nA stone quay with a broken gauge.\nAt low tide, a brass ladder appears.\n0",
+          "rows": [
+            [
+              {
+                "property": "file.name",
+                "text": "Quay",
+                "links": [
+                  "world/locations/Quay.md"
+                ]
+              },
+              {
+                "property": "note.summary",
+                "text": "A stone quay with a broken gauge.\nAt low tide, a brass ladder appears.",
+                "links": []
+              },
+              {
+                "property": "formula.prep_order",
+                "text": "0",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 50,
+              "scrollHeight": 50,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 240,
+            "scrollHeight": 240
+          },
+          "errors": [
+            ""
+          ]
+        },
+        {
+          "embed": "bases/prepared-npcs.base",
+          "text": "Prepared NPCs\n2 results\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\nworld/npcs/Mira.md\nMira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. \n1\nworld/npcs/Visitors/Mira.md\nA visiting glassblower, unrelated to the keeper.\n0\nworld/npcs/Mira.md\nMira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. \n1",
+          "rows": [
+            [
+              {
+                "property": "formula.page",
+                "text": "world/npcs/Visitors/Mira.md",
+                "links": [
+                  "world/npcs/Visitors/Mira.md"
+                ]
+              },
+              {
+                "property": "note.summary",
+                "text": "A visiting glassblower, unrelated to the keeper.",
+                "links": []
+              },
+              {
+                "property": "formula.prep_order",
+                "text": "0",
+                "links": []
+              }
+            ],
+            [
+              {
+                "property": "formula.page",
+                "text": "world/npcs/Mira.md",
+                "links": [
+                  "world/npcs/Mira.md"
+                ]
+              },
+              {
+                "property": "note.summary",
+                "text": "Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. Mira maintains the flood lamps. She suspects [[world/locations/Quay|the old quay]] hides a second tide gauge. ",
+                "links": []
+              },
+              {
+                "property": "formula.prep_order",
+                "text": "1",
+                "links": []
+              }
+            ]
+          ],
+          "cells": [
+            {
+              "clientHeight": 50,
+              "scrollHeight": 50,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            },
+            {
+              "clientHeight": 300,
+              "scrollHeight": 512,
+              "whiteSpace": "pre-wrap",
+              "overflow": "auto"
+            }
+          ],
+          "table": {
+            "height": 480,
+            "scrollHeight": 480
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "path": "campaign_1/sessions/S-1-003.md",
+      "openWith300msWait": 320.39999997615814,
+      "views": [
+        {
+          "embed": "bases/prepared-clues.base",
+          "text": "Prepared Clues\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\ntext\nprep_order\n",
+          "rows": [],
+          "cells": [],
+          "table": {
+            "height": 0,
+            "scrollHeight": 0
+          },
+          "errors": [
+            ""
+          ]
+        },
+        {
+          "embed": "bases/prepared-locations.base",
+          "text": "Prepared Locations\n0 results\nSort\nFilter\nProperties\nSearch\nNew\nname\nsummary\nprep_order\n",
+          "rows": [],
+          "cells": [],
+          "table": {
+            "height": 0,
+            "scrollHeight": 0
+          },
+          "errors": [
+            ""
+          ]
+        },
+        {
+          "embed": "bases/prepared-npcs.base",
+          "text": "Prepared NPCs\n0 results\nSort\nFilter\nProperties\nSearch\nNew\npage\nsummary\nprep_order\n",
+          "rows": [],
+          "cells": [],
+          "table": {
+            "height": 0,
+            "scrollHeight": 0
+          },
+          "errors": [
+            ""
+          ]
+        }
+      ]
+    }
+  ]
+}

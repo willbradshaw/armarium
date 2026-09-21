@@ -1,0 +1,15 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("types/Location")'
+    - 'list(this.prepared_locations).contains(file)'
+formulas:
+  prep_order: 'list(this.prepared_locations).map(if(value == file, index, -1)).filter(value >= 0)[0]'
+views:
+  - type: table
+    name: Prepared Locations
+    order: [file.name, summary, formula.prep_order]
+    sort:
+      - property: formula.prep_order
+        direction: ASC
+    rowHeight: extra

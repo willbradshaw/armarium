@@ -1,0 +1,16 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("types/NPC")'
+    - 'list(this.prepared_npcs).contains(file)'
+formulas:
+  page: 'file.asLink(file.path)'
+  prep_order: 'list(this.prepared_npcs).map(if(value == file, index, -1)).filter(value >= 0)[0]'
+views:
+  - type: table
+    name: Prepared NPCs
+    order: [formula.page, summary, formula.prep_order]
+    sort:
+      - property: formula.prep_order
+        direction: ASC
+    rowHeight: extra
