@@ -3,6 +3,8 @@
 These are candidate GitHub issues. Their sequence is a proposal, not a settled
 architecture. Each should become a concrete issue after the relevant design
 discussion; unresolved choices should remain explicit in the published issues.
+Section numbers identify work items, not GitHub issue numbers; published issues
+are linked explicitly.
 
 ## 1. Specify the vault boundary and content ownership
 
@@ -34,7 +36,8 @@ Acceptance:
   custom templates, instructions, or campaign content.
 - Decide version tracking, update review, conflict handling, and recovery.
 
-Depends on issue 1; additional installation prerequisites remain to be decided.
+Depends on work item 1 and coordinates with work item 9; additional installation
+prerequisites remain to be decided.
 
 ## 3. Extract the general page conventions and templates
 
@@ -49,7 +52,7 @@ Acceptance:
 - Require neither XP, levels, classes, nor a particular calendar.
 - Explain how users add fields or adapt the default style.
 
-Depends on issues 1 and 2.
+Depends on work items 1 and 2.
 
 ## 4. Deliver the usable starter knowledge base
 
@@ -62,7 +65,7 @@ Acceptance:
 - Document and exercise the chosen Obsidian dependency policy.
 - Existing destinations cannot be silently overwritten.
 
-Depends on issues 1–3.
+Depends on work items 1–3 and the installation decisions in work item 9.
 
 ## 5. Extract general validation and vault utilities
 
@@ -78,7 +81,7 @@ Acceptance:
   assumptions removed during extraction.
 - Checks do not rewrite user content unless an explicit fix operation is selected.
 
-Depends on issues 2 and 3.
+Depends on work items 2 and 3.
 
 ## 6. Deliver preparation and entity-maintenance skills
 
@@ -92,7 +95,7 @@ Acceptance:
 - Follow the same templates and rules as validation.
 - Explain host setup and which capabilities the skills require.
 
-Depends on issues 2–5 and the AI-host decision.
+Depends on work items 2–5 and 9.
 
 ## 7. Deliver the notes/transcript-to-session workflow
 
@@ -107,7 +110,7 @@ Acceptance:
 - Avoid duplicating updates when rerun; show changes for review.
 - Specify optional audio transcription setup, or explicitly defer audio support.
 
-Depends on issues 3, 5, and 6.
+Depends on work items 3, 5, and 6.
 
 ## 8. Validate and document the first complete user journey
 
@@ -123,4 +126,16 @@ Acceptance:
 - Publish a quickstart, customization guide, troubleshooting guidance, contribution
   instructions, and the selected license for distributable project materials.
 
-Depends on issues 4–7 and the licensing decision.
+Depends on work items 4–7 and 9, and the licensing decision.
+
+## 9. Design agent portability and optional model API support
+
+Support Claude Code and Codex at minimum, aiming for broad drop-in portability
+across skill-capable coding agents. Investigate host integration separately from
+provider support in any retained model-calling scripts.
+
+Scope and acceptance criteria: [agent portability](agent-portability.md).
+Tracked in [GitHub issue #3](https://github.com/willbradshaw/armarium/issues/3).
+
+Coordinate with work item 2; this design precedes the relevant parts of starter
+setup and skill extraction. Its position here does not imply it runs last.

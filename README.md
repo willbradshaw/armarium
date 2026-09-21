@@ -12,13 +12,15 @@ A vault can hold multiple campaigns sharing world information.
 ## Project status
 
 Early planning. There is no installable toolkit or starter vault yet. Distribution,
-the detailed vault layout, supported AI hosts, and the initial release scope are being
+the detailed vault layout, agent integration, and the initial release scope are being
 worked out. Proposed designs in the planning documents are not final decisions.
 
 - [Product brief](docs/planning/product-brief.md): agreed scope and open questions.
 - [Source review](docs/planning/source-review.md): lessons from existing projects.
 - [Draft work programme](docs/planning/work-programme.md): candidate implementation
   issues and acceptance criteria.
+- [Agent portability](docs/planning/agent-portability.md): Claude Code and Codex as
+  the minimum, with broader skill portability and optional API support to investigate.
 
 The public project will contain reusable materials and original examples. The
 private reference projects used during planning are not included.

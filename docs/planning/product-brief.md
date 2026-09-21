@@ -12,6 +12,12 @@ require reconstructing tooling and conventions from a previous campaign.
 
 Terminal-based setup is acceptable, including with an AI assistant's help.
 
+Claude Code and Codex are the minimum supported coding agents. Broad drop-in
+portability across skill-capable coding agents is the goal; the delivery mechanism
+and compatibility details are a dedicated design work item. If reusable scripts
+retain model API calls, provider portability is considered separately from agent
+host support. See [agent portability](agent-portability.md).
+
 A single vault can support multiple campaigns sharing world information, following
 the existing Isles model. Starting another campaign within a vault must reuse its
 world information and established tooling and conventions. The exact folder layout
@@ -62,7 +68,8 @@ audio, maintain entities without processing a transcript, or use the vault manua
 - Whether and how independent vaults reuse reference material and setting content.
 - Copied starter tree versus initialization command; how shared utilities and
   skills are delivered, pinned, customized, and updated.
-- Initial supported AI hosts and required versus optional Obsidian plugins.
+- Agent integration and optional model API support beyond the confirmed minimum.
+- Required versus optional Obsidian plugins.
 - How much of the session and entity style is a default versus a configurable rule.
 - First-release scope and licensing.
 
