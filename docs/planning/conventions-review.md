@@ -1,7 +1,7 @@
 # Conventions for owner review
 
-Status: items **1–12 accepted** as default conventions, with **`world/` preferred**
-for non-campaign-specific world content. Items **13–36 await review**.
+Status: items **1–15 accepted** as default conventions, with **`world/` preferred**
+for non-campaign-specific world content. Items **16–36 await review**.
 Based on inspection of Isles' conventions,
 templates, skills, and tooling runbooks. This is a behavioral inventory, not a
 completed audit of whether the current code enforces every instruction.

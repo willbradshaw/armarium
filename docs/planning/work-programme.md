@@ -46,8 +46,8 @@ prerequisites remain to be decided.
 Build a minimal, coherent set of page types from the source examples, removing
 game, setting, and campaign assumptions rather than merely replacing their names.
 
-Review input: [conventions inventory](conventions-review.md). Items 1–12 are
-accepted; 13–36 await review. Reconcile source guidance with those decisions
+Review input: [conventions inventory](conventions-review.md). Items 1–15 are
+accepted; 16–36 await review. Reconcile source guidance with those decisions
 before extraction.
 
 Acceptance:

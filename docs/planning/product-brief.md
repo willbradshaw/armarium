@@ -25,11 +25,13 @@ folder for shared world content, with campaign-bound entities in campaign folder
 Shared pages carry per-campaign metadata blocks. Exact subfolders, name-collision
 handling, and multi-campaign history rendering remain to be specified.
 
-The owner has accepted conventions 1–12 in the [conventions review](conventions-review.md):
+The owner has accepted conventions 1–15 in the [conventions review](conventions-review.md):
 canonical entity names and campaign-qualified record IDs, linked type pages,
 minimal stubs, a common Notes/Active Clues/Appearances body, stable summaries,
 dated changing world facts, interaction-based appearances, noteworthy PC logs,
-and separate historical acquisition records and current possession.
+separate historical acquisition records and current possession, consistent entity
+linking, defined metadata types and empty values, and canonical link targets with
+explicit display aliases.
 
 The resource must work without a system adapter and without assumptions about
 classes, levels, XP, spellcasting, a particular calendar, setting, or campaign.
