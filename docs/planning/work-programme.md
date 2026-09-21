@@ -44,6 +44,9 @@ prerequisites remain to be decided.
 Build a minimal, coherent set of page types from the source examples, removing
 game, setting, and campaign assumptions rather than merely replacing their names.
 
+Review input: [conventions inventory](conventions-review.md). Owner selections are
+pending; reconcile conflicting source guidance before extraction.
+
 Acceptance:
 - Cover sessions, transcripts, PCs, NPCs, locations, factions, lore, objects, and
   clues/open threads, explaining any types combined or deferred.

@@ -21,6 +21,8 @@ worked out. Proposed designs in the planning documents are not final decisions.
   issues and acceptance criteria.
 - [Agent portability](docs/planning/agent-portability.md): Claude Code and Codex as
   the minimum, with broader skill portability and optional API support to investigate.
+- [Conventions for review](docs/planning/conventions-review.md): candidate defaults,
+  optional workflows, and conflicting source guidance for owner review.
 
 The public project will contain reusable materials and original examples. The
 private reference projects used during planning are not included.
