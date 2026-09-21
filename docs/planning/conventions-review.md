@@ -1,8 +1,7 @@
 # Conventions for owner review
 
-Status: **1–15, 17–29, and 36 accepted**, subject to the decisions below.
-**16 and 30–32 await review.** **33 and 35 need concrete proposals; 34 has agreement
-in principle but needs clarification.** Prefer **`world/`** for shared world content.
+Status: **1–15, 17–29, and 33–36 accepted**, subject to the decisions below.
+**16 and 30–32 await review.** Prefer **`world/`** for shared world content.
 Based on inspection of Isles' conventions,
 templates, skills, and tooling runbooks. This is a behavioral inventory, not a
 completed audit of whether the current code enforces every instruction.
@@ -43,13 +42,12 @@ later questions about clue behavior or Dataview.
   presenting the draft. Remove fixed campaign IDs and system rules; adapt execution
   to host capabilities. This does not settle the separately unreviewed prose/style
   items 30–31 or introduce the session workflow's checkpoints into project planning.
-- **33:** too generic as written; review a concrete proposed check set below.
-- **34:** protection principle sounds good; clarify its behavior with examples below.
-- **35:** too generic as written; review concrete storage responsibilities below.
+- **33–35:** accepted as expanded below: concrete integrity checks, repeatable
+  operations that preserve edits, and explicit working-file storage responsibilities.
 - **36:** accepted the offered branch/PR workflow for campaign users. Armarium's
   own development requires working branches and user-merged PRs for every change.
 
-## Clarifications proposed for 33–35 (not yet accepted)
+## Accepted clarifications for 33–35
 
 **33 — Concrete integrity checks:**
 
@@ -63,7 +61,7 @@ later questions about clue behavior or Dataview.
 - Keep the post-session sweep as a review aid for missing/stale entity updates;
   a reference alone does not prove an appearance.
 
-These are candidate extracted checks, not a claim that all exist today. Report
+These are agreed check requirements, not a claim that all exist today. Report
 file locations and distinguish structural errors from review questions. D&D XP
 arithmetic, the Isles calendar, and personal prose rules do not become universal
 checks. Define exception handling and test the checks against ordinary valid pages.

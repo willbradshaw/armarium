@@ -39,8 +39,11 @@ system mechanics. Clues are candidate facts: an unrevealed clue may be abandoned
 and never become canon. The reviewed session account drives entity updates, with
 explicit GM approval of revised Events before propagation. Campaign users are
 offered a branch/PR workflow (36); Armarium development requires branches and
-user-merged PRs for all changes. See the review for remaining items and concrete
-clarification proposals for validation, edit protection, and working-file storage.
+user-merged PRs for all changes. The expanded conventions 33–35 are accepted:
+specific structural and cross-page checks, repeatable operations that protect
+local edits and avoid duplicate records, and separate intake, scratch, durable
+campaign records, and assets. Source retention and deletion policy remain to be
+specified. Only conventions 16 and 30–32 remain unreviewed.
 
 The resource must work without a system adapter and without assumptions about
 classes, levels, XP, spellcasting, a particular calendar, setting, or campaign.

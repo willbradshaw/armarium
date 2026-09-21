@@ -47,8 +47,8 @@ Build a minimal, coherent set of page types from the source examples, removing
 game, setting, and campaign assumptions rather than merely replacing their names.
 
 Review input: [conventions inventory](conventions-review.md). Items 1–15, 17–29,
-and 36 are accepted with the recorded qualifications. Items 16 and 30–32 remain
-unreviewed; 33–35 need clarification. Reconcile source guidance with those decisions
+and 33–36 are accepted with the recorded qualifications and expanded definitions.
+Items 16 and 30–32 remain unreviewed. Reconcile source guidance with those decisions
 before extraction, particularly the distinction between candidate clues and canon.
 
 Acceptance:
