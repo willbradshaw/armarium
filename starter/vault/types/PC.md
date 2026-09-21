@@ -1,1 +1,3 @@
-Pages with `type: "[[types/PC]]"` follow `templates/PC.md`.
+Pages with `type: "[[types/PC]]"` are player characters in a campaign.
+
+Use [[templates/PC]] for the page structure.

@@ -1,1 +1,3 @@
-Pages with `type: "[[types/Location]]"` follow `templates/Location.md`.
+Pages with `type: "[[types/Location]]"` are physical places, such as regions, settlements, buildings, or geographic features.
+
+Use [[templates/Location]] for the page structure.

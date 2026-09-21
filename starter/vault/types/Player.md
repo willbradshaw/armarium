@@ -1,1 +1,1 @@
-A player record linking to the PCs they play.
+Pages with `type: "[[types/Player]]"` are real players, with links to the PCs they play.
