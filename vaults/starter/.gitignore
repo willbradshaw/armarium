@@ -1,0 +1,7 @@
+.obsidian/
+.scratch/
+.env
+.env.*
+*.cookie
+.DS_Store
+__pycache__/
