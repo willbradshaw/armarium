@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Armarium Content note",
-  "description": "Validate a parsed Markdown note as an object containing frontmatter and body. This does not change the on-disk Markdown/YAML format. Applies to populated Content records, including stubs, not unfinished templates. Link existence, target types, campaign identity and agreement with appearance history require separate vault-aware checks.",
+  "description": "A Content record represented by its parsed YAML frontmatter and Markdown body. Applies to populated records, including stubs; templates must be filled in before validation. Link existence, target types, campaign identity and agreement with appearance history require separate vault-aware checks.",
   "type": "object",
   "required": [
     "frontmatter",
@@ -82,7 +82,7 @@
             ],
             "properties": {
               "stats": {
-                "description": "Null means unspecified or unnecessary. A wikilink targets any existing statistics page. An HTTP/HTTPS URL requires URI format assertions to be enabled; do not fetch it.",
+                "description": "Null means unspecified or unnecessary. A wikilink targets an existing statistics page. Check HTTP/HTTPS URL syntax locally with URI format assertions enabled.",
                 "anyOf": [
                   {
                     "type": "null"
@@ -214,7 +214,7 @@
     "body": {
       "type": "string",
       "pattern": "(?:^|\\n)## Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Active Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Appearances[ \\t]*(?=\\r?\\n|$)",
-      "description": "Requires level-two Notes, Active Clues and Appearances headings in that order. Section text is free Markdown; headings inside fenced code can satisfy this pattern. It does not enforce unique headings or assess prose/canon. Use separate level-three campaign headings for shared histories; record actual interaction, not incidental mentions or prep, and noteworthy PC contributions rather than attendance."
+      "description": "Requires level-two Notes, Active Clues and Appearances headings in that order, with free Markdown inside each section. The pattern accepts duplicate headings and matching headings inside fenced code. Use separate level-three campaign headings for shared histories. Appearances record actual interaction and noteworthy PC contributions; incidental mentions, preparation and attendance alone do not qualify."
     }
   },
   "$defs": {
@@ -349,7 +349,7 @@
           }
         }
       ],
-      "description": "held_by is required in each existing Object campaign block. Holders must resolve to PC, NPC or Faction Content; collective party possession links to its Faction, never a party literal or Location. Lists represent split sets. GONE means sold, consumed, destroyed, lost or otherwise out of play, and can mark departed portions in a list. Before entering play, null is allowed and GONE is not. After entering play a holder or GONE is required; empty lists/items are invalid. Current possession does not rewrite historical loot."
+      "description": "held_by records current possession and is required in each existing Object campaign block. Holder links must resolve to PC, NPC or Faction Content. Collective party possession links to the party's Faction. Lists represent split sets. GONE means sold, consumed, destroyed, lost or otherwise out of play, and can mark departed portions in a list. Before entering play, null is allowed and GONE is not. After entering play a holder or GONE is required; empty lists/items are invalid. Session records retain acquisition and transfer history."
     }
   }
 }
