@@ -1,4 +1,4 @@
 ---
 applies_to: "[[types/Clue]]"
 ---
-This candidate is no longer being pursued. It may never have become canon; abandonment does not rewrite independently established facts.
+This Clue is no longer being pursued. It may never have become canon; abandonment does not rewrite independently established facts.
