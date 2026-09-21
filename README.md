@@ -26,19 +26,5 @@ record, exact scope, tests, and pending manual checks. Inherited live queries re
 Dataview; the installer does not install plugins. Multi-campaign setup, navigation,
 agent support, and evaluated Bases replacements are follow-on increments.
 
-## Project planning
-
-Proposed designs in the planning documents are not final decisions.
-
-- [Product brief](docs/planning/product-brief.md): agreed scope and open questions.
-- [Source review](docs/planning/source-review.md): lessons from existing projects.
-- [Work programme](docs/planning/work-programme.md): numbered issue index and dependencies.
-- [Initial implementation plan](docs/planning/implementation-plan.md): proposed
-  numbered sequence, dependencies, and completion criteria.
-- [Agent portability](docs/planning/agent-portability.md): Claude Code and Codex as
-  the minimum, with broader skill portability and optional API support to investigate.
-- [Conventions for review](docs/planning/conventions-review.md): candidate defaults,
-  optional workflows, and conflicting source guidance for owner review.
-
-The public project will contain reusable materials and original examples. The
-private reference projects used during planning are not included.
+Follow-on work is tracked in the [repository issues](https://github.com/willbradshaw/armarium/issues).
+Private reference vaults are not included.
