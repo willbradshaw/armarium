@@ -22,6 +22,8 @@ The owner has chosen a coherent default workflow that users can customize, rathe
 than a collection requiring users to assemble their own workflow from scratch.
 Terminal-based setup is acceptable, including with an AI assistant's help. The
 confirmed public repository is `willbradshaw/armarium`.
+A single vault can support multiple campaigns sharing world information, similar
+to Isles. Exact folder names and shared-entity state handling remain undecided.
 
 ## Isles: primary reference
 
@@ -72,7 +74,7 @@ should not become defaults for all Pathfinder campaigns.
 ## Decisions to work through
 
 1. Primary audience and acceptable installation requirements.
-2. Whether the unit of use is a campaign, a shared world, or a collection of both.
+2. How a shared-world vault organizes multiple campaigns and their distinct state.
 3. How reference collections are reused without sharing mutable campaign state.
 4. Distribution: copied starter materials, installed utilities, and skill delivery.
 5. Ownership and update rules for templates, generated files, and local overrides.

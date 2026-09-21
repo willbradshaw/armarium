@@ -7,11 +7,12 @@ Armarium is intended to provide a coherent default workflow that GMs can customi
 from establishing a knowledge base and preparing sessions to maintaining session
 notes and related entities. It is not tied to a particular game, setting, or campaign.
 Terminal-based setup is in scope, including use with an AI assistant's help.
+A vault can hold multiple campaigns sharing world information.
 
 ## Project status
 
 Early planning. There is no installable toolkit or starter vault yet. Distribution,
-vault boundaries, supported AI hosts, and the initial release scope are being
+the detailed vault layout, supported AI hosts, and the initial release scope are being
 worked out. Proposed designs in the planning documents are not final decisions.
 
 - [Product brief](docs/planning/product-brief.md): agreed scope and open questions.

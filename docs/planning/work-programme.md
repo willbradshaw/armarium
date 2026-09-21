@@ -9,9 +9,15 @@ discussion; unresolved choices should remain explicit in the published issues.
 Define the default organization of references, world material, campaign records,
 templates, instructions, assets, and working files.
 
+Confirmed: a vault supports multiple campaigns sharing world information, similar
+to Isles. This issue resolves the detailed layout and state model, not whether
+multi-campaign vaults are supported. Tracked in [GitHub issue #1](https://github.com/willbradshaw/armarium/issues/1).
+
 Acceptance:
 - Show a minimal example tree and explain the purpose and owner of each area.
 - Walk through starting a campaign, starting a second campaign, and reusing lore.
+- Specify campaign selection for scripts and skills; avoid a hardcoded campaign
+  identifier or ambiguous writes when several campaigns exist.
 - Decide how names and links distinguish entities across campaigns.
 - Explain where changing campaign state belongs relative to reusable reference.
 
@@ -19,6 +25,7 @@ Acceptance:
 
 Choose how users obtain the starter materials, invoke scripts, and access skills.
 Compare copying, initialization, and installed tooling against actual user needs.
+Terminal-based setup is accepted. Tracked in [GitHub issue #2](https://github.com/willbradshaw/armarium/issues/2).
 
 Acceptance:
 - Document the complete first-use sequence and its prerequisites.
@@ -27,7 +34,7 @@ Acceptance:
   custom templates, instructions, or campaign content.
 - Decide version tracking, update review, conflict handling, and recovery.
 
-Depends on the audience decision and issue 1.
+Depends on issue 1; additional installation prerequisites remain to be decided.
 
 ## 3. Extract the general page conventions and templates
 
