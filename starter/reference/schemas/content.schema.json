@@ -122,7 +122,7 @@
                     "$ref": "#/$defs/wikilink"
                   }
                 ],
-                "description": "Must resolve to a Player page; null is not allowed, even on a PC stub."
+                "description": "Must resolve to a Player page; null is not allowed."
               }
             }
           }
