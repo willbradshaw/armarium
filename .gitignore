@@ -1,0 +1,5 @@
+# Local reference projects; never publish their contents or machine-specific links.
+/isles
+/imperium_maledictum
+/museion
+.DS_Store
