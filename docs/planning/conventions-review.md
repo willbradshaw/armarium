@@ -1,7 +1,8 @@
 # Conventions for owner review
 
 Status: **1–15, 17–29, and 33–36 accepted**, subject to the decisions below.
-**16 and 30–32 await review.** Prefer **`world/`** for shared world content.
+**16: Bases-first prototype agreed; final dependency choice awaits its results.**
+**30–32 await review.** Prefer **`world/`** for shared world content.
 Based on inspection of Isles' conventions,
 templates, skills, and tooling runbooks. This is a behavioral inventory, not a
 completed audit of whether the current code enforces every instruction.
@@ -21,6 +22,10 @@ later questions about clue behavior or Dataview.
 
 ## Subsequent owner decisions
 
+- **16:** prototype Bases for clue indexes, entity Active Clues, sessions referencing
+  clues, and session preparation tables. Use explicit prep-selection lists for the
+  latter. Verify behavior in Obsidian before choosing dependencies; generated
+  Markdown or retained inline Dataview are fallbacks. Tracked in [issue #5](https://github.com/willbradshaw/armarium/issues/5).
 - **17–19:** follow recent Isles session structure and preparation conventions.
   Use the current Session template and preparation/writing skills as the extraction
   baseline. Preserve the Preparation/Notes split, starting scene, other scenes,
@@ -122,7 +127,7 @@ this behavior. One-time starter templates can simply become user-owned files.
 | 13 | Link named entities consistently, reuse existing pages, and preserve links when rewriting prose. | Default; review whether literally every occurrence needs a link. |
 | 14 | Use consistent frontmatter: quoted wikilinks, defined field types, and bare empty values where the schema expects null. | Default. Keep exceptions explicit, such as an empty string for clue text. |
 | 15 | Links target canonical page names; alternate display text is explicit, with pipes escaped inside Markdown tables. | Default. Avoid relying on bare alias text to identify the target. |
-| 16 | Use Dataview for live summaries, clue displays, and indexes so copied text cannot drift. | Optional dependency, or an explicit default dependency if these live views are essential to the desired experience; decide in the Obsidian integration issue. |
+| 16 | Provide live summaries, clue displays, and indexes from authoritative source pages. | Revised: prototype Bases first under issue #5; choose the final implementation based on rendered results and usability. |
 
 ## Preparation and authority
 

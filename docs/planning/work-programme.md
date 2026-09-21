@@ -48,7 +48,8 @@ game, setting, and campaign assumptions rather than merely replacing their names
 
 Review input: [conventions inventory](conventions-review.md). Items 1–15, 17–29,
 and 33–36 are accepted with the recorded qualifications and expanded definitions.
-Items 16 and 30–32 remain unreviewed. Reconcile source guidance with those decisions
+Item 16 proceeds through the Bases prototype in work item 10; 30–32 remain
+unreviewed. Reconcile source guidance with those decisions
 before extraction, particularly the distinction between candidate clues and canon.
 
 Acceptance:
@@ -146,3 +147,17 @@ Tracked in [GitHub issue #3](https://github.com/willbradshaw/armarium/issues/3).
 
 Coordinate with work item 2; this design precedes the relevant parts of starter
 setup and skill extraction. Its position here does not imply it runs last.
+
+## 10. Prototype Bases replacements for remaining Dataview uses
+
+Prototype all four remaining view types, including session tables driven by explicit
+prep-selection lists. Verify the rendered workflow in Obsidian with Dataview
+disabled, including campaign isolation, linked-text rendering, ordering, refresh,
+and agent access to underlying data. Keep generated Markdown and retained inline
+Dataview as fallbacks if session preparation suffers.
+
+Scope and acceptance criteria: [Bases prototype](bases-prototype.md).
+Tracked in [GitHub issue #5](https://github.com/willbradshaw/armarium/issues/5).
+
+Coordinate with work items 1, 2, and 9. Results inform templates, starter setup,
+preparation skills, and validation; this work does not migrate the source vaults.

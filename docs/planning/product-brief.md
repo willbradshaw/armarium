@@ -43,7 +43,9 @@ user-merged PRs for all changes. The expanded conventions 33–35 are accepted:
 specific structural and cross-page checks, repeatable operations that protect
 local edits and avoid duplicate records, and separate intake, scratch, durable
 campaign records, and assets. Source retention and deletion policy remain to be
-specified. Only conventions 16 and 30–32 remain unreviewed.
+specified. Convention 16 now has an agreed Bases-first prototype, with the final
+view/dependency choice based on its results ([issue #5](https://github.com/willbradshaw/armarium/issues/5)).
+Only conventions 30–32 remain unreviewed.
 
 The resource must work without a system adapter and without assumptions about
 classes, levels, XP, spellcasting, a particular calendar, setting, or campaign.
