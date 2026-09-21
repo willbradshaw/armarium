@@ -17,8 +17,7 @@ worked out. Proposed designs in the planning documents are not final decisions.
 
 - [Product brief](docs/planning/product-brief.md): agreed scope and open questions.
 - [Source review](docs/planning/source-review.md): lessons from existing projects.
-- [Draft work programme](docs/planning/work-programme.md): candidate implementation
-  issues and acceptance criteria.
+- [Work programme](docs/planning/work-programme.md): numbered issue index and dependencies.
 - [Initial implementation plan](docs/planning/implementation-plan.md): proposed
   numbered sequence, dependencies, and completion criteria.
 - [Agent portability](docs/planning/agent-portability.md): Claude Code and Codex as

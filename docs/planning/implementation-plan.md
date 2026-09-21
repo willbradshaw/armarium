@@ -1,204 +1,195 @@
 # Initial implementation plan
 
-Status: proposed sequence for owner review, not authorization to begin implementation.
-This sequences the [work programme](work-programme.md) around the accepted
-[conventions](conventions-review.md). Numbers below are plan steps, not issue IDs.
+Status: proposed programme of work; implementation has not begun. Every numbered
+item maps to one issue and must deliver an inspectable artifact with recorded
+acceptance evidence. A design document alone does not complete an implementation
+item. Automated tests cover deterministic behavior; Obsidian and agent workflows
+also require reproducible in-application checks. Missing access means a check is
+unverified, not passed.
 
-## First usable release
+All work uses branches and user-merged PRs. Keep private source vaults unchanged
+and use original fixtures. The canonical starter vault is copied and populated
+by setup; reusable executable utilities are installed separately.
 
-A GM can create an Obsidian vault, add two campaigns sharing world information,
-prepare sessions, turn notes or recordings into reviewed session records, and keep
-related entities consistent. Claude Code and Codex can use the same conventions
-and workflows. Shared-tool updates preserve local customizations. The general
-workflow requires no game-system adapter.
+## 1. Build the canonical starter vault
 
-All implementation lands through working branches and user-merged PRs. Source
-vaults remain reference inputs; this plan does not migrate them. Use original
-fixtures rather than publishing campaign records or imported corpora.
+**Issue:** [#1](https://github.com/willbradshaw/armarium/issues/1)
 
-## 1. Specify the vault layout, metadata, and ownership rules
+**Deliverable:** A copyable starter vault with world and campaign scaffolds, canonical page templates, linked type/status pages, navigation, default instructions, and documented configuration placeholders. Keep sample campaign content in a separate original example vault.
 
-Build on issue [#1](https://github.com/willbradshaw/armarium/issues/1). Specify
-`world/`, campaign folders, reference material, templates, shared instructions,
-assets, intake, and scratch areas. Define campaign identity and selection, page
-names and collisions, linked types, per-campaign metadata on shared entities,
-and how appearance logs distinguish campaigns.
+Combine layout decisions and template extraction in this artifact. Follow accepted conventions, including campaign-qualified IDs, per-campaign metadata, candidate clues, and recent Isles session structure without required game mechanics. Shared executable utilities remain outside the copied vault content. Define reference, intake, scratch, and durable asset locations. Live views are delivered in step 4; label their integration points explicitly.
 
-Specify the clue lifecycle with candidate facts distinct from established canon.
-Identify where conventions are configurable. Settle source-retention defaults
-and select licensing for the distributable materials. Resolve conventions 30–31
-before finalizing writing instructions; treat the optional worldbuilding interview
-workflow (32) as a separate scope decision.
+**Acceptance tests:**
 
-**Complete when:** a documented example with two campaigns explains every page's
-location, ownership, and relevant state, including a shared entity with different
-campaign histories and an abandoned clue that never became canon.
+- Instantiate the scaffolds manually in an isolated example vault with two campaigns and shared world entities; document the exact substitutions setup will later automate.
+- Open the example in Obsidian and verify navigation, templates, metadata shapes, and static links; check for unresolved placeholders and private source identifiers.
+- Demonstrate separate campaign histories, an abandoned candidate clue that never became canon, and both shared and campaign-bound entities.
+- Commit repeatable structural smoke checks with synthetic fixtures; these are not a prerequisite to building the full validator in step 5.
 
-## 2. Design distribution and prove the minimum agent integrations
+**Dependencies:** None.
 
-Resolve issues [#2](https://github.com/willbradshaw/armarium/issues/2) and
-[#3](https://github.com/willbradshaw/armarium/issues/3). Choose the setup mechanism,
-shared-script packaging, local skill/instruction delivery, version recording,
-customization precedence, and update/conflict behavior.
+## 2. Ship installable shared tooling and vault setup commands
 
-Prototype one small skill that reads the campaign context and invokes a harmless
-local check in both Claude Code and Codex. Specify how common instructions are
-maintained once and adapted where hosts differ. Inventory any direct model API
-calls in candidate utilities; retain only those justified by the initial workflow,
-with explicit model/provider configuration and optional dependencies.
+**Issue:** [#2](https://github.com/willbradshaw/armarium/issues/2)
 
-**Complete when:** both hosts can discover and use the prototype, and a new-user
-installation plus existing-vault update can be described without unresolved file
-ownership questions. Additional agent support has a documented extension path.
+**Deliverable:** An installable, versioned shared utility package plus working new-vault and add-campaign commands that instantiate the starter vault.
 
-**Dependency:** the initial contract from step 1; design can iterate alongside it.
+Choose and implement packaging, command entry points, vault configuration, recorded versions, and the ownership boundary between managed and user-owned files. Command names remain an implementation choice. Establish the extension points for host integration and live views without blocking setup on those later artifacts. Define the upgrade contract now; deliver its complete implementation in step 9.
 
-## 3. Prototype the live views in Obsidian
+**Acceptance tests:**
 
-Execute issue [#5](https://github.com/willbradshaw/armarium/issues/5): replace clue
-indexes, entity Active Clues, sessions referencing a clue, and session preparation
-tables with Bases prototypes. Use explicit preparation-selection lists rather than
-all outbound session links.
+- Install a built package in a clean environment and create a vault without access to the source projects or model API credentials.
+- Add a second campaign without copying scripts into either campaign or changing shared world content.
+- Exercise existing destination, duplicate campaign, missing/ambiguous campaign selection, and retry cases; no existing user files are silently overwritten.
+- Invoke a packaged utility against an explicit vault from outside its directory; verify version/configuration records identify the installed materials.
 
-Test rendering, campaign isolation, linked text, row order, live refresh, manual
-editing, and agent access to underlying data. Decide separately for each view
-whether Bases is sufficient. Keep generated Markdown tables or inline Dataview
-as documented fallbacks.
+**Dependencies:** Steps 1.
 
-**Complete when:** actual Obsidian checks support the chosen views and dependency
-policy. Templates can be finalized without guessing how their live sections work.
+## 3. Deliver and test portable agent integration
 
-**Dependency:** the relevant draft schema from step 1. Can run alongside step 2.
+**Issue:** [#3](https://github.com/willbradshaw/armarium/issues/3)
 
-## 4. Extract the coherent starter templates and conventions
+**Deliverable:** Working Claude Code and Codex installation/invocation paths for one shared smoke-test skill, with reusable host integration and a verified compatibility matrix.
 
-Extract and reconcile current Isles templates, the content spec, and relevant
-skills, using the other projects to expose assumptions that are not general.
-Cover campaign and player records, sessions, transcripts, PCs, NPCs, locations,
-factions, lore, objects, clues, and linked type/status pages.
+Use one maintained source for common workflow instructions and narrowly scoped host adaptations. The smoke skill resolves the target campaign, reads its conventions, and invokes a deterministic read-only check. Cover coexistence, local instruction precedence, missing host capabilities, and adding another agent. Inventory direct model API calls in candidate scripts separately and document provider/model/credential decisions only where functionality is retained.
 
-Preserve accepted entity structure and recent Isles session organization, with
-the views selected in step 3. Remove required D&D fields, campaign names, calendar
-rules, and personal defaults not selected for Armarium. Distinguish clues from
-open threads. Specify supported extensions so templates and validators agree.
+**Acceptance tests:**
 
-**Complete when:** a small hand-populated starter vault demonstrates the agreed
-page types and links, needs no system-specific module, and carries no references
-to private source content or hardcoded source-campaign identifiers.
+- Run the same fixture workflow in both Claude Code and Codex; record versions, commands, observed output, and required adaptations.
+- Verify both agents select the intended campaign and read a local customization; neither should write to the other campaign.
+- Verify installation and repeated installation preserve user-owned instructions and changes.
+- Document actual verified capabilities and unsupported optional features. Do not mark host testing complete based solely on matching SKILL.md files.
 
-**Dependencies:** steps 1–3, with prose decisions settled for affected instructions.
+**Dependencies:** Steps 2.
 
-## 5. Implement vault creation and adding campaigns
+## 4. Deliver evaluated live views for clues and session preparation
 
-Implement the distribution design, including a new-vault operation and an
-add-campaign operation. Proposed CLI names such as `init` and `campaign add` are
-illustrative until step 2 settles the interface.
+**Issue:** [#5](https://github.com/willbradshaw/armarium/issues/5)
 
-Install the templates, views, selected host instructions, and shared utility
-access; record versions and local configuration. Setup should make no model API
-calls. Require unambiguous campaign selection and refuse to silently overwrite
-existing files. Keep reusable world content when adding another campaign.
+**Deliverable:** A runnable Bases prototype for the four remaining Dataview uses, a per-view result report, and the selected working view definitions integrated into the starter templates.
 
-**Complete when:** a fresh install produces a usable vault and adds two distinct
-campaigns; collision/retry checks demonstrate that existing work is preserved.
+Execute the existing Bases-first prototype specification. Use explicit prep-selection lists. Prefer Bases where the actual workflow is satisfactory; if needed, implement the selected bounded generated-Markdown or retained-inline-Dataview fallback rather than leaving the template unusable. Record final dependencies. Do not migrate Isles.
 
-**Dependencies:** steps 2 and 4.
+**Acceptance tests:**
 
-## 6. Extract general validation and entity-review utilities
+- Exercise all four view cases in Obsidian with Dataview disabled for the Bases experiment; record actual successes and failures, not just YAML validity.
+- Check two-campaign isolation on shared entities, candidate-clue status filters, canonical identity, linked-text readability, ordering, and refresh with views open.
+- Demonstrate adding/removing prep entries and carryover without altering Events or deleting entities.
+- Re-run the chosen implementation in the starter example; document required plugins and any fallback semantics, including live versus historical snapshots.
 
-Extract the shared vault parsing/link-resolution machinery and accepted checks:
-broken or ambiguous links, malformed table links, metadata shape, campaign/session
-identity, clue subjects and states, and qualifying appearance dates. Add a
-post-session sweep that surfaces candidate entity updates without pretending to
-decide relevance mechanically.
+**Dependencies:** Steps 1.
 
-Retain relevant tests using original fixtures. Exercise valid custom fields,
-duplicate names, two campaigns, and the candidate-clue distinction. Keep validators
-read-only by default; report actionable paths and distinguish errors from warnings.
+## 5. Ship vault validation and the post-session entity sweep
 
-**Complete when:** the starter passes, deliberately inconsistent fixtures produce
-useful diagnostics, and ordinary supported customizations are accepted.
+**Issue:** [#6](https://github.com/willbradshaw/armarium/issues/6)
 
-**Dependencies:** steps 1 and 4. Can overlap step 5.
+**Deliverable:** Read-only validation commands with actionable diagnostics, a session-to-entity review report, and a fixture-based test suite.
 
-## 7. Implement entity maintenance and session preparation skills
+Extract reusable parsing and link resolution and the accepted checks: broken/ambiguous links, Markdown table links, metadata schemas, session/campaign IDs, clue subjects/states, and qualifying appearance dates. Preserve type-specific clue tracking semantics and supported custom fields. The sweep identifies candidates; it does not treat every mention as an appearance or decide whether a clue is true.
 
-Deliver the shared skills and host integrations for entity creation/updates,
-clue management, and preparation. Use current Isles carryover behavior: read prior
-play, collect unresolved material, then collaborate on new preparation. Preserve
-the distinction between candidate facts, established world facts, planned scenes,
-and events that actually happened.
+**Acceptance tests:**
 
-Connect skills to the agreed templates, views, validation, and explicit campaign
-context. Follow the accepted review checkpoints and branch/PR workflow where used.
+- The starter and valid customized fixtures pass with no writes.
+- Independently malformed fixtures produce the expected file-specific errors or warnings, including name collisions and wrong-campaign references.
+- Verify clue subject mismatches and inconsistent appearance metadata are detected without requiring D&D XP or an Isles calendar.
+- Verify the sweep includes direct and relevant indirectly referenced entities while leaving decisions and source pages untouched.
 
-**Complete when:** Claude Code and Codex can prepare a session and maintain its
-entities in the fixture vault, including a second campaign, without editing
-another campaign's state or promoting abandoned clues to canon.
+**Dependencies:** Steps 1, 2, 4.
 
-**Dependencies:** steps 2, 5, and 6.
+## 6. Deliver entity-maintenance and session-preparation skills
 
-## 8. Implement the session recording/notes workflow
+**Issue:** [#7](https://github.com/willbradshaw/armarium/issues/7)
 
-Extract the recent Isles sequence: optional audio transcription and cleanup,
-campaign-local cast/name glossary, attributed Transcript page, beat extraction,
-actual Events draft, GM correction and explicit go-ahead, Session entry, and
-entity sweep. Support starting from written notes or an existing transcript.
+**Deliverable:** Installed shared skills for entity creation/updates, clue management, and recent-Isles-style preparation, working on both required agents.
 
-Separate optional transcription dependencies from ordinary vault use. Preserve
-uncertainty, check draft claims against source material and prior play, and derive
-entity changes from the final reviewed session. Reapply later corrections without
-duplicate log entries. Retain raw inputs according to the chosen policy.
+Implement carryover review followed by collaborative new preparation using the agreed templates and live views. Maintain separate world/campaign state and distinguish candidate facts, accepted world facts, prepared scenes, and played events. Apply local conventions, deterministic checks, and review checkpoints. Conventions 30–31 must be decided before embedding any unreviewed prose defaults.
 
-**Complete when:** original sample notes and a short original recording both reach
-reviewed session/entity records on the required hosts, including an uncertain
-speaker, a corrected event, an unrevealed clue, and a safe rerun. Record any bounded
-audio-support limitation explicitly rather than implying broader provider support.
+**Acceptance tests:**
 
-**Dependencies:** steps 6–7 and the prose decisions from step 1.
+- Run the same original scenario on both agents: create entities, prepare a session, carry forward unresolved material, and abandon an unrevealed clue.
+- Verify existing IDs and entities are reused, links resolve, and preparation does not mutate past Events.
+- Verify an abandoned candidate is not promoted into world lore and campaign A work does not change campaign B records.
+- Review produced artifacts against behavioral criteria; retain a reproducible scenario and results rather than demanding identical model prose.
 
-## 9. Implement and verify the update/customization lifecycle
+**Dependencies:** Steps 3, 4, 5.
 
-Finish the update mechanism designed in step 2. Track installed versions and
-managed material, show proposed changes, preserve user-owned pages and overrides,
-and report conflicts rather than overwriting custom templates or skill changes.
-Provide a documented recovery path for unsuccessful updates.
+## 7. Deliver transcript and play-notes processing through reviewed session records
 
-**Complete when:** an older fixture with a customized template, local instruction,
-and two active campaigns adopts a shared-tool fix without losing its edits or
-changing campaign records. Repeating the update produces no unnecessary changes.
+**Issue:** [#8](https://github.com/willbradshaw/armarium/issues/8)
 
-**Dependencies:** the distribution contract in step 2 and implementation from
-steps 5–8. Edit-protection rules apply from the first implementation, not only here.
+**Deliverable:** A working workflow from written play notes or a raw/prepared transcript to attributed transcript material as applicable, reviewed Events, session records, and consistent entity updates.
 
-## 10. Exercise the whole journey and prepare the first release
+Extract recent Isles cast/name glossary maintenance, uncertainty handling, beat extraction, source verification, actual Events-text review, and explicit go-ahead after corrections. Derive downstream records from the final session account. Support entering at the appropriate stage and do not require audio or API credentials for an already-written transcript.
 
-Run fresh-install and existing-vault scenarios with contrasting game styles,
-both required agent hosts, and two campaigns sharing world information. Exercise
-setup, preparation, session processing, correction propagation, validation,
-adding another campaign, and an upgrade with customizations.
+**Acceptance tests:**
 
-Write the quickstart, page/workflow reference, customization and upgrade guides,
-host/plugin requirements, troubleshooting, and contribution guidance. Include the
-selected license and original sample material. State tested platforms and known
-limits; prepare release artifacts for review through a PR.
+- On both agents, exercise an uncertain speaker, a misspelled name, an unplayed prepared scene, and an unrevealed candidate clue.
+- Demonstrate that clarification answers alone do not advance the required approval checkpoint; the committed Events match the approved draft.
+- Correct an event after entity updates and verify the relevant records are re-derived without stale claims.
+- Rerun the workflow without duplicate history entries; run validation and inspect the entity-sweep results.
 
-**Complete when:** another GM can follow the documented journey without access to
-the private reference projects, and checks demonstrate the claimed behavior.
-Publishing a release is a separate action after review.
+**Dependencies:** Steps 6.
 
-**Dependencies:** steps 5–9.
+## 8. Ship optional recording transcription and cleanup
 
-## Sequence and scope
+**Issue:** [#9](https://github.com/willbradshaw/armarium/issues/9)
 
-Begin with step 1, then run the agent/distribution and Bases investigations (2–3)
-alongside each other. Finalize templates (4), implement setup and checks (5–6),
-then complete preparation, session processing, updates, and release validation
-(7–10). Early research must resolve the decisions it affects; it need not block
-unrelated work.
+**Deliverable:** A separately installable/configurable audio transcription path, cleanup utilities, and documented handoff into step 7.
 
-System-specific importers, migration of existing campaigns, shared reference
-synchronization between independent vaults, a plugin marketplace, and a custom
-Obsidian plugin are proposed follow-on work rather than initial-release requirements.
-Worldbuilding interviews await the owner's convention-32 decision. These scope
-recommendations are part of this plan for review, not previously agreed exclusions.
+Extract the general recording utilities without fixed cast, system, model, or machine paths. Declare the initial supported transcription backend and formats and keep optional dependencies outside ordinary vault setup. If a provider API is retained, use the decisions from issue #3 and explicit credential/model configuration. Preserve sources and expose transcription uncertainty; processing does not authorize deleting recordings.
+
+**Acceptance tests:**
+
+- Use a short original recording with a known reference transcript to verify supported input, usable output, names needing review, and handoff into the session workflow.
+- Test missing backend/model, unsupported input, and interrupted processing with actionable diagnostics and preserved source files.
+- Test repeated-ASR-loop cleanup on a controlled fixture without deleting legitimate repeated dialogue indiscriminately.
+- Verify users without the audio dependencies can still install, prepare sessions, validate, and process existing text.
+
+**Dependencies:** Steps 2, 7.
+
+## 9. Ship safe updates for tools, templates, and agent materials
+
+**Issue:** [#10](https://github.com/willbradshaw/armarium/issues/10)
+
+**Deliverable:** An explicit update operation with a reviewable change preview, version tracking, conflict reporting, and a documented recovery path.
+
+Implement the ownership/update contract established by setup. Preserve user-owned campaign records and overrides. Distinguish untouched managed files from changed files and protect edits to generated regions. This work can run alongside workflow extraction; safe writes apply throughout implementation rather than starting at this step.
+
+**Acceptance tests:**
+
+- Upgrade an older fixture containing two campaigns, a customized template, local instructions, and modified managed material.
+- Verify a shared-tool fix is installed, user edits and campaign content remain intact, and conflicting updates require a deliberate resolution.
+- Repeat the update and confirm no unnecessary rewrites or duplicated material.
+- Simulate a failed/interrupted update and demonstrate the documented recovery behavior.
+
+**Dependencies:** Steps 2, 3, 4.
+
+## 10. Deliver a tested first-release candidate and user documentation
+
+**Issue:** [#11](https://github.com/willbradshaw/armarium/issues/11)
+
+**Deliverable:** Installable release-candidate artifacts, original example material, a quickstart/customization/upgrade guide, selected license, and an end-to-end validation report.
+
+Exercise the complete experience using contrasting game styles, two campaigns sharing world information, and both required agent hosts. Document the actual tested platform/plugin/backend versions and limitations. Select licensing before distributing extracted materials; do not invent a license choice. Publishing a release and merging PRs remain separate user-controlled actions.
+
+**Acceptance tests:**
+
+- From a clean environment, follow the documentation to create a vault, add campaigns, prepare sessions, process notes and the sample recording, correct records, validate, and upgrade a customized vault.
+- Demonstrate the general workflow without a game-system adapter or private source project.
+- Verify docs and package artifacts match the tested installation paths and declared optional dependencies.
+- Record results and known limits; do not claim an independent-user trial unless someone actually performs it.
+
+**Dependencies:** Steps 1, 2, 3, 4, 5, 6, 7, 8, 9.
+
+## Scope and sequencing
+
+After the starter vault, setup/agent integration and live-view work can proceed
+alongside each other. Validation precedes the full workflow skills. Update support
+can proceed once setup and managed-file contracts exist. Final release validation
+exercises the integrated result.
+
+Conventions 30–32 remain unreviewed: settle narrative/prose defaults before the
+relevant skills, and decide separately whether to include worldbuilding interviews.
+System-specific importers, migration of existing campaigns, cross-vault reference
+synchronization, a marketplace, and a custom Obsidian plugin are proposed follow-on
+work, not dependencies of this first usable general workflow.

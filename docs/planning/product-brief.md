@@ -12,6 +12,13 @@ require reconstructing tooling and conventions from a previous campaign.
 
 Terminal-based setup is acceptable, including with an AI assistant's help.
 
+The setup mechanism copies a canonical starter vault and populates campaign-specific
+values. The starter contains the agreed structure, templates, type/status pages,
+navigation, and default instructions/configuration, with example campaign content
+kept separately. Shared executable utilities are installed outside the copied
+content. Every implementation issue must deliver an inspectable artifact with
+explicit acceptance tests and recorded results; design prose alone is insufficient.
+
 Claude Code and Codex are the minimum supported coding agents. Broad drop-in
 portability across skill-capable coding agents is the goal; the delivery mechanism
 and compatibility details are a dedicated design work item. If reusable scripts
@@ -90,8 +97,8 @@ audio, maintain entities without processing a transcript, or use the vault manua
 - Installation prerequisites and intended audience beyond acceptance of terminal use.
 - Detailed folder layout and history rendering for entities shared across campaigns.
 - Whether and how independent vaults reuse reference material and setting content.
-- Copied starter tree versus initialization command; how shared utilities and
-  skills are delivered, pinned, customized, and updated.
+- Exact packaging and command interfaces; how shared utilities and skills are
+  delivered, pinned, customized, and updated.
 - Agent integration and optional model API support beyond the confirmed minimum.
 - Required versus optional Obsidian plugins.
 - How much of the session and entity style is a default versus a configurable rule.
