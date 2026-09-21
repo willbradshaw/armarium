@@ -1,4 +1,4 @@
 ---
-type: "[[reference/types/Player]]"
+type: "[[types/Player]]"
 plays: []
 ---

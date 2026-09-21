@@ -1,11 +1,11 @@
 ---
-type: "[[reference/types/Content]]"
+type: "[[types/Content]]"
 subtype: "PC"
 summary: "A former customs courier with a talent for rooftop escapes and borrowed authority."
-player: "[[campaigns/campaign_1/reference/players/Rowan]]"
+player: "[[Rowan]]"
 campaign_1:
-  first_session: "[[campaigns/campaign_1/sessions/S-1-001]]"
-  last_session: "[[campaigns/campaign_1/sessions/S-1-002]]"
+  first_session: "[[S-1-001]]"
+  last_session: "[[S-1-002]]"
 ---
 ## Notes
 
@@ -18,10 +18,10 @@ Her fencing is brisk and improvised: a railing, a coat or a swinging cargo hook 
 ```dataview
 TABLE WITHOUT ID file.link as "ID", text as "Text"
 FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[reference/statuses/Pending]] OR status = [[reference/statuses/Hinted]])
+WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
 ```
 
 ## Appearances
 
-- [[campaigns/campaign_1/sessions/S-1-001]]: Crossed the market rooftops and secured [[campaigns/campaign_1/content/Brass Harbor Seal]] from a distracted clerk.
-- [[campaigns/campaign_1/sessions/S-1-002]]: Presented the seal to the quay watch and opened the harbor boom.
+- [[S-1-001]]: Crossed the market rooftops and secured [[Brass Harbor Seal]] from a distracted clerk.
+- [[S-1-002]]: Presented the seal to the quay watch and opened the harbor boom.

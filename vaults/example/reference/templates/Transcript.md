@@ -1,5 +1,5 @@
 ---
-type: "[[reference/types/Transcript]]"
+type: "[[types/Transcript]]"
 session:
 ---
 ## Opening

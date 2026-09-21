@@ -4,7 +4,7 @@ Content pages describe characters, places, groups, objects, or setting lore.
 Keep each shared entity in one page under `content/`; campaign-specific entries
 live in `campaigns/campaign_1/content/` (or the corresponding campaign folder).
 
-Copy [[reference/templates/Content]], name it for the entity, choose a subtype,
+Copy [[templates/Content]], name it for the entity, choose a subtype,
 and add its required fields.
 
 ## Fields

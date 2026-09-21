@@ -1,5 +1,5 @@
 ---
-type: "[[reference/types/Content]]"
+type: "[[types/Content]]"
 subtype: Location
 summary: "A chain of independent harbor towns joined by trade, rivalry and a shared refusal of hereditary tolls."
 parent_location:
@@ -13,7 +13,7 @@ orders carry only as far as a willing crew will take them.
 
 Olives, citrus peel, sailcloth and copper move between the ports. Storm season
 closes the exposed passages, making pilot knowledge a source of political power.
-[[content/Port Briselle]] guards one of the safer anchorages.
+[[Port Briselle]] guards one of the safer anchorages.
 
 Dress and public ceremony matter: captains display their ship's colors at a
 hearing, and a glove laid on a negotiating table announces a challenge. A challenge
@@ -24,7 +24,7 @@ may be answered with steel, a race, or terms witnessed before the harbor bell.
 ```dataview
 TABLE WITHOUT ID file.link as "ID", text as "Text"
 FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[reference/statuses/Pending]] OR status = [[reference/statuses/Hinted]])
+WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
 ```
 
 ## Appearances

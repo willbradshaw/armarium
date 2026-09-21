@@ -18,7 +18,7 @@
       ],
       "properties": {
         "type": {
-          "const": "[[reference/types/Content]]"
+          "const": "[[types/Content]]"
         },
         "subtype": {
           "enum": [

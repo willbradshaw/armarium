@@ -1,5 +1,5 @@
 ---
-type: "[[reference/types/Reference]]"
+type: "[[Reference]]"
 ---
 # The Third Bell
 
@@ -9,32 +9,32 @@ Play centers on daring escapes, public promises and loyalties tested under press
 
 ## Crew
 
-- [[campaigns/campaign_1/content/Talia Venn]] — played by [[campaigns/campaign_1/reference/players/Rowan]].
-- [[campaigns/campaign_1/content/Esme Calder]] — played by [[campaigns/campaign_1/reference/players/Ellis]].
-- [[campaigns/campaign_1/content/Glass Petrel Crew]] — their collective property and obligations.
+- [[Talia Venn]] — played by [[Rowan]].
+- [[Esme Calder]] — played by [[Ellis]].
+- [[Glass Petrel Crew]] — their collective property and obligations.
 
 ## Setting
 
-- [[content/The Crownless Coast]] and [[content/The Red Teeth]] — the wider region and its offshore channels.
-- [[content/Port Briselle]] and [[campaigns/campaign_1/content/Quay Nine]].
-- [[content/Captain Mara Vey]] and the [[content/Free Pilots Assembly]].
-- [[content/The Bell Accord]] — the hearing provision that started the escape.
+- [[The Crownless Coast]] and [[The Red Teeth]] — the wider region and its offshore channels.
+- [[Port Briselle]] and [[Quay Nine]].
+- [[Captain Mara Vey]] and the [[Free Pilots Assembly]].
+- [[The Bell Accord]] — the hearing provision that started the escape.
 
 ## Sessions
 
-- [[campaigns/campaign_1/sessions/S-1-001]] — a hearing demanded and a seal obtained.
-- [[campaigns/campaign_1/sessions/S-1-002]] — a chart entrusted and a signal spent.
-- [[campaigns/campaign_1/sessions/S-1-003]] — the next session, prepared but unplayed.
-- [[campaigns/campaign_1/sessions/transcripts/S-1-002 Transcript]] — an attributed excerpt.
+- [[S-1-001]] — a hearing demanded and a seal obtained.
+- [[S-1-002]] — a chart entrusted and a signal spent.
+- [[S-1-003]] — the next session, prepared but unplayed.
+- [[S-1-002 Transcript]] — an attributed excerpt.
 
 ## Open threads
 
 - Who ordered the original seizure of the Glass Petrel?
 - Will the crew honor the conditions attached to the chart?
-- [[campaigns/campaign_1/reference/indexes/Clues]] tracks GM-known Clues.
+- [[Clues]] tracks GM-known Clues.
 
 ## Current possessions
 
-- [[campaigns/campaign_1/content/Brass Harbor Seal]] — Talia.
-- [[campaigns/campaign_1/content/Shoal Chart]] — collective crew possession.
-- [[campaigns/campaign_1/content/Blue Signal Flare]] — consumed; retained as a historical record.
+- [[Brass Harbor Seal]] — Talia.
+- [[Shoal Chart]] — collective crew possession.
+- [[Blue Signal Flare]] — consumed; retained as a historical record.

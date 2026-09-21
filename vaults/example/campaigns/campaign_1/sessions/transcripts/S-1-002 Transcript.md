@@ -1,6 +1,6 @@
 ---
-type: "[[reference/types/Transcript]]"
-session: "[[campaigns/campaign_1/sessions/S-1-002]]"
+type: "[[types/Transcript]]"
+session: "[[S-1-002]]"
 ---
 ## The tally
 
