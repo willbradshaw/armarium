@@ -4,8 +4,9 @@ A system-general foundation for AI-assisted tabletop roleplaying knowledge bases
 Obsidian vault structure, page templates, reusable skills, and supporting scripts.
 
 The starter currently provides shared world folders and one blank campaign, with
-templates for entities, clues, and sessions. Multi-campaign setup, shared skills,
-and supporting utilities are planned follow-on work.
+templates for entities, clues, and sessions. A read-only validator checks your
+vault's structure and links. Multi-campaign setup and shared skills are planned
+follow-on work.
 
 ## Create a setting vault
 
@@ -58,11 +59,11 @@ Evaluated Bases replacements and other follow-on work are tracked in the
 
 ## Validate a vault
 
-With Python 3.9 or newer, create a local environment in this checkout and install
+With Python 3.14 or newer, create a local environment in this checkout and install
 the single dependency:
 
 ```sh
-python3 -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python scripts/validate_vault.py "/path/to/my setting"
 ```

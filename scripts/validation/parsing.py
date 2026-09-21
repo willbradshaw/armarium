@@ -1,15 +1,20 @@
 """Frontmatter and Markdown parsing, independent of vault policy."""
 
-from __future__ import annotations
-
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import PurePosixPath
 import re
 
 import yaml
 
+from .schema import CAMPAIGN
 
-@dataclass(frozen=True)
+# YAML may contain non-JSON values; field rules narrow known properties safely.
+type Properties = dict[object, object]
+type Resolution = tuple[str | None, str | None, str | None]
+
+
+@dataclass(frozen=True, slots=True)
 class Diagnostic:
     path: str
     rule: str
@@ -17,26 +22,51 @@ class Diagnostic:
     line: int | None = None
     field: str | None = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         location = self.path + (f":{self.line}" if self.line else "")
         location += f" ({self.field})" if self.field else ""
         return f"{location}: [{self.rule}] {self.message}"
 
 
-@dataclass
+@dataclass(slots=True)
 class Page:
     path: str
     text: str
-    data: dict = field(default_factory=dict)
+    data: Properties = field(default_factory=dict)
     body: str = ""
     body_line: int = 1
     has_frontmatter: bool = False
+
+    @property
+    def parts(self) -> tuple[str, ...]:
+        return PurePosixPath(self.path).parts
+
+    @property
+    def folder(self) -> str:
+        return PurePosixPath(self.path).parent.as_posix()
+
+    @property
+    def stem(self) -> str:
+        return PurePosixPath(self.path).stem
+
+    @property
+    def is_template(self) -> bool:
+        return self.parts[0] == "templates"
+
+    @property
+    def is_definition(self) -> bool:
+        return self.parts[0] in {"types", "statuses"}
+
+    @property
+    def campaign(self) -> str | None:
+        scope = self.parts[0]
+        return scope if CAMPAIGN.fullmatch(scope) else None
 
 
 class UniqueLoader(yaml.SafeLoader):
     """Reject duplicate keys at every depth, including YAML merge collisions."""
 
-    def construct_mapping(self, node, deep=False):
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Properties:
         self.flatten_mapping(node)
         result = {}
         for key_node, value_node in node.value:
@@ -79,7 +109,7 @@ def parse_page(path: str, text: str) -> tuple[Page, list[Diagnostic]]:
     return page, []
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Link:
     target: str
     line: int
@@ -96,7 +126,7 @@ def link_target(value: str) -> str | None:
     return re.split(r"(?:\\)?\|", match[1], maxsplit=1)[0].split("#", 1)[0].strip()
 
 
-def markdown_lines(text: str):
+def markdown_lines(text: str) -> Iterator[tuple[int, str, bool]]:
     """Yield prose and executable Dataview; omit fenced/inline examples.
 
     Only dataview/dataviewjs fences and inline `= ...` / `$= ...` are
@@ -137,7 +167,7 @@ def scan_links(page: Page) -> tuple[list[Link], list[Diagnostic]]:
             target = link_target(match[0])
             if not raw.split("|", 1)[0].strip():
                 errors.append(Diagnostic(page.path, "link.syntax", "Provide a target or self-anchor.", number))
-            else:
+            elif target is not None:
                 links.append(Link(target, number, match[0]))
             if prose and re.search(r"(?<!\\)\|", raw) and "|" in LINK.sub("", line):
                 errors.append(Diagnostic(page.path, "link.table-pipe",
@@ -149,14 +179,14 @@ def scan_links(page: Page) -> tuple[list[Link], list[Diagnostic]]:
 
 
 class Resolver:
-    def __init__(self, files: set[str], pages: dict[str, Page]):
+    def __init__(self, files: set[str], pages: dict[str, Page]) -> None:
         self.files = files
         self.names: dict[str, list[str]] = {}
         self.aliases: dict[str, list[str]] = {}
         for path in sorted(files):
-            self.names.setdefault(Path(path).name, []).append(path)
+            self.names.setdefault(PurePosixPath(path).name, []).append(path)
             if path.endswith(".md"):
-                self.names.setdefault(Path(path).stem, []).append(path)
+                self.names.setdefault(PurePosixPath(path).stem, []).append(path)
         for path, page in pages.items():
             aliases = page.data.get("aliases")
             if isinstance(aliases, list):
@@ -164,7 +194,7 @@ class Resolver:
                     if isinstance(alias, str) and alias:
                         self.aliases.setdefault(alias, []).append(path)
 
-    def resolve(self, target: str, current: str) -> tuple[str | None, str | None, str | None]:
+    def resolve(self, target: str, current: str) -> Resolution:
         if not target:
             return current, None, None
         if target.startswith("/") or ".." in target.split("/"):
