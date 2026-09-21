@@ -1,0 +1,4 @@
+---
+type: "[[types/Player]]"
+plays:
+---
