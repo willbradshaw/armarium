@@ -1,0 +1,355 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Content note",
+  "description": "A Content record represented by its parsed YAML frontmatter and Markdown body. Applies to populated records, including stubs; templates must be filled in before validation. Link existence, target types, campaign identity and agreement with appearance history require separate vault-aware checks.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "subtype",
+        "summary"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[reference/types/Content]]"
+        },
+        "subtype": {
+          "enum": [
+            "NPC",
+            "PC",
+            "Location",
+            "Faction",
+            "Object",
+            "Lore"
+          ]
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "A short description of stable identity. Use null for an empty stub summary."
+            }
+          ]
+        },
+        "aliases": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        }
+      },
+      "patternProperties": {
+        "^campaign_[0-9]+$": {
+          "$ref": "#/$defs/campaign"
+        }
+      },
+      "additionalProperties": true,
+      "description": "Additional custom fields are allowed. A campaign block is needed only when recording state for that campaign.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "NPC"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "stats"
+            ],
+            "properties": {
+              "stats": {
+                "description": "Null means unspecified or unnecessary. A wikilink targets an existing statistics page. Check HTTP/HTTPS URL syntax locally with URI format assertions enabled.",
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/wikilink"
+                  },
+                  {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^/?#\\s]+(?:[/?#]|$)"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "PC"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "player"
+            ],
+            "properties": {
+              "player": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/wikilink"
+                  }
+                ],
+                "description": "Must resolve to a Player page; null is not allowed."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Location"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "parent_location"
+            ],
+            "properties": {
+              "parent_location": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/wikilink"
+                  }
+                ],
+                "description": "If set, must resolve to Content with subtype Location. Null means unknown or no parent."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Faction"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "members"
+            ],
+            "properties": {
+              "members": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/wikilink"
+                    }
+                  }
+                ],
+                "description": "Links must resolve to PC or NPC Content. Null means unknown; an empty list means no recorded members."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Object"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "patternProperties": {
+              "^campaign_[0-9]+$": {
+                "$ref": "#/$defs/objectCampaign"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "body": {
+      "type": "string",
+      "pattern": "(?:^|\\n)## Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Active Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Appearances[ \\t]*(?=\\r?\\n|$)",
+      "description": "Requires level-two Notes, Active Clues and Appearances headings in that order, with free Markdown inside each section. The pattern accepts duplicate headings and matching headings inside fenced code. Use separate level-three campaign headings for shared histories. Appearances record actual interaction and noteworthy PC contributions; incidental mentions, preparation and attendance alone do not qualify."
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\]$",
+      "description": "Canonical internal wikilink without an alias or anchor. Existence and target kind must be checked separately."
+    },
+    "campaign": {
+      "type": "object",
+      "required": [
+        "first_session",
+        "last_session"
+      ],
+      "properties": {
+        "first_session": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        },
+        "last_session": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "first_session": {
+              "type": "null"
+            },
+            "last_session": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "first_session": {
+              "$ref": "#/$defs/wikilink"
+            },
+            "last_session": {
+              "$ref": "#/$defs/wikilink"
+            }
+          }
+        }
+      ],
+      "additionalProperties": true,
+      "description": "Both session fields are null before an appearance; otherwise both must resolve to Sessions in the campaign named by the enclosing key and match its earliest/latest Appearances. JSON Schema checks the pair and link syntax, not cross-file consistency."
+    },
+    "objectCampaign": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/campaign"
+        },
+        {
+          "required": [
+            "held_by"
+          ],
+          "if": {
+            "properties": {
+              "first_session": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "first_session"
+            ]
+          },
+          "then": {
+            "properties": {
+              "held_by": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/wikilink"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/wikilink"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "held_by": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "$ref": "#/$defs/wikilink"
+                      },
+                      {
+                        "const": "GONE"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/wikilink"
+                        },
+                        {
+                          "const": "GONE"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "description": "held_by records current possession and is required in each existing Object campaign block. Holder links must resolve to PC, NPC or Faction Content. Collective party possession links to the party's Faction. Lists represent split sets. GONE means sold, consumed, destroyed, lost or otherwise out of play, and can mark departed portions in a list. Before entering play, null is allowed and GONE is not. After entering play a holder or GONE is required; empty lists/items are invalid. Session records retain acquisition and transfer history."
+    }
+  }
+}
