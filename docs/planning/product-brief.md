@@ -20,8 +20,16 @@ host support. See [agent portability](agent-portability.md).
 
 A single vault can support multiple campaigns sharing world information, following
 the existing Isles model. Starting another campaign within a vault must reuse its
-world information and established tooling and conventions. The exact folder layout
-and representation of campaign-specific state on shared entities remain open.
+world information and established tooling and conventions. Prefer a `world/`
+folder for shared world content, with campaign-bound entities in campaign folders.
+Shared pages carry per-campaign metadata blocks. Exact subfolders, name-collision
+handling, and multi-campaign history rendering remain to be specified.
+
+The owner has accepted conventions 1–12 in the [conventions review](conventions-review.md):
+canonical entity names and campaign-qualified record IDs, linked type pages,
+minimal stubs, a common Notes/Active Clues/Appearances body, stable summaries,
+dated changing world facts, interaction-based appearances, noteworthy PC logs,
+and separate historical acquisition records and current possession.
 
 The resource must work without a system adapter and without assumptions about
 classes, levels, XP, spellcasting, a particular calendar, setting, or campaign.
@@ -64,7 +72,7 @@ audio, maintain entities without processing a transcript, or use the vault manua
 ## Decisions still open
 
 - Installation prerequisites and intended audience beyond acceptance of terminal use.
-- Folder layout and campaign-specific state on entities shared across campaigns.
+- Detailed folder layout and history rendering for entities shared across campaigns.
 - Whether and how independent vaults reuse reference material and setting content.
 - Copied starter tree versus initialization command; how shared utilities and
   skills are delivered, pinned, customized, and updated.

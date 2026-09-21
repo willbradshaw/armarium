@@ -1,13 +1,23 @@
 # Conventions for owner review
 
-Status: review candidates, not adopted Armarium requirements (except the already
-agreed multi-campaign vault model). Based on inspection of Isles' conventions,
+Status: items **1–12 accepted** as default conventions, with **`world/` preferred**
+for non-campaign-specific world content. Items **13–36 await review**.
+Based on inspection of Isles' conventions,
 templates, skills, and tooling runbooks. This is a behavioral inventory, not a
 completed audit of whether the current code enforces every instruction.
 
 For each numbered item, choose **default**, **optional**, **omit**, or **revise**.
-Recommendations below are proposals. "Optional" means an available convention
+The recommendations column retains the original review advice; its implementation
+suggestions are not additional owner decisions. "Optional" means an available convention
 that is not required of every campaign; how options are configured remains open.
+
+The acceptance of 7, 10, and 11 resolves the corresponding source disagreements:
+use the common entity body, exclude incidental mentions from appearance logs, and
+record noteworthy PC contributions rather than attendance alone. The acceptance
+of 3 and 5 selects per-campaign metadata blocks on shared pages and linked type
+pages. Detailed naming, layout, and multi-campaign history rendering still need
+specification. Accepting Active Clues in the common shape does not settle the
+later questions about clue behavior or Dataview.
 
 ## Organization and identity
 

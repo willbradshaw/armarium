@@ -14,6 +14,8 @@ templates, instructions, assets, and working files.
 Confirmed: a vault supports multiple campaigns sharing world information, similar
 to Isles. This issue resolves the detailed layout and state model, not whether
 multi-campaign vaults are supported. Tracked in [GitHub issue #1](https://github.com/willbradshaw/armarium/issues/1).
+The owner prefers `world/` for shared world content and has accepted per-campaign
+metadata blocks on shared pages; specify the remaining details within those choices.
 
 Acceptance:
 - Show a minimal example tree and explain the purpose and owner of each area.
@@ -44,8 +46,9 @@ prerequisites remain to be decided.
 Build a minimal, coherent set of page types from the source examples, removing
 game, setting, and campaign assumptions rather than merely replacing their names.
 
-Review input: [conventions inventory](conventions-review.md). Owner selections are
-pending; reconcile conflicting source guidance before extraction.
+Review input: [conventions inventory](conventions-review.md). Items 1–12 are
+accepted; 13–36 await review. Reconcile source guidance with those decisions
+before extraction.
 
 Acceptance:
 - Cover sessions, transcripts, PCs, NPCs, locations, factions, lore, objects, and
