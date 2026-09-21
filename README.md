@@ -55,3 +55,23 @@ properties remain usable without Dataview.
 
 Evaluated Bases replacements and other follow-on work are tracked in the
 [repository issues](https://github.com/willbradshaw/armarium/issues).
+
+## Validate a vault
+
+With Python 3.9 or newer, create a local environment in this checkout and install
+the single dependency:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python scripts/validate_vault.py "/path/to/my setting"
+```
+
+Pass `starter` to check the committed starter. From another working directory,
+use absolute paths to this checkout's Python executable and script. The checker
+is read-only and exits nonzero for errors, reporting relative paths, rule names,
+and lines or fields. It needs neither Obsidian nor access to a private vault.
+
+Run regression tests with `.venv/bin/python -m unittest discover -s tests/validation -v`.
+See [validation rules and limitations](scripts/validation/README.md) for required
+properties, blank template values, link handling, and deferred checks.
