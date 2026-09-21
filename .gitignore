@@ -1,8 +1,2 @@
-# Local reference projects; never publish their contents or machine-specific links.
-/isles
-/imperium_maledictum
-/museion
+.scratch/
 .DS_Store
-__pycache__/
-*.pyc
-.venv/
