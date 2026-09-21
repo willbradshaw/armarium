@@ -1,7 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: "PC"
-summary: "A former customs courier with a talent for rooftop escapes and borrowed authority."
+summary: "A reef diver and rigger from [[The Crownless Coast]] who turns salvage and loose rope into escape routes."
 player: "[[Rowan]]"
 campaign_1:
   first_session: "[[S-1-001]]"
@@ -9,9 +9,15 @@ campaign_1:
 ---
 ## Notes
 
-Talia left the customs service after being ordered to burn a cargo register before its owners could contest a seizure. She keeps her old courier sash but has cut its official tassels away. She wants the Glass Petrel free of countinghouse control.
+Talia grew up diving for salvage along [[The Crownless Coast]]. She can splice a
+line by touch, judge a current from foam against a piling, and cross a yardarm with
+both hands full. She serves as rigger aboard [[Glass Petrel]] and hopes to earn
+enough from its voyages to build a cutter of her own.
 
-Her fencing is brisk and improvised: a railing, a coat or a swinging cargo hook is part of the argument.
+She favors a grapnel and a boat hook over formal fencing. When a negotiation stalls,
+she starts looking for a window, a pulley, or a way beneath the floor. She distrusts
+signed promises but takes a spoken rescue oath seriously. [[Esme Calder]] considers
+her shortcuts alarming; Talia considers [[Esme Calder|Esme]]'s paperwork a remarkably slow lockpick.
 
 ## Active Clues
 
@@ -24,4 +30,4 @@ WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [
 ## Appearances
 
 - [[S-1-001]]: Crossed the market rooftops and secured [[Brass Harbor Seal]] from a distracted clerk.
-- [[S-1-002]]: Presented the seal to the quay watch and opened the harbor boom.
+- [[S-1-002]]: Presented [[Brass Harbor Seal]] to the watch at [[Quay Nine]] and opened the harbor boom.

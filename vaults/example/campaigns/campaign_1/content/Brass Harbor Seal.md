@@ -1,7 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: "Object"
-summary: "A brass stamp granting one vessel passage through Briselle's night boom."
+summary: "A brass stamp granting one vessel passage through [[Port Briselle|Briselle]]'s night boom."
 campaign_1:
   first_session: "[[S-1-001]]"
   last_session: "[[S-1-002]]"
@@ -23,5 +23,5 @@ WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [
 
 ## Appearances
 
-- [[S-1-001]]: [[Talia Venn]] obtained the seal with the ship's passage papers.
-- [[S-1-002]]: [[Talia Venn]] used it to authenticate the order at the boom.
+- [[S-1-001]]: [[Talia Venn]] obtained the seal with [[Glass Petrel]]'s passage papers.
+- [[S-1-002]]: [[Talia Venn]] used it to authenticate [[Glass Petrel]]'s passage order at [[Quay Nine]].

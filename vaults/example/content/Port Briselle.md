@@ -23,5 +23,5 @@ WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [
 
 ## Appearances
 
-- [[S-1-001]]: The crew crossed the rooftop market to reach the eastern docks.
-- [[S-1-002]]: The crew carried its petition through the harbor and escaped aboard the Glass Petrel.
+- [[S-1-001]]: [[Glass Petrel Crew|The crew]] crossed the rooftop market to reach the eastern docks.
+- [[S-1-002]]: [[Glass Petrel Crew|The crew]] carried its petition through the harbor and escaped aboard the [[Glass Petrel]].

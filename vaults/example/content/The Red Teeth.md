@@ -1,7 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: Location
-summary: "A broken ridge of red reefs off Briselle, passable through shifting tidal channels."
+summary: "A broken ridge of red reefs off [[Port Briselle|Briselle]], passable through shifting tidal channels."
 parent_location: "[[The Crownless Coast]]"
 ---
 ## Notes

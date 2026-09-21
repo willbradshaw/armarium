@@ -21,5 +21,5 @@ WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [
 
 ## Appearances
 
-- [[S-1-001]]: [[Esme Calder]] acquired the charge from the ship's stores.
-- [[S-1-002]]: [[Esme Calder]] fired the charge, consuming it as the departure signal.
+- [[S-1-001]]: [[Esme Calder]] acquired the charge from [[Glass Petrel]]'s stores.
+- [[S-1-002]]: [[Esme Calder]] fired the charge, consuming it as [[Glass Petrel]]'s departure signal.
