@@ -49,3 +49,9 @@ in Git. The copied vault can be its own Git repository.
 For schema integration and testing, see [Schema development](docs/schemas.md).
 
 Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium/issues).
+
+## Validate a record
+
+With Python 3.14+, install the validator using `python -m pip install .` and run
+`armarium validate path/to/record.md`. See [validation](docs/validation.md) for
+coverage, exit codes and development instructions.
