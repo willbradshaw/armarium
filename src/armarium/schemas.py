@@ -159,17 +159,17 @@ def select_schema(note: Note, root: Path) -> tuple[Schema | None, list[Diagnosti
     Raises:
         ValueError: The note has no canonical type or lies outside the vault.
     """
-    kind = note.kind
-    if kind is None:
+    parsed_type = note.parsed_type
+    if parsed_type is None:
         raise ValueError("schema selection requires a canonical note type")
     relative = note.path.absolute().relative_to(root.absolute()).as_posix()
-    path = root / "reference/schemas" / f"{kind.lower()}.schema.json"
+    path = root / "reference/schemas" / f"{parsed_type.lower()}.schema.json"
     if not path.exists():
         return None, [
             Diagnostic(
                 relative,
                 "schema.unsupported",
-                f"no vault-local schema for {kind}; validation is partial",
+                f"no vault-local schema for {parsed_type}; validation is partial",
                 severity="warning",
             )
         ]
