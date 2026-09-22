@@ -67,6 +67,7 @@ def test_schema_missing_invalid_and_additional(vault: Path) -> None:
     assert not validate(path).failed
     schema.write_text('{"$ref": "https://example.invalid/no.json"}')
     assert validate(path).failed
+    (vault / "reference/types/Widget.md").write_text("Widget definition")
     custom = vault / "reference/schemas/widget.schema.json"
     custom.write_text('{"properties":{"frontmatter":{"required":["name"]}}}')
     path.write_text('---\ntype: "[[Widget]]"\n---\n')

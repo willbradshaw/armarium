@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
+from armarium.context import check
 from armarium.discovery import find_vault
+from armarium.index import VaultIndex
 from armarium.lib import Diagnostic, Result
 from armarium.parse import parse
 from armarium.schemas import Schemas
@@ -48,5 +50,7 @@ def validate(path: Path, vault: Path | None = None) -> Result:
         covered, errors = Schemas(root).validate(note)
         result.unsupported = int(not covered)
         result.diagnostics.extend(errors)
+    if note is not None and not relative.startswith("reference/templates/"):
+        result.diagnostics.extend(check(note, VaultIndex(root)))
     result.diagnostics.sort()
     return result

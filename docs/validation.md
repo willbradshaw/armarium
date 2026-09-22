@@ -2,8 +2,9 @@
 
 Install with `python -m pip install .`, then run `armarium validate PATH` from
 any directory. Supply `--vault PATH` when vault context cannot be inferred.
-Stage 1 checks one Markdown file's YAML and available schema; it does not resolve
-links or traverse directories yet. It never writes to the target.
+Single-file checks include YAML, available schemas, canonical link resolution,
+placement, identity, target kinds and campaign agreement. Directory traversal
+is added in the next stage. It never writes to the target.
 
 Exit codes: 0 means no errors, 1 means validation errors, 2 means invalid invocation.
 Warnings do not fail; unsupported schema types explicitly report partial coverage.
@@ -19,3 +20,14 @@ and timestamps become ISO strings; duplicate keys, cycles, non-string mapping ke
 and non-JSON values are errors. The currently shipped schema covers Content.
 Additional schemas from #22 plug into this loader without a separate runtime.
 View implementations from #25 must not become literal query validation rules.
+
+Full and shortest-unique suffix links, optional `.md`, display aliases, Unicode,
+assets and escaped table pipes are supported. YAML aliases are display names, not
+canonical identities. File targets of anchors are checked; actual heading/block
+existence is deferred. Illustrative fences are ignored; Dataview blocks and inline
+expressions remain link-bearing. Templates can be link targets but not records.
+
+Malformed wikilink delimiters and empty targets produce `link.syntax` errors
+with a metadata field or body line. Scanning continues to later links. The shared
+`parse_wikilink()` utility raises `ValueError` for malformed input; file checks
+convert it into a diagnostic. Illustrative code fences remain excluded.

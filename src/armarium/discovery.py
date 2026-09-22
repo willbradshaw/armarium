@@ -16,3 +16,25 @@ def find_vault(path: Path, explicit: Path | None = None) -> Path:
         ).is_dir():
             return candidate
     raise ValueError("cannot infer vault; supply --vault PATH")
+
+
+def files(root: Path) -> list[Path]:
+    """List visible files deterministically, without following any symlinks."""
+    import os
+
+    found: list[Path] = []
+    for directory, dirs, names in os.walk(root, followlinks=False):
+        base = Path(directory)
+        dirs[:] = sorted(
+            name
+            for name in dirs
+            if not name.startswith(".")
+            and name not in {"__pycache__", "node_modules"}
+            and not (base / name).is_symlink()
+        )
+        found.extend(
+            base / name
+            for name in sorted(names)
+            if not name.startswith(".") and not (base / name).is_symlink()
+        )
+    return sorted(found)
