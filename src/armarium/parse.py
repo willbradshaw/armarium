@@ -119,7 +119,7 @@ class Note:
     body_start_line: int
 
     @property
-    def kind(self) -> str | None:
+    def parsed_type(self) -> str | None:
         """Return the declared record type name without resolving its target.
 
         Returns:

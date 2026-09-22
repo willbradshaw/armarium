@@ -194,7 +194,7 @@ class TestNote:
             setattr(note, "body", "changed")
 
 
-class TestNoteKind:
+class TestNoteParsedType:
     @pytest.mark.parametrize(
         ("metadata", "expected"),
         [
@@ -212,7 +212,7 @@ class TestNoteKind:
     def test_declared_type(
         self, metadata: dict[str, Any], expected: str | None
     ) -> None:
-        assert Note(Path("example.md"), metadata, "", 1).kind == expected
+        assert Note(Path("example.md"), metadata, "", 1).parsed_type == expected
 
 
 class TestNoteParse:
