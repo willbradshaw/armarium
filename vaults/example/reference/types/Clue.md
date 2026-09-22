@@ -21,7 +21,7 @@ Both may be null. Preparation alone can set first; setting last requires first.
 Superseded Clues also require a replacement Clue link in `superseded_by`;
 otherwise that field is optional and nullable.
 
-The body contains only `## Sessions` followed by one nonempty view fenced with
-three backticks.
+The body contains only `## Sessions` followed by a nonempty fenced code block
+containing the Sessions query. Use three backticks for the code fence.
 
 See the [Clue schema](../schemas/clue.schema.json).
