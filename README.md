@@ -20,7 +20,7 @@ Open the new folder in Obsidian and edit
 
 Requires Obsidian **1.13.7+** with **Bases** and
 [Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)
-enabled. Keep the bundled **armarium-prose** CSS snippet enabled for linked text.
+enabled.
 
 ## Layout
 
