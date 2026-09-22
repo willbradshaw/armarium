@@ -16,6 +16,7 @@ import tempfile
 import yaml
 
 KINDS = {"clues": (None, "text"), "locations": ("Location", "summary"), "npcs": ("NPC", "summary")}
+HEADERS = {"clues": "| ID | Text |", "locations": "| Location | Description |", "npcs": "| Name | Summary |"}
 LINK = re.compile(r"\[\[([^\[\]\n]+)\]\]")
 EXCLUDED = {".git", ".obsidian", ".scratch", "__pycache__", ".venv"}
 
@@ -171,7 +172,7 @@ def refresh(root, session, *, check=False):
                 raise ValueError("Source text contains reserved ownership markers")
             rows.append(f'| {cell(sources.qualify(selected))} | {cell(text)} |')
         payload = '> Preparation snapshot: refresh after source or selection edits; see [[reference/views/README|view instructions]].\n\n'
-        payload += '| Page | ' + field.title() + ' |\n| --- | --- |\n'
+        payload += HEADERS[kind] + '\n| --- | --- |\n'
         payload += '\n'.join(rows) + '\n' if rows else '| — | No selections. |\n'
         replacements.append((match.start(), match.end(), marker(kind, payload)))
     for start, end, replacement in sorted(replacements, reverse=True):

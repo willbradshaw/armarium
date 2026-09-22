@@ -1,167 +1,152 @@
 # Issue #25 evaluation
 
-Evaluated 2026-09-22 from main after PR #23 (`33e18f3`). This is a reviewable
-implementation, **not closure of #25**: the explicit-refresh preparation tradeoff
-is still under user review, and final integration into the #24 package is pending.
-No #24 package branch/PR was available when inspected. Do not merge a competing
-package or call the temporary harness final package integration.
+## Current revision: tables with original columns
 
-## Results
+All replacement views now use tables. Their displayed fields, labels and column
+order match the original Dataview queries and preparation tables at `33e18f3`:
 
-| Required case | Implementation and result | Remaining limitation |
-| --- | --- | --- |
-| Campaign Active/Closed Clue indexes | Reusable `clue-index.base`; actual rendered rows match all six statuses, ID ordering and each of two campaign folders. List view wraps long text. | Inline wikilinks inside text remain literal; ID/status/last Session links are usable. |
-| Content Active Clues | `content-clues.base`; canonical subjects, display aliases, duplicate basenames, live text edits and `view_campaign` switching passed. | Obsidian 1.13.7 can retain a stale row when the result changes to empty; reopen the containing note. |
-| Sessions referencing a Clue | `clue-sessions.base`; exact Session folder, canonical type, campaign link and backlink; date/number/filename ordering. Both campaigns passed, with nested Transcript and nested Session-shaped decoys excluded. | References include preparation/Events; they are not a claim that an appearance occurred. |
-| Preparation | Checksummed generated Markdown from three explicitly ordered `prepared_*` lists. Full long text and embedded links render; native Properties add/remove controls and link navigation passed. Source/selection edits require explicit refresh. | User tradeoff review and #24 package integration remain open. No automatic stale detection in Obsidian. |
+| View | Columns |
+| --- | --- |
+| Active/Closed Clue index | ID, Status, Last Session, Text |
+| Content Active Clues | ID, Text |
+| Clue Sessions | Session, Date |
+| Preparation Secrets & Clues | ID, Text |
+| Preparation Locations | Location, Description |
+| Preparation Important NPCs | Name, Summary |
 
-No community plugins were enabled in either review vault. Core Bases is the only
-view-specific plugin requirement. The fallback harness requires Python 3.9+ and
-PyYAML; testing used Python 3.9.6 / PyYAML 6.0.3 and Node 22.18.0 for the separate
-UI observation harness. No custom Obsidian plugin, validator, directory roster,
-private reference project, agent service or model credential is required.
+Session number remains only a sort tie-breaker. No Status column is added to
+Content Active Clues. The source values and filtering contracts are unchanged.
+Clue text tables use extra-height rows; very long values may still be clipped.
+The source record remains available through its link. Inline wikilinks inside
+Bases text fields remain literal; preparation Markdown renders them as links.
 
-## Inventory and evidence
+**Current verification:** 19 deterministic tests pass, including comparisons of
+fields/labels/order against every inventoried original query, and preparation
+headers against the original Session template and records. Checks cover refresh,
+staleness, conflicts, canonical selections, ordering, carry-forward, aliases,
+duplicate basenames, all statuses, symlinks, escaped pipes, preserved user notes
+and Events/Loot. Shared reference trees are identical; the vault audit finds zero
+runtime Dataview uses; `git diff --check` passes.
 
-[inventory.json](inventory.json) records all **42 original runtime uses** (28
-blocks, 14 inline expressions), their source locations, replacement and per-file
-rendering verification. Both root README enablement instructions and the two
-shared Session references were updated. The final hidden-file-inclusive audit of
-both vaults found zero Dataview blocks, inline expressions or enablement references.
+**Revised table rendering is not yet rechecked in Obsidian.** The user requested
+no focus stealing, so no foreground test was run for this revision. Historical
+list-view results below must not be represented as validation of the new tables.
+Outdated screenshots were removed from the PR.
 
-The actual copies were `/private/tmp/armarium25-review/armarium25-starter` and
-`.../armarium25-example`, opened in an isolated Obsidian profile. The installed
-launcher was 1.12.7; its list-view probe already showed literal inline wikilinks.
-The profile updated to **Obsidian 1.13.7**, which was used for the complete
-production-view evaluation. Personal vault settings were not modified.
+The review copy is on the user's Desktop under
+`Armarium PR 30 Review/Crownless Coast`. Review changes are applied only to files
+that still match the previous PR copy, preserving any independent review edits.
 
-- [Rendered DOM and checks](evidence/rendering.json): all 31 containing notes,
-  including templates and blank starter views, with explicit expected rows for
-  each example Content page, Clue and index. Runtime plugin states are recorded
-  separately for each vault. Eighteen check records include two explicit reopen
-  limitations, not eighteen claims of uninterrupted live refresh.
-- [Native Properties editing and navigation](evidence/editing.json): remove via
-  the pill's x, add via input + Enter, resulting ordered YAML, preservation of
-  preparation/Notes, and clicking a wikilink embedded in a canonical summary.
-- [Long Clue text](evidence/content-clues.png),
-  [rendered preparation](evidence/preparation.png),
-  [selection controls](evidence/selections.png): screenshots of actual Obsidian
-  Reading view. The screenshot with long preparation text shows the terminal
-  `LONG_TEXT_END` marker and clickable embedded links.
+## Historical in-app evidence (commit `54438df`)
 
-The synthetic records live only in disposable copies. They include six statuses
-in each campaign, two Content records with the same basename, display/YAML aliases,
-shared Content, an empty Content view, multiline and long source fields, tied
-Session dates, reversed preparation order and an Events-only NPC. They are not a
-second narrative example campaign and do not depend on PR #29.
+On 2026-09-22, actual starter/example copies were opened under
+`/private/tmp/armarium25-review/` with an isolated Obsidian profile. The launcher
+was 1.12.7; the complete run used **Obsidian 1.13.7**, Bases enabled and no community
+plugins enabled. Python 3.9.6 / PyYAML 6.0.3 ran the fallback checks; Node 22.18.0
+ran the separate UI harness. Personal vault settings were not modified.
 
-### Refresh behavior actually observed
+- [Per-use inventory](inventory.json): 42 original uses (28 blocks and 14 inline
+  expressions), replacements and current verification status.
+- [Historical rendered DOM](evidence/rendering.json): all 31 containing notes and
+  templates, runtime plugin states, expected original rows and synthetic checks.
+  The index/Content views in this evidence were **lists**, with subsequently
+  corrected column choices. Its long-text wrapping claim does not apply to tables.
+- [Historical native editing/navigation](evidence/editing.json): removing a pill,
+  adding a selection with input + Enter, preserved preparation/Notes, and clicking
+  a link embedded in a canonical summary. Generated header labels have since been
+  restored to the original names.
 
-Text edits, campaign display switching and nonempty status changes updated without
-reopening. When a status or subject edit removed the last match, Bases displayed
-“0 results” but retained its old list row. Waiting longer did not fix it. Opening
-another note and returning cleared the row and produced the expected empty state.
-The evidence retains the stale and reopened captures. This is documented for users;
-it must not be represented as a fully live empty-state transition.
+The synthetic fixture includes six statuses in each of two campaigns, duplicate
+Content basenames, display/YAML aliases, shared Content, empty states, multiline
+and long text, tied Session dates, reversed preparation order, nested Transcript
+and Session-shaped decoys, and an Events-only NPC. It is not a narrative second
+campaign and does not depend on PR #29.
 
-Preparation deliberately stayed unchanged after a canonical summary edit. Running
-the refresher updated the source text and selection in the already-open Session
-without reopening; a second run reported `Current`. Actual Notes/Events/Loot were
-byte-identical. The native Properties UI edits changed selections without silently
-rewriting snapshots. A generated summary link was clicked and opened its canonical
-Location file.
+Filtering, campaign isolation, canonical subjects, date/number ordering, explicit
+selection order and source-link navigation passed in that run. Source text and
+nonempty changes updated live. The **former list layout** could retain a stale row
+under “0 results” after removing the last match; reopening the note cleared it.
+The raw evidence preserves that limitation. It is not a finding about the current
+table layout.
 
-## Deterministic checks
+Preparation stayed unchanged after a canonical summary edit, then updated in the
+open Session after explicit refresh. A second run reported `Current`. Notes,
+Events and Loot stayed byte-identical. UI selection changes did not silently
+rewrite snapshots. A link inside a generated summary opened its canonical file.
 
-Run from the repository root, with the harness dependency installed:
+## Repeatable checks and manual table review
+
+From the repository root, install `tools/requirements-views.txt` in a temporary
+Python environment, then run:
 
 ```sh
 python3 -m unittest discover -s tests -v
 ```
 
-**17 tests pass.** Contracts include canonical source edits, read-only stale checks,
-repeatability, intentional ordering, add/remove/carry-forward, all six statuses as
-explicit preparation selections, empty lists, aliases versus canonical identities,
-ambiguous basenames, wrong types/campaigns, duplicate selections/YAML keys,
-symlinks, edited or misplaced ownership markers, escaped table pipes, preserved
-user notes and historical Events/Loot. The historical-preservation test uses the
-base commit in this repository. Shared reference trees are byte-identical.
+For a new disposable fixture:
 
-These tests are reported separately from the in-app checks. They do not prove
-Obsidian rendering. `git diff --check` also passes.
+```sh
+python3 tests/views/build_review.py /private/tmp/armarium25-review
+```
 
-## Reproducing or manually reviewing
+The destination must not already exist. For manual review, open each generated
+folder as a vault, enable core Bases and disable all community plugins. Record
+the app version, then:
 
-1. Install `tools/requirements-views.txt` in a temporary Python environment. Run
-   `python tests/views/build_review.py /private/tmp/armarium25-review` with a **new**
-   destination (the builder refuses an existing directory).
-2. Open both generated vault folders in Obsidian. Confirm Settings → Core plugins
-   → Bases is on, and Settings → Community plugins has no enabled plugins. Record
-   the app version. Do not use a personal vault for these exercises.
-3. Starter: open `reference/templates/Content`, `Clue`, `Session` and the campaign
-   Clues index. Check empty views/tables and absence of query errors.
-4. Example: open the campaign 1 Clues index and then campaign 2's synthetic index.
-   Synthetic `9001/9002` are active; `9003–9006` are closed. Campaign 1 additionally
-   has original active `0003/0004` and closed `0001/0002`. Scroll long text through
-   `CLUE_TEXT_END`, and click an ID/status link.
-5. Open `content/Review/Signal Keeper`. Switch `view_campaign` between campaigns;
-   only that campaign's `9001` appears. The duplicate under `Visitors/` gets `9002`.
-   `Empty` gets none. Edit the Clue text, all six statuses and subjects; check live
-   changes and the documented last-row reopen requirement.
-6. Open each campaign's `C-N-9001`. Sessions must be ordered `902, 903, 901` (date
-   first, numeric Session order for the tie), with no cross-campaign/nested records.
-7. Open `S-1-901`. Check Clues `Second, First` and NPCs `Visitor, Keeper`, full long
-   summaries, multiline Location text and clickable links. `Events Only` must not
-   appear in preparation. Add/remove links in Properties; reorder the YAML list
-   in Source mode. The snapshot stays unchanged until refresh. Edit source `text`
-   and `summary`, refresh, and confirm the changes and preserved Notes.
-8. Copy the Session template to a new Session, set its campaign/number, carry forward
-   only desired selection lists and refresh. Old Session Events and Content files
-   must remain untouched. Edit inside a generated table and verify refresh refuses
-   it without changing any other region; move edits to Scene notes and restore the
-   region from history to recover.
+1. Check starter Content/Clue/Session templates and its Clues index are empty tables.
+2. Check every table's headers and order against the column matrix above. Check
+   ID/status/Session link cells navigate, and inspect long Text cells at normal
+   window width. Record any clipping instead of claiming full visibility.
+3. In each campaign's synthetic index, `9001/9002` are active and `9003–9006` closed.
+   Original campaign 1 active rows are `0003/0004`, closed rows `0001/0002`.
+4. Switch `content/Review/Signal Keeper` between campaigns using `view_campaign`:
+   only that campaign's `9001` appears. The duplicate under `Visitors/` gets `9002`;
+   `Empty` gets none. Edit text, all six statuses and subjects, including removal
+   of the final match. Check actual table refresh behavior without assuming the
+   former list-view behavior applies.
+5. Each campaign's `C-N-9001` must show Sessions `902, 903, 901`, with no nested or
+   cross-campaign records. Only Session and Date are displayed.
+6. In `S-1-901`, Clues are `Second, First` and NPCs `Visitor, Keeper`. Check full
+   preparation text and embedded links. `Events Only` must not be selected. Use
+   Properties to add/remove and Source mode to reorder selections; edit canonical
+   text/summary, refresh, and confirm changes without altering Notes/Events/Loot.
+7. Create a new Session from the template; copy only desired selection lists and
+   refresh. Past Events and Content files must remain unchanged. Edit a generated
+   region and check refresh refuses it without partial writes.
 
 The optional `tests/views/observe.mjs`, `check_rendering.mjs` and `check_editing.mjs`
-harnesses use local Chrome DevTools Protocol, Node 22 and private Obsidian UI APIs.
-Launch a disposable Obsidian profile with `--remote-debugging-port=9225`, then run:
+use local CDP and private UI APIs. They target only the exact disposable root above.
+A test profile uses `--remote-debugging-port=9225`; Node 22 runs the harnesses:
 
 ```sh
 ARMARIUM_PYTHON=/path/to/python node tests/views/check_rendering.mjs /private/tmp/view-evidence
+mkdir -p /private/tmp/armarium25-edits
 node tests/views/check_editing.mjs
 ```
 
-The harness validates the review-vault name/path before manipulating it. Its
-scripts use the exact temporary root above. `check_editing.mjs` writes to
-`/private/tmp/armarium25-edits/` (create that output directory first). Foreground
-rendering can require a visible window because Obsidian virtualizes offscreen
-content. **The harness no longer requests window focus by default.** Set
-`OBSIDIAN_ALLOW_FOCUS=1` only during an explicitly agreed foreground test session.
-Background capture may be incomplete; do not interpret an unmounted view as proof
-of successful rendering. No further foreground testing is needed for the recorded
-run. The user requested that subsequent work not steal focus.
+They no longer capture screenshots automatically or request window focus by
+default. Set `OBSIDIAN_ALLOW_FOCUS=1` only for an explicitly agreed foreground
+session. Background capture may be incomplete because Obsidian virtualizes hidden
+content. An unmounted view is not evidence of successful rendering.
 
-## Reuse and integration points
+## Outstanding review and integration
 
-PR #20 was inspected via GitHub and its source branch. Reused ideas: context-aware
-Base filters, explicit ordered preparation selections and checksummed bounded
-Markdown. Its prior 1.13.7 evidence was not counted as testing this implementation.
-The obsolete `types/NPC`, `types/Location`, Clue `campaign`, and repeated
-`view_campaign` properties were reconciled with current conventions: NPC/Location
-are Content subtypes; Clue/index scope comes from paths; only shared Content needs
-a display selector. List views replace the prototype's clipped long-text tables.
+The explicit-refresh preparation tradeoff still needs user review, and final
+integration into #24's installable package remains part of #25. This draft does
+not close the issue. No #24 package branch/PR was available during implementation.
+Move the bounded single-Session refresher into that same package/parser/resolver,
+retain checksum ownership, atomic replacement and stale/conflict behavior, verify
+installed-wheel operation outside the checkout, then remove the temporary harness
+entry point/dependency file and update instructions. No competing package,
+validator or Obsidian plugin was introduced.
 
-For #22 / PR #28: `view_campaign` is a Content display string, not a campaign claim.
-Session gains three ordered link arrays, allowing `[]`, with canonical-target
-uniqueness, correct Content subtypes and same-campaign Clues. Content schemas already
-allow custom fields. Canonical `text`, `summary`, `subjects`, statuses and history
-semantics do not change. The shared Session/Content/Clue type-reference edits will
-need reconciliation with the schema PR.
+PR #20 was inspected for Base filters, ordered selection and checksummed-region
+ideas. Its obsolete NPC/Location types were reconciled with current Content
+subtypes; campaign/index scope derives from paths. Its evidence was not used as
+validation for this implementation.
 
-For #24: move the bounded refresh implementation and tests into the **same**
-installable package/CLI and use its parser/resolver once reviewed. Keep the
-single-Session operation, atomic replace, checksummed ownership, stale `--check`
-exit codes and conflict protection. Then test an installed wheel from outside the
-checkout and vault, remove the temporary standalone entry point/dependency file,
-and update the usage instructions. This work intentionally creates no package,
-validator or competing CLI distribution. **That final integration is outstanding
-and remains part of #25, not a completed follow-up.**
+For #22 / PR #28, Content `view_campaign` is a display string, not a campaign claim.
+Session's three ordered link arrays allow `[]` and require canonical uniqueness,
+correct Content subtypes and same-campaign Clues. Content schemas allow custom
+fields. Canonical `text`, `summary`, subjects, statuses and histories are unchanged.
+Shared type-reference edits require reconciliation at central review.

@@ -1,4 +1,6 @@
 {
+  "implementationCommit": "54438df",
+  "scope": "Historical run before table-only layout and original-column correction. Not rendering verification of current tables.",
   "checks": [
     {
       "name": "Remove Visitor using native Properties pill x",

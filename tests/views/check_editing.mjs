@@ -15,7 +15,6 @@ try {
   const added=await o.js(`(async()=>{const e=app.workspace.activeLeaf.view.containerEl.querySelector('[data-property-key="prepared_npcs"] .multi-select-input');e.focus();e.textContent='[[content/Review/Visitors/Signal Keeper|Visitor]]';e.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:e.textContent}));e.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));e.blur();await new Promise(r=>setTimeout(r,1000));return app.metadataCache.getFileCache(app.vault.getAbstractFileByPath(${JSON.stringify(path)})).frontmatter.prepared_npcs;})()`);
   assert.deepEqual(added,['[[content/Review/Signal Keeper|Keeper]]','[[content/Review/Visitors/Signal Keeper|Visitor]]']);
   result.checks.push({name:'Add Visitor through native Properties input and Enter; appended after Keeper',pass:true,value:added});
-  await o.screenshot('/private/tmp/armarium25-edits/selections.png');
   const text=await o.js(`app.vault.read(app.vault.getAbstractFileByPath(${JSON.stringify(path)}))`);
   assert.equal(text.split('# Notes\n')[1],original.split('# Notes\n')[1]);
   // Selection edits do not silently rewrite the snapshot.

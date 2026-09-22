@@ -18,16 +18,28 @@ use its embedded view; opening a `.base` directly has no containing-note context
   or Events counts as a reference; it does not prove an appearance. Nested
   Transcripts are excluded.
 
-Clue lists wrap long text. Click the ID to open the canonical source; status and
-Session properties are navigable links. Wikilinks *inside* a Bases text field
-remain literal text. Use the source note to follow these links. Candidate facts
-remain candidates even when displayed on a Content page. Missing or unknown
-statuses appear in neither index; fix the source rather than treating them as active.
+All views are tables, preserving the original columns and their order:
 
-Source edits to text, status or subjects update live, with one observed Obsidian
-1.13.7 list-view limitation: removing the last matching row can leave a stale row
-below “0 results.” Open another note and return to clear it. Trust neither that
-leftover row nor its old status. Views showing no matches are valid empty states. Editing a Clue through a view edits its canonical note.
+| View | Columns |
+| --- | --- |
+| Active/Closed Clue index | ID, Status, Last Session, Text |
+| Content Active Clues | ID, Text |
+| Clue Sessions | Session, Date |
+| Preparation Secrets & Clues | ID, Text |
+| Preparation Locations | Location, Description |
+| Preparation Important NPCs | Name, Summary |
+
+Session number is a sort tie-breaker, not a displayed column. Clue text tables use
+extra-height rows; very long values may still be clipped. Open the source record
+for the full value. Wikilinks *inside* a Bases text field remain literal text;
+the ID, status and Session link cells are navigable. Candidate facts remain
+candidates even when displayed on a Content page. Missing or unknown statuses
+appear in neither index; fix the source rather than treating them as active.
+
+Source edits are intended to update the tables live. The revised table layout
+has deterministic column checks; its in-app rendering recheck is outstanding.
+Earlier list-view rendering results do not verify these revised tables.
+Editing a Clue through a view edits its canonical note.
 Keep campaign records directly in their prescribed folders. For another campaign,
 copy the index into its `reference/indexes/` folder; the same Bases definitions work.
 Clue templates get scope when moved to `campaigns/campaign_N/clues/`.

@@ -1,4 +1,6 @@
 """Deterministic contracts; these do not substitute for Obsidian rendering tests."""
+import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -181,6 +183,36 @@ class PreparationTests(unittest.TestCase):
 
 
 class VaultArtifactTests(unittest.TestCase):
+    def test_base_columns_match_every_original_dataview_query(self):
+        inventory = json.loads((ROOT / 'docs/views/inventory.json').read_text())
+        for entry in inventory:
+            if entry['replacement'] != 'Bases':
+                continue
+            vault = entry['file'].split('/')[1]
+            base = yaml.safe_load((ROOT / 'vaults' / vault / entry['artifact']).read_text())
+            original = re.findall(r'(file\.link|\w+)\s+as\s+"([^"]+)"', entry['original'])
+            expected = [('file.name' if field == 'file.link' else 'note.' + field, label)
+                        for field, label in original]
+            self.assertTrue(expected, entry['file'])
+            for view in base['views']:
+                self.assertEqual(view['type'], 'table', entry['file'])
+                fields = [field if '.' in field else 'note.' + field for field in view['order']]
+                actual = [(field, base['properties'][field]['displayName']) for field in fields]
+                self.assertEqual(actual, expected, entry['file'])
+
+    def test_preparation_headers_match_original_tables(self):
+        for vault in ['starter', 'example']:
+            root = ROOT / 'vaults' / vault
+            for p in [root / 'reference/templates/Session.md', *root.glob('campaigns/*/sessions/S-*.md')]:
+                previous = subprocess.check_output(['git', 'show', '33e18f3:' + p.relative_to(ROOT).as_posix()], cwd=ROOT, text=True)
+                for heading in ['Secrets & Clues', 'Locations', 'Important NPCs']:
+                    pattern = r'## ' + re.escape(heading) + r'\n(.*?)(?=\n## )'
+                    def headers(text):
+                        section = re.search(pattern, text, re.S)[1]
+                        row = re.search(r'^\|.*\|$', section, re.M)[0]
+                        return [value.strip() for value in row.strip('|').split('|')]
+                    self.assertEqual(headers(p.read_text()), headers(previous), str(p))
+
     def test_no_runtime_queries_and_shared_reference_equal(self):
         for vault in ['starter', 'example']:
             for p in (ROOT / 'vaults' / vault).rglob('*.md'):

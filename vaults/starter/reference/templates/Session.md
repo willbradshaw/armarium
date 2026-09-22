@@ -18,30 +18,30 @@ in_game_end_date:
 - N/A
 ## Secrets & Clues
 
-<!-- armarium:prep:clues sha256=ab1bd8b4b7269bc56952b366d8115dc58d7e274dc74e309fd0ea336a24b5c7fd -->
+<!-- armarium:prep:clues sha256=2f44e6e0d9605ef6b4a58d2b69570d679f44f2aadfeb4fb6110207a55871de15 -->
 > Preparation snapshot: refresh after source or selection edits; see [[reference/views/README|view instructions]].
 
-| Page | Text |
+| ID | Text |
 | --- | --- |
 | — | No selections. |
 <!-- /armarium:prep:clues -->
 
 ## Locations
 
-<!-- armarium:prep:locations sha256=c8c3841d31a30a13b431e1ee2ff356ea70040de9e9e98270ed561c6e611af6d3 -->
+<!-- armarium:prep:locations sha256=73c7cd97df051b73adf9f196752d93d5816c1dd27b6267831426504884c1d694 -->
 > Preparation snapshot: refresh after source or selection edits; see [[reference/views/README|view instructions]].
 
-| Page | Summary |
+| Location | Description |
 | --- | --- |
 | — | No selections. |
 <!-- /armarium:prep:locations -->
 
 ## Important NPCs
 
-<!-- armarium:prep:npcs sha256=c8c3841d31a30a13b431e1ee2ff356ea70040de9e9e98270ed561c6e611af6d3 -->
+<!-- armarium:prep:npcs sha256=0ef6f288b2712875c2350a3dfffb94f81466efa0f237633fed2411c32b991901 -->
 > Preparation snapshot: refresh after source or selection edits; see [[reference/views/README|view instructions]].
 
-| Page | Summary |
+| Name | Summary |
 | --- | --- |
 | — | No selections. |
 <!-- /armarium:prep:npcs -->
