@@ -113,16 +113,64 @@ class TestValidateMarkdown:
     @pytest.mark.parametrize(
         "kind", [None, 42, "Widget", "[[Widget|Alias]]", "[[Widget#Heading]]"]
     )
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "content/Test.md",
+            "reference/types/Widget.md",
+            "reference/statuses/Hinted.md",
+        ],
+    )
     def test_invalid_type(
-        self, vault: Path, write_note: Callable[..., Path], kind: Any
+        self, vault: Path, write_note: Callable[..., Path], kind: Any, name: str
     ) -> None:
-        path = write_note({"type": kind})
+        path = write_note({"type": kind}, name=name)
         result = validate_markdown(path)
         assert result.failed
         assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
         assert [(d.rule, d.field) for d in result.diagnostics] == [
             ("record.type", "type")
         ]
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "content/Untyped.md",
+            "index.md",
+            "reference/Untyped.md",
+            "reference/types/nested/Untyped.md",
+            "reference/statuses/nested/Untyped.md",
+            "campaigns/campaign_1/reference/types/Untyped.md",
+            "reference/templates-copy/Untyped.md",
+        ],
+    )
+    @pytest.mark.parametrize(
+        "text", ["plain Markdown", "---\nsummary: Missing type\n---\n"]
+    )
+    def test_missing_type_is_an_error(self, vault: Path, name: str, text: str) -> None:
+        path = vault / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        result = validate_markdown(path)
+        assert result.failed
+        assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
+        assert [(d.rule, d.field, d.severity) for d in result.diagnostics] == [
+            ("record.type", "type", "error")
+        ]
+        assert "required" in result.diagnostics[0].message
+        assert path.read_text() == text
+
+    @pytest.mark.parametrize("directory", ["types", "statuses"])
+    def test_typed_definitions_receive_schema_checks(
+        self, vault: Path, write_note: Callable[..., Path], directory: str
+    ) -> None:
+        path = write_note(
+            {"type": "[[Widget]]"}, name=f"reference/{directory}/Typed.md"
+        )
+        (vault / "reference/schemas/widget.schema.json").write_text("false")
+        result = validate_markdown(path)
+        assert result.failed and result.checked == 1 and result.skipped == 0
+        assert result.diagnostics[0].rule == "schema.instance"
 
     @pytest.mark.parametrize(
         ("name", "metadata", "rule"),
@@ -133,9 +181,12 @@ class TestValidateMarkdown:
                 "record.template",
             ),
             ("reference/templates/nested/Widget.md", {"type": None}, "record.template"),
-            ("reference/types/Widget.md", {}, "record.untyped"),
-            ("reference/statuses/Active.md", {}, "record.untyped"),
-            ("content/Untyped.md", {"summary": "No type"}, "record.untyped"),
+            ("reference/types/Widget.md", {}, "record.definition"),
+            (
+                "reference/statuses/Hinted.md",
+                {"applies_to": "[[types/Clue]]"},
+                "record.definition",
+            ),
         ],
     )
     def test_explicit_skips(
@@ -156,7 +207,12 @@ class TestValidateMarkdown:
 
     @pytest.mark.parametrize(
         "name",
-        ["content/Bad.md", "reference/templates/Bad.md", "reference/types/Bad.md"],
+        [
+            "content/Bad.md",
+            "reference/templates/Bad.md",
+            "reference/types/Bad.md",
+            "reference/statuses/Bad.md",
+        ],
     )
     def test_parse_errors_precede_skips(self, vault: Path, name: str) -> None:
         path = vault / name
