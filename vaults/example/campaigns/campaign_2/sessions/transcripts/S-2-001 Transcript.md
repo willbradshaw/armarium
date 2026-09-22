@@ -34,9 +34,3 @@ check that leg. Complaints about the service are a healthy sign.
 look below. Give me a breath before you start dividing my boat.”
 [Darian — Martin] Catch your breath. Bram, tell me when he's settled. I'll keep
 our bow clear of the rocks.
-
-## Source scope
-
-This excerpt covers the rescue request, the rival's approach and the extraction.
-It does not reproduce the whole session. The claim's hidden terms were not read
-aloud or confirmed during this exchange.

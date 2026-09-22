@@ -147,6 +147,8 @@ class SchemaTests(unittest.TestCase):
 
     def test_committed_records(self):
         counts = dict.fromkeys(MAPPING.values(), 0)
+        campaign_types = {path: set() for path in
+                          (ROOT / 'vaults/example/campaigns').iterdir() if path.is_dir()}
         for vault in ('starter', 'example'):
             for path in (ROOT / 'vaults' / vault).rglob('*.md'):
                 if 'templates' in path.parts:
@@ -165,8 +167,14 @@ class SchemaTests(unittest.TestCase):
                     record = json.loads(json.dumps({'frontmatter': fm, 'body': body}, allow_nan=False))
                     self.assert_valid(name, record)
                     counts[name] += 1
-        self.assertEqual(counts, {'content': 16, 'clue': 4, 'session': 3,
-                                  'player': 2, 'transcript': 2, 'reference': 2})
+                    for campaign, kinds in campaign_types.items():
+                        if path.is_relative_to(campaign):
+                            kinds.add(name)
+        self.assertTrue(all(counts.values()), counts)
+        self.assertTrue(campaign_types, 'The example must exercise campaign records')
+        for campaign, kinds in campaign_types.items():
+            with self.subTest(campaign=campaign.name):
+                self.assertEqual(kinds, set(MAPPING.values()))
 
     def test_date_normalization_and_format_assertions(self):
         self.assertIn('uri', FormatChecker.checkers)
