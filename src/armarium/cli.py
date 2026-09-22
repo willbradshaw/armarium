@@ -4,7 +4,7 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.logging import configure_logging, logger
+from armarium.logging import configure_logging
 from armarium.validate import validate_markdown
 
 
@@ -33,7 +33,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
         epilog=(
             "Exit codes: 0 no errors (including skips and warnings), "
-            "1 validation errors, 2 invalid invocation. "
+            "1 validation or execution errors, 2 invalid command arguments. "
             "UTC-timestamped diagnostics and counts are logged to stderr."
         ),
     )
@@ -47,20 +47,15 @@ def main() -> int:
 
     Returns:
         int: 0 for no validation errors, including explicit skips and partial
-            coverage; 1 for validation errors; 2 for invalid target/vault paths
-            or I/O failures outside note parsing. Findings use their severity;
-            counts use INFO. Logs go to standard error.
+            coverage; 1 for validation errors. Execution exceptions propagate
+            normally. Findings and counts are logged to standard error.
 
     Raises:
         SystemExit: Argument parsing exits with 0 for help or 2 for usage errors.
     """
     args = parse_args()
     configure_logging()
-    try:
-        result = validate_markdown(args.path, args.vault)
-    except (ValueError, OSError) as exc:
-        logger.error("%s", exc)
-        return 2
+    result = validate_markdown(args.path, args.vault)
     result.report()
     return int(result.failed)
 

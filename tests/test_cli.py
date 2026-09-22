@@ -117,7 +117,7 @@ class TestMain:
     @pytest.mark.parametrize(
         "error", [ValueError("bad target"), OSError("cannot read")]
     )
-    def test_invocation_failure_is_usage_error(
+    def test_execution_errors_propagate(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
@@ -127,15 +127,21 @@ class TestMain:
 
         monkeypatch.setattr("armarium.cli.validate_markdown", Mock(side_effect=error))
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", "note.md"])
-        assert main() == 2
+        with pytest.raises(type(error)) as exc:
+            main()
+        assert exc.value is error
         output = capsys.readouterr()
-        assert "ERROR: " + str(error) in output.err
-        assert output.out == "" and "Traceback" not in output.err
+        assert output.out == output.err == ""
 
-    @pytest.mark.parametrize("valid", [False, True])
-    def test_module_entry_point(self, vault: Path, tmp_path: Path, valid: bool) -> None:
+    @pytest.mark.parametrize("scenario", ["valid", "invalid", "missing"])
+    def test_module_entry_point(
+        self, vault: Path, tmp_path: Path, scenario: str
+    ) -> None:
         path = vault / "note.md"
-        path.write_text('---\ntype: "[[Widget]]"\n---\n' if valid else "untyped")
+        if scenario != "missing":
+            path.write_text(
+                '---\ntype: "[[Widget]]"\n---\n' if scenario == "valid" else "untyped"
+            )
         process = subprocess.run(
             [sys.executable, "-m", "armarium.cli", "validate", str(path)],
             cwd=tmp_path,
@@ -147,8 +153,12 @@ class TestMain:
             text=True,
             check=False,
         )
-        assert process.returncode == (0 if valid else 1)
-        assert "INFO: 1 checked, 0 skipped, 0 unsupported" in process.stderr
+        assert process.returncode == (0 if scenario == "valid" else 1)
+        if scenario == "missing":
+            assert "Traceback" in process.stderr
+            assert "ValueError:" in process.stderr
+        else:
+            assert "INFO: 1 checked, 0 skipped, 0 unsupported" in process.stderr
         assert process.stdout == ""
 
 
