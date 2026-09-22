@@ -1,7 +1,9 @@
-"""Shared syntax utilities independent of note parsing and vault validation."""
+"""Shared utilities and data types for Armarium."""
 
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass, field
+from typing import Literal
 
 _WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
 
@@ -88,3 +90,56 @@ def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
             yield exc
         else:
             yield target
+
+
+@dataclass(frozen=True, order=True)
+class Diagnostic:
+    """Describe one problem or informational finding without printing it.
+
+    Parsing and validation return these records to their caller. The CLI renders
+    them for a person; directory scans collect them so one bad file does not stop
+    the scan. For example, malformed YAML produces a ``parse.invalid`` error.
+
+    Attributes:
+        path: File path relative to the selected vault.
+        rule: Stable identifier for the check, such as ``parse.invalid``.
+        message: Human-readable explanation of the finding.
+        field: Metadata field path, if known; otherwise an empty string.
+        line: One-based source-file line, or 0 when no line is known.
+        severity: Error, warning or info. Only errors make validation fail.
+    """
+
+    path: str
+    rule: str
+    message: str
+    field: str = ""
+    line: int = 0
+    severity: Literal["error", "warning", "info"] = "error"
+
+
+@dataclass
+class Result:
+    """Accumulate findings and coverage counts for one validation run.
+
+    Attributes:
+        diagnostics: Findings collected by the checks, owned by this result.
+        checked: Number of records checked.
+        skipped: Number of files deliberately excluded from record checks.
+        unsupported: Checked records without an available type schema; these
+            can still receive checks that do not require a schema.
+    """
+
+    diagnostics: list[Diagnostic] = field(default_factory=list)
+    checked: int = 0
+    skipped: int = 0
+    unsupported: int = 0
+
+    @property
+    def failed(self) -> bool:
+        """Report whether the accumulated findings include an error.
+
+        Returns:
+            bool: True if any diagnostic has error severity. Warnings, info
+                findings and coverage counts alone do not fail validation.
+        """
+        return any(d.severity == "error" for d in self.diagnostics)
