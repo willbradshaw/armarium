@@ -7,10 +7,8 @@
     "case": "clue index",
     "artifact": "reference/views/clue-index.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "starter",
-      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -21,10 +19,8 @@
     "case": "clue index",
     "artifact": "reference/views/clue-index.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "starter",
-      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -35,10 +31,8 @@
     "case": "sessions referencing clue",
     "artifact": "reference/views/clue-sessions.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "starter",
-      "path": "reference/templates/Clue.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -49,10 +43,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "starter",
-      "path": "reference/templates/Content.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -63,10 +55,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/Orlan Countinghouse.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -77,10 +67,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/Free Pilots Assembly.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -91,10 +79,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/Wake-lark.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -105,10 +91,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/The Bell Accord.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -119,10 +103,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/The Crownless Coast.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -133,10 +115,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/The Red Teeth.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -147,10 +127,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/Port Briselle.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -161,10 +139,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "content/Captain Mara Vey.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -175,10 +151,8 @@
     "case": "sessions referencing clue",
     "artifact": "reference/views/clue-sessions.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/clues/C-1-0003.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -189,10 +163,8 @@
     "case": "sessions referencing clue",
     "artifact": "reference/views/clue-sessions.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/clues/C-1-0002.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -203,10 +175,8 @@
     "case": "sessions referencing clue",
     "artifact": "reference/views/clue-sessions.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/clues/C-1-0001.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -217,10 +187,8 @@
     "case": "sessions referencing clue",
     "artifact": "reference/views/clue-sessions.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/clues/C-1-0004.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -231,10 +199,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Glass Petrel.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -245,10 +211,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Glass Petrel Crew.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -259,10 +223,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Brass Harbor Seal.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -273,10 +235,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Quay Nine.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -287,10 +247,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Blue Signal Flare.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -301,10 +259,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Shoal Chart.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -315,10 +271,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Talia Venn.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -329,206 +283,176 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/content/Esme Calder.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
     "line": 27,
     "original": "`= [[C-1-0003]].text`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
     "line": 33,
     "original": "`= [[Port Briselle]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-locations.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
     "line": 34,
     "original": "`= [[Quay Nine]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-locations.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
     "line": 40,
     "original": "`= [[Captain Mara Vey]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-npcs.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
     "line": 27,
     "original": "`= [[C-1-0003]].text`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
     "line": 28,
     "original": "`= [[C-1-0004]].text`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
     "line": 34,
     "original": "`= [[The Red Teeth]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-locations.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
     "line": 35,
     "original": "`= [[Port Briselle]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-locations.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
     "line": 41,
     "original": "`= [[Captain Mara Vey]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-npcs.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
     "line": 27,
     "original": "`= [[C-1-0001]].text`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
     "line": 28,
     "original": "`= [[C-1-0002]].text`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
     "line": 34,
     "original": "`= [[Quay Nine]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-locations.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
     "line": 35,
     "original": "`= [[Port Briselle]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-locations.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
     "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
     "line": 41,
     "original": "`= [[Captain Mara Vey]].summary`",
-    "replacement": "preparation snapshot",
+    "replacement": "Bases preparation",
     "case": "preparation",
-    "artifact": "tools/refresh_preparation.py",
+    "artifact": "reference/views/prepared-npcs.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -539,10 +463,8 @@
     "case": "clue index",
     "artifact": "reference/views/clue-index.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -553,10 +475,8 @@
     "case": "clue index",
     "artifact": "reference/views/clue-index.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -567,10 +487,8 @@
     "case": "sessions referencing clue",
     "artifact": "reference/views/clue-sessions.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "reference/templates/Clue.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   },
   {
@@ -581,10 +499,8 @@
     "case": "content active clues",
     "artifact": "reference/views/content-clues.base",
     "verification": {
-      "result": "Column fields, labels and order checked against original; revised table rendering pending. Previous rendering evidence is historical (54438df).",
-      "evidence": "evidence/rendering.json",
-      "vault": "example",
-      "path": "reference/templates/Content.md"
+      "result": "See EVALUATION.md for current live-table checks and limitations.",
+      "evidence": "evidence/live-tables.json"
     }
   }
 ]

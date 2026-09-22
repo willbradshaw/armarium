@@ -1,7 +1,7 @@
 """Build disposable copies with synthetic cases; never modifies committed vaults.
 
 Run from repository root: python tests/views/build_review.py NEW_DIRECTORY
-Requires the same PyYAML as the refresh harness.
+Requires PyYAML (tests/requirements-views.txt).
 """
 from pathlib import Path
 import json
@@ -12,7 +12,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from tools.refresh_preparation import refresh, read_note
+def read_note(path):
+    text = path.read_text()
+    _, frontmatter, body = text.split('---', 2)
+    return text, yaml.safe_load(frontmatter), body.lstrip('\n')
 
 
 def write(root, path, props, body):
@@ -59,7 +62,6 @@ def build(destination):
                 body = session_body.replace('## Events\n- N/A', '## Events\n- Met [[content/Review/Events Only]].\n- Mentioned [[campaigns/campaign_1/clues/C-1-9001]].')
                 path = f'{cp}/sessions/S-{campaign}-{number}.md'
                 write(root, path, props, body)
-                refresh(root, path)
             write(root, cp + '/sessions/transcripts/Review Transcript.md', {'type': '[[types/Transcript]]', 'session': f'[[{cp}/sessions/S-{campaign}-901]]'}, f'[[{cp}/clues/C-{campaign}-9001]]\n')
             write(root, cp + '/sessions/transcripts/Nested Pretend Session.md', {'type': '[[types/Session]]', 'campaign': f'[[{cp}/reference/Campaign]]', 'date': '2020-01-01', 'session_number': 1}, f'[[{cp}/clues/C-{campaign}-9001]]\n')
     return destination

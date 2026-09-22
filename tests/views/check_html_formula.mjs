@@ -19,6 +19,7 @@ const source = 'reference/views/HTML formula probe.md';
 let created = false;
 const evidence = {formula,method:'Obsidian in-memory Base query and real table-cell renderer; hidden DOM; native navigation intercepted; no window focus or tab changes',samples:[]};
 try {
+  assert.deepEqual(await o.js('[...app.plugins.enabledPlugins]'), [], 'Run the historical HTML negative control with community plugins disabled');
   await o.js(`(async()=>{if(app.vault.getAbstractFileByPath(${JSON.stringify(source)}))throw Error('Probe file already exists');await app.vault.create(${JSON.stringify(source)},${JSON.stringify('---\ntext: initial\n---\n')});return true;})()`);
   created = true;
   for (const sample of samples) {

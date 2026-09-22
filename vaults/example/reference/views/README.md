@@ -1,7 +1,28 @@
 # Views
 
-Enable **Bases** in Settings → Core plugins (tested in Obsidian 1.13.7).
-No community plugin is required. Open the containing note in Reading view to
+## Setup (each vault)
+
+Use Obsidian **1.13.7 or later** and enable **Bases** in Settings → Core plugins.
+Then enable the community plugin **Frontmatter Markdown Links** by **mnaoumov**:
+
+1. Open Settings → Community plugins and turn on community plugins if restricted.
+2. Select Browse, search for **Frontmatter Markdown Links**, and select Install.
+3. Select **Enable**. Installing alone does not turn it on.
+
+Tested combination: Obsidian 1.13.7 with Frontmatter Markdown Links 3.0.2.
+The plugin is required for clickable wikilinks embedded within `text` and `summary`
+values. Without it, Bases still shows live tables, but those embedded links can
+appear as literal `[[wikilinks]]`. Enable it in every new or copied vault, including
+the example vault; plugin code is not bundled with Armarium.
+
+[Plugin details and releases](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links).
+The plugin may offer Advanced Rename and Delete Handler; that additional plugin
+is not required for these views, and you can choose **Not now**. When renaming
+notes referenced inside property prose, check the resulting links. Use full
+vault-relative targets when filenames collide (for example,
+`[[content/Visitors/Signal Keeper|the visitor]]`). The plugin resolves clicked
+links from the open note, so ambiguous short names should be avoided.
+ Open the containing note in Reading view to
 use its embedded view; opening a `.base` directly has no containing-note context.
 
 ## Live views
@@ -31,14 +52,14 @@ All views are tables, preserving the original columns and their order:
 
 Session number is a sort tie-breaker, not a displayed column. Clue text tables use
 extra-height rows; very long values may still be clipped. Open the source record
-for the full value. Wikilinks *inside* a Bases text field remain literal text;
-the ID, status and Session link cells are navigable. Candidate facts remain
+for the full value. Frontmatter Markdown Links makes wikilinks inside Text, Description and Summary
+cells clickable. The ID, status and Session link cells use native Bases links. Candidate facts remain
 candidates even when displayed on a Content page. Missing or unknown statuses
 appear in neither index; fix the source rather than treating them as active.
 
-Source edits are intended to update the tables live. The revised table layout
-has deterministic column checks; its in-app rendering recheck is outstanding.
-Earlier list-view rendering results do not verify these revised tables.
+Source and selection edits update the tables live. Preparation reads current
+canonical values even when viewing a past Session; record historical facts in
+Events or Scene notes when they need to remain fixed.
 Editing a Clue through a view edits its canonical note.
 Keep campaign records directly in their prescribed folders. For another campaign,
 copy the index into its `reference/indexes/` folder; the same Bases definitions work.
@@ -61,38 +82,14 @@ Only explicit selections count. Events-only links never add preparation items.
 Locations and NPCs must be matching Content subtypes, shared or in this campaign;
 Clues must be from this campaign. Closed Clues remain selectable intentionally.
 
-Preparation uses **explicitly refreshed Markdown snapshots**, because Bases text
-cells do not render embedded wikilinks. The authoritative values remain Clue
-`text` and Content `summary`. After editing a source or selection, refresh the
-chosen Session before relying on preparation. Old output remains visibly labeled
-as a snapshot until refreshed; there is no automatic stale badge or background job.
-A finished Session can retain its old snapshot deliberately. Refreshing an old
-Session updates preparation only, never Events, Notes or Loot.
+Preparation uses live Bases tables reading Clue `text` and Content `summary`.
+There is no refresh command or generated copy to maintain. An empty selection
+shows an empty table. Invalid selections (wrong type/subtype, missing target or
+wrong campaign) do not produce rows; use canonical links and the matching subtype.
+Duplicate selections produce one row at their first position.
 
-The temporary repository harness requires Python 3.9+ and PyYAML:
-
-```sh
-python3 -m venv .venv
-.venv/bin/pip install -r tools/requirements-views.txt
-.venv/bin/python tools/refresh_preparation.py /path/to/vault campaigns/campaign_1/sessions/S-1-001.md
-```
-
-Run those commands from the Armarium checkout (not from the copied vault).
-`--check` performs a read-only comparison: exit 0 means current, 1 means stale,
-2 means invalid input or a conflict. Package/CLI integration is pending issue #24;
-this harness is not a second installable package and is not copied into vaults.
-
-To add/remove preparation, edit the lists and refresh. Removing a selection does
-not delete Content. To carry forward, create the next Session from the template,
-copy just the desired lists, then refresh. Do not copy previous Events or Loot.
-Put instructions and session-specific variations in Scene notes, not in source
-summaries or generated tables.
-
-The refresher owns only the three checksummed regions inside Preparation. Keep
-ownership comments intact. It validates all regions and selections before writing
-and refuses changed generated text, duplicate selections, missing/ambiguous links
-and wrong types/campaigns. There is no force option: move deliberate edits to Scene
-notes, restore the generated region from history, then refresh. Edits outside the
-regions are preserved byte for byte. It checks for concurrent source/Session edits
-and replaces the Session atomically; avoid editing the Session while refreshing
-(the final check and replacement are not a filesystem lock).
+To add/remove preparation, edit the lists. Use Source mode to reorder them.
+Removing a selection does not delete Content. To carry forward, create the next
+Session from the template and copy only the desired lists. Do not copy previous
+Events or Loot. Put instructions and session-specific variations in Scene notes,
+not in source summaries. Editing a displayed property changes the canonical note.

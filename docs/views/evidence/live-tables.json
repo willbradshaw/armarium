@@ -1,0 +1,1040 @@
+{
+  "method": "Real Bases controllers mounted transparent and noninteractive in disposable vault; source edits observed without query reruns; navigation intercepted; no focus or tab changes",
+  "checks": [
+    {
+      "name": "Explicit preparation order; closed statuses also selectable",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-9002.md",
+        "campaigns/campaign_1/clues/C-1-9001.md"
+      ],
+      "rows": [
+        "C-1-9002\nCampaign 1 candidate 9002. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END",
+        "C-1-9001\nCampaign 1 candidate 9001. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END"
+      ],
+      "links": [
+        {
+          "label": "C-1-9002",
+          "target": "campaigns/campaign_1/clues/C-1-9002.md"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "C-1-9001",
+          "target": "campaigns/campaign_1/clues/C-1-9001.md"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Canonical text updates live; aliases and multiline prose",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-9002.md",
+        "campaigns/campaign_1/clues/C-1-9001.md"
+      ],
+      "rows": [
+        "C-1-9002\nCampaign 1 candidate 9002. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END",
+        "C-1-9001\nMeet \nthe quay\n and \nthe visitor\n.\nLiteral <b> & quotes \"here\"."
+      ],
+      "links": [
+        {
+          "label": "C-1-9002",
+          "target": "campaigns/campaign_1/clues/C-1-9002.md"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "C-1-9001",
+          "target": "campaigns/campaign_1/clues/C-1-9001.md"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the visitor",
+          "target": "content/Review/Visitors/Signal Keeper"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Embedded prose links invoke internal navigation, intercepted",
+      "calls": [
+        [
+          "content/Review/Quay",
+          "campaigns/campaign_1/clues/C-1-9002.md",
+          false
+        ],
+        [
+          "content/Review/Quay",
+          "campaigns/campaign_1/clues/C-1-9001.md",
+          false
+        ],
+        [
+          "content/Review/Visitors/Signal Keeper",
+          "campaigns/campaign_1/clues/C-1-9001.md",
+          false
+        ]
+      ]
+    },
+    {
+      "name": "Selection reorder updates live",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-9001.md",
+        "campaigns/campaign_1/clues/C-1-9002.md"
+      ],
+      "rows": [
+        "C-1-9001\nMeet \nthe quay\n and \nthe visitor\n.\nLiteral <b> & quotes \"here\".",
+        "C-1-9002\nCampaign 1 candidate 9002. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END"
+      ],
+      "links": [
+        {
+          "label": "C-1-9001",
+          "target": "campaigns/campaign_1/clues/C-1-9001.md"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the visitor",
+          "target": "content/Review/Visitors/Signal Keeper"
+        },
+        {
+          "label": "C-1-9002",
+          "target": "campaigns/campaign_1/clues/C-1-9002.md"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Removing last selection removes rendered rows",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [],
+      "rows": [],
+      "links": [],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Wrong campaign/type/missing selections excluded; duplicates collapse",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-9001.md"
+      ],
+      "rows": [
+        "C-1-9001\nMeet \nthe quay\n and \nthe visitor\n.\nLiteral <b> & quotes \"here\"."
+      ],
+      "links": [
+        {
+          "label": "C-1-9001",
+          "target": "campaigns/campaign_1/clues/C-1-9001.md"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the visitor",
+          "target": "content/Review/Visitors/Signal Keeper"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "NPC preparation excludes Events-only records and preserves selection order",
+      "headers": [
+        "Name",
+        "Summary"
+      ],
+      "paths": [
+        "content/Review/Visitors/Signal Keeper.md",
+        "content/Review/Signal Keeper.md"
+      ],
+      "rows": [
+        "Signal Keeper\nA different keeper; duplicate basename.",
+        "Signal Keeper\nA keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. A keeper who follows \nthe quay\n. LONG_TEXT_END"
+      ],
+      "links": [
+        {
+          "label": "Signal Keeper",
+          "target": "content/Review/Visitors/Signal Keeper.md"
+        },
+        {
+          "label": "Signal Keeper",
+          "target": "content/Review/Signal Keeper.md"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Canonical Content summary updates live",
+      "headers": [
+        "Name",
+        "Summary"
+      ],
+      "paths": [
+        "content/Review/Visitors/Signal Keeper.md",
+        "content/Review/Signal Keeper.md"
+      ],
+      "rows": [
+        "Signal Keeper\nA different keeper; duplicate basename.",
+        "Signal Keeper\nChanged live summary referencing \nthe quay\n."
+      ],
+      "links": [
+        {
+          "label": "Signal Keeper",
+          "target": "content/Review/Visitors/Signal Keeper.md"
+        },
+        {
+          "label": "Signal Keeper",
+          "target": "content/Review/Signal Keeper.md"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Location preparation",
+      "headers": [
+        "Location",
+        "Description"
+      ],
+      "paths": [
+        "content/Review/Quay.md"
+      ],
+      "rows": [
+        "Quay\nA quiet quay.\nA second line with \nthe keeper\n."
+      ],
+      "links": [
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay.md"
+        },
+        {
+          "label": "the keeper",
+          "target": "content/Review/Signal Keeper"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Active Clues uses canonical subjects; mixed text links render",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-9001.md"
+      ],
+      "rows": [
+        "C-1-9001\nMeet \nthe quay\n and \nthe visitor\n.\nLiteral <b> & quotes \"here\"."
+      ],
+      "links": [
+        {
+          "label": "C-1-9001",
+          "target": "campaigns/campaign_1/clues/C-1-9001.md"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the visitor",
+          "target": "content/Review/Visitors/Signal Keeper"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Content campaign switch updates live",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_2/clues/C-2-9001.md"
+      ],
+      "rows": [
+        "C-2-9001\nCampaign 2 candidate 9001. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END"
+      ],
+      "links": [
+        {
+          "label": "C-2-9001",
+          "target": "campaigns/campaign_2/clues/C-2-9001.md"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Removing final subject clears Active Clues table",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [],
+      "rows": [],
+      "links": [],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Active index campaign isolation and original columns",
+      "headers": [
+        "ID",
+        "Status",
+        "Last Session",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-0003.md",
+        "campaigns/campaign_1/clues/C-1-0004.md",
+        "campaigns/campaign_1/clues/C-1-9001.md",
+        "campaigns/campaign_1/clues/C-1-9002.md"
+      ],
+      "rows": [
+        "C-1-0003\nHinted\nS-1-002\nCaptain Mara Vey\n uses the pencilled tide marks on \nShoal Chart\n to designate a concealed rendezvous beyond \nThe Red Teeth\n.",
+        "C-1-0004\nPending\nThe \nFree Pilots Assembly\n holds a second copy of \nShoal Chart\n, including its pencilled tide marks for a rendezvous beyond \nThe Red Teeth\n.",
+        "C-1-9001\nPending\nMeet \nthe quay\n and \nthe visitor\n.\nLiteral <b> & quotes \"here\".",
+        "C-1-9002\nHinted\nCampaign 1 candidate 9002. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END"
+      ],
+      "links": [
+        {
+          "label": "C-1-0003",
+          "target": "campaigns/campaign_1/clues/C-1-0003.md"
+        },
+        {
+          "label": "Hinted",
+          "target": "Hinted"
+        },
+        {
+          "label": "S-1-002",
+          "target": "S-1-002"
+        },
+        {
+          "label": "Captain Mara Vey",
+          "target": "Captain Mara Vey"
+        },
+        {
+          "label": "Shoal Chart",
+          "target": "Shoal Chart"
+        },
+        {
+          "label": "The Red Teeth",
+          "target": "The Red Teeth"
+        },
+        {
+          "label": "C-1-0004",
+          "target": "campaigns/campaign_1/clues/C-1-0004.md"
+        },
+        {
+          "label": "Pending",
+          "target": "Pending"
+        },
+        {
+          "label": "Free Pilots Assembly",
+          "target": "Free Pilots Assembly"
+        },
+        {
+          "label": "Shoal Chart",
+          "target": "Shoal Chart"
+        },
+        {
+          "label": "The Red Teeth",
+          "target": "The Red Teeth"
+        },
+        {
+          "label": "C-1-9001",
+          "target": "campaigns/campaign_1/clues/C-1-9001.md"
+        },
+        {
+          "label": "Pending",
+          "target": "Pending"
+        },
+        {
+          "label": "the quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "the visitor",
+          "target": "content/Review/Visitors/Signal Keeper"
+        },
+        {
+          "label": "C-1-9002",
+          "target": "campaigns/campaign_1/clues/C-1-9002.md"
+        },
+        {
+          "label": "Hinted",
+          "target": "Hinted"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Closed index includes all four closed statuses",
+      "headers": [
+        "ID",
+        "Status",
+        "Last Session",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-0001.md",
+        "campaigns/campaign_1/clues/C-1-0002.md",
+        "campaigns/campaign_1/clues/C-1-9003.md",
+        "campaigns/campaign_1/clues/C-1-9004.md",
+        "campaigns/campaign_1/clues/C-1-9005.md",
+        "campaigns/campaign_1/clues/C-1-9006.md"
+      ],
+      "rows": [
+        "C-1-0001\nRevealed\nS-1-001\nThe \nBrass Harbor Seal\n authorizes the watch at \nQuay Nine\n to open the night boom at the third bell.",
+        "C-1-0002\nAbandoned\nA flooded smugglers' tunnel runs from \nQuay Nine\n beneath the warehouses of \nPort Briselle\n.",
+        "C-1-9003\nRevealed\nCampaign 1 candidate 9003. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END",
+        "C-1-9004\nAbandoned\nCampaign 1 candidate 9004. \nQuay\n Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. Unconfirmed long text. CLUE_TEXT_END"
+      ],
+      "links": [
+        {
+          "label": "C-1-0001",
+          "target": "campaigns/campaign_1/clues/C-1-0001.md"
+        },
+        {
+          "label": "Revealed",
+          "target": "Revealed"
+        },
+        {
+          "label": "S-1-001",
+          "target": "S-1-001"
+        },
+        {
+          "label": "Brass Harbor Seal",
+          "target": "Brass Harbor Seal"
+        },
+        {
+          "label": "Quay Nine",
+          "target": "Quay Nine"
+        },
+        {
+          "label": "C-1-0002",
+          "target": "campaigns/campaign_1/clues/C-1-0002.md"
+        },
+        {
+          "label": "Abandoned",
+          "target": "Abandoned"
+        },
+        {
+          "label": "Quay Nine",
+          "target": "Quay Nine"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "Port Briselle"
+        },
+        {
+          "label": "C-1-9003",
+          "target": "campaigns/campaign_1/clues/C-1-9003.md"
+        },
+        {
+          "label": "Revealed",
+          "target": "Revealed"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        },
+        {
+          "label": "C-1-9004",
+          "target": "campaigns/campaign_1/clues/C-1-9004.md"
+        },
+        {
+          "label": "Abandoned",
+          "target": "Abandoned"
+        },
+        {
+          "label": "Quay",
+          "target": "content/Review/Quay"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Clue Sessions sorted by date and number; nested/cross-campaign decoys excluded",
+      "headers": [
+        "Session",
+        "Date"
+      ],
+      "paths": [
+        "campaigns/campaign_1/sessions/S-1-902.md",
+        "campaigns/campaign_1/sessions/S-1-903.md",
+        "campaigns/campaign_1/sessions/S-1-901.md"
+      ],
+      "rows": [
+        "S-1-902",
+        "S-1-903",
+        "S-1-901"
+      ],
+      "links": [
+        {
+          "label": "S-1-902",
+          "target": "campaigns/campaign_1/sessions/S-1-902.md"
+        },
+        {
+          "label": "S-1-903",
+          "target": "campaigns/campaign_1/sessions/S-1-903.md"
+        },
+        {
+          "label": "S-1-901",
+          "target": "campaigns/campaign_1/sessions/S-1-901.md"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Empty Session template: clues",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [],
+      "rows": [],
+      "links": [],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Empty Session template: locations",
+      "headers": [
+        "Location",
+        "Description"
+      ],
+      "paths": [],
+      "rows": [],
+      "links": [],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Empty Session template: npcs",
+      "headers": [
+        "Name",
+        "Summary"
+      ],
+      "paths": [],
+      "rows": [],
+      "links": [],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 001 preparation: clues",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-0001.md",
+        "campaigns/campaign_1/clues/C-1-0002.md"
+      ],
+      "rows": [
+        "C-1-0001\nThe \nBrass Harbor Seal\n authorizes the watch at \nQuay Nine\n to open the night boom at the third bell.",
+        "C-1-0002\nA flooded smugglers' tunnel runs from \nQuay Nine\n beneath the warehouses of \nPort Briselle\n."
+      ],
+      "links": [
+        {
+          "label": "C-1-0001",
+          "target": "campaigns/campaign_1/clues/C-1-0001.md"
+        },
+        {
+          "label": "Brass Harbor Seal",
+          "target": "Brass Harbor Seal"
+        },
+        {
+          "label": "Quay Nine",
+          "target": "Quay Nine"
+        },
+        {
+          "label": "C-1-0002",
+          "target": "campaigns/campaign_1/clues/C-1-0002.md"
+        },
+        {
+          "label": "Quay Nine",
+          "target": "Quay Nine"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "Port Briselle"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 001 preparation: locations",
+      "headers": [
+        "Location",
+        "Description"
+      ],
+      "paths": [
+        "campaigns/campaign_1/content/Quay Nine.md",
+        "content/Port Briselle.md"
+      ],
+      "rows": [
+        "Quay Nine\nA narrow working quay beneath \nBriselle\n's eastern signal tower.",
+        "Port Briselle\nA terraced harbor republic where pilot guilds bargain with merchant captains."
+      ],
+      "links": [
+        {
+          "label": "Quay Nine",
+          "target": "campaigns/campaign_1/content/Quay Nine.md"
+        },
+        {
+          "label": "Briselle",
+          "target": "Port Briselle"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "content/Port Briselle.md"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 001 preparation: npcs",
+      "headers": [
+        "Name",
+        "Summary"
+      ],
+      "paths": [
+        "content/Captain Mara Vey.md"
+      ],
+      "rows": [
+        "Captain Mara Vey\nA pilot of \nPort Briselle\n and captain of \nWake-lark\n who settles arguments with unnerving courtesy."
+      ],
+      "links": [
+        {
+          "label": "Captain Mara Vey",
+          "target": "content/Captain Mara Vey.md"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "Port Briselle"
+        },
+        {
+          "label": "Wake-lark",
+          "target": "Wake-lark"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 002 preparation: clues",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-0003.md"
+      ],
+      "rows": [
+        "C-1-0003\nCaptain Mara Vey\n uses the pencilled tide marks on \nShoal Chart\n to designate a concealed rendezvous beyond \nThe Red Teeth\n."
+      ],
+      "links": [
+        {
+          "label": "C-1-0003",
+          "target": "campaigns/campaign_1/clues/C-1-0003.md"
+        },
+        {
+          "label": "Captain Mara Vey",
+          "target": "Captain Mara Vey"
+        },
+        {
+          "label": "Shoal Chart",
+          "target": "Shoal Chart"
+        },
+        {
+          "label": "The Red Teeth",
+          "target": "The Red Teeth"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 002 preparation: locations",
+      "headers": [
+        "Location",
+        "Description"
+      ],
+      "paths": [
+        "content/Port Briselle.md",
+        "campaigns/campaign_1/content/Quay Nine.md"
+      ],
+      "rows": [
+        "Port Briselle\nA terraced harbor republic where pilot guilds bargain with merchant captains.",
+        "Quay Nine\nA narrow working quay beneath \nBriselle\n's eastern signal tower."
+      ],
+      "links": [
+        {
+          "label": "Port Briselle",
+          "target": "content/Port Briselle.md"
+        },
+        {
+          "label": "Quay Nine",
+          "target": "campaigns/campaign_1/content/Quay Nine.md"
+        },
+        {
+          "label": "Briselle",
+          "target": "Port Briselle"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 002 preparation: npcs",
+      "headers": [
+        "Name",
+        "Summary"
+      ],
+      "paths": [
+        "content/Captain Mara Vey.md"
+      ],
+      "rows": [
+        "Captain Mara Vey\nA pilot of \nPort Briselle\n and captain of \nWake-lark\n who settles arguments with unnerving courtesy."
+      ],
+      "links": [
+        {
+          "label": "Captain Mara Vey",
+          "target": "content/Captain Mara Vey.md"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "Port Briselle"
+        },
+        {
+          "label": "Wake-lark",
+          "target": "Wake-lark"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 003 preparation: clues",
+      "headers": [
+        "ID",
+        "Text"
+      ],
+      "paths": [
+        "campaigns/campaign_1/clues/C-1-0003.md",
+        "campaigns/campaign_1/clues/C-1-0004.md"
+      ],
+      "rows": [
+        "C-1-0003\nCaptain Mara Vey\n uses the pencilled tide marks on \nShoal Chart\n to designate a concealed rendezvous beyond \nThe Red Teeth\n.",
+        "C-1-0004\nThe \nFree Pilots Assembly\n holds a second copy of \nShoal Chart\n, including its pencilled tide marks for a rendezvous beyond \nThe Red Teeth\n."
+      ],
+      "links": [
+        {
+          "label": "C-1-0003",
+          "target": "campaigns/campaign_1/clues/C-1-0003.md"
+        },
+        {
+          "label": "Captain Mara Vey",
+          "target": "Captain Mara Vey"
+        },
+        {
+          "label": "Shoal Chart",
+          "target": "Shoal Chart"
+        },
+        {
+          "label": "The Red Teeth",
+          "target": "The Red Teeth"
+        },
+        {
+          "label": "C-1-0004",
+          "target": "campaigns/campaign_1/clues/C-1-0004.md"
+        },
+        {
+          "label": "Free Pilots Assembly",
+          "target": "Free Pilots Assembly"
+        },
+        {
+          "label": "Shoal Chart",
+          "target": "Shoal Chart"
+        },
+        {
+          "label": "The Red Teeth",
+          "target": "The Red Teeth"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 003 preparation: locations",
+      "headers": [
+        "Location",
+        "Description"
+      ],
+      "paths": [
+        "content/The Red Teeth.md",
+        "content/Port Briselle.md"
+      ],
+      "rows": [
+        "The Red Teeth\nA broken ridge of red reefs off \nBriselle\n, passable through shifting tidal channels.",
+        "Port Briselle\nA terraced harbor republic where pilot guilds bargain with merchant captains."
+      ],
+      "links": [
+        {
+          "label": "The Red Teeth",
+          "target": "content/The Red Teeth.md"
+        },
+        {
+          "label": "Briselle",
+          "target": "Port Briselle"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "content/Port Briselle.md"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Example 003 preparation: npcs",
+      "headers": [
+        "Name",
+        "Summary"
+      ],
+      "paths": [
+        "content/Captain Mara Vey.md"
+      ],
+      "rows": [
+        "Captain Mara Vey\nA pilot of \nPort Briselle\n and captain of \nWake-lark\n who settles arguments with unnerving courtesy."
+      ],
+      "links": [
+        {
+          "label": "Captain Mara Vey",
+          "target": "content/Captain Mara Vey.md"
+        },
+        {
+          "label": "Port Briselle",
+          "target": "Port Briselle"
+        },
+        {
+          "label": "Wake-lark",
+          "target": "Wake-lark"
+        }
+      ],
+      "errors": [],
+      "error": null
+    },
+    {
+      "name": "Notes/Events/Loot unchanged; active tab unchanged",
+      "pass": true
+    }
+  ],
+  "environment": {
+    "title": "Session - armarium25-starter - Obsidian 1.13.7",
+    "activeFile": "reference/templates/Session.md",
+    "plugin": "3.0.2",
+    "enabled": [
+      "frontmatter-markdown-links"
+    ]
+  }
+}

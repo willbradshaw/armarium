@@ -1,0 +1,2 @@
+# Repository test and disposable-fixture dependency; not required by vault users.
+PyYAML>=6.0.2,<7

@@ -35,9 +35,12 @@ reference for its fields and conventions:
 [Player](vaults/starter/reference/types/Player.md), or
 [Transcript](vaults/starter/reference/types/Transcript.md).
 
-Enable Obsidian's Bases core plugin for the live Clue views. Preparation uses
-explicitly refreshed Markdown; see [view instructions](vaults/starter/reference/views/README.md).
-No community plugin is required.
+Use Obsidian **1.13.7+**, enable the **Bases** core plugin, and install **and enable**
+**Frontmatter Markdown Links** by **mnaoumov** in Settings → Community plugins.
+This community plugin makes wikilinks inside table text clickable. Enable it in
+each new or copied vault; Armarium does not bundle plugin code. Clue views and
+preparation tables update live from canonical fields and selected records.
+See [view setup and instructions](vaults/starter/reference/views/README.md).
 
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
 in Git. The copied vault can be its own Git repository.
