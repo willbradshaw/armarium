@@ -22,6 +22,6 @@ Superseded Clues also require a replacement Clue link in `superseded_by`;
 otherwise that field is optional and nullable.
 
 The body contains only `## Sessions` followed by one Base embed, as in the
-template, or one nonempty fenced view. No additional commentary belongs here.
+template. No additional commentary or views belong here.
 
 See the [Clue schema](../schemas/clue.schema.json).

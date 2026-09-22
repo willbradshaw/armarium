@@ -128,15 +128,8 @@
     },
     "body": {
       "type": "string",
-      "description": "Only the Sessions heading and one Base embed or nonempty triple-backtick view; no prose outside it. View execution and target existence require separate checks.",
-      "anyOf": [
-        {
-          "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*[ ]{0,3}```[^\\r\\n`~]*\\r?\\n(?!(?:[ \\t]*\\r?\\n)*[ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))(?:(?![ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))[^\\r\\n]*\\r?\\n)+[ ]{0,3}```[ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
-        },
-        {
-          "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
-        }
-      ]
+      "description": "Only the Sessions heading and one Base embed; no additional prose or views. View execution and target existence require separate checks.",
+      "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
     }
   },
   "$defs": {

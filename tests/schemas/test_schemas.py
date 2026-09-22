@@ -142,7 +142,7 @@ class SchemaTests(unittest.TestCase):
             record['body'] += record['body']
             self.assert_valid(name, record)
         record = copy.deepcopy(self.fixtures['clue']['base'])
-        record['body'] = '## Sessions\n```anything\nNot executable view code.\n```\n'
+        record['body'] = '## Sessions\n![[missing.base]]\n'
         self.assert_valid('clue', record)
 
     def test_committed_records(self):

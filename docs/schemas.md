@@ -28,8 +28,8 @@ References are local. The tests enable URI and date format assertions.
 
 Body regexes check basic structure. Duplicate headings and matching fenced text
 can satisfy Content/Session heading checks; Transcript checks only one heading
-and attributed entry. Clue requires Sessions plus one Base embed or triple-backtick view but
-cannot establish that it executes or that an embedded Base exists. Link existence, target kinds, campaign and
+and attributed entry. Clue requires Sessions plus one Base embed, but cannot establish that
+it executes or that the embedded Base exists. Link existence, target kinds, campaign and
 filename identity, chronology, reciprocal relationships and history consistency
 require vault-aware validation.
 

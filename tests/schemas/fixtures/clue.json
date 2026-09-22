@@ -8,7 +8,7 @@
       "first_session": null,
       "last_session": null
     },
-    "body": "## Sessions\n```dataview\nLIST\n```\n"
+    "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\n"
   },
   "cases": [
     {
@@ -48,7 +48,7 @@
     },
     {
       "name": "alternate view",
-      "valid": true,
+      "valid": false,
       "body": "\n## Sessions\n\n```dataviewjs\ndv.list([]);\n```\n"
     },
     {
@@ -113,22 +113,22 @@
     {
       "name": "prose before",
       "valid": false,
-      "body": "Commentary\n## Sessions\n```dataview\nLIST\n```"
+      "body": "Commentary\n## Sessions\n\n![[reference/views/clue-sessions.base]]\n"
     },
     {
       "name": "prose after",
       "valid": false,
-      "body": "## Sessions\n```dataview\nLIST\n```\nCommentary"
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\nCommentary"
     },
     {
       "name": "extra heading",
       "valid": false,
-      "body": "## Sessions\n```dataview\nLIST\n```\n## Notes"
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\n## Notes"
     },
     {
       "name": "two views",
       "valid": false,
-      "body": "## Sessions\n```dataview\nLIST\n```\n```dataview\nLIST\n```"
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\n![[reference/views/clue-sessions.base]]\n"
     },
     {
       "name": "empty view",
@@ -152,7 +152,7 @@
     },
     {
       "name": "indented fence",
-      "valid": true,
+      "valid": false,
       "body": "## Sessions\n  ```dataview\nLIST\n  ```\n"
     },
     {
@@ -163,7 +163,7 @@
     {
       "name": "duplicate Sessions heading",
       "valid": false,
-      "body": "## Sessions\n## Sessions\n```dataview\nLIST\n```\n"
+      "body": "## Sessions\n## Sessions\n\n![[reference/views/clue-sessions.base]]\n"
     },
     {
       "name": "tilde fences unsupported",
@@ -209,6 +209,11 @@
       "name": "embed preceded by prose",
       "body": "Commentary\n## Sessions\n\n![[reference/views/clue-sessions.base]]\n",
       "valid": false
+    },
+    {
+      "name": "fenced Base definition",
+      "valid": false,
+      "body": "## Sessions\n```base\nviews:\n  - type: table\n```\n"
     }
   ]
 }
