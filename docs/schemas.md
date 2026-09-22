@@ -22,11 +22,7 @@ Each supported `type` has a schema in the vault's `reference/schemas/` directory
 | `[[Type]]` | `type.schema.json` |
 | `[[Status]]` | `status.schema.json` |
 
-Type definitions are Type records, including Type itself and the Status type
-definition. Status definitions are Status records and require an `applies_to`
-canonical wikilink to one type definition. Both allow custom metadata and free
-Markdown bodies. A submitted record missing its type is not exempt from validation;
-unfinished templates remain a separate category.
+Schemas apply to typed records; unfinished templates are a separate category.
 References are local. The tests enable URI and date format assertions.
 
 ## Limits
