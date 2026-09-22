@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "Faction"
 summary: "A ship-financing house in [[Port Briselle]] that lends against vessels and future cargoes."
 members:
@@ -20,11 +21,9 @@ hearing certified the party's right to contest the sale; it did not settle the d
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

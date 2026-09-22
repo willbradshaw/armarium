@@ -1,0 +1,590 @@
+[
+  {
+    "file": "vaults/starter/campaigns/campaign_1/reference/indexes/Clues.md",
+    "line": 16,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"ID\",\n  status as \"Status\",\n  last_session as \"Last Session\",\n  text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE status != [[Revealed]] AND status != [[Abandoned]] AND status != [[Superseded]] AND status != [[Dormant]]\nSORT file.name ASC\n```",
+    "replacement": "Bases",
+    "case": "clue index",
+    "artifact": "reference/views/clue-index.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "starter",
+      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+    }
+  },
+  {
+    "file": "vaults/starter/campaigns/campaign_1/reference/indexes/Clues.md",
+    "line": 29,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"ID\",\n  status as \"Status\",\n  last_session as \"Last Session\",\n  text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE status = [[Revealed]] OR status = [[Abandoned]] OR status = [[Superseded]] OR status = [[Dormant]]\nSORT file.name ASC\n```",
+    "replacement": "Bases",
+    "case": "clue index",
+    "artifact": "reference/views/clue-index.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "starter",
+      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+    }
+  },
+  {
+    "file": "vaults/starter/reference/templates/Clue.md",
+    "line": 10,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"Session\",\n  date as \"Date\"\nFROM \"campaigns/campaign_1/sessions\"\nWHERE type = [[types/Session]] AND contains(file.outlinks, this.file.link)\nSORT date ASC\n```",
+    "replacement": "Bases",
+    "case": "sessions referencing clue",
+    "artifact": "reference/views/clue-sessions.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "starter",
+      "path": "reference/templates/Clue.md"
+    }
+  },
+  {
+    "file": "vaults/starter/reference/templates/Content.md",
+    "line": 13,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"ID\",\n  text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND status != [[Revealed]] AND status != [[Abandoned]] AND status != [[Superseded]] AND status != [[Dormant]]\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "starter",
+      "path": "reference/templates/Content.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/Orlan Countinghouse.md",
+    "line": 23,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/Orlan Countinghouse.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/Free Pilots Assembly.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/Free Pilots Assembly.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/Wake-lark.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/Wake-lark.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/The Bell Accord.md",
+    "line": 17,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/The Bell Accord.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/The Crownless Coast.md",
+    "line": 24,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/The Crownless Coast.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/The Red Teeth.md",
+    "line": 20,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/The Red Teeth.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/Port Briselle.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/Port Briselle.md"
+    }
+  },
+  {
+    "file": "vaults/example/content/Captain Mara Vey.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "content/Captain Mara Vey.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/clues/C-1-0003.md",
+    "line": 11,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"Session\", date as \"Date\"\nFROM \"campaigns/campaign_1/sessions\"\nWHERE type = [[types/Session]] AND contains(file.outlinks, this.file.link)\nSORT date ASC\n```",
+    "replacement": "Bases",
+    "case": "sessions referencing clue",
+    "artifact": "reference/views/clue-sessions.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/clues/C-1-0003.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/clues/C-1-0002.md",
+    "line": 11,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"Session\", date as \"Date\"\nFROM \"campaigns/campaign_1/sessions\"\nWHERE type = [[types/Session]] AND contains(file.outlinks, this.file.link)\nSORT date ASC\n```",
+    "replacement": "Bases",
+    "case": "sessions referencing clue",
+    "artifact": "reference/views/clue-sessions.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/clues/C-1-0002.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/clues/C-1-0001.md",
+    "line": 11,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"Session\", date as \"Date\"\nFROM \"campaigns/campaign_1/sessions\"\nWHERE type = [[types/Session]] AND contains(file.outlinks, this.file.link)\nSORT date ASC\n```",
+    "replacement": "Bases",
+    "case": "sessions referencing clue",
+    "artifact": "reference/views/clue-sessions.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/clues/C-1-0001.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/clues/C-1-0004.md",
+    "line": 11,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"Session\", date as \"Date\"\nFROM \"campaigns/campaign_1/sessions\"\nWHERE type = [[types/Session]] AND contains(file.outlinks, this.file.link)\nSORT date ASC\n```",
+    "replacement": "Bases",
+    "case": "sessions referencing clue",
+    "artifact": "reference/views/clue-sessions.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/clues/C-1-0004.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Glass Petrel.md",
+    "line": 23,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Glass Petrel.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Glass Petrel Crew.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Glass Petrel Crew.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Brass Harbor Seal.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Brass Harbor Seal.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Quay Nine.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Quay Nine.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Blue Signal Flare.md",
+    "line": 16,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Blue Signal Flare.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Shoal Chart.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Shoal Chart.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Talia Venn.md",
+    "line": 24,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Talia Venn.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/content/Esme Calder.md",
+    "line": 18,
+    "original": "```dataview\nTABLE WITHOUT ID file.link as \"ID\", text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/content/Esme Calder.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
+    "line": 27,
+    "original": "`= [[C-1-0003]].text`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
+    "line": 33,
+    "original": "`= [[Port Briselle]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
+    "line": 34,
+    "original": "`= [[Quay Nine]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-002.md",
+    "line": 40,
+    "original": "`= [[Captain Mara Vey]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-002.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
+    "line": 27,
+    "original": "`= [[C-1-0003]].text`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
+    "line": 28,
+    "original": "`= [[C-1-0004]].text`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
+    "line": 34,
+    "original": "`= [[The Red Teeth]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
+    "line": 35,
+    "original": "`= [[Port Briselle]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-003.md",
+    "line": 41,
+    "original": "`= [[Captain Mara Vey]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-003.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
+    "line": 27,
+    "original": "`= [[C-1-0001]].text`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
+    "line": 28,
+    "original": "`= [[C-1-0002]].text`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
+    "line": 34,
+    "original": "`= [[Quay Nine]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
+    "line": 35,
+    "original": "`= [[Port Briselle]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/sessions/S-1-001.md",
+    "line": 41,
+    "original": "`= [[Captain Mara Vey]].summary`",
+    "replacement": "preparation snapshot",
+    "case": "preparation",
+    "artifact": "tools/refresh_preparation.py",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/sessions/S-1-001.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/reference/indexes/Clues.md",
+    "line": 16,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"ID\",\n  status as \"Status\",\n  last_session as \"Last Session\",\n  text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE status != [[Revealed]] AND status != [[Abandoned]] AND status != [[Superseded]] AND status != [[Dormant]]\nSORT file.name ASC\n```",
+    "replacement": "Bases",
+    "case": "clue index",
+    "artifact": "reference/views/clue-index.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+    }
+  },
+  {
+    "file": "vaults/example/campaigns/campaign_1/reference/indexes/Clues.md",
+    "line": 29,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"ID\",\n  status as \"Status\",\n  last_session as \"Last Session\",\n  text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE status = [[Revealed]] OR status = [[Abandoned]] OR status = [[Superseded]] OR status = [[Dormant]]\nSORT file.name ASC\n```",
+    "replacement": "Bases",
+    "case": "clue index",
+    "artifact": "reference/views/clue-index.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "campaigns/campaign_1/reference/indexes/Clues.md"
+    }
+  },
+  {
+    "file": "vaults/example/reference/templates/Clue.md",
+    "line": 10,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"Session\",\n  date as \"Date\"\nFROM \"campaigns/campaign_1/sessions\"\nWHERE type = [[types/Session]] AND contains(file.outlinks, this.file.link)\nSORT date ASC\n```",
+    "replacement": "Bases",
+    "case": "sessions referencing clue",
+    "artifact": "reference/views/clue-sessions.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "reference/templates/Clue.md"
+    }
+  },
+  {
+    "file": "vaults/example/reference/templates/Content.md",
+    "line": 13,
+    "original": "```dataview\nTABLE WITHOUT ID\n  file.link as \"ID\",\n  text as \"Text\"\nFROM \"campaigns/campaign_1/clues\"\nWHERE contains(subjects, this.file.link) AND status != [[Revealed]] AND status != [[Abandoned]] AND status != [[Superseded]] AND status != [[Dormant]]\n```",
+    "replacement": "Bases",
+    "case": "content active clues",
+    "artifact": "reference/views/content-clues.base",
+    "verification": {
+      "result": "rendered in Obsidian 1.13.7 with no community plugins",
+      "evidence": "evidence/rendering.json",
+      "vault": "example",
+      "path": "reference/templates/Content.md"
+    }
+  }
+]

@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "Object"
 summary: "A pilot cutter captained by [[Captain Mara Vey]] for the approaches to [[Port Briselle]]."
 campaign_1:
@@ -15,11 +16,9 @@ towing lines. [[Captain Mara Vey]] uses it to guide ships through [[The Red Teet
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

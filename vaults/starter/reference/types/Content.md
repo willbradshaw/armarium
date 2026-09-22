@@ -45,8 +45,9 @@ interaction, not mentions/prep, and noteworthy PC contributions rather than
 attendance. Keep acquisition and transfer history in Session records when current
 possession changes.
 
-The included Active Clues query targets campaign 1. For another campaign, copy it
-into a separately labeled subsection and update the campaign path.
+Set `view_campaign` to the campaign whose Active Clues you want to display
+(default `campaign_1`). This display choice does not change ownership or history.
+See [[reference/views/README|view instructions]].
 
 ## Schema
 

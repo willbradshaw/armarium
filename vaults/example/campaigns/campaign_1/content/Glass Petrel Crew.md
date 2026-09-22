@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "Faction"
 summary: "The small company sailing the swift, underfunded cutter [[Glass Petrel]]."
 members: ["[[Talia Venn]]", "[[Esme Calder]]"]
@@ -15,11 +16,9 @@ The crew accepted collective custody of [[Shoal Chart]] at the pilots' hearing i
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

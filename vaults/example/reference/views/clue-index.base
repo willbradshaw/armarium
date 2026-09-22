@@ -1,0 +1,20 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Clue")'
+    - 'file.folder == "campaigns/" + this.file.folder.split("/")[1] + "/clues"'
+views:
+  - type: list
+    name: Active
+    filters: '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
+    order: [file.name, text, status, last_session]
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: list
+    name: Closed
+    filters: '[link("reference/statuses/Revealed"), link("reference/statuses/Abandoned"), link("reference/statuses/Dormant"), link("reference/statuses/Superseded")].contains(status)'
+    order: [file.name, text, status, last_session]
+    sort:
+      - property: file.name
+        direction: ASC

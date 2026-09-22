@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "PC"
 summary: "A reef diver and rigger from [[The Crownless Coast]] who turns salvage and loose rope into escape routes."
 player: "[[Rowan]]"
@@ -21,11 +22,9 @@ her shortcuts alarming; Talia considers [[Esme Calder|Esme]]'s paperwork a remar
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

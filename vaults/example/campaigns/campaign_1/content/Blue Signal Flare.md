@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "Object"
 summary: "A blue-burning signal charge wrapped in waxed cloth."
 campaign_1:
@@ -13,11 +14,9 @@ When fired, the charge produced a blue light visible across the harbor. It was e
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

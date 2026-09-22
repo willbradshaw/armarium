@@ -1,0 +1,25 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Session")'
+    - 'file.folder == "campaigns/" + this.file.folder.split("/")[1] + "/sessions"'
+    - 'campaign == link("campaigns/" + this.file.folder.split("/")[1] + "/reference/Campaign")'
+    - 'file.hasLink(this.file)'
+properties:
+  file.name:
+    displayName: Session
+  note.date:
+    displayName: Date
+  note.session_number:
+    displayName: Session number
+views:
+  - type: table
+    name: Sessions
+    order: [file.name, date, session_number]
+    sort:
+      - property: date
+        direction: ASC
+      - property: session_number
+        direction: ASC
+      - property: file.name
+        direction: ASC

@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype:
 summary:
 aliases:
@@ -10,12 +11,8 @@ campaign_1:
 ## Notes
 - N/A
 ## Active Clues
-```dataview
-TABLE WITHOUT ID
-  file.link as "ID",
-  text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND status != [[Revealed]] AND status != [[Abandoned]] AND status != [[Superseded]] AND status != [[Dormant]]
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 ## Appearances
 - N/A

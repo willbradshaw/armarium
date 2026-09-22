@@ -1,0 +1,28 @@
+{
+  "checks": [
+    {
+      "name": "Remove Visitor using native Properties pill x",
+      "pass": true,
+      "value": [
+        "[[content/Review/Signal Keeper|Keeper]]"
+      ]
+    },
+    {
+      "name": "Add Visitor through native Properties input and Enter; appended after Keeper",
+      "pass": true,
+      "value": [
+        "[[content/Review/Signal Keeper|Keeper]]",
+        "[[content/Review/Visitors/Signal Keeper|Visitor]]"
+      ]
+    },
+    {
+      "name": "UI selection edits preserve snapshot and all Notes",
+      "pass": true
+    },
+    {
+      "name": "Click wikilink embedded in canonical summary snapshot",
+      "pass": true,
+      "destination": "content/Review/Quay.md"
+    }
+  ]
+}

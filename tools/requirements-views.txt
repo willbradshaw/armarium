@@ -1,0 +1,2 @@
+# Temporary harness dependency; package integration belongs to #24.
+PyYAML>=6.0.2,<7

@@ -1,0 +1,14 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Clue")'
+    - 'file.folder == "campaigns/" + this.view_campaign + "/clues"'
+    - 'list(subjects).contains(this.file)'
+    - '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
+views:
+  - type: list
+    name: Active Clues
+    order: [file.name, text, status]
+    sort:
+      - property: file.name
+        direction: ASC

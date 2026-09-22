@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "NPC"
 summary: "A pilot of [[Port Briselle]] and captain of [[Wake-lark]] who settles arguments with unnerving courtesy."
 stats:
@@ -15,11 +16,9 @@ She knows [[The Red Teeth]] by the sound of surf against the sea wall. Her pract
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

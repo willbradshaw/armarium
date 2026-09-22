@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "Location"
 summary: "A terraced harbor republic where pilot guilds bargain with merchant captains."
 parent_location: "[[The Crownless Coast]]"
@@ -15,11 +16,9 @@ The harbor bell is maintained jointly by the countinghouses and the [[Free Pilot
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

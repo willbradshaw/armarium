@@ -1,5 +1,6 @@
 ---
 type: "[[types/Content]]"
+view_campaign: campaign_1
 subtype: "Location"
 summary: "A narrow working quay beneath [[Port Briselle|Briselle]]'s eastern signal tower."
 parent_location: "[[Port Briselle]]"
@@ -15,11 +16,9 @@ A stamped [[Brass Harbor Seal]] authorizes the watch to open the boom at the thi
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+Campaign: `view_campaign` (choose the campaign in Properties).
+
+![[reference/views/content-clues.base]]
 
 ## Appearances
 
