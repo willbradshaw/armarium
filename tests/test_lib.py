@@ -1,10 +1,16 @@
-"""Shared link utilities reject malformed syntax and preserve scan recovery."""
+"""Shared syntax and vault-discovery utilities."""
 
 from pathlib import Path
 
 import pytest
 
-from armarium.lib import _find_wikilink_candidates, iter_wikilinks, parse_wikilink
+from armarium.lib import (
+    _find_wikilink_candidates,
+    find_files,
+    find_vault,
+    iter_wikilinks,
+    parse_wikilink,
+)
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
 
@@ -136,3 +142,138 @@ class TestIterWikilinks:
                 if isinstance(item, ValueError)
             ]
             assert not errors, (path.relative_to(root), errors)
+
+
+class TestFindVault:
+    @pytest.mark.parametrize(
+        "target", [".", "content", "content/note.md", "content/new.md"]
+    )
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_inferred_root(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        target: str,
+        relative: bool,
+    ) -> None:
+        root = tmp_path / "vault with spaces"
+        (root / "reference/types").mkdir(parents=True)
+        (root / "campaigns").mkdir()
+        (root / "content").mkdir()
+        (root / "content/note.md").write_text("note")
+        monkeypatch.chdir(tmp_path)
+        path = root / target
+        assert (
+            find_vault(path.relative_to(tmp_path) if relative else path)
+            == root.resolve()
+        )
+
+    def test_nearest_vault(self, tmp_path: Path) -> None:
+        nested = tmp_path / "outer/nested"
+        for root in (tmp_path / "outer", nested):
+            (root / "reference/types").mkdir(parents=True)
+            (root / "campaigns").mkdir()
+        assert find_vault(nested / "note.md") == nested.resolve()
+
+    @pytest.mark.parametrize("marker", [".git", "reference/types", "campaigns"])
+    def test_incomplete_structure(self, tmp_path: Path, marker: str) -> None:
+        (tmp_path / marker).mkdir(parents=True)
+        with pytest.raises(ValueError, match="cannot infer vault"):
+            find_vault(tmp_path / "note.md")
+
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_explicit_root_without_markers(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
+    ) -> None:
+        root = tmp_path / "incomplete"
+        root.mkdir()
+        monkeypatch.chdir(tmp_path)
+        selected = Path("incomplete") if relative else root
+        assert find_vault(selected / "new.md", selected) == root.resolve()
+
+    @pytest.mark.parametrize(
+        "problem", ["missing-root", "file-root", "outside", "symlink-escape"]
+    )
+    def test_invalid_explicit_boundary(self, tmp_path: Path, problem: str) -> None:
+        root = tmp_path / "vault"
+        target = root / "note.md"
+        if problem == "file-root":
+            root.write_text("file")
+        elif problem != "missing-root":
+            root.mkdir()
+            outside = tmp_path / "outside.md"
+            outside.write_text("outside")
+            if problem == "outside":
+                target = outside
+            else:
+                target.symlink_to(outside)
+        with pytest.raises(ValueError, match="selected vault directory"):
+            find_vault(target, root)
+
+    def test_inferred_symlink_cannot_select_destination_vault(
+        self, tmp_path: Path
+    ) -> None:
+        first, second = tmp_path / "first", tmp_path / "second"
+        for root in (first, second):
+            (root / "reference/types").mkdir(parents=True)
+            (root / "campaigns").mkdir()
+        (second / "note.md").write_text("outside")
+        link = first / "note.md"
+        link.symlink_to(second / "note.md")
+        with pytest.raises(ValueError, match="escapes the inferred vault"):
+            find_vault(link)
+
+
+class TestFindFiles:
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_sorted_files_of_all_types(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
+    ) -> None:
+        names = ["z.md", "nested/Café.md", "assets/map.png", "view.base", "schema.json"]
+        for name in names:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name)
+        monkeypatch.chdir(tmp_path)
+        root = Path(".") if relative else tmp_path
+        assert find_files(root) == sorted(root / name for name in names)
+        assert all((tmp_path / name).read_text() == name for name in names)
+
+    @pytest.mark.parametrize(
+        "excluded",
+        [".git", ".obsidian", ".scratch", ".hidden", "__pycache__", "node_modules"],
+    )
+    def test_excluded_directories(self, tmp_path: Path, excluded: str) -> None:
+        directory = tmp_path / "nested" / excluded
+        directory.mkdir(parents=True)
+        (directory / "ignored.md").write_text("ignored")
+        (tmp_path / ".gitkeep").touch()
+        assert find_files(tmp_path) == []
+
+    @pytest.mark.parametrize("kind", ["file", "directory", "broken", "cycle"])
+    def test_ignores_symlinks(self, tmp_path: Path, kind: str) -> None:
+        root = tmp_path / "vault"
+        root.mkdir()
+        target = tmp_path / "target"
+        if kind == "file":
+            target.write_text("outside")
+        elif kind == "directory":
+            target.mkdir()
+            (target / "outside.md").write_text("outside")
+        elif kind == "cycle":
+            target = root
+        (root / "link").symlink_to(target)
+        assert find_files(root) == []
+
+    def test_empty_directory(self, tmp_path: Path) -> None:
+        assert find_files(tmp_path) == []
+
+    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
+    def test_invalid_root(self, tmp_path: Path, kind: str) -> None:
+        root = tmp_path / "root"
+        if kind == "file":
+            root.write_text("file")
+        elif kind == "symlink":
+            root.symlink_to(tmp_path, target_is_directory=True)
+        with pytest.raises(ValueError, match="real directory"):
+            find_files(root)

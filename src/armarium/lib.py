@@ -3,6 +3,7 @@
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 # -----------------------------------------------------------------------------
@@ -152,3 +153,75 @@ class Result:
                 findings and coverage counts alone do not fail validation.
         """
         return any(d.severity == "error" for d in self.diagnostics)
+
+
+# -----------------------------------------------------------------------------
+# Vault discovery
+# -----------------------------------------------------------------------------
+
+
+def find_vault(path: Path, explicit: Path | None = None) -> Path:
+    """Find the nearest enclosing vault or check an explicit vault boundary.
+
+    Args:
+        path: Target file or directory, absolute or relative to the working
+            directory. The target need not exist yet.
+        explicit: Optional vault directory. Explicit selection does not require
+            structural markers, so incomplete vaults can still be checked.
+
+    Returns:
+        Path: Resolved vault directory. Inference requires reference/types and
+            campaigns directories; a repository marker alone is insufficient.
+
+    Raises:
+        ValueError: No vault can be inferred, the explicit root is not a
+            directory, or the target resolves outside the selected vault.
+    """
+    target = path.absolute()
+    if explicit is not None:
+        root = explicit.resolve()
+        if not root.is_dir() or not target.resolve().is_relative_to(root):
+            raise ValueError("target must be inside the selected vault directory")
+        return root
+    # Infer from the target's location before resolving symlinks, so an escaping
+    # link cannot silently select a different vault around its destination.
+    for candidate in (target, *target.parents):
+        if (candidate / "reference/types").is_dir() and (
+            candidate / "campaigns"
+        ).is_dir():
+            root = candidate.resolve()
+            if not target.resolve().is_relative_to(root):
+                raise ValueError("target escapes the inferred vault")
+            return root
+    raise ValueError("cannot infer vault; supply --vault PATH")
+
+
+def find_files(root: Path) -> list[Path]:
+    """List visible regular files below a directory in deterministic path order.
+
+    Args:
+        root: Directory to traverse. A symlink as the starting root is rejected.
+
+    Returns:
+        list[Path]: Sorted file paths retaining the root's absolute or relative
+            form. Includes all file extensions. Hidden entries, __pycache__,
+            node_modules and all descendant symlinks are excluded.
+
+    Raises:
+        ValueError: The root is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("file discovery requires a real directory")
+    found: list[Path] = []
+    pending = [root]
+    while pending:
+        for path in pending.pop().iterdir():
+            if path.name.startswith(".") or path.is_symlink():
+                continue
+            if path.is_dir():
+                if path.name not in {"__pycache__", "node_modules"}:
+                    pending.append(path)
+            elif path.is_file():
+                found.append(path)
+    return sorted(found)
