@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Faction"
 summary: "The small company sailing the swift, underfunded cutter [[Glass Petrel]]."
 members: ["[[Talia Venn]]", "[[Esme Calder]]"]
@@ -15,8 +14,6 @@ The party consists of [[Talia Venn]] and [[Esme Calder]], operating [[Glass Petr
 The crew accepted collective custody of [[Shoal Chart]] at the pilots' hearing in [[S-1-002]]. The chart is kept in [[Glass Petrel]]'s document chest.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

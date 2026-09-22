@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Location"
 summary: "A narrow working quay beneath [[Port Briselle|Briselle]]'s eastern signal tower."
 parent_location: "[[Port Briselle]]"
@@ -15,8 +14,6 @@ A capstan controls the harbor boom beside a customs booth and three weathered mo
 A stamped [[Brass Harbor Seal]] authorizes the watch to open the boom at the third bell; [[Glass Petrel Crew|the crew]] confirmed this procedure in [[S-1-001]] (see [[C-1-0001]]).
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

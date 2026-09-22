@@ -33,10 +33,11 @@ use its embedded view; opening a `.base` directly has no containing-note context
 
 - **Clue index:** Active is Pending/Hinted; Closed is Revealed/Abandoned/Dormant/
   Superseded. Sorted by ID. Its containing `campaigns/campaign_N/` folder sets scope.
-- **Content → Active Clues:** set `view_campaign` in Properties to `campaign_1`,
-  `campaign_2`, etc. This is a display choice, not ownership or campaign history.
-  Only canonical `subjects` and active status select Clues. Shared Content stays
-  in one file; switching the display does not change either campaign's history.
+- **Content → Active Clues:** scope follows the Content note’s location. World-level
+  `content/` items show active clues from all campaigns; items inside
+  `campaigns/campaign_N/` show only that campaign. Subfolders inherit the same
+  scope. Only canonical `subjects` and active status select Clues; no selector
+  property is needed. Clues must be directly in a campaign’s `clues/` folder.
 - **Clue → Sessions:** the Clue's folder selects the campaign. Only Session records
   directly in its `sessions/` folder with the matching campaign link appear,
   ordered by date, numeric session number, then filename. A mention in preparation

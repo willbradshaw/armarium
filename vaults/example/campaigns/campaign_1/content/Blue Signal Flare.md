@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Object"
 summary: "A blue-burning signal charge wrapped in waxed cloth."
 campaign_1:
@@ -13,8 +12,6 @@ campaign_1:
 When fired, the charge produced a blue light visible across the harbor. It was expended during the departure from [[Quay Nine]] in [[S-1-002]].
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

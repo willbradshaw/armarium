@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Object"
 summary: "A brass stamp granting one vessel passage through [[Port Briselle|Briselle]]'s night boom."
 campaign_1:
@@ -15,8 +14,6 @@ The face shows a bell above three waves. It accompanies the written [[harbor-pas
 The stamp is reusable; the signed permission names the vessel and crossing.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Faction"
 summary: "An association of harbor pilots that keeps [[Port Briselle|Briselle]]'s channel knowledge outside countinghouse control."
 members: ["[[Captain Mara Vey]]"]
@@ -15,8 +14,6 @@ The Assembly maintains channel markers, arbitrates pilot fees and supplies witne
 During [[S-1-002]], the Assembly publicly certified [[Glass Petrel Crew|the crew]]'s petition and released [[Shoal Chart]] into its custody.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

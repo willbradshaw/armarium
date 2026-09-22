@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Faction"
 summary: "A ship-financing house in [[Port Briselle]] that lends against vessels and future cargoes."
 members:
@@ -20,8 +19,6 @@ repair advance. The [[Glass Petrel Crew]] disputed the charge. The subsequent
 hearing certified the party's right to contest the sale; it did not settle the debt.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

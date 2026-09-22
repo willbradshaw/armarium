@@ -2,7 +2,8 @@ filters:
   and:
     - 'file.ext == "md"'
     - 'type == link("reference/types/Clue")'
-    - 'file.folder == "campaigns/" + this.view_campaign + "/clues"'
+    - 'file.folder == "campaigns/" + file.folder.split("/")[1] + "/clues"'
+    - 'this.file.inFolder("content") || (this.file.inFolder("campaigns") && file.folder.split("/")[1] == this.file.folder.split("/")[1])'
     - 'list(subjects).contains(this.file)'
     - '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
 formulas:

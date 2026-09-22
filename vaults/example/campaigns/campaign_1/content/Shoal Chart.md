@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Object"
 summary: "A salt-stained chart of [[The Red Teeth]] with pencilled tide marks."
 campaign_1:
@@ -15,8 +14,6 @@ The chart records soundings, exposed rocks and three safe channels beyond [[Port
 Small pencilled marks appear beside two tide heights. Their meaning has not been established; [[Glass Petrel Crew|the crew]] noticed them before departure.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

@@ -47,7 +47,7 @@ class VaultArtifactTests(unittest.TestCase):
         for vault in ['starter', 'example']:
             for p in (ROOT / 'vaults' / vault).rglob('*.md'):
                 text = p.read_text()
-                self.assertNotRegex(text, r'```\s*dataview(?:js)?\b|`\s*=|armarium:prep:|Preparation snapshot|refresh_preparation')
+                self.assertNotRegex(text, r'```\s*dataview(?:js)?\b|`\s*=|armarium:prep:|Preparation snapshot|refresh_preparation|view_campaign')
         for p in (ROOT / 'vaults/starter/reference').rglob('*'):
             if p.is_file():
                 other = ROOT / 'vaults/example/reference' / p.relative_to(ROOT / 'vaults/starter/reference')

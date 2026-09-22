@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: Location
 summary: "A chain of independent harbor towns joined by trade, rivalry and a shared refusal of hereditary tolls."
 parent_location:
@@ -21,8 +20,6 @@ hearing, and a glove laid on a negotiating table announces a challenge. A challe
 may be answered with steel, a race, or terms witnessed before the harbor bell.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

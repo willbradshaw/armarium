@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "PC"
 summary: "A disgraced advocate who treats every duel as a negotiation with unusually sharp punctuation."
 player: "[[Ellis]]"
@@ -15,8 +14,6 @@ Esme lost her place in a countinghouse court after defending a crew whose wages 
 She carries an unsigned letter of reinstatement and has not decided whether it is a promise or a threat. She wants to win a public ruling that debts cannot be used to seize a working vessel without a hearing. [[Talia Venn]] can usually get her into a locked office; Esme insists on leaving with evidence rather than merely escaping.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

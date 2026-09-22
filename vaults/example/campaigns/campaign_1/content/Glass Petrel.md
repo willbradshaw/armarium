@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Object"
 summary: "A shallow-draft cutter operated by the [[Glass Petrel Crew]]."
 campaign_1:
@@ -20,8 +19,6 @@ possession. In [[S-1-002]], [[Glass Petrel Crew|the party]] sailed it out of [[P
 [[Brass Harbor Seal]] to authenticate its passage.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "PC"
 summary: "A reef diver and rigger from [[The Crownless Coast]] who turns salvage and loose rope into escape routes."
 player: "[[Rowan]]"
@@ -21,8 +20,6 @@ signed promises but takes a spoken rescue oath seriously. [[Esme Calder]] consid
 her shortcuts alarming; Talia considers [[Esme Calder|Esme]]'s paperwork a remarkably slow lockpick.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

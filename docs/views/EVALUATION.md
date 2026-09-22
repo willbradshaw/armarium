@@ -48,7 +48,11 @@ character's position against a plain-paragraph reference at 250, 600 and 1000px
 for both Text and Summary. All six cases pass; six snippet-disabled controls
 reproduce the broken flex layout. The previous row-height check alone missed this.
 
-**29 background integration checks passed.** They cover:
+**29 background integration checks passed before the Content scope revision.**
+The new folder-derived scope regression is implemented but its in-app rerun is
+pending: the isolated app had no open test window, and was not reopened to avoid
+stealing focus. Existing evidence below verifies rendering and the prior scope,
+not the new all-campaign Content filter. Previously verified checks cover:
 
 - Actual table headers match the original Dataview fields, labels and order.
 - Wikilinks within property prose render with their aliases and invoke internal
@@ -60,7 +64,10 @@ reproduce the broken flex layout. The previous row-height check alone missed thi
   manual refresh, query reset or reopening the note.
 - Preparation selection reordering, removal of the last selection, duplicate
   selections and missing/wrong-type/cross-campaign exclusions.
-- Content campaign switching and removal of its final matching subject.
+- Subject removal clears the final matching row (tested with the previous
+  single-campaign scope). The new regression additionally checks world-level
+  Content across both campaigns and nested campaign-local Content against
+  cross-campaign subject references; these scope checks await the in-app rerun.
 - All six statuses, active/closed index scope, and explicit preparation of closed
   Clues. Events-only links do not add preparation records.
 - Session date/number ordering; cross-campaign and nested Transcript/Session
@@ -135,6 +142,7 @@ run with community plugins disabled.
 
 PR #20 informed the initial filtering/selection investigation; current tests use
 current Content subtypes and canonical fields. There is no production fallback
-command to integrate with #24. For #22 / PR #28, `view_campaign` is a display
-selector and the three Session selections are ordered link arrays allowing `[]`.
+command to integrate with #24. Content scope is derived from its path; no campaign
+selector field is needed. For #22 / PR #28, the three Session selections are
+ordered link arrays allowing `[]`.
 No custom plugin, competing package, or general query framework was introduced.

@@ -46,7 +46,7 @@ def build(destination):
             ('content/Review/Empty.md', 'NPC', 'No clues target this person.'),
             ('content/Review/Events Only.md', 'NPC', 'Never explicitly selected.'),
         ]:
-            write(root, path, {'type': '[[types/Content]]', 'subtype': subtype, 'summary': summary, 'aliases': ['Review alias'], 'view_campaign': 'campaign_1', 'campaign_1': {'first_session': None, 'last_session': None}, 'campaign_2': {'first_session': None, 'last_session': None}}, content_body)
+            write(root, path, {'type': '[[types/Content]]', 'subtype': subtype, 'summary': summary, 'aliases': ['Review alias'], 'campaign_1': {'first_session': None, 'last_session': None}, 'campaign_2': {'first_session': None, 'last_session': None}}, content_body)
         for campaign in [1, 2]:
             cp = f'campaigns/campaign_{campaign}'
             if campaign == 2:
@@ -54,9 +54,10 @@ def build(destination):
                 shutil.copyfile(root / 'campaigns/campaign_1/reference/indexes/Clues.md', root / cp / 'reference/Clues.md')
                 (root / cp / 'reference/indexes').mkdir()
                 (root / cp / 'reference/Clues.md').rename(root / cp / 'reference/indexes/Clues.md')
+            write(root, cp + '/content/Review/Local Keeper.md', {'type': '[[types/Content]]', 'subtype': 'NPC', 'summary': 'A campaign-specific keeper.'}, content_body)
             for i, status in enumerate(['Pending', 'Hinted', 'Revealed', 'Abandoned', 'Dormant', 'Superseded'], 9001):
                 subject = 'content/Review/Visitors/Signal Keeper' if i == 9002 else 'content/Review/Signal Keeper'
-                write(root, f'{cp}/clues/C-{campaign}-{i}.md', {'type': '[[types/Clue]]', 'status': f'[[{status}]]', 'text': f'Campaign {campaign} candidate {i}. [[content/Review/Quay|Quay]] ' + 'Unconfirmed long text. ' * 35 + 'CLUE_TEXT_END', 'subjects': [f'[[{subject}|Keeper alias]]'], 'first_session': None, 'last_session': None}, clue_body)
+                write(root, f'{cp}/clues/C-{campaign}-{i}.md', {'type': '[[types/Clue]]', 'status': f'[[{status}]]', 'text': f'Campaign {campaign} candidate {i}. [[content/Review/Quay|Quay]] ' + 'Unconfirmed long text. ' * 35 + 'CLUE_TEXT_END', 'subjects': [f'[[{subject}|Keeper alias]]'] + (['[[campaigns/campaign_1/content/Review/Local Keeper]]', '[[campaigns/campaign_2/content/Review/Local Keeper]]'] if i == 9001 else []), 'first_session': None, 'last_session': None}, clue_body)
             for number, date in [(901, '2026-01-02'), (902, '2026-01-01'), (903, '2026-01-01')]:
                 props = {'type': '[[types/Session]]', 'campaign': f'[[{cp}/reference/Campaign]]', 'date': date, 'session_number': number, 'prepared_clues': [f'[[{cp}/clues/C-{campaign}-9002|Second]]', f'[[{cp}/clues/C-{campaign}-9001|First]]'], 'prepared_locations': ['[[content/Review/Quay]]'], 'prepared_npcs': ['[[content/Review/Visitors/Signal Keeper|Visitor]]', '[[content/Review/Signal Keeper|Keeper]]']}
                 body = session_body.replace('## Events\n- N/A', '## Events\n- Met [[content/Review/Events Only]].\n- Mentioned [[campaigns/campaign_1/clues/C-1-9001]].')

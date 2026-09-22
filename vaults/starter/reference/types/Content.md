@@ -45,8 +45,9 @@ interaction, not mentions/prep, and noteworthy PC contributions rather than
 attendance. Keep acquisition and transfer history in Session records when current
 possession changes.
 
-Set `view_campaign` to the campaign whose Active Clues you want to display
-(default `campaign_1`). This display choice does not change ownership or history.
+Active Clues follows this note’s location: world-level `content/` items include
+active clues from all campaigns; items under `campaigns/campaign_N/` include only
+that campaign. Only clues whose canonical `subjects` link to this item appear.
 See [[reference/views/README|view instructions]].
 
 ## Schema

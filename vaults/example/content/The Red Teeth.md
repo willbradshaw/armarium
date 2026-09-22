@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: Location
 summary: "A broken ridge of red reefs off [[Port Briselle|Briselle]], passable through shifting tidal channels."
 parent_location: "[[The Crownless Coast]]"
@@ -17,8 +16,6 @@ leaving [[Port Briselle]]. The reefs lie beyond the harbor authority's
 markers; pilots treat promises made there as personal obligations.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Lore"
 summary: "A compact governing vessel-seizure hearings in [[Port Briselle]]."
 campaign_1:
@@ -14,8 +13,6 @@ A vessel's captain or authorized crew representative can claim a hearing by ring
 The [[Free Pilots Assembly]] supplies a witness when countinghouse officers dispute a petition.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

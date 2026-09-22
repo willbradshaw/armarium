@@ -50,9 +50,13 @@ try{
  await edit(keeper,{summary:'Changed live summary referencing [[content/Review/Quay|the quay]].'});await waitFor(`window.armariumLiveTest.host.innerText.includes('Changed live summary')`);await record('Canonical Content summary updates live');
  await mount('prepared-locations',session);await paths(['content/Review/Quay.md']);r=await record('Location preparation');assert.deepEqual(r.headers,['Location','Description']);
  await edit(clue,{status:'[[Pending]]'});
- await mount('content-clues',keeper);await paths([clue]);r=await record('Active Clues uses canonical subjects; mixed text links render');assert.deepEqual(r.headers,['ID','Text']);assert(r.links.some(x=>x.target==='content/Review/Visitors/Signal Keeper'));
- await edit(keeper,{view_campaign:'campaign_2'});await paths(['campaigns/campaign_2/clues/C-2-9001.md']);await record('Content campaign switch updates live');
- await edit(keeper,{view_campaign:'campaign_1'});await paths([clue]);
+ await mount('content-clues',keeper);await paths([clue,'campaigns/campaign_2/clues/C-2-9001.md']);r=await record('Active Clues uses canonical subjects; mixed text links render');assert.deepEqual(r.headers,['ID','Text']);assert(r.links.some(x=>x.target==='content/Review/Visitors/Signal Keeper'));
+ await record('World-level Content includes both campaigns without a selector');
+ await mount('content-clues','campaigns/campaign_1/content/Review/Local Keeper.md');await paths([clue]);await record('Nested campaign 1 Content excludes campaign 2 despite matching subjects');
+ await mount('content-clues','campaigns/campaign_2/content/Review/Local Keeper.md');await paths(['campaigns/campaign_2/clues/C-2-9001.md']);await record('Nested campaign 2 Content excludes campaign 1 despite matching subjects');
+ await mount('content-clues',keeper);
+ await edit(clue,{subjects:[]});await paths(['campaigns/campaign_2/clues/C-2-9001.md']);await record('Removing one campaign subject leaves the other campaign visible');
+ await edit('campaigns/campaign_2/clues/C-2-9001.md',{subjects:[]});
  await edit(clue,{subjects:[]});await paths([]);await waitFor(`window.armariumLiveTest.host.querySelectorAll('.bases-tbody .bases-tr').length===0`);await record('Removing final subject clears Active Clues table');
  await mount('clue-index','campaigns/campaign_1/reference/indexes/Clues.md','Active');
  await paths(['campaigns/campaign_1/clues/C-1-0003.md','campaigns/campaign_1/clues/C-1-0004.md',clue,'campaigns/campaign_1/clues/C-1-9002.md']);r=await record('Active index campaign isolation and original columns');assert.deepEqual(r.headers,['ID','Status','Last Session','Text']);

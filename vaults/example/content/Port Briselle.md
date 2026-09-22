@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Location"
 summary: "A terraced harbor republic where pilot guilds bargain with merchant captains."
 parent_location: "[[The Crownless Coast]]"
@@ -15,8 +14,6 @@ Briselle climbs a red limestone headland above a harbor crowded with lateen sail
 The harbor bell is maintained jointly by the countinghouses and the [[Free Pilots Assembly]]. Under [[The Bell Accord]], captains can demand a public hearing before an impounded ship is sold. [[Quay Nine]] lies below the eastern signal tower.
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

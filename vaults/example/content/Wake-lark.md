@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "Object"
 summary: "A pilot cutter captained by [[Captain Mara Vey]] for the approaches to [[Port Briselle]]."
 campaign_1:
@@ -15,8 +14,6 @@ it against the cliffs. Its deck carries spare marker buoys and neatly coiled
 towing lines. [[Captain Mara Vey]] uses it to guide ships through [[The Red Teeth]].
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 

@@ -1,6 +1,5 @@
 ---
 type: "[[types/Content]]"
-view_campaign: campaign_1
 subtype: "NPC"
 summary: "A pilot of [[Port Briselle]] and captain of [[Wake-lark]] who settles arguments with unnerving courtesy."
 stats:
@@ -15,8 +14,6 @@ Mara captains the pilot cutter [[Wake-lark]] and sits in the [[Free Pilots Assem
 She knows [[The Red Teeth]] by the sound of surf against the sea wall. Her practical loyalties are to pilots whose livelihoods depend on access to [[Port Briselle]].
 
 ## Active Clues
-
-Campaign: `view_campaign` (choose the campaign in Properties).
 
 ![[reference/views/content-clues.base]]
 
