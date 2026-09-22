@@ -1,0 +1,28 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[Reference]]"
+    },
+    "body": ""
+  },
+  "cases": [
+    {
+      "name": "custom taxonomy",
+      "valid": true,
+      "frontmatter": {
+        "languages": [
+          "Common"
+        ],
+        "aliases": null
+      },
+      "body": "# Catalogue\nFree Markdown."
+    },
+    {
+      "name": "wrong type spelling",
+      "valid": false,
+      "frontmatter": {
+        "type": "[[types/Reference]]"
+      }
+    }
+  ]
+}

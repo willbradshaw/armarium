@@ -1,12 +1,15 @@
 ---
 type: "[[types/Session]]"
 date:
-campaign: "[[Campaign]]"
+campaign: "[[campaign_1/reference/Campaign]]"
 session_number:
 aliases:
 players_absent:
 in_game_start_date:
 in_game_end_date:
+prepared_clues: []
+prepared_locations: []
+prepared_npcs: []
 ---
 # Preparation
 ## Starting scene
@@ -14,18 +17,17 @@ in_game_end_date:
 ## Other scenes
 - N/A
 ## Secrets & Clues
-| ID  | Text |
-| --- | ---- |
-|     |      |
+
+![[reference/views/prepared-clues.base]]
+
 ## Locations
-| Location | Description |
-| -------- | ----------- |
-|          |             |
+
+![[reference/views/prepared-locations.base]]
+
 ## Important NPCs
 
-| Name | Summary |
-| ---- | ------- |
-|      |         |
+![[reference/views/prepared-npcs.base]]
+
 ## Scene notes
 - N/A
 ## Encounters

@@ -40,21 +40,23 @@ the entry's recorded state. Each existing block requires `first_session` and
 `last_session`: both empty before appearances, otherwise links to the earliest
 and latest Sessions in that campaign's history.
 
-Separate shared histories under headings such as `### campaign_1`. Record actual
-interaction, not mentions/prep, and noteworthy PC contributions rather than
-attendance. Keep acquisition and transfer history in Session records when current
-possession changes.
+Use one Appearances list across campaigns; the linked Session IDs identify each
+entry's campaign. Record actual interaction, not mentions/prep, and noteworthy PC
+contributions rather than attendance. Use `N/A` only when there are no appearances.
+Keep acquisition and transfer history in Session records when current possession
+changes.
 
-The included Active Clues query targets campaign 1. For another campaign, copy it
-into a separately labeled subsection and update the campaign path.
+Active Clues contains exactly one Base embed and no additional text. Its scope follows this note’s location: shared
+`content/` items include active Clues from all campaigns; items under
+`campaigns/campaign_N/` include only that campaign. Only Pending or Hinted Clues
+whose canonical `subjects` link to this item appear. Do not split Active Clues
+or Appearances into campaign subheadings.
 
 ## Schema
 
-The [Content schema](../schemas/content.schema.json) describes a parsed note as
-`{frontmatter, body}`. Fill in the subtype and required fields before treating a
-copied template as a record. The starter includes no validation command.
+A Content note’s frontmatter requires `type`, `subtype`, `summary` and the
+subtype fields listed above. Its body contains Notes, Active Clues and
+Appearances headings in that order. Each campaign block includes `first_session`
+and `last_session`; Object campaign blocks also include `held_by`.
 
-The body regex checks heading order; duplicate headings and matching headings
-inside code fences can satisfy it. Link existence, target types, campaign agreement
-and consistency with Appearances require separate vault-aware checks. Enable URI
-format assertions to check URL syntax locally.
+See the [Content schema](../schemas/content.schema.json).

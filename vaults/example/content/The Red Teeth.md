@@ -3,6 +3,9 @@ type: "[[types/Content]]"
 subtype: Location
 summary: "A broken ridge of red reefs off [[Port Briselle|Briselle]], passable through shifting tidal channels."
 parent_location: "[[The Crownless Coast]]"
+campaign_2:
+  first_session: "[[S-2-001]]"
+  last_session: "[[S-2-001]]"
 ---
 ## Notes
 
@@ -17,12 +20,8 @@ markers; pilots treat promises made there as personal obligations.
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+![[reference/views/content-clues.base]]
 
 ## Appearances
 
-- N/A
+- [[S-2-001]]: [[Darian Holt]] brought [[Tern]] into the lee of the reef while [[Bram Kest]] crossed to [[Copper Finch]] and rescued [[Oren Vale]].

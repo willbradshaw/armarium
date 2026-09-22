@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Session note",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "date",
+        "campaign",
+        "session_number",
+        "players_absent",
+        "in_game_start_date",
+        "in_game_end_date"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Session]]"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            }
+          ]
+        },
+        "campaign": {
+          "$ref": "#/$defs/wikilink"
+        },
+        "session_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aliases": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "\\S"
+              }
+            }
+          ]
+        },
+        "players_absent": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          ]
+        },
+        "in_game_start_date": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          ]
+        },
+        "in_game_end_date": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          ]
+        },
+        "prepared_clues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          },
+          "description": "Ordered selection links; omitted or empty selects nothing. Target kind and campaign require vault-aware checks."
+        },
+        "prepared_locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          },
+          "description": "Ordered selection links; omitted or empty selects nothing. Target kind and campaign require vault-aware checks."
+        },
+        "prepared_npcs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          },
+          "description": "Ordered selection links; omitted or empty selects nothing. Target kind and campaign require vault-aware checks."
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string",
+      "pattern": "(?:^|\\n)# Preparation[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Starting scene[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Other scenes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Secrets & Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Locations[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Important NPCs[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Scene notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Encounters[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Prepared rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n# Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Preamble[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Events[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Rewards[ \\t]*(?=\\r?\\n|$)",
+      "description": "Template level-one and level-two headings in order, through Rewards. Secrets & Clues, Locations and Important NPCs each contain exactly one Base embed. Other sections allow free Markdown; Loot and other subsections are optional. Duplicates and matching headings inside fenced code can satisfy these regexes. Embed target existence and view execution require separate checks.",
+      "allOf": [
+        {
+          "pattern": "(?:^|\\n)## Secrets\\ \\&\\ Clues[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Locations[ \\t]*(?=\\r?\\n|$)"
+        },
+        {
+          "pattern": "(?:^|\\n)## Locations[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Important\\ NPCs[ \\t]*(?=\\r?\\n|$)"
+        },
+        {
+          "pattern": "(?:^|\\n)## Important\\ NPCs[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Scene\\ notes[ \\t]*(?=\\r?\\n|$)"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+      "description": "Canonical wikilink without alias or anchor; target existence and kind require vault-aware checks."
+    }
+  }
+}

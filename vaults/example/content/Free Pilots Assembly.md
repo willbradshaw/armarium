@@ -6,6 +6,9 @@ members: ["[[Captain Mara Vey]]"]
 campaign_1:
   first_session: "[[S-1-002]]"
   last_session: "[[S-1-002]]"
+campaign_2:
+  first_session: "[[S-2-001]]"
+  last_session: "[[S-2-001]]"
 ---
 ## Notes
 
@@ -15,12 +18,9 @@ During [[S-1-002]], the Assembly publicly certified [[Glass Petrel Crew|the crew
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+![[reference/views/content-clues.base]]
 
 ## Appearances
 
 - [[S-1-002]]: The Assembly voted to certify the petition and entrust [[Glass Petrel Crew|the crew]] with [[Shoal Chart]].
+- [[S-2-001]]: Dispatched the [[Tern Salvage Company]] to rescue whoever remained aboard [[Copper Finch]], without awarding salvage rights.

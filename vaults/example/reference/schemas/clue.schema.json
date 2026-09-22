@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Clue note",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "status",
+        "text",
+        "subjects",
+        "first_session",
+        "last_session"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Clue]]"
+        },
+        "status": {
+          "enum": [
+            "[[Pending]]",
+            "[[Hinted]]",
+            "[[Revealed]]",
+            "[[Abandoned]]",
+            "[[Dormant]]",
+            "[[Superseded]]"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "subjects": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          ]
+        },
+        "first_session": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        },
+        "last_session": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        },
+        "superseded_by": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "[[Superseded]]"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "superseded_by"
+            ],
+            "properties": {
+              "superseded_by": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "last_session": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "last_session"
+            ]
+          },
+          "then": {
+            "properties": {
+              "first_session": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "body": {
+      "type": "string",
+      "description": "Only the Sessions heading and one Base embed; no additional prose or views. View execution and target existence require separate checks.",
+      "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+      "description": "Canonical wikilink without alias or anchor; target existence and kind require vault-aware checks."
+    }
+  }
+}

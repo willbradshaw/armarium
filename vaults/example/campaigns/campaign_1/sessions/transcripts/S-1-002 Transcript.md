@@ -21,9 +21,3 @@ session: "[[S-1-002]]"
 [Talia] I stay beside the order until the boom is clear.
 [Esme] Then I fire the blue flare. That is our signal to leave.
 [GM] The charge burns out over the harbor. The [[Glass Petrel]] turns for the gap.
-
-## Source scope
-
-This is an excerpt from the hearing and departure, not a complete transcript.
-The unattributed player line remains uncertain; the recorded character action
-belongs to Esme's following line.

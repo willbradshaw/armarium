@@ -18,6 +18,10 @@ Open the new folder in Obsidian and edit
 `campaigns/campaign_1/reference/Campaign.md`. The copy includes hidden files;
 `mkdir` prevents copying over an existing destination.
 
+Requires Obsidian **1.13.7+** with **Bases** and
+[Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)
+enabled.
+
 ## Layout
 
 | Folder | Purpose |
@@ -35,10 +39,13 @@ reference for its fields and conventions:
 [Player](vaults/starter/reference/types/Player.md), or
 [Transcript](vaults/starter/reference/types/Transcript.md).
 
-Enable Obsidian's Dataview community plugin to render the included Clue views.
-The supplied links and queries target campaign 1.
+The starter is preconfigured for a single campaign. The example includes two
+campaigns sharing setting Content, with independent campaign state and combined
+Clue and appearance lists.
 
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
 in Git. The copied vault can be its own Git repository.
+
+For schema integration and testing, see [Schema development](docs/schemas.md).
 
 Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium/issues).

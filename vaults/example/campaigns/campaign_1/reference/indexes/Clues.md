@@ -4,7 +4,7 @@ aliases:
   - Secrets
 ---
 
-Tracker for in-play clues in [[Campaign]]. Each clue lives in its own file under `campaigns/campaign_1/clues/` with a stable ID (`C-1-XXXX`).
+Tracker for in-play clues in [[campaign_1/reference/Campaign]]. Each clue lives in its own file under `campaigns/campaign_1/clues/` with a stable ID (`C-1-XXXX`).
 
 A clue is a persistent GM-known candidate fact not fully known to players. It may
 be abandoned without revelation and never become canon. Status definitions live in
@@ -13,26 +13,8 @@ be abandoned without revelation and never become canon. Status definitions live 
 
 ## Active
 
-```dataview
-TABLE WITHOUT ID
-  file.link as "ID",
-  status as "Status",
-  last_session as "Last Session",
-  text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE status != [[Revealed]] AND status != [[Abandoned]] AND status != [[Superseded]] AND status != [[Dormant]]
-SORT file.name ASC
-```
+![[reference/views/clue-index.base#Active]]
 
 ## Closed
 
-```dataview
-TABLE WITHOUT ID
-  file.link as "ID",
-  status as "Status",
-  last_session as "Last Session",
-  text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE status = [[Revealed]] OR status = [[Abandoned]] OR status = [[Superseded]] OR status = [[Dormant]]
-SORT file.name ASC
-```
+![[reference/views/clue-index.base#Closed]]

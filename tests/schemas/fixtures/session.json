@@ -1,0 +1,405 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[types/Session]]",
+      "date": null,
+      "campaign": "[[Campaign]]",
+      "session_number": 1,
+      "players_absent": null,
+      "in_game_start_date": null,
+      "in_game_end_date": null
+    },
+    "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+  },
+  "cases": [
+    {
+      "name": "played leap date",
+      "valid": true,
+      "frontmatter": {
+        "date": "2024-02-29",
+        "aliases": [],
+        "players_absent": [
+          "[[Ellis]]"
+        ],
+        "in_game_start_date": "Third bell, Day 8",
+        "in_game_end_date": "Day 9"
+      }
+    },
+    {
+      "name": "empty attendance and null aliases",
+      "valid": true,
+      "frontmatter": {
+        "players_absent": [],
+        "aliases": null
+      }
+    },
+    {
+      "name": "aliases",
+      "valid": true,
+      "frontmatter": {
+        "aliases": [
+          "The Third Bell"
+        ]
+      }
+    },
+    {
+      "name": "invalid date",
+      "valid": false,
+      "frontmatter": {
+        "date": "2026-02-29"
+      }
+    },
+    {
+      "name": "timestamp not date",
+      "valid": false,
+      "frontmatter": {
+        "date": "2026-06-05T12:00:00Z"
+      }
+    },
+    {
+      "name": "empty date",
+      "valid": false,
+      "frontmatter": {
+        "date": ""
+      }
+    },
+    {
+      "name": "numeric date",
+      "valid": false,
+      "frontmatter": {
+        "date": 20260605
+      }
+    },
+    {
+      "name": "zero session",
+      "valid": false,
+      "frontmatter": {
+        "session_number": 0
+      }
+    },
+    {
+      "name": "fractional session",
+      "valid": false,
+      "frontmatter": {
+        "session_number": 1.5
+      }
+    },
+    {
+      "name": "null number",
+      "valid": false,
+      "frontmatter": {
+        "session_number": null
+      }
+    },
+    {
+      "name": "null campaign",
+      "valid": false,
+      "frontmatter": {
+        "campaign": null
+      }
+    },
+    {
+      "name": "empty campaign",
+      "valid": false,
+      "frontmatter": {
+        "campaign": ""
+      }
+    },
+    {
+      "name": "scalar absence",
+      "valid": false,
+      "frontmatter": {
+        "players_absent": "[[Ellis]]"
+      }
+    },
+    {
+      "name": "null absence item",
+      "valid": false,
+      "frontmatter": {
+        "players_absent": [
+          null
+        ]
+      }
+    },
+    {
+      "name": "numeric fictional date",
+      "valid": false,
+      "frontmatter": {
+        "in_game_start_date": 3
+      }
+    },
+    {
+      "name": "blank fictional date",
+      "valid": false,
+      "frontmatter": {
+        "in_game_end_date": " "
+      }
+    },
+    {
+      "name": "scalar aliases",
+      "valid": false,
+      "frontmatter": {
+        "aliases": "Third Bell"
+      }
+    },
+    {
+      "name": "empty alias",
+      "valid": false,
+      "frontmatter": {
+        "aliases": [
+          ""
+        ]
+      }
+    },
+    {
+      "name": "empty body",
+      "valid": false,
+      "body": ""
+    },
+    {
+      "name": "Rewards without Loot subsection",
+      "valid": true,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\nA favor from the pilots.\n"
+    },
+    {
+      "name": "prepared_clues ordered links",
+      "frontmatter": {
+        "prepared_clues": [
+          "[[First]]",
+          "[[Second]]"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_clues empty",
+      "frontmatter": {
+        "prepared_clues": []
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_clues null",
+      "frontmatter": {
+        "prepared_clues": null
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_clues scalar",
+      "frontmatter": {
+        "prepared_clues": "[[First]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_clues nonlink",
+      "frontmatter": {
+        "prepared_clues": [
+          "First"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_locations ordered links",
+      "frontmatter": {
+        "prepared_locations": [
+          "[[First]]",
+          "[[Second]]"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_locations empty",
+      "frontmatter": {
+        "prepared_locations": []
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_locations null",
+      "frontmatter": {
+        "prepared_locations": null
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_locations scalar",
+      "frontmatter": {
+        "prepared_locations": "[[First]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_locations nonlink",
+      "frontmatter": {
+        "prepared_locations": [
+          "First"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_npcs ordered links",
+      "frontmatter": {
+        "prepared_npcs": [
+          "[[First]]",
+          "[[Second]]"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_npcs empty",
+      "frontmatter": {
+        "prepared_npcs": []
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_npcs null",
+      "frontmatter": {
+        "prepared_npcs": null
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_npcs scalar",
+      "frontmatter": {
+        "prepared_npcs": "[[First]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_npcs nonlink",
+      "frontmatter": {
+        "prepared_npcs": [
+          "First"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "Secrets & Clues missing embed",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues Dataview block",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n```dataview\nLIST\n```\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues fenced Base",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n```base\nviews: []\n```\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues inline expression",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n`= [[Example]].summary`\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues two embeds",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues extra prose",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\nCommentary\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues ordinary link",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n[[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Secrets & Clues named view",
+      "valid": true,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base#Selected]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations missing embed",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations Dataview block",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n```dataview\nLIST\n```\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations fenced Base",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n```base\nviews: []\n```\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations inline expression",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n`= [[Example]].summary`\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations two embeds",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations extra prose",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\nCommentary\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations ordinary link",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n[[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Locations named view",
+      "valid": true,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base#Selected]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs missing embed",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs Dataview block",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n```dataview\nLIST\n```\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs fenced Base",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n```base\nviews: []\n```\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs inline expression",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n`= [[Example]].summary`\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs two embeds",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\n![[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs extra prose",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base]]\nCommentary\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs ordinary link",
+      "valid": false,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n[[reference/views/prepared-npcs.base]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "Important NPCs named view",
+      "valid": true,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base#Selected]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    }
+  ]
+}

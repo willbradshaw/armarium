@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Transcript note",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "session"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Transcript]]"
+        },
+        "session": {
+          "$ref": "#/$defs/wikilink"
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string",
+      "pattern": "(?:^|\\n)## [^\\s\\r\\n][^\\r\\n]*(?=\\r?\\n)[\\s\\S]*?\\n\\[[^\\[\\]\\r\\n]+\\][ \\t]+[^\\s\\r\\n]",
+      "description": "At least one level-two content heading followed by an attributed speech line. Does not check every utterance or attribution accuracy; matching code-fence lines can satisfy it."
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+      "description": "Canonical wikilink without alias or anchor; target existence and kind require vault-aware checks."
+    }
+  }
+}

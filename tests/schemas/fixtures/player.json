@@ -1,0 +1,72 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[types/Player]]",
+      "plays": []
+    },
+    "body": ""
+  },
+  "cases": [
+    {
+      "name": "multiple PCs and free body",
+      "valid": true,
+      "frontmatter": {
+        "plays": [
+          "[[Esme Calder]]",
+          "[[Another PC]]"
+        ]
+      },
+      "body": "Any Markdown."
+    },
+    {
+      "name": "null plays",
+      "valid": false,
+      "frontmatter": {
+        "plays": null
+      }
+    },
+    {
+      "name": "scalar plays",
+      "valid": false,
+      "frontmatter": {
+        "plays": "[[Esme Calder]]"
+      }
+    },
+    {
+      "name": "empty PC",
+      "valid": false,
+      "frontmatter": {
+        "plays": [
+          ""
+        ]
+      }
+    },
+    {
+      "name": "alias link",
+      "valid": false,
+      "frontmatter": {
+        "plays": [
+          "[[Esme Calder|Esme]]"
+        ]
+      }
+    },
+    {
+      "name": "anchor link",
+      "valid": false,
+      "frontmatter": {
+        "plays": [
+          "[[Esme Calder#Notes]]"
+        ]
+      }
+    },
+    {
+      "name": "trailing newline",
+      "valid": false,
+      "frontmatter": {
+        "plays": [
+          "[[Esme Calder]]\n"
+        ]
+      }
+    }
+  ]
+}
