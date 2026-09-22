@@ -5,16 +5,18 @@ filters:
     - 'file.folder == "campaigns/" + this.view_campaign + "/clues"'
     - 'list(subjects).contains(this.file)'
     - '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
+formulas:
+  text: 'note.text'
 properties:
   file.name:
     displayName: ID
-  note.text:
+  formula.text:
     displayName: Text
 views:
   - type: table
     name: Active Clues
-    order: [file.name, text]
-    rowHeight: extra
+    order: [file.name, formula.text]
+    rowHeight: medium
     sort:
       - property: file.name
         direction: ASC

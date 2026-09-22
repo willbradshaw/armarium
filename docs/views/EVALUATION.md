@@ -38,11 +38,14 @@ actual virtualized cells could render. The harness does not open notes, change
 active tabs, show or focus windows, or take screenshots. Link navigation is
 intercepted at `openLinkText`, recording its actual target without changing tabs.
 
-**28 background integration checks passed.** They cover:
+**29 background integration checks passed.** They cover:
 
 - Actual table headers match the original Dataview fields, labels and order.
 - Wikilinks within property prose render with their aliases and invoke internal
   navigation, including fully qualified targets with duplicate basenames.
+- Rendered short-prose rows stay compact and successive lines have normal spacing.
+  Text/summary formulas read the same canonical fields but avoid nested editable
+  property widgets, whose flex layout stretched prose fragments vertically.
 - Canonical Clue text and Content summaries change in mounted tables without a
   manual refresh, query reset or reopening the note.
 - Preparation selection reordering, removal of the last selection, duplicate
@@ -88,7 +91,7 @@ explicit prerequisite; fixture generation does not download or enable plugins.
 
 ## Limits and review
 
-- Extra-height native table rows can still clip very long prose. Open the linked
+- Compact two-line native table rows can still clip very long prose. Open the linked
   source record for its full value. These DOM checks do not establish visual
   appearance at every window width, theme, or mobile device size.
 - This plugin renders embedded links; it is not a general Markdown renderer for

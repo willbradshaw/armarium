@@ -22,7 +22,7 @@ class VaultArtifactTests(unittest.TestCase):
             for view in base['views']:
                 self.assertEqual(view['type'], 'table', entry['file'])
                 fields = [field if '.' in field else 'note.' + field for field in view['order']]
-                actual = [(field, base['properties'][field]['displayName']) for field in fields]
+                actual = [(base['formulas'][field.split('.', 1)[1]] if field.startswith('formula.') else field, base['properties'][field]['displayName']) for field in fields]
                 self.assertEqual(actual, expected, entry['file'])
 
     def test_preparation_headers_match_original_tables(self):

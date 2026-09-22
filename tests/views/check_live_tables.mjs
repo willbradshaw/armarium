@@ -9,6 +9,8 @@ import {execFileSync} from 'node:child_process';
 import {connect} from './observe.mjs';
 const python=process.env.ARMARIUM_PYTHON || 'python3';
 const definitions=JSON.parse(execFileSync(python,['-c',`import json,yaml,pathlib;print(json.dumps({p.stem:yaml.safe_load(p.read_text()) for p in pathlib.Path('vaults/starter/reference/views').glob('*.base')}))`]));
+// Exercise wrapping at a bounded width instead of allowing automatic column expansion.
+definitions['prepared-clues'].views[0].columnSize={'formula.text':250};
 const o=await connect('armarium25-starter');
 const evidence={method:'Real Bases controllers mounted transparent and noninteractive in disposable vault; source edits observed without query reruns; navigation intercepted; no focus or tab changes',checks:[]};
 const originals=new Map();
@@ -32,7 +34,13 @@ try{
  await edit(clue,{text:'Meet [[content/Review/Quay|the quay]] and [[content/Review/Visitors/Signal Keeper|the visitor]].\nLiteral <b> & quotes "here".',status:'[[Revealed]]'});
  await waitFor(`window.armariumLiveTest.host.innerText.includes('the visitor')`);
  r=await record('Canonical text updates live; aliases and multiline prose');assert(r.rows.some(x=>x.includes('Literal <b> & quotes "here".')));assert(!r.rows.some(x=>x.includes('[[content/Review')));
- const clicks=await o.js(`(async()=>{const calls=[],orig=app.workspace.openLinkText;app.workspace.openLinkText=(...args)=>{calls.push(args);return Promise.resolve()};try{for(const a of window.armariumLiveTest.host.querySelectorAll('.bases-td[data-property="note.text"] .internal-link')){for(const type of ['mousedown','mouseup','click'])a.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,button:0}));}await Promise.resolve();return calls;}finally{app.workspace.openLinkText=orig;}})()`);
+ const spacing=await o.js(`(()=>{const row=[...window.armariumLiveTest.host.querySelectorAll('.bases-tbody .bases-tr')].find(r=>r.innerText.includes('the visitor'));const cell=row.querySelector('[data-property="formula.text"]');const walker=document.createTreeWalker(cell,NodeFilter.SHOW_TEXT);const tops=[];let n;while(n=walker.nextNode()){for(let i=0;i<n.length;i++){if(!n.textContent[i].trim())continue;const range=document.createRange();range.setStart(n,i);range.setEnd(n,i+1);const rect=range.getBoundingClientRect();if(rect.height)tops.push(rect.top);}}const lines=[...new Set(tops.map(y=>Math.round(y)))].sort((a,b)=>a-b);return {html:cell.innerHTML,width:cell.getBoundingClientRect().width,whiteSpace:getComputedStyle(cell.firstElementChild).whiteSpace,rowHeight:row.getBoundingClientRect().height,fontSize:parseFloat(getComputedStyle(cell).fontSize),lineTops:lines,maxLineGap:Math.max(0,...lines.slice(1).map((y,i)=>y-lines[i])),editableFragments:cell.querySelectorAll('[contenteditable="true"]').length};})()`);
+ assert(spacing.rowHeight <= spacing.fontSize*5,'Short prose should not occupy an eight-line row');
+ assert(spacing.lineTops.length >= 2,'Spacing probe must exercise wrapped prose');
+ assert(spacing.maxLineGap <= spacing.fontSize*2,'Prose fragments must flow with normal line spacing');
+ assert.equal(spacing.editableFragments,0,'Prose display must avoid nested property-editor fragments');
+ evidence.checks.push({name:'Compact rows and continuous prose layout',...spacing});
+ const clicks=await o.js(`(async()=>{const calls=[],orig=app.workspace.openLinkText;app.workspace.openLinkText=(...args)=>{calls.push(args);return Promise.resolve()};try{for(const a of window.armariumLiveTest.host.querySelectorAll('.bases-td[data-property="formula.text"] .internal-link')){for(const type of ['mousedown','mouseup','click'])a.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,button:0}));}await Promise.resolve();return calls;}finally{app.workspace.openLinkText=orig;}})()`);
  assert(clicks.some(x=>x[0]==='content/Review/Visitors/Signal Keeper'));evidence.checks.push({name:'Embedded prose links invoke internal navigation, intercepted',calls:clicks});
  await edit(session,{prepared_clues:['[[campaigns/campaign_1/clues/C-1-9001]]','[[campaigns/campaign_1/clues/C-1-9002|Second]]']});
  await paths([clue,'campaigns/campaign_1/clues/C-1-9002.md']);await record('Selection reorder updates live');

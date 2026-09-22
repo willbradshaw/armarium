@@ -50,9 +50,11 @@ All views are tables, preserving the original columns and their order:
 | Preparation Locations | Location, Description |
 | Preparation Important NPCs | Name, Summary |
 
-Session number is a sort tie-breaker, not a displayed column. Clue text tables use
-extra-height rows; very long values may still be clipped. Open the source record
-for the full value. Frontmatter Markdown Links makes wikilinks inside Text, Description and Summary
+Session number is a sort tie-breaker, not a displayed column. Prose tables use compact two-line rows; very long values may still be clipped.
+Open the source record for the full value, or increase the row height in the view
+settings. Text, Description and Summary are read-only displays of the same
+canonical fields; edit these fields in the source note. This avoids the plugin
+spreading editable prose fragments across the height of a cell. Frontmatter Markdown Links makes wikilinks inside Text, Description and Summary
 cells clickable. The ID, status and Session link cells use native Bases links. Candidate facts remain
 candidates even when displayed on a Content page. Missing or unknown statuses
 appear in neither index; fix the source rather than treating them as active.
@@ -60,7 +62,7 @@ appear in neither index; fix the source rather than treating them as active.
 Source and selection edits update the tables live. Preparation reads current
 canonical values even when viewing a past Session; record historical facts in
 Events or Scene notes when they need to remain fixed.
-Editing a Clue through a view edits its canonical note.
+Editing an editable property such as Status changes the canonical note.
 Keep campaign records directly in their prescribed folders. For another campaign,
 copy the index into its `reference/indexes/` folder; the same Bases definitions work.
 Clue templates get scope when moved to `campaigns/campaign_N/clues/`.
@@ -92,4 +94,4 @@ To add/remove preparation, edit the lists. Use Source mode to reorder them.
 Removing a selection does not delete Content. To carry forward, create the next
 Session from the template and copy only the desired lists. Do not copy previous
 Events or Loot. Put instructions and session-specific variations in Scene notes,
-not in source summaries. Editing a displayed property changes the canonical note.
+not in source summaries. Edit preparation text and summaries in their source notes.
