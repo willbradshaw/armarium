@@ -1,0 +1,60 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[types/Transcript]]",
+      "session": "[[S-1-001]]"
+    },
+    "body": "## Opening\n\n[GM] Welcome.\n"
+  },
+  "cases": [
+    {
+      "name": "uncertain speaker and source notes",
+      "valid": true,
+      "body": "## Opening\n[?] What?\n\n## Source scope\nAn excerpt."
+    },
+    {
+      "name": "null session",
+      "valid": false,
+      "frontmatter": {
+        "session": null
+      }
+    },
+    {
+      "name": "empty session",
+      "valid": false,
+      "frontmatter": {
+        "session": ""
+      }
+    },
+    {
+      "name": "empty body",
+      "valid": false,
+      "body": ""
+    },
+    {
+      "name": "missing heading",
+      "valid": false,
+      "body": "[GM] Welcome."
+    },
+    {
+      "name": "missing speech",
+      "valid": false,
+      "body": "## Opening\nNotes only."
+    },
+    {
+      "name": "speech before heading",
+      "valid": false,
+      "body": "[GM] Welcome.\n## Opening\n"
+    },
+    {
+      "name": "blank speech",
+      "valid": false,
+      "body": "## Opening\n\n[GM]  \n"
+    },
+    {
+      "name": "empty speaker",
+      "valid": false,
+      "body": "## Opening\n\n[] Welcome."
+    }
+  ]
+}

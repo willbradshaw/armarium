@@ -1,0 +1,169 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[types/Clue]]",
+      "status": "[[Pending]]",
+      "text": "A candidate fact.",
+      "subjects": null,
+      "first_session": null,
+      "last_session": null
+    },
+    "body": "## Sessions\n```dataview\nLIST\n```\n"
+  },
+  "cases": [
+    {
+      "name": "prepared only",
+      "valid": true,
+      "frontmatter": {
+        "first_session": "[[S-1-003]]",
+        "subjects": []
+      }
+    },
+    {
+      "name": "in play",
+      "valid": true,
+      "frontmatter": {
+        "status": "[[Hinted]]",
+        "subjects": [
+          "[[Shoal Chart]]"
+        ],
+        "first_session": "[[S-1-002]]",
+        "last_session": "[[S-1-002]]"
+      }
+    },
+    {
+      "name": "replacement",
+      "valid": true,
+      "frontmatter": {
+        "status": "[[Superseded]]",
+        "superseded_by": "[[C-1-0005]]"
+      }
+    },
+    {
+      "name": "optional replacement null",
+      "valid": true,
+      "frontmatter": {
+        "superseded_by": null
+      }
+    },
+    {
+      "name": "alternate view",
+      "valid": true,
+      "body": "\n## Sessions\n\n~~~dataviewjs\ndv.list([]);\n~~~\n"
+    },
+    {
+      "name": "blank text",
+      "valid": false,
+      "frontmatter": {
+        "text": "  \n"
+      }
+    },
+    {
+      "name": "empty text",
+      "valid": false,
+      "frontmatter": {
+        "text": ""
+      }
+    },
+    {
+      "name": "unknown status",
+      "valid": false,
+      "frontmatter": {
+        "status": "[[Open]]"
+      }
+    },
+    {
+      "name": "scalar subjects",
+      "valid": false,
+      "frontmatter": {
+        "subjects": "[[Shoal Chart]]"
+      }
+    },
+    {
+      "name": "empty subject",
+      "valid": false,
+      "frontmatter": {
+        "subjects": [
+          "[[]]"
+        ]
+      }
+    },
+    {
+      "name": "last without first",
+      "valid": false,
+      "frontmatter": {
+        "last_session": "[[S-1-002]]"
+      }
+    },
+    {
+      "name": "missing replacement",
+      "valid": false,
+      "frontmatter": {
+        "status": "[[Superseded]]"
+      }
+    },
+    {
+      "name": "null replacement",
+      "valid": false,
+      "frontmatter": {
+        "status": "[[Superseded]]",
+        "superseded_by": null
+      }
+    },
+    {
+      "name": "prose before",
+      "valid": false,
+      "body": "Commentary\n## Sessions\n```dataview\nLIST\n```"
+    },
+    {
+      "name": "prose after",
+      "valid": false,
+      "body": "## Sessions\n```dataview\nLIST\n```\nCommentary"
+    },
+    {
+      "name": "extra heading",
+      "valid": false,
+      "body": "## Sessions\n```dataview\nLIST\n```\n## Notes"
+    },
+    {
+      "name": "two views",
+      "valid": false,
+      "body": "## Sessions\n```dataview\nLIST\n```\n```dataview\nLIST\n```"
+    },
+    {
+      "name": "empty view",
+      "valid": false,
+      "body": "## Sessions\n```dataview\n\n```"
+    },
+    {
+      "name": "missing view",
+      "valid": false,
+      "body": "## Sessions\n"
+    },
+    {
+      "name": "unclosed fence",
+      "valid": false,
+      "body": "## Sessions\n```dataview\nLIST\n"
+    },
+    {
+      "name": "mismatched fence",
+      "valid": false,
+      "body": "## Sessions\n```dataview\nLIST\n~~~\n"
+    },
+    {
+      "name": "indented fence",
+      "valid": true,
+      "body": "## Sessions\n  ```dataview\nLIST\n  ```\n"
+    },
+    {
+      "name": "prose after indented closing fence",
+      "valid": false,
+      "body": "## Sessions\n```dataview\nLIST\n  ```\nCommentary\n```\n"
+    },
+    {
+      "name": "duplicate Sessions heading",
+      "valid": false,
+      "body": "## Sessions\n## Sessions\n```dataview\nLIST\n```\n"
+    }
+  ]
+}

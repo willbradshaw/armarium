@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Player note",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body. See README.md for normalization, mapping and validation limits.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "plays"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Player]]"
+        },
+        "plays": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+      "description": "Canonical wikilink without alias or anchor; target existence and kind require vault-aware checks."
+    }
+  }
+}

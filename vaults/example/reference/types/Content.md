@@ -52,7 +52,7 @@ into a separately labeled subsection and update the campaign path.
 
 The [Content schema](../schemas/content.schema.json) describes a parsed note as
 `{frontmatter, body}`. Fill in the subtype and required fields before treating a
-copied template as a record. The starter includes no validation command.
+copied template as a record. See the [parsed-note contract and standalone schema checks](../schemas/README.md).
 
 The body regex checks heading order; duplicate headings and matching headings
 inside code fences can satisfy it. Link existence, target types, campaign agreement

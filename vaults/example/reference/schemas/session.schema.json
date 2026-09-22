@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Session note",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body. See README.md for normalization, mapping and validation limits.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "date",
+        "campaign",
+        "session_number",
+        "players_absent",
+        "in_game_start_date",
+        "in_game_end_date"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Session]]"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            }
+          ]
+        },
+        "campaign": {
+          "$ref": "#/$defs/wikilink"
+        },
+        "session_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aliases": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "\\S"
+              }
+            }
+          ]
+        },
+        "players_absent": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          ]
+        },
+        "in_game_start_date": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          ]
+        },
+        "in_game_end_date": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "\\S"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string",
+      "pattern": "(?:^|\\n)# Preparation[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Starting scene[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Other scenes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Secrets & Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Locations[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Important NPCs[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Scene notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Encounters[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Prepared rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n# Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Preamble[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Events[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n### Loot[ \\t]*(?=\\r?\\n|$)",
+      "description": "Template headings in order, with unconstrained Markdown between them. Duplicates and matching lines inside code fences can satisfy this regex."
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+      "description": "Canonical wikilink without alias or anchor; target existence and kind require vault-aware checks."
+    }
+  }
+}

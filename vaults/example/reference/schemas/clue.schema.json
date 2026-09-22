@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Clue note",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body. See README.md for normalization, mapping and validation limits.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "status",
+        "text",
+        "subjects",
+        "first_session",
+        "last_session"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Clue]]"
+        },
+        "status": {
+          "enum": [
+            "[[Pending]]",
+            "[[Hinted]]",
+            "[[Revealed]]",
+            "[[Abandoned]]",
+            "[[Dormant]]",
+            "[[Superseded]]"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "subjects": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          ]
+        },
+        "first_session": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        },
+        "last_session": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        },
+        "superseded_by": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/wikilink"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "[[Superseded]]"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "superseded_by"
+            ],
+            "properties": {
+              "superseded_by": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "last_session": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "last_session"
+            ]
+          },
+          "then": {
+            "properties": {
+              "first_session": {
+                "$ref": "#/$defs/wikilink"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "body": {
+      "type": "string",
+      "anyOf": [
+        {
+          "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*[ ]{0,3}```[^\\r\\n`~]*\\r?\\n(?!(?:[ \\t]*\\r?\\n)*[ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))(?:(?![ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))[^\\r\\n]*\\r?\\n)+[ ]{0,3}```[ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
+        },
+        {
+          "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*[ ]{0,3}~~~[^\\r\\n`~]*\\r?\\n(?!(?:[ \\t]*\\r?\\n)*[ ]{0,3}~{3,}[ \\t]*(?:\\r?\\n|$))(?:(?![ ]{0,3}~{3,}[ \\t]*(?:\\r?\\n|$))[^\\r\\n]*\\r?\\n)+[ ]{0,3}~~~[ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
+        }
+      ],
+      "description": "Only the Sessions heading and one fenced view; no prose outside it. Accepts backtick or tilde fences, without fixing a query or language. Does not execute or establish that the fenced text is a functioning view."
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+      "description": "Canonical wikilink without alias or anchor; target existence and kind require vault-aware checks."
+    }
+  }
+}
