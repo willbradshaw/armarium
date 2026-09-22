@@ -7,12 +7,17 @@ from test_intrafile import VALID, write
 from armarium.validation import validate
 
 
+def session_body(vault: Path) -> str:
+    return (vault / "reference/templates/Session.md").read_text().split("---", 2)[2]
+
+
 def sessions(vault: Path) -> None:
     for number in (1, 2):
         path = vault / f"campaigns/campaign_1/sessions/S-1-{number:03}.md"
         path.write_text(
             f'---\ntype: "[[types/Session]]"\nsession_number: {number}\n'
-            'campaign: "[[Campaign]]"\n---\n'
+            'campaign: "[[Campaign]]"\ndate:\naliases:\nplayers_absent:\n'
+            "in_game_start_date:\nin_game_end_date:\n---\n" + session_body(vault)
         )
 
 

@@ -14,6 +14,7 @@ jobs:
       - run: mypy src
       - run: pytest
       - run: python -m build
+      - run: python scripts/check_wheel.py
       - name: Validate every shipped vault
         run: |
           python - <<'PY'

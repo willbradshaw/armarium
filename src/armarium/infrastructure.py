@@ -4,8 +4,11 @@ import re
 from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
+from referencing.exceptions import NoSuchResource, Unresolvable
 
+from armarium.index import VaultIndex
 from armarium.lib import Diagnostic
+from armarium.markdown import links
 from armarium.schemas import Schemas
 
 ROOT_DIRS = (
@@ -29,7 +32,7 @@ TYPES = ("Content", "Clue", "Session", "Transcript", "Player", "Reference")
 STATUSES = ("Pending", "Hinted", "Revealed", "Abandoned", "Dormant", "Superseded")
 
 
-def check(root: Path) -> list[Diagnostic]:
+def check(root: Path, index: VaultIndex) -> list[Diagnostic]:
     """Require current infrastructure while allowing arbitrary extra folders."""
     diagnostics: list[Diagnostic] = []
 
@@ -55,6 +58,41 @@ def check(root: Path) -> list[Diagnostic]:
             required(f"reference/templates/{kind}.md")
     for status in STATUSES:
         required(f"reference/statuses/{status}.md")
+    for kind in TYPES:
+        if kind == "Reference":
+            continue
+        path = root / "reference/templates" / f"{kind}.md"
+        if path.is_file():
+            note, _ = index.note(path)
+            if note and note.kind != kind:
+                diagnostics.append(
+                    Diagnostic(
+                        path.relative_to(root).as_posix(),
+                        "vault.template",
+                        f"template must declare {kind} type",
+                    )
+                )
+    for status in STATUSES:
+        path = root / "reference/statuses" / f"{status}.md"
+        if path.is_file():
+            note, _ = index.note(path)
+            if note:
+                value = note.frontmatter.get("applies_to")
+                targets = links(value) if isinstance(value, str) else []
+                target, _ = (
+                    index.resolve(targets[0], path)
+                    if len(targets) == 1
+                    else (None, None)
+                )
+                if target != root / "reference/types/Clue.md":
+                    diagnostics.append(
+                        Diagnostic(
+                            path.relative_to(root).as_posix(),
+                            "vault.status",
+                            "shipped Clue status must apply to types/Clue",
+                            field="applies_to",
+                        )
+                    )
     required("reference/schemas/content.schema.json")
     campaigns = root / "campaigns"
     children = sorted(campaigns.iterdir()) if campaigns.is_dir() else []
@@ -79,8 +117,15 @@ def check(root: Path) -> list[Diagnostic]:
     schemas = Schemas(root)
     for path in sorted(schemas.directory.glob("*.json")):
         try:
-            schemas.read(path)
-        except (OSError, ValueError, SchemaError) as exc:
+            schemas.registry(path)
+        except (
+            OSError,
+            ValueError,
+            SchemaError,
+            Unresolvable,
+            NoSuchResource,
+            RecursionError,
+        ) as exc:
             diagnostics.append(
                 Diagnostic(
                     path.relative_to(root).as_posix(), "schema.invalid", str(exc)

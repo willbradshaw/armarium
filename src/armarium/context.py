@@ -79,7 +79,14 @@ def check(note: Note, index: VaultIndex) -> list[Diagnostic]:
         for _, text in values(value):
             for target in links(text):
                 path, _ = index.resolve(target, note.path)
-                if path is not None and path.suffix.lower() == ".md":
+                if path is not None:
+                    if path.suffix.lower() != ".md":
+                        error(
+                            "target.kind",
+                            "relationship target must be a Markdown record",
+                            field,
+                        )
+                        continue
                     parsed, _ = index.note(path)
                     if parsed is not None:
                         result.append(parsed)

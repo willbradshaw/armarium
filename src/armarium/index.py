@@ -23,14 +23,16 @@ class VaultIndex:
             for name in names:
                 parts = name.split("/")
                 for offset in range(len(parts)):
-                    key = unicodedata.normalize("NFC", "/".join(parts[offset:]))
+                    key = unicodedata.normalize(
+                        "NFC", "/".join(parts[offset:])
+                    ).casefold()
                     self.targets.setdefault(key, set()).add(path)
 
     def resolve(self, target: str, source: Path) -> tuple[Path | None, str | None]:
         """Return a single file or a stable missing/ambiguous rule identifier."""
         if not target:
             return source, None
-        key = unicodedata.normalize("NFC", target.removeprefix("/"))
+        key = unicodedata.normalize("NFC", target.removeprefix("/")).casefold()
         candidates = self.targets.get(key, set())
         if len(candidates) == 1:
             return next(iter(candidates)), None

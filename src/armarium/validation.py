@@ -8,7 +8,9 @@ from armarium.discovery import files, find_vault
 from armarium.index import VaultIndex
 from armarium.infrastructure import check as check_infrastructure
 from armarium.lib import Diagnostic, Result
+from armarium.relationships import check as check_relationships
 from armarium.schemas import Schemas
+from armarium.structure import check as check_structure
 
 
 def validate_file(path: Path, index: VaultIndex) -> Result:
@@ -51,6 +53,8 @@ def validate_file(path: Path, index: VaultIndex) -> Result:
     if note is not None and not relative.startswith("reference/templates/"):
         result.diagnostics.extend(check(note, index))
         result.diagnostics.extend(check_consistency(note, index))
+        result.diagnostics.extend(check_structure(note, index))
+        result.diagnostics.extend(check_relationships(note, index))
     result.diagnostics.sort()
     return result
 
@@ -81,6 +85,6 @@ def validate(path: Path, vault: Path | None = None) -> Result:
         result.skipped += partial.skipped
         result.unsupported += partial.unsupported
     if path == root:
-        result.diagnostics.extend(check_infrastructure(root))
+        result.diagnostics.extend(check_infrastructure(root, index))
     result.diagnostics.sort()
     return result

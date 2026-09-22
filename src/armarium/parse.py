@@ -144,6 +144,8 @@ def parse(path: Path, root: Path) -> tuple[Note | None, list[Diagnostic]]:
     """
     relative = path.relative_to(root).as_posix()
     try:
+        if not path.resolve().is_relative_to(root.resolve()):
+            raise ValueError("note escapes the vault boundary")
         text = path.read_text(encoding="utf-8-sig")
         lines = text.splitlines(keepends=True)
         if not lines or lines[0].strip() != "---":
@@ -157,7 +159,7 @@ def parse(path: Path, root: Path) -> tuple[Note | None, list[Diagnostic]]:
         if not isinstance(data, dict):
             raise ValueError("frontmatter must be a mapping")
         return Note(path, data, "".join(lines[end + 1 :]), end + 2), []
-    except (OSError, UnicodeError, yaml.YAMLError, ValueError) as exc:
+    except (OSError, UnicodeError, yaml.YAMLError, ValueError, RecursionError) as exc:
         # PyYAML counts from zero within the frontmatter slice. Add two for
         # one-based file lines and the opening --- delimiter omitted above.
         mark = getattr(exc, "problem_mark", None)

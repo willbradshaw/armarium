@@ -3,7 +3,8 @@
 Install with `python -m pip install .`, then run `armarium validate PATH` from
 any directory. Supply `--vault PATH` when vault context cannot be inferred.
 Single-file checks include YAML, available schemas, canonical link resolution,
-placement, identity, target kinds and campaign agreement. Directory targets recursively check Markdown descendants with whole-vault context. It never writes to the target.
+placement, identity, target kinds and campaign agreement. Directory targets check
+Markdown descendants with whole-vault context. Validation never writes to the target.
 
 Scans continue after malformed files and sort diagnostics by relative location/rule.
 Counts distinguish checked records, skipped forms/untyped pages and unsupported
@@ -51,3 +52,15 @@ Empty histories are valid. Clue subjects must equal canonical Content targets in
 preparation/introduction, so they are not reconciled with Content appearances.
 Preparation-only and abandoned Clues remain valid. Mentions and PC attendance never
 create appearances. The advisory Session review report remains separate (#16).
+
+
+The [source coverage audit](validation-audit.md) records each source rule, its
+implementation or exclusion, and remaining gaps. Comprehensive schemas for other
+types remain in [#22](https://github.com/willbradshaw/armarium/issues/22); anchor
+existence in [#37](https://github.com/willbradshaw/armarium/issues/37); Transcript
+attribution and Clue view/text/lifecycle decisions in
+[#36](https://github.com/willbradshaw/armarium/issues/36). Non-Content records receive
+template-key and selected structural checks alongside context, with partial schema
+coverage reported explicitly. Session/Clue/Transcript identity, canonical ledgers,
+replacement and Location cycles, campaign isolation and table link escaping are
+checked without imposing game-system or prose rules.

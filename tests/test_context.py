@@ -10,7 +10,12 @@ from armarium.validation import validate
 
 def context_rules(path: Path) -> set[str]:
     """Context assertions remain focused as later stages add history rules."""
-    return {rule for rule in rules(path) if not rule.startswith("history.")}
+    return {
+        rule
+        for rule in rules(path)
+        if rule not in {"record.required", "body.headings", "relationship.cycle"}
+        and not rule.startswith("history.")
+    }
 
 
 def rules(path: Path) -> set[str]:
