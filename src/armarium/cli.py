@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from armarium.logging import configure_logging
-from armarium.validate import validate_markdown
+from armarium.validate import ValidationError, validate_markdown
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -42,23 +42,25 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main() -> int:
+def main() -> None:
     """Run the command from process arguments and log its validation result.
 
-    Returns:
-        int: 0 for no validation errors, including explicit skips and partial
-            coverage; 1 for validation errors. Execution exceptions propagate
-            normally. Findings and counts are logged to standard error.
-
     Raises:
+        ValidationError: One or more files failed validation, after reporting
+            all diagnostics and coverage counts.
         SystemExit: Argument parsing exits with 0 for help or 2 for usage errors.
     """
     args = parse_args()
     configure_logging()
     result = validate_markdown(args.path, args.vault)
     result.report()
-    return int(result.failed)
+    if result.failed:
+        failed_files = len(
+            {d.path for d in result.diagnostics if d.severity == "error"}
+        )
+        noun = "file" if failed_files == 1 else "files"
+        raise ValidationError(f"{failed_files} {noun} failed validation")
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

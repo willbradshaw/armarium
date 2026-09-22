@@ -30,9 +30,8 @@ class _LogFormatter(logging.Formatter):
 def configure_logging() -> None:
     """Configure this command's logger to emit timestamped messages to stderr.
 
-    Returns:
-        None: Replace this logger's handlers so repeated main calls do not
-            duplicate output. Other application loggers are left unchanged.
+    Replace this logger's handlers so repeated calls do not duplicate output.
+    Other application loggers are left unchanged.
     """
     handler = logging.StreamHandler()
     handler.setFormatter(_LogFormatter("[%(asctime)s] %(levelname)s: %(message)s"))

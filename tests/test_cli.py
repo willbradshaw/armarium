@@ -10,7 +10,9 @@ from pathlib import Path
 import pytest
 
 from armarium.cli import main, parse_args
+from armarium.lib import Diagnostic, Result
 from armarium.logging import logger
+from armarium.validate import ValidationError
 
 
 @pytest.fixture
@@ -87,7 +89,11 @@ class TestMain:
         path.write_text(text)
         before = path.read_bytes()
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(path)])
-        assert main() == status
+        if status:
+            with pytest.raises(ValidationError, match="^1 file failed validation$"):
+                main()
+        else:
+            assert main() is None
         output = capsys.readouterr()
         assert output.out == ""
         assert output.err.endswith("INFO: " + counts + "\n")
@@ -111,7 +117,7 @@ class TestMain:
         monkeypatch.setattr(
             sys, "argv", ["armarium", "validate", str(path), "--vault", str(tmp_path)]
         )
-        assert main() == 0
+        assert main() is None
         assert "1 unsupported" in capsys.readouterr().err
 
     @pytest.mark.parametrize(
@@ -132,6 +138,28 @@ class TestMain:
         assert exc.value is error
         output = capsys.readouterr()
         assert output.out == output.err == ""
+
+    @pytest.mark.parametrize("files", [1, 2])
+    def test_failure_counts_distinct_files(
+        self, monkeypatch: pytest.MonkeyPatch, files: int
+    ) -> None:
+        from unittest.mock import Mock
+
+        findings = [
+            Diagnostic(f"{index}.md", rule, "Invalid")
+            for index in range(files)
+            for rule in ("first", "second")
+        ] + [Diagnostic("warning.md", "warning", "Warning", severity="warning")]
+        monkeypatch.setattr(
+            "armarium.cli.validate_markdown",
+            Mock(return_value=Result(findings, checked=files + 1)),
+        )
+        monkeypatch.setattr(sys, "argv", ["armarium", "validate", "note.md"])
+        noun = "file" if files == 1 else "files"
+        with pytest.raises(
+            ValidationError, match=f"^{files} {noun} failed validation$"
+        ):
+            main()
 
     @pytest.mark.parametrize("scenario", ["valid", "invalid", "missing"])
     def test_module_entry_point(
@@ -159,6 +187,11 @@ class TestMain:
             assert "ValueError:" in process.stderr
         else:
             assert "INFO: 1 checked, 0 skipped, 0 unsupported" in process.stderr
+        if scenario == "invalid":
+            assert "Traceback" in process.stderr
+            assert process.stderr.rstrip().endswith(
+                "ValidationError: 1 file failed validation"
+            )
         assert process.stdout == ""
 
 

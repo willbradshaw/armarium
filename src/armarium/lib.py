@@ -130,11 +130,7 @@ class Diagnostic:
     severity: Literal["error", "warning", "info"] = "error"
 
     def report(self) -> None:
-        """Log this finding with its severity and available source location.
-
-        Returns:
-            None: Emit one record through the Armarium logger.
-        """
+        """Log this finding with its severity and available source location."""
         levels = {
             "error": logging.ERROR,
             "warning": logging.WARNING,
@@ -168,11 +164,7 @@ class Result:
     unsupported: int = 0
 
     def report(self) -> None:
-        """Report each finding in order, then log coverage counts at INFO.
-
-        Returns:
-            None: Emit findings and counts through the Armarium logger.
-        """
+        """Report each finding in order, then log coverage counts at INFO."""
         for diagnostic in self.diagnostics:
             diagnostic.report()
         logger.info(

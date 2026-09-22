@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 import yaml
 
-from armarium.validate import validate_markdown
+from armarium.validate import ValidationError, validate_markdown
 
 
 @pytest.fixture
@@ -339,3 +339,10 @@ class TestValidateMarkdown:
         result = validate_markdown(path)
         assert result.failed and result.checked == 1 and result.skipped == 0
         assert result.diagnostics[0].rule == "schema.instance"
+
+
+class TestValidationError:
+    def test_preserves_message(self) -> None:
+        error = ValidationError("2 files failed validation")
+        assert isinstance(error, Exception)
+        assert str(error) == "2 files failed validation"

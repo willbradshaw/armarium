@@ -7,6 +7,10 @@ from armarium.parse import Note
 from armarium.schemas import select_schema
 
 
+class ValidationError(Exception):
+    """A completed validation run contains errors."""
+
+
 def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     """Parse and schema-validate one supplied Markdown file.
 
