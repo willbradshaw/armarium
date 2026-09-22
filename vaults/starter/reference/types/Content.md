@@ -48,7 +48,6 @@ possession changes.
 Active Clues follows this note’s location: world-level `content/` items include
 active clues from all campaigns; items under `campaigns/campaign_N/` include only
 that campaign. Only clues whose canonical `subjects` link to this item appear.
-See [[reference/views/README|view instructions]].
 
 ## Schema
 

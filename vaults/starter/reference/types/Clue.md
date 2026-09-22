@@ -5,6 +5,5 @@ property. The body contains only the Sessions heading and its embedded view, wit
 additional commentary.
 
 Store records under `campaigns/campaign_1/clues/`, named `C-1-0001.md`,
-`C-1-0002.md`, etc. For another campaign, update the path, campaign number in the
+`C-1-0002.md`, etc. For another campaign, update the path and campaign number in the
 filename; the Sessions view derives its scope from the containing campaign folder.
-See [[reference/views/README|view instructions]].

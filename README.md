@@ -18,6 +18,10 @@ Open the new folder in Obsidian and edit
 `campaigns/campaign_1/reference/Campaign.md`. The copy includes hidden files;
 `mkdir` prevents copying over an existing destination.
 
+Requires Obsidian **1.13.7+** with **Bases** and
+[Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)
+enabled. Keep the bundled **armarium-prose** CSS snippet enabled for linked text.
+
 ## Layout
 
 | Folder | Purpose |
@@ -34,15 +38,6 @@ reference for its fields and conventions:
 [Session](vaults/starter/reference/types/Session.md),
 [Player](vaults/starter/reference/types/Player.md), or
 [Transcript](vaults/starter/reference/types/Transcript.md).
-
-Use Obsidian **1.13.7+**, enable the **Bases** core plugin, and install **and enable**
-**Frontmatter Markdown Links** by **mnaoumov** in Settings → Community plugins.
-This community plugin makes wikilinks inside table text clickable. Enable it in
-each new or copied vault; Armarium does not bundle plugin code. Keep the included
-**armarium-prose** CSS snippet enabled under Settings → Appearance for normal
-spacing around links. Clue views and preparation tables update live from canonical
-fields and selected records.
-See [view setup and instructions](vaults/starter/reference/views/README.md).
 
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
 in Git. The copied vault can be its own Git repository.
