@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "armarium"
+version = "0.1.0"
+description = "Read-only validation for Armarium vaults"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6,<7", "jsonschema>=4.23,<5", "referencing>=0.35,<1"]
+
+[project.scripts]
+armarium = "armarium.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.9", "mypy>=1.14", "types-PyYAML", "types-jsonschema", "build"]
+
+[tool.mypy]
+strict = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

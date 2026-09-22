@@ -52,7 +52,7 @@ into a separately labeled subsection and update the campaign path.
 
 The [Content schema](../schemas/content.schema.json) describes a parsed note as
 `{frontmatter, body}`. Fill in the subtype and required fields before treating a
-copied template as a record. The starter includes no validation command.
+copied template as a record. Use the installed `armarium validate PATH` command to check a record.
 
 The body regex checks heading order; duplicate headings and matching headings
 inside code fences can satisfy it. Link existence, target types, campaign agreement

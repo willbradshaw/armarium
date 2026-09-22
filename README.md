@@ -42,3 +42,8 @@ The supplied links and queries target campaign 1.
 in Git. The copied vault can be its own Git repository.
 
 Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium/issues).
+
+## Validation
+
+Install with `python -m pip install .` and run `armarium validate PATH`.
+See [validation usage and coverage](docs/validation.md).
