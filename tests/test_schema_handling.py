@@ -1,4 +1,4 @@
-"""Vault-local schema loading and validation, grouped by public method."""
+"""Schema loading, retrieval, validation and selection contracts."""
 
 import json
 from collections.abc import Callable
@@ -139,7 +139,7 @@ class TestSchemaRetrieve:
         self, schema: Schema, write_schema: Callable[..., Path], name: str
     ) -> None:
         path = write_schema({"type": "string"}, name)
-        assert schema.retrieve(path.as_uri()).contents == {"type": "string"}
+        assert schema._retrieve(path.as_uri()).contents == {"type": "string"}
 
     @pytest.mark.parametrize(
         "uri",
@@ -153,13 +153,13 @@ class TestSchemaRetrieve:
     )
     def test_refuses_nonlocal_uri(self, schema: Schema, uri: str) -> None:
         with pytest.raises(NoSuchResource):
-            schema.retrieve(uri)
+            schema._retrieve(uri)
 
     def test_refuses_file_outside_vault(self, schema: Schema, tmp_path: Path) -> None:
         path = tmp_path / "outside.json"
         path.write_text("{}")
         with pytest.raises(ValueError, match="escapes"):
-            schema.retrieve(path.as_uri())
+            schema._retrieve(path.as_uri())
 
 
 class TestSchemaValidate:

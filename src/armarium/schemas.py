@@ -65,8 +65,8 @@ class Schema:
             raise ValueError("schema must use Draft 2020-12")
         return cls(path, root, data)
 
-    def retrieve(self, uri: str) -> Resource[Any]:
-        """Retrieve a referenced schema using only a confined local file URI.
+    def _retrieve(self, uri: str) -> Resource[Any]:
+        """Serve the registry callback using only a confined local file URI.
 
         Args:
             uri: Absolute URI requested by the reference registry.
@@ -110,7 +110,7 @@ class Schema:
             resource = Resource.from_contents(
                 self.contents, default_specification=DRAFT202012
             )
-            registry: Registry[Any] = Registry(retrieve=self.retrieve)  # type: ignore[call-arg]
+            registry: Registry[Any] = Registry(retrieve=self._retrieve)  # type: ignore[call-arg]
             registry = registry.with_resource(self.path.as_uri(), resource)
             validator = Draft202012Validator(
                 {"$ref": self.path.as_uri()},
