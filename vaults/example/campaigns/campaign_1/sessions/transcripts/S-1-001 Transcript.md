@@ -27,8 +27,3 @@ session: "[[S-1-001]]"
 [GM] Back aboard [[Glass Petrel]], the stores include a waxed signal charge.
 [Esme] I take the [[Blue Signal Flare]]. When the boom opens, one signal should spare us a great deal of shouting.
 [Talia] I check the running rigging. If we get our hearing, I want to be ready to cast off.
-
-## Source scope
-
-This excerpt covers the rooftop approach, the hearing demand and the visit aboard
-the cutter. It does not reproduce the entire session.

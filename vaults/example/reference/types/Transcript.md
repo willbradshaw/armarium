@@ -13,6 +13,6 @@ The [Transcript schema](../schemas/transcript.schema.json) uses the shared
 
 Require `type` and a non-null Session wikilink in `session`. A completed
 Transcript needs at least one level-two content heading followed by an attributed
-speech line such as `[GM] Speech.` Additional sections and source notes are free
-Markdown. An empty Transcript is still an unfinished form; uncertain speaker
-labels such as `[?]` are permitted.
+speech line such as `[GM] Speech.` This schema checks minimum structure, not
+attribution throughout the body. An empty Transcript is still an unfinished
+form; uncertain speaker labels such as `[?]` are permitted.

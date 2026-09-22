@@ -8,9 +8,9 @@
   },
   "cases": [
     {
-      "name": "uncertain speaker and source notes",
+      "name": "uncertain speaker",
       "valid": true,
-      "body": "## Opening\n[?] What?\n\n## Source scope\nAn excerpt."
+      "body": "## Opening\n[?] What?\n"
     },
     {
       "name": "null session",
