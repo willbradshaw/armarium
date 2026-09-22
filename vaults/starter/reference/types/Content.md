@@ -40,13 +40,18 @@ the entry's recorded state. Each existing block requires `first_session` and
 `last_session`: both empty before appearances, otherwise links to the earliest
 and latest Sessions in that campaign's history.
 
-Separate shared histories under headings such as `### campaign_1`. Record actual
-interaction, not mentions/prep, and noteworthy PC contributions rather than
-attendance. Keep acquisition and transfer history in Session records when current
-possession changes.
+Use one Appearances list across campaigns; the linked Session IDs identify each
+entry's campaign. Record actual interaction, not mentions/prep, and noteworthy PC
+contributions rather than attendance. Use `N/A` only when there are no appearances.
+Keep acquisition and transfer history in Session records when current possession
+changes.
 
-The included Active Clues query targets campaign 1. For another campaign, copy it
-into a separately labeled subsection and update the campaign path.
+Use one Dataview query under Active Clues. For shared Content, search `"campaigns"`
+and filter to Clue records whose subjects include the current page and whose status
+is Pending or Hinted. The Clue IDs identify their campaigns. For campaign-specific
+Content, scope the same view to that campaign's clues folder. The included template
+starts with campaign 1; adjust its source when creating shared Content or a record
+for another campaign. Do not split either section into campaign subheadings.
 
 ## Schema
 

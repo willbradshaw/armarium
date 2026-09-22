@@ -20,28 +20,13 @@ markers; pilots treat promises made there as personal obligations.
 
 ## Active Clues
 
-### campaign_1
-
 ```dataview
 TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
-
-### campaign_2
-
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_2/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
+FROM "campaigns"
+WHERE type = [[types/Clue]] AND contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
+SORT file.name ASC
 ```
 
 ## Appearances
-
-### campaign_1
-
-- N/A
-
-### campaign_2
 
 - [[S-2-001]]: [[Darian Holt]] brought [[Tern]] into the lee of the reef while [[Bram Kest]] crossed to [[Copper Finch]] and rescued [[Oren Vale]].

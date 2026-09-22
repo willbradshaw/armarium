@@ -23,8 +23,9 @@ may be answered with steel, a race, or terms witnessed before the harbor bell.
 
 ```dataview
 TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
+FROM "campaigns"
+WHERE type = [[types/Clue]] AND contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
+SORT file.name ASC
 ```
 
 ## Appearances

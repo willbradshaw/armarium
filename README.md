@@ -37,7 +37,7 @@ reference for its fields and conventions:
 
 Enable Obsidian's Dataview community plugin to render the included Clue views.
 The starter targets campaign 1. The example includes two campaigns sharing setting
-Content, with separate histories and campaign-scoped Clue views.
+Content, with independent campaign state and combined Clue and appearance lists.
 
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
 in Git. The copied vault can be its own Git repository.

@@ -18,29 +18,15 @@ The harbor bell is maintained jointly by the countinghouses and the [[Free Pilot
 
 ## Active Clues
 
-### campaign_1
-
 ```dataview
 TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_1/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
-
-### campaign_2
-
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_2/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
+FROM "campaigns"
+WHERE type = [[types/Clue]] AND contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
+SORT file.name ASC
 ```
 
 ## Appearances
 
-### campaign_1
-
 - [[S-1-001]]: [[Glass Petrel Crew|The crew]] crossed the rooftop market to reach the eastern docks.
 - [[S-1-002]]: [[Glass Petrel Crew|The crew]] carried its petition through the harbor and escaped aboard the [[Glass Petrel]].
-
-### campaign_2
-
 - [[S-2-001]]: The [[Free Pilots Assembly]] asked the [[Tern Salvage Company]] to answer distress blows from [[Copper Finch]]; the company provisioned [[Tern]] and departed the harbor.
