@@ -6,10 +6,12 @@ Store records under `campaigns/campaign_1/sessions/`, named `S-1-001.md`,
 `S-1-002.md`, etc. Set `session_number` and the campaign link. For another campaign,
 update the path, campaign link and campaign number in the filename.
 
-In preparation tables, select the relevant records and use inline Dataview to
-display their source fields: `text` for Clues, `summary` for Locations and NPCs.
-These fields remain live as the source records change. Put session-specific
-instructions in Scene notes; record what actually happened under Events.
+`prepared_clues`, `prepared_locations` and `prepared_npcs` are ordered link lists
+(use `[]` for none; omitted lists also select nothing). Clues must belong to this
+campaign; Locations and NPCs must be matching Content subtypes, shared or in this
+campaign. List order is display order. Preparation shows current Clue `text` and
+Content `summary`, including in past Sessions. Put session-specific instructions
+in Scene notes and actual play under Events.
 
 When campaigns use the same reference filename, qualify links with the shortest
 unique path, for example `campaign_2/reference/Campaign`. Update existing

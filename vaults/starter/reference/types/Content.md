@@ -46,12 +46,11 @@ contributions rather than attendance. Use `N/A` only when there are no appearanc
 Keep acquisition and transfer history in Session records when current possession
 changes.
 
-Use one Dataview query under Active Clues. For shared Content, search `"campaigns"`
-and filter to Clue records whose subjects include the current page and whose status
-is Pending or Hinted. The Clue IDs identify their campaigns. For campaign-specific
-Content, scope the same view to that campaign's clues folder. The included template
-starts with campaign 1; adjust its source when creating shared Content or a record
-for another campaign. Do not split either section into campaign subheadings.
+Use one Active Clues view. Its scope follows this note’s location: shared
+`content/` items include active Clues from all campaigns; items under
+`campaigns/campaign_N/` include only that campaign. Only Pending or Hinted Clues
+whose canonical `subjects` link to this item appear. Do not split Active Clues
+or Appearances into campaign subheadings.
 
 ## Schema
 

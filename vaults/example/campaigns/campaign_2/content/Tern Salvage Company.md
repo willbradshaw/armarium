@@ -19,11 +19,7 @@ before committing. Their hardest decisions come when both habits cost minutes.
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns/campaign_2/clues"
-WHERE contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-```
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

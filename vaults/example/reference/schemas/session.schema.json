@@ -91,6 +91,27 @@
               "pattern": "\\S"
             }
           ]
+        },
+        "prepared_clues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          },
+          "description": "Ordered selection links; omitted or empty selects nothing. Target kind and campaign require vault-aware checks."
+        },
+        "prepared_locations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          },
+          "description": "Ordered selection links; omitted or empty selects nothing. Target kind and campaign require vault-aware checks."
+        },
+        "prepared_npcs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wikilink"
+          },
+          "description": "Ordered selection links; omitted or empty selects nothing. Target kind and campaign require vault-aware checks."
         }
       },
       "additionalProperties": true

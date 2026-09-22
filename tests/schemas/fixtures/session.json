@@ -160,6 +160,126 @@
       "name": "Rewards without Loot subsection",
       "valid": true,
       "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n| ID  | Text |\n| --- | ---- |\n|     |      |\n## Locations\n| Location | Description |\n| -------- | ----------- |\n|          |             |\n## Important NPCs\n\n| Name | Summary |\n| ---- | ------- |\n|      |         |\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\nA favor from the pilots.\n"
+    },
+    {
+      "name": "prepared_clues ordered links",
+      "frontmatter": {
+        "prepared_clues": [
+          "[[First]]",
+          "[[Second]]"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_clues empty",
+      "frontmatter": {
+        "prepared_clues": []
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_clues null",
+      "frontmatter": {
+        "prepared_clues": null
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_clues scalar",
+      "frontmatter": {
+        "prepared_clues": "[[First]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_clues nonlink",
+      "frontmatter": {
+        "prepared_clues": [
+          "First"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_locations ordered links",
+      "frontmatter": {
+        "prepared_locations": [
+          "[[First]]",
+          "[[Second]]"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_locations empty",
+      "frontmatter": {
+        "prepared_locations": []
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_locations null",
+      "frontmatter": {
+        "prepared_locations": null
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_locations scalar",
+      "frontmatter": {
+        "prepared_locations": "[[First]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_locations nonlink",
+      "frontmatter": {
+        "prepared_locations": [
+          "First"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_npcs ordered links",
+      "frontmatter": {
+        "prepared_npcs": [
+          "[[First]]",
+          "[[Second]]"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_npcs empty",
+      "frontmatter": {
+        "prepared_npcs": []
+      },
+      "valid": true
+    },
+    {
+      "name": "prepared_npcs null",
+      "frontmatter": {
+        "prepared_npcs": null
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_npcs scalar",
+      "frontmatter": {
+        "prepared_npcs": "[[First]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "prepared_npcs nonlink",
+      "frontmatter": {
+        "prepared_npcs": [
+          "First"
+        ]
+      },
+      "valid": false
     }
   ]
 }

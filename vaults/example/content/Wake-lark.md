@@ -15,12 +15,7 @@ towing lines. [[Captain Mara Vey]] uses it to guide ships through [[The Red Teet
 
 ## Active Clues
 
-```dataview
-TABLE WITHOUT ID file.link as "ID", text as "Text"
-FROM "campaigns"
-WHERE type = [[types/Clue]] AND contains(subjects, this.file.link) AND (status = [[Pending]] OR status = [[Hinted]])
-SORT file.name ASC
-```
+![[reference/views/content-clues.base]]
 
 ## Appearances
 

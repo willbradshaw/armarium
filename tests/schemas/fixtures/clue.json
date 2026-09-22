@@ -169,6 +169,46 @@
       "name": "tilde fences unsupported",
       "valid": false,
       "body": "## Sessions\n~~~dataview\nLIST\n~~~\n"
+    },
+    {
+      "name": "Base embed",
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\n",
+      "valid": true
+    },
+    {
+      "name": "named Base view",
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base#Sessions]]\n",
+      "valid": true
+    },
+    {
+      "name": "Base CRLF",
+      "body": "## Sessions\r\n\r\n![[reference/views/clue-sessions.base]]\r\n",
+      "valid": true
+    },
+    {
+      "name": "non-Base embed",
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.md]]\n",
+      "valid": false
+    },
+    {
+      "name": "Base followed by prose",
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\nCommentary\n",
+      "valid": false
+    },
+    {
+      "name": "two Base embeds",
+      "body": "## Sessions\n\n![[reference/views/clue-sessions.base]]\n![[reference/views/clue-sessions.base]]\n",
+      "valid": false
+    },
+    {
+      "name": "bare Base link",
+      "body": "## Sessions\n\n[[reference/views/clue-sessions.base]]\n",
+      "valid": false
+    },
+    {
+      "name": "embed preceded by prose",
+      "body": "Commentary\n## Sessions\n\n![[reference/views/clue-sessions.base]]\n",
+      "valid": false
     }
   ]
 }
