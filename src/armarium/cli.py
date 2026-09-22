@@ -4,8 +4,9 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
+from armarium.lib import ValidationError
 from armarium.logging import configure_logging
-from armarium.validate import ValidationError, validate_markdown
+from armarium.validate import validate_markdown
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:

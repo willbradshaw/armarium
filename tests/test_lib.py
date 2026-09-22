@@ -9,6 +9,7 @@ import pytest
 from armarium.lib import (
     Diagnostic,
     Result,
+    ValidationError,
     _find_wikilink_candidates,
     find_files,
     find_vault,
@@ -370,3 +371,10 @@ class TestResultFailedFiles:
             ]
         )
         assert result.failed_files == expected
+
+
+class TestValidationError:
+    def test_preserves_message(self) -> None:
+        error = ValidationError("2 files failed validation")
+        assert isinstance(error, Exception)
+        assert str(error) == "2 files failed validation"

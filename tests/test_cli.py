@@ -10,9 +10,8 @@ from pathlib import Path
 import pytest
 
 from armarium.cli import main, parse_args
-from armarium.lib import Diagnostic, Result
+from armarium.lib import Diagnostic, Result, ValidationError
 from armarium.logging import logger
-from armarium.validate import ValidationError
 
 
 @pytest.fixture
