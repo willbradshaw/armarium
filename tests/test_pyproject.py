@@ -115,12 +115,13 @@ class TestPyproject:
             process.returncode
             == {"valid": 0, "invalid": 1, "unsupported": 0, "usage": 2}[scenario]
         ), process.stderr
+        assert process.stdout == ""
         if scenario == "usage":
-            assert "error:" in process.stderr
+            assert "ERROR:" in process.stderr
         else:
-            assert "1 checked" in process.stdout and process.stderr == ""
+            assert "1 checked" in process.stderr
         if scenario == "unsupported":
-            assert "1 unsupported" in process.stdout
+            assert "1 unsupported" in process.stderr
         assert path.read_text() == text
 
     @pytest.mark.parametrize("vault", ["starter", "example"])
@@ -146,5 +147,6 @@ class TestPyproject:
             check=False,
         )
         assert process.returncode == 0, process.stdout + process.stderr
-        assert process.stdout == "1 checked, 0 skipped, 0 unsupported\n"
+        assert process.stdout == ""
+        assert process.stderr.endswith("INFO: 1 checked, 0 skipped, 0 unsupported\n")
         assert record.read_bytes() == before

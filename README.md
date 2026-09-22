@@ -52,6 +52,11 @@ Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium
 
 ## Validate a record
 
-With Python 3.14+, install the validator using `python -m pip install .` and run
-`armarium validate path/to/record.md`. See [validation](docs/validation.md) for
-coverage, exit codes and development instructions.
+With Python 3.14+, install from this checkout and validate a record:
+
+```sh
+python -m pip install .
+armarium validate path/to/record.md
+```
+
+See `armarium validate --help` for options and exit codes.
