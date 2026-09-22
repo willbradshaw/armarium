@@ -5,6 +5,10 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 
+# -----------------------------------------------------------------------------
+# Wikilink parsing
+# -----------------------------------------------------------------------------
+
 _WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
 
 
@@ -90,6 +94,11 @@ def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
             yield exc
         else:
             yield target
+
+
+# -----------------------------------------------------------------------------
+# Diagnostics and validation results
+# -----------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, order=True)
