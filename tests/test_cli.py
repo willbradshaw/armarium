@@ -1,17 +1,16 @@
 """Command parsing, diagnostics, exit status and process entry point."""
 
-import logging
 import os
 import re
 import subprocess
 import sys
-import time
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from armarium.cli import _configure_logging, _LogFormatter, logger, main, parse_args
+from armarium.cli import main, parse_args
+from armarium.logging import logger
 
 
 @pytest.fixture
@@ -193,47 +192,3 @@ class TestParseArgs:
             assert "Exit codes:" in output.out
             assert "partial-coverage warnings" in output.out
             assert "stderr" in output.out
-
-
-class TestLogFormatter:
-    def test_level_and_message(self) -> None:
-        record = logging.LogRecord(
-            "test", logging.WARNING, "", 1, "Hello %s", ("world",), None
-        )
-        output = _LogFormatter("[%(asctime)s] %(levelname)s: %(message)s").format(
-            record
-        )
-        assert output.endswith("] WARNING: Hello world")
-
-
-class TestLogFormatterFormatTime:
-    @pytest.mark.parametrize(
-        ("milliseconds", "datefmt", "expected"),
-        [
-            (0, None, "2026-01-02 03:04:05.00"),
-            (129, None, "2026-01-02 03:04:05.12"),
-            (999, None, "2026-01-02 03:04:05.99"),
-            (129, "%Y", "2026"),
-        ],
-    )
-    def test_timestamp(
-        self, milliseconds: int, datefmt: str | None, expected: str
-    ) -> None:
-        record = logging.LogRecord("test", logging.INFO, "", 1, "message", (), None)
-        record.created = 1767323045
-        record.msecs = milliseconds
-        formatter = _LogFormatter()
-        formatter.converter = time.gmtime
-        assert formatter.formatTime(record, datefmt) == expected
-
-
-class TestConfigureLogging:
-    def test_repeated_setup_does_not_duplicate_or_change_root(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        root_handlers = logging.getLogger().handlers[:]
-        _configure_logging()
-        _configure_logging()
-        logger.info("One message")
-        assert capsys.readouterr().err.count("One message") == 1
-        assert logging.getLogger().handlers == root_handlers
