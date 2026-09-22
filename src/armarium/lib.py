@@ -1,10 +1,13 @@
 """Shared utilities and data types for Armarium."""
 
+import logging
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
+
+from armarium.logging import logger
 
 # -----------------------------------------------------------------------------
 # Wikilink parsing
@@ -104,9 +107,9 @@ def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
 
 @dataclass(frozen=True, order=True)
 class Diagnostic:
-    """Describe one problem or informational finding without printing it.
+    """Describe one problem or informational finding.
 
-    Parsing and validation return these records to their caller. The CLI renders
+    Parsing and validation return these records to their caller. The CLI reports
     them for a person; directory scans collect them so one bad file does not stop
     the scan. For example, malformed YAML produces a ``parse.invalid`` error.
 
@@ -126,6 +129,26 @@ class Diagnostic:
     line: int = 0
     severity: Literal["error", "warning", "info"] = "error"
 
+    def report(self) -> None:
+        """Log this finding with its severity and available source location.
+
+        Returns:
+            None: Emit one record through the Armarium logger.
+        """
+        levels = {
+            "error": logging.ERROR,
+            "warning": logging.WARNING,
+            "info": logging.INFO,
+        }
+        location = self.path
+        if self.line:
+            location += f":{self.line}"
+        if self.field:
+            location += f" [{self.field}]"
+        logger.log(
+            levels[self.severity], "%s: %s: %s", location, self.rule, self.message
+        )
+
 
 @dataclass
 class Result:
@@ -143,6 +166,21 @@ class Result:
     checked: int = 0
     skipped: int = 0
     unsupported: int = 0
+
+    def report(self) -> None:
+        """Report each finding in order, then log coverage counts at INFO.
+
+        Returns:
+            None: Emit findings and counts through the Armarium logger.
+        """
+        for diagnostic in self.diagnostics:
+            diagnostic.report()
+        logger.info(
+            "%s checked, %s skipped, %s unsupported",
+            self.checked,
+            self.skipped,
+            self.unsupported,
+        )
 
     @property
     def failed(self) -> bool:

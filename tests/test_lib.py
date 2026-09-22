@@ -1,10 +1,14 @@
 """Shared syntax and vault-discovery utilities."""
 
+import logging
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
 from armarium.lib import (
+    Diagnostic,
+    Result,
     _find_wikilink_candidates,
     find_files,
     find_vault,
@@ -277,3 +281,67 @@ class TestFindFiles:
             root.symlink_to(tmp_path, target_is_directory=True)
         with pytest.raises(ValueError, match="real directory"):
             find_files(root)
+
+
+class TestDiagnosticReport:
+    @pytest.mark.parametrize(
+        ("severity", "level", "line", "field", "location"),
+        [
+            ("error", logging.ERROR, 0, "", "note.md"),
+            ("warning", logging.WARNING, 3, "", "note.md:3"),
+            ("info", logging.INFO, 0, "type", "note.md [type]"),
+            ("error", logging.ERROR, 3, "type", "note.md:3 [type]"),
+        ],
+    )
+    def test_finding(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        severity: Literal["error", "warning", "info"],
+        level: int,
+        line: int,
+        field: str,
+        location: str,
+    ) -> None:
+        diagnostic = Diagnostic(
+            "note.md",
+            "record.type",
+            "A finding",
+            line=line,
+            field=field,
+            severity=severity,
+        )
+        with caplog.at_level(logging.INFO, logger="armarium"):
+            diagnostic.report()
+        assert caplog.record_tuples == [
+            ("armarium", level, f"{location}: record.type: A finding"),
+        ]
+
+
+class TestResultReport:
+    @pytest.mark.parametrize("with_findings", [False, True])
+    def test_findings_then_counts(
+        self, caplog: pytest.LogCaptureFixture, with_findings: bool
+    ) -> None:
+        findings = (
+            [
+                Diagnostic("first.md", "first", "First", severity="warning"),
+                Diagnostic("second.md", "second", "Second"),
+            ]
+            if with_findings
+            else []
+        )
+        result = Result(findings, checked=2, skipped=1, unsupported=1)
+        with caplog.at_level(logging.INFO, logger="armarium"):
+            result.report()
+        expected = (
+            [
+                ("armarium", logging.WARNING, "first.md: first: First"),
+                ("armarium", logging.ERROR, "second.md: second: Second"),
+            ]
+            if with_findings
+            else []
+        )
+        assert caplog.record_tuples == expected + [
+            ("armarium", logging.INFO, "2 checked, 1 skipped, 1 unsupported"),
+        ]
+        assert result == Result(findings, checked=2, skipped=1, unsupported=1)

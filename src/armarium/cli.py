@@ -4,7 +4,7 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.logging import configure_logging, logger, report_diagnostics
+from armarium.logging import configure_logging, logger
 from armarium.validate import validate_markdown
 
 
@@ -34,7 +34,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         epilog=(
             "Exit codes: 0 no errors (including skips and warnings), "
             "1 validation errors, 2 invalid invocation. "
-            "Timestamped diagnostics and counts are logged to stderr."
+            "UTC-timestamped diagnostics and counts are logged to stderr."
         ),
     )
     command.add_argument("path", type=Path, help="Markdown file to validate")
@@ -61,7 +61,7 @@ def main() -> int:
     except (ValueError, OSError) as exc:
         logger.error("%s", exc)
         return 2
-    report_diagnostics(result)
+    result.report()
     return int(result.failed)
 
 

@@ -92,7 +92,7 @@ class TestMain:
         assert output.out == ""
         assert output.err.endswith("INFO: " + counts + "\n")
         headers = re.findall(
-            r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{2}\] (INFO|WARNING|ERROR): ",
+            r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{2} UTC\] (INFO|WARNING|ERROR): ",
             output.err,
             re.MULTILINE,
         )
