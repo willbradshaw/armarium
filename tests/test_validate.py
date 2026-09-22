@@ -138,6 +138,8 @@ class TestValidateMarkdown:
             "content/Untyped.md",
             "index.md",
             "reference/Untyped.md",
+            "reference/types/Untyped.md",
+            "reference/statuses/Untyped.md",
             "reference/types/nested/Untyped.md",
             "reference/statuses/nested/Untyped.md",
             "campaigns/campaign_1/reference/types/Untyped.md",
@@ -181,12 +183,6 @@ class TestValidateMarkdown:
                 "record.template",
             ),
             ("reference/templates/nested/Widget.md", {"type": None}, "record.template"),
-            ("reference/types/Widget.md", {}, "record.definition"),
-            (
-                "reference/statuses/Hinted.md",
-                {"applies_to": "[[types/Clue]]"},
-                "record.definition",
-            ),
         ],
     )
     def test_explicit_skips(
@@ -283,7 +279,17 @@ class TestValidateMarkdown:
         assert result.unsupported == 1 and not result.failed
 
     @pytest.mark.parametrize(
-        "kind", ["content", "clue", "session", "transcript", "player", "reference"]
+        "kind",
+        [
+            "content",
+            "clue",
+            "session",
+            "transcript",
+            "player",
+            "reference",
+            "type",
+            "status",
+        ],
     )
     @pytest.mark.parametrize("source", ["starter", "example"])
     def test_shipped_schema_integration(
@@ -303,3 +309,33 @@ class TestValidateMarkdown:
         assert result.diagnostics == []
         assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
         assert path.read_bytes() == before
+
+    @pytest.mark.parametrize("source", ["starter", "example"])
+    @pytest.mark.parametrize("folder", ["types", "statuses"])
+    def test_shipped_definitions_are_checked(
+        self, tmp_path: Path, source: str, folder: str
+    ) -> None:
+        root = tmp_path / "copied vault"
+        shutil.copytree(Path("vaults") / source, root)
+        paths = sorted((root / "reference" / folder).glob("*.md"))
+        assert paths
+        for path in paths:
+            before = path.read_bytes()
+            result = validate_markdown(path)
+            assert result.diagnostics == [], path
+            assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
+            assert path.read_bytes() == before
+
+    @pytest.mark.parametrize("declared_type", ["Type", "Status"])
+    def test_definition_schema_errors(self, tmp_path: Path, declared_type: str) -> None:
+        root = tmp_path / "copied vault"
+        shutil.copytree(Path("vaults/starter"), root)
+        folder = "types" if declared_type == "Type" else "statuses"
+        path = root / "reference" / folder / "Invalid.md"
+        # Both are canonical links, but violate the declared type's schema:
+        # Type requires [[Type]], and Status requires applies_to metadata.
+        link = "[[types/Type]]" if declared_type == "Type" else "[[Status]]"
+        path.write_text(f'---\ntype: "{link}"\n---\n')
+        result = validate_markdown(path)
+        assert result.failed and result.checked == 1 and result.skipped == 0
+        assert result.diagnostics[0].rule == "schema.instance"

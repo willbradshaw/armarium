@@ -19,10 +19,9 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     Returns:
         Result: Diagnostics and checked/skipped/unsupported counts for this
             file. Parse failures and missing or malformed types are errors.
-            After parsing, only files under reference/templates and untyped
-            documents directly in reference/types or reference/statuses are
-            skipped, with an explicit informational diagnostic. Other locations
-            are not exempt, including nested or campaign-local reference folders.
+            After parsing, only files under reference/templates are skipped,
+            with an explicit informational diagnostic. Type/status definitions
+            are records too and require declared types and schema validation.
             Typed files receive their vault-local schema checks;
             absent schemas produce partial-coverage warnings. Invalid schemas
             fail validation without being counted as missing coverage.
@@ -47,23 +46,6 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
                     relative,
                     "record.template",
                     "template parsed; completed-record validation skipped",
-                    severity="info",
-                )
-            ],
-            skipped=1,
-        )
-    # These directories explicitly hold type/status definitions rather than
-    # records. A declared type still opts a document into record validation.
-    if "type" not in note.frontmatter and path.parent in {
-        root / "reference/types",
-        root / "reference/statuses",
-    }:
-        return Result(
-            diagnostics=[
-                Diagnostic(
-                    relative,
-                    "record.definition",
-                    "type/status definition parsed; record validation skipped",
                     severity="info",
                 )
             ],
