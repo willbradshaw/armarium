@@ -2,13 +2,16 @@
 
 A system-general starter for tabletop roleplaying knowledge bases in Obsidian.
 
+See [vaults/example](vaults/example) for a fleshed-out toy vault that follows and
+demonstrates this repository's conventions.
+
 ## Create a vault
 
-From this checkout, copy `starter/` to a new folder whose parent exists:
+From this checkout, copy `vaults/starter/` to a new folder whose parent exists:
 
 ```sh
 vault_path="../my-setting"
-mkdir "$vault_path" && cp -R starter/. "$vault_path/"
+mkdir "$vault_path" && cp -R vaults/starter/. "$vault_path/"
 ```
 
 Open the new folder in Obsidian and edit
@@ -26,11 +29,11 @@ Open the new folder in Obsidian and edit
 
 Copy a file from `reference/templates/` to create a record. See the corresponding
 reference for its fields and conventions:
-[Content](starter/reference/types/Content.md),
-[Clue](starter/reference/types/Clue.md),
-[Session](starter/reference/types/Session.md),
-[Player](starter/reference/types/Player.md), or
-[Transcript](starter/reference/types/Transcript.md).
+[Content](vaults/starter/reference/types/Content.md),
+[Clue](vaults/starter/reference/types/Clue.md),
+[Session](vaults/starter/reference/types/Session.md),
+[Player](vaults/starter/reference/types/Player.md), or
+[Transcript](vaults/starter/reference/types/Transcript.md).
 
 Enable Obsidian's Dataview community plugin to render the included Clue views.
 The supplied links and queries target campaign 1.
