@@ -6,22 +6,16 @@ permissions:
   contents: read
 
 jobs:
-  pytest:
+  pytest-source:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-      - run: python -m pip install -e '.[dev]'
+      - uses: ./.github/actions/setup-python
       - run: python -m pytest -q -m "not package"
 
-  package:
+  pytest-package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-      - run: python -m pip install -e '.[dev]'
+      - uses: ./.github/actions/setup-python
       - run: python -m pytest -q -m package
