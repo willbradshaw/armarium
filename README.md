@@ -36,7 +36,8 @@ reference for its fields and conventions:
 [Transcript](vaults/starter/reference/types/Transcript.md).
 
 Enable Obsidian's Dataview community plugin to render the included Clue views.
-The supplied links and queries target campaign 1.
+The starter targets campaign 1. The example includes two campaigns sharing setting
+Content, with separate histories and campaign-scoped Clue views.
 
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
 in Git. The copied vault can be its own Git repository.

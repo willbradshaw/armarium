@@ -11,6 +11,12 @@ display their source fields: `text` for Clues, `summary` for Locations and NPCs.
 These fields remain live as the source records change. Put session-specific
 instructions in Scene notes; record what actually happened under Events.
 
+When campaigns use the same reference filename, qualify links with the shortest
+unique path, for example `campaign_2/reference/Campaign`. Update existing
+Session and index links, and the setting's Session template, when adding a campaign
+makes a formerly unique `Campaign` target ambiguous. Set the template's campaign
+link to the intended campaign when creating each Session.
+
 ## Schema
 
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,

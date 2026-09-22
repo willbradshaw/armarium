@@ -1,7 +1,7 @@
 ---
 type: "[[types/Session]]"
 date:
-campaign: "[[Campaign]]"
+campaign: "[[campaign_1/reference/Campaign]]"
 session_number:
 aliases:
 players_absent:
