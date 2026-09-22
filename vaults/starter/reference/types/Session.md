@@ -13,20 +13,15 @@ instructions in Scene notes; record what actually happened under Events.
 
 ## Schema
 
-The [Session schema](../schemas/session.schema.json) validates parsed
-`{frontmatter, body}` records.
+A Session requires `type`, `date`, `campaign`, `session_number`, `players_absent`,
+`in_game_start_date` and `in_game_end_date`. The campaign links to its Reference
+note, and the session number is a positive integer. Date is `YYYY-MM-DD` or null
+when unscheduled. In-game dates are nonblank strings in the campaign's calendar,
+or null when unrecorded.
 
-Require `type`, `date`, `campaign`, `session_number`, `players_absent`,
-`in_game_start_date` and `in_game_end_date`. The campaign is a non-null campaign
-Reference link and the session number is a positive integer, including for an
-unplayed Session. Date is null when unscheduled, otherwise an ISO `YYYY-MM-DD`
-date string; a filled date does not prove play occurred.
+`players_absent` is a list of Player links, `[]` for no absences, or null when
+unrecorded. Optional `aliases` is a list of nonblank strings, an empty list, or null.
+The body keeps the template's level-one and level-two headings in order through
+Rewards. Sections may be empty; Loot and other subsections are optional.
 
-`players_absent` is null when unrecorded, `[]` for no absences, or a list of Player
-links. In-game dates are null or non-whitespace strings in the campaign's own
-calendar, with no imposed real-world calendar or ordering. `aliases` is optional:
-null or a list of non-whitespace strings, including `[]`.
-
-Keep the level-one and level-two template headings in order, through Rewards.
-Loot and other subsections are optional. Sections may be empty or contain free
-Markdown; this permits preparation stubs.
+See the [Session schema](../schemas/session.schema.json).

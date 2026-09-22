@@ -8,11 +8,9 @@ use `[Player?]` or `[?]` when attribution or hearing is uncertain.
 
 ## Schema
 
-The [Transcript schema](../schemas/transcript.schema.json) validates parsed
-`{frontmatter, body}` records.
+A Transcript requires `type` and a Session link in `session`. The body needs
+at least one level-two content heading followed by attributed speech, such as
+`[GM] Speech.` Uncertain labels such as `[?]` are allowed. The schema checks this
+minimum structure, not attribution throughout the body.
 
-Require `type` and a non-null Session wikilink in `session`. A completed
-Transcript needs at least one level-two content heading followed by an attributed
-speech line such as `[GM] Speech.` This schema checks minimum structure, not
-attribution throughout the body. An empty Transcript is still an unfinished
-form; uncertain speaker labels such as `[?]` are permitted.
+See the [Transcript schema](../schemas/transcript.schema.json).

@@ -10,19 +10,17 @@ filename, and the Sessions query's campaign path.
 
 ## Schema
 
-The [Clue schema](../schemas/clue.schema.json) validates parsed
-`{frontmatter, body}` records.
+A Clue requires `type`, `status`, nonblank `text`, `subjects`, `first_session`
+and `last_session`. Status links to one of the six supplied statuses. Subjects
+are Content links: null means unidentified, and `[]` means none recorded.
 
-`type`, `status`, `text`, `subjects`, `first_session` and `last_session` are
-required. Text must contain non-whitespace text; a blank candidate is still a
-form. Subjects may be null (not yet identified), `[]` (none recorded), or a list
-of Content links. Status is one of the six supplied status links.
+`first_session` links to the first Session for which the Clue was prepared or
+used; `last_session` links to its latest introduction or development in play.
+Both may be null. Preparation alone can set first; setting last requires first.
+Superseded Clues also require a replacement Clue link in `superseded_by`; otherwise
+that field is optional and nullable.
 
-`first_session` is the first Session for which the Clue was prepared or used;
-`last_session` is the most recent Session in which it was introduced or developed
-in play. Both may be null for an unassigned candidate. Preparation alone can set
-first while leaving last null; a non-null last requires a non-null first. Unlike
-Content appearance history, these fields need not become populated together.
-Status does not alone determine either field. `superseded_by` is optional and
-nullable except when status is Superseded, which requires a replacement Clue
-link. History, campaign agreement and replacement cycles need vault-aware checks.
+The body contains only `## Sessions` followed by one nonempty view fenced with
+three backticks.
+
+See the [Clue schema](../schemas/clue.schema.json).

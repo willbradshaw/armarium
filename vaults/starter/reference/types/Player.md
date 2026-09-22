@@ -5,10 +5,8 @@ Use [[templates/Player]]. A PC's `player` field must link to a Player page.
 
 ## Schema
 
-The [Player schema](../schemas/player.schema.json) validates parsed
-`{frontmatter, body}` records.
+A Player note requires `type` and `plays`, a list of PC Content links. Use `[]`
+for an unassigned Player; null and a single scalar link are invalid. The body
+may be empty or contain free Markdown.
 
-Require `type` and `plays`. Use a list of PC Content links; `[]` explicitly
-permits an unassigned Player. Null, a single scalar link, and empty link items
-are invalid. The body may be empty or contain free Markdown. Reciprocal PC
-`player` links are checked separately.
+See the [Player schema](../schemas/player.schema.json).

@@ -2,10 +2,9 @@ Pages with `type: "[[Reference]]"` are structural, taxonomic, or index pages, su
 
 ## Schema
 
-The [Reference schema](../schemas/reference.schema.json) validates parsed
-`{frontmatter, body}` records.
+A typed Reference note requires only `type: "[[Reference]]"`. Custom fields
+are allowed, and the body may be empty or contain free Markdown. Untyped indexes,
+type pages and status definitions (`applies_to`) are supporting documents and
+do not need this type.
 
-Only explicitly typed pages use this schema. Require `type: "[[Reference]]"`;
-no other keys or body headings are required. Custom fields and an empty body are
-permitted. Untyped type pages, indexes and status definitions (`applies_to`) are
-supporting documents and do not acquire this type or require a separate schema.
+See the [Reference schema](../schemas/reference.schema.json).

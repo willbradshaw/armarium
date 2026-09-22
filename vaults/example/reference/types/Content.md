@@ -50,11 +50,9 @@ into a separately labeled subsection and update the campaign path.
 
 ## Schema
 
-The [Content schema](../schemas/content.schema.json) describes a parsed note as
-`{frontmatter, body}`. Fill in the subtype and required fields before treating a
-copied template as a record.
+A Content note requires `type`, `subtype`, `summary` and the subtype fields
+listed above. Its body contains Notes, Active Clues and Appearances headings in
+that order. Each campaign block includes `first_session` and `last_session`;
+Object campaign blocks also include `held_by`.
 
-The body regex checks heading order; duplicate headings and matching headings
-inside code fences can satisfy it. Link existence, target types, campaign agreement
-and consistency with Appearances require separate vault-aware checks. Enable URI
-format assertions to check URL syntax locally.
+See the [Content schema](../schemas/content.schema.json).
