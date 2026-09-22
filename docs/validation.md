@@ -3,8 +3,13 @@
 Install with `python -m pip install .`, then run `armarium validate PATH` from
 any directory. Supply `--vault PATH` when vault context cannot be inferred.
 Single-file checks include YAML, available schemas, canonical link resolution,
-placement, identity, target kinds and campaign agreement. Directory traversal
-is added in the next stage. It never writes to the target.
+placement, identity, target kinds and campaign agreement. Directory targets recursively check Markdown descendants with whole-vault context. It never writes to the target.
+
+Scans continue after malformed files and sort diagnostics by relative location/rule.
+Counts distinguish checked records, skipped forms/untyped pages and unsupported
+schema types (a subset of checked). Untyped pages still receive link checks.
+Hidden/configuration/scratch folders, caches, node_modules and symlinks are excluded;
+assets and `.base` files are indexed as targets but not parsed as records.
 
 Exit codes: 0 means no errors, 1 means validation errors, 2 means invalid invocation.
 Warnings do not fail; unsupported schema types explicitly report partial coverage.

@@ -3,21 +3,17 @@
 from pathlib import Path
 
 from armarium.context import check
-from armarium.discovery import find_vault
+from armarium.discovery import files, find_vault
 from armarium.index import VaultIndex
 from armarium.lib import Diagnostic, Result
-from armarium.parse import parse
 from armarium.schemas import Schemas
 
 
-def validate(path: Path, vault: Path | None = None) -> Result:
-    """Validate one Markdown file using its selected vault's schemas."""
-    path = path.resolve()
-    root = find_vault(path, vault)
-    if not path.is_file() or path.suffix.lower() != ".md":
-        raise ValueError("target must be a Markdown file")
+def validate_file(path: Path, index: VaultIndex) -> Result:
+    """Apply identical per-file rules within an already indexed vault."""
+    root = index.root
     result = Result()
-    note, errors = parse(path, root)
+    note, errors = index.note(path)
     result.diagnostics.extend(errors)
     relative = path.relative_to(root).as_posix()
     if note is None:
@@ -51,6 +47,35 @@ def validate(path: Path, vault: Path | None = None) -> Result:
         result.unsupported = int(not covered)
         result.diagnostics.extend(errors)
     if note is not None and not relative.startswith("reference/templates/"):
-        result.diagnostics.extend(check(note, VaultIndex(root)))
+        result.diagnostics.extend(check(note, index))
+    result.diagnostics.sort()
+    return result
+
+
+def validate(path: Path, vault: Path | None = None) -> Result:
+    """Validate a file or Markdown descendants with whole-vault context."""
+    if path.is_symlink():
+        raise ValueError("symlink targets are excluded; select a real vault path")
+    path = path.absolute()
+    root = find_vault(path, vault)
+    if not path.resolve().is_relative_to(root):
+        raise ValueError("target escapes the selected vault")
+    path = path.resolve()
+    if not path.exists():
+        raise ValueError("target does not exist")
+    index = VaultIndex(root)
+    if path.is_file():
+        if path.suffix.lower() != ".md":
+            raise ValueError("target must be a Markdown file or directory")
+        return validate_file(path, index)
+    result = Result()
+    for selected in files(path):
+        if selected.suffix.lower() != ".md":
+            continue
+        partial = validate_file(selected, index)
+        result.diagnostics.extend(partial.diagnostics)
+        result.checked += partial.checked
+        result.skipped += partial.skipped
+        result.unsupported += partial.unsupported
     result.diagnostics.sort()
     return result
