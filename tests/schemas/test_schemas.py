@@ -113,7 +113,7 @@ class SchemaTests(unittest.TestCase):
     def test_required_headings_and_order(self):
         for name in ('session', 'content'):
             base = self.fixtures[name]['base']
-            headings = [line for line in base['body'].splitlines() if line.startswith('#')]
+            headings = [line for line in base['body'].splitlines() if line.startswith(('# ', '## '))]
             for index, heading in enumerate(headings):
                 with self.subTest(schema=name, missing=heading):
                     record = copy.deepcopy(base)

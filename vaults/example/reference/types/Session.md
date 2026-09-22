@@ -27,5 +27,6 @@ links. In-game dates are null or non-whitespace strings in the campaign's own
 calendar, with no imposed real-world calendar or ordering. `aliases` is optional:
 null or a list of non-whitespace strings, including `[]`.
 
-Keep every heading from the template, in order, through Rewards / Loot. Sections
-may be empty or contain free Markdown; this permits preparation stubs.
+Keep the level-one and level-two template headings in order, through Rewards.
+Loot and other subsections are optional. Sections may be empty or contain free
+Markdown; this permits preparation stubs.

@@ -1,5 +1,10 @@
 # Note schemas
 
+This document is for developers integrating a validator and contributors changing
+schemas. It defines the input contract and explains how to test schema changes.
+For writing vault records, use the corresponding [type pages](../types/Content.md)
+and templates; the commands below run repository tests, not a vault validation CLI.
+
 These standard JSON Schema Draft 2020-12 files validate a parsed record as
 `{"frontmatter": {...}, "body": "Markdown after the closing YAML delimiter"}`.
 The envelope requires exactly those two keys. Frontmatter permits custom fields;
@@ -49,7 +54,7 @@ syntax tree: duplicate headings and matching lines inside fenced code can
 satisfy them. Transcript checks one content heading followed by an attributed
 speech line, not every line, every section, or speaker identity. Its regex also
 accepts matching fenced examples. Clue requires only a Sessions heading and one
-nonempty fenced view (three backticks or tildes), allowing arbitrary language and
+nonempty fenced view (three backticks), allowing arbitrary language and
 query text. It rejects commentary outside that view but cannot establish whether
 the fenced text executes a view. Embedded/four-character fences are not supported
 by this basic contract. View changes in #25 may need a small schema amendment.

@@ -49,7 +49,7 @@
     {
       "name": "alternate view",
       "valid": true,
-      "body": "\n## Sessions\n\n~~~dataviewjs\ndv.list([]);\n~~~\n"
+      "body": "\n## Sessions\n\n```dataviewjs\ndv.list([]);\n```\n"
     },
     {
       "name": "blank text",
@@ -164,6 +164,11 @@
       "name": "duplicate Sessions heading",
       "valid": false,
       "body": "## Sessions\n## Sessions\n```dataview\nLIST\n```\n"
+    },
+    {
+      "name": "tilde fences unsupported",
+      "valid": false,
+      "body": "## Sessions\n~~~dataview\nLIST\n~~~\n"
     }
   ]
 }

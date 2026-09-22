@@ -155,6 +155,11 @@
       "name": "empty body",
       "valid": false,
       "body": ""
+    },
+    {
+      "name": "Rewards without Loot subsection",
+      "valid": true,
+      "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n| ID  | Text |\n| --- | ---- |\n|     |      |\n## Locations\n| Location | Description |\n| -------- | ----------- |\n|          |             |\n## Important NPCs\n\n| Name | Summary |\n| ---- | ------- |\n|      |         |\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\nA favor from the pilots.\n"
     }
   ]
 }

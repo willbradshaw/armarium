@@ -97,8 +97,8 @@
     },
     "body": {
       "type": "string",
-      "pattern": "(?:^|\\n)# Preparation[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Starting scene[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Other scenes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Secrets & Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Locations[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Important NPCs[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Scene notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Encounters[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Prepared rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n# Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Preamble[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Events[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n### Loot[ \\t]*(?=\\r?\\n|$)",
-      "description": "Template headings in order, with unconstrained Markdown between them. Duplicates and matching lines inside code fences can satisfy this regex."
+      "pattern": "(?:^|\\n)# Preparation[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Starting scene[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Other scenes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Secrets & Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Locations[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Important NPCs[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Scene notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Encounters[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Prepared rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n# Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Preamble[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Events[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Rewards[ \\t]*(?=\\r?\\n|$)",
+      "description": "Template level-one and level-two headings in order, through Rewards, with unconstrained Markdown between them. Loot and other subsections are optional. Duplicates and matching lines inside code fences can satisfy this regex."
     }
   },
   "$defs": {

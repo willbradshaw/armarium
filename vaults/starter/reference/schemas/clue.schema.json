@@ -128,15 +128,8 @@
     },
     "body": {
       "type": "string",
-      "anyOf": [
-        {
-          "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*[ ]{0,3}```[^\\r\\n`~]*\\r?\\n(?!(?:[ \\t]*\\r?\\n)*[ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))(?:(?![ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))[^\\r\\n]*\\r?\\n)+[ ]{0,3}```[ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
-        },
-        {
-          "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*[ ]{0,3}~~~[^\\r\\n`~]*\\r?\\n(?!(?:[ \\t]*\\r?\\n)*[ ]{0,3}~{3,}[ \\t]*(?:\\r?\\n|$))(?:(?![ ]{0,3}~{3,}[ \\t]*(?:\\r?\\n|$))[^\\r\\n]*\\r?\\n)+[ ]{0,3}~~~[ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
-        }
-      ],
-      "description": "Only the Sessions heading and one fenced view; no prose outside it. Accepts backtick or tilde fences, without fixing a query or language. Does not execute or establish that the fenced text is a functioning view."
+      "description": "Only the Sessions heading and one view fenced with three backticks; no prose outside it. Query and language are not fixed. Does not execute or establish that the fenced text is a functioning view.",
+      "pattern": "^(?:[ \\t]*\\r?\\n)*## Sessions[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*[ ]{0,3}```[^\\r\\n`~]*\\r?\\n(?!(?:[ \\t]*\\r?\\n)*[ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))(?:(?![ ]{0,3}`{3,}[ \\t]*(?:\\r?\\n|$))[^\\r\\n]*\\r?\\n)+[ ]{0,3}```[ \\t]*(?:\\r?\\n[ \\t]*)*(?![\\s\\S])"
     }
   },
   "$defs": {
