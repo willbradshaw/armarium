@@ -1,5 +1,6 @@
 """Dedicated contracts for safe YAML loading, normalization and note parsing."""
 
+from collections.abc import Iterator
 from dataclasses import FrozenInstanceError
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -9,26 +10,27 @@ import pytest
 import yaml
 from yaml.nodes import MappingNode
 
-from armarium.parse import Note, UniqueLoader, normalize, parse
+from armarium.parse import FrontmatterLoader, Note
 
 
-class TestUniqueLoader:
+class TestFrontmatterLoader:
     @pytest.mark.parametrize(
         ("text", "expected"),
         [
             ("name: Example", {"name": "Example"}),
+            ("date: 2026-01-02", {"date": "2026-01-02"}),
             ("items: [one, two]", {"items": ["one", "two"]}),
         ],
     )
     def test_safe_values(self, text: str, expected: dict[str, Any]) -> None:
-        assert yaml.load(text, Loader=UniqueLoader) == expected
+        assert yaml.load(text, Loader=FrontmatterLoader) == expected
 
     def test_rejects_python_objects(self) -> None:
         with pytest.raises(yaml.constructor.ConstructorError):
-            yaml.load("!!python/object:builtins.object {}", Loader=UniqueLoader)
+            yaml.load("!!python/object:builtins.object {}", Loader=FrontmatterLoader)
 
 
-class TestUniqueLoaderConstructMapping:
+class TestFrontmatterLoaderConstructMapping:
     @pytest.mark.parametrize(
         ("text", "expected"),
         [
@@ -37,7 +39,7 @@ class TestUniqueLoaderConstructMapping:
         ],
     )
     def test_mapping(self, text: str, expected: dict[str, Any]) -> None:
-        loader = UniqueLoader(text)
+        loader = FrontmatterLoader(text)
         try:
             node = loader.get_single_node()
             assert isinstance(node, MappingNode)
@@ -64,7 +66,7 @@ class TestUniqueLoaderConstructMapping:
     def test_invalid_mapping(
         self, text: str, exception: type[Exception], message: str
     ) -> None:
-        loader = UniqueLoader(text)
+        loader = FrontmatterLoader(text)
         try:
             node = loader.get_single_node()
             assert isinstance(node, MappingNode)
@@ -74,7 +76,52 @@ class TestUniqueLoaderConstructMapping:
             loader.dispose()
 
 
-class TestNormalize:
+class TestFrontmatterLoaderGetSingleData:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("", None),
+            ("date: 2026-01-02", {"date": "2026-01-02"}),
+            ("dates: [2026-01-02T03:04:00Z]", {"dates": ["2026-01-02T03:04:00+00:00"]}),
+            (
+                "first: &items [2026-01-02]\nsecond: *items",
+                {"first": ["2026-01-02"], "second": ["2026-01-02"]},
+            ),
+        ],
+    )
+    def test_normalized_document(self, text: str, expected: Any) -> None:
+        loader = FrontmatterLoader(text)
+        try:
+            assert loader.get_single_data() == expected
+        finally:
+            loader.dispose()
+
+    @pytest.mark.parametrize(
+        ("text", "message"),
+        [
+            ("x: .nan", "non-JSON"),
+            ("1: value", "keys must be strings"),
+            ("x: &x [*x]", "recursive YAML aliases"),
+        ],
+    )
+    def test_invalid_document(self, text: str, message: str) -> None:
+        loader = FrontmatterLoader(text)
+        try:
+            with pytest.raises(ValueError, match=message):
+                loader.get_single_data()
+        finally:
+            loader.dispose()
+
+
+class TestFrontmatterLoaderNormalize:
+    @pytest.fixture
+    def loader(self) -> Iterator[FrontmatterLoader]:
+        loader = FrontmatterLoader("")
+        try:
+            yield loader
+        finally:
+            loader.dispose()
+
     @pytest.mark.parametrize(
         ("value", "expected"),
         [
@@ -91,8 +138,10 @@ class TestNormalize:
             ({"dates": [date(2026, 1, 2)]}, {"dates": ["2026-01-02"]}),
         ],
     )
-    def test_json_values(self, value: Any, expected: Any) -> None:
-        result = normalize(value)
+    def test_json_values(
+        self, loader: FrontmatterLoader, value: Any, expected: Any
+    ) -> None:
+        result = loader._normalize(value)
         assert result == expected
         assert type(result) is type(expected)
 
@@ -107,23 +156,27 @@ class TestNormalize:
             ({"set"}, "non-JSON"),
         ],
     )
-    def test_invalid_values(self, value: Any, message: str) -> None:
+    def test_invalid_values(
+        self, loader: FrontmatterLoader, value: Any, message: str
+    ) -> None:
         with pytest.raises(ValueError, match=message):
-            normalize(value)
+            loader._normalize(value)
 
     @pytest.mark.parametrize("container", [[], {}], ids=["list", "mapping"])
-    def test_cycles(self, container: Any) -> None:
+    def test_cycles(self, loader: FrontmatterLoader, container: Any) -> None:
         if isinstance(container, list):
             container.append(container)
         else:
             container["self"] = container
         with pytest.raises(ValueError, match="recursive YAML aliases"):
-            normalize(container)
+            loader._normalize(container)
 
-    def test_shared_aliases_are_copied_without_mutating_input(self) -> None:
+    def test_shared_aliases_are_copied_without_mutating_input(
+        self, loader: FrontmatterLoader
+    ) -> None:
         shared = [date(2026, 1, 2)]
         source = {"first": shared, "second": shared}
-        result = normalize(source)
+        result = loader._normalize(source)
         assert result == {"first": ["2026-01-02"], "second": ["2026-01-02"]}
         assert result["first"] is not result["second"]
         assert source["first"] is source["second"] is shared
@@ -162,7 +215,7 @@ class TestNoteKind:
         assert Note(Path("example.md"), metadata, "", 1).kind == expected
 
 
-class TestParse:
+class TestNoteParse:
     @pytest.mark.parametrize(
         ("text", "metadata", "body", "start"),
         [
@@ -202,7 +255,7 @@ class TestParse:
         path = tmp_path / "example.md"
         original = text.encode("utf-8")
         path.write_bytes(original)
-        note, diagnostics = parse(path, tmp_path)
+        note, diagnostics = Note.parse(path, tmp_path)
         assert diagnostics == []
         assert note == Note(path, metadata, body, start)
         assert path.read_bytes() == original
@@ -230,7 +283,7 @@ class TestParse:
         path = tmp_path / "broken.md"
         original = text.encode("utf-8")
         path.write_bytes(original)
-        note, diagnostics = parse(path, tmp_path)
+        note, diagnostics = Note.parse(path, tmp_path)
         assert note is None and len(diagnostics) == 1
         diagnostic = diagnostics[0]
         assert (
@@ -260,7 +313,7 @@ class TestParse:
                 path.symlink_to(outside)
             else:
                 path = root / ".." / "outside.md"
-        note, diagnostics = parse(path, root)
+        note, diagnostics = Note.parse(path, root)
         assert note is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "parse.invalid"
         assert diagnostics[0].path == path.relative_to(root).as_posix()
@@ -270,11 +323,11 @@ class TestParse:
 
     def test_path_outside_root_is_a_caller_error(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
-            parse(tmp_path / "outside.md", tmp_path / "vault")
+            Note.parse(tmp_path / "outside.md", tmp_path / "vault")
 
     def test_deep_yaml_returns_a_diagnostic(self, tmp_path: Path) -> None:
         path = tmp_path / "deep.md"
         path.write_text("---\nx: " + "[" * 2000 + "0" + "]" * 2000 + "\n---\n")
-        note, diagnostics = parse(path, tmp_path)
+        note, diagnostics = Note.parse(path, tmp_path)
         assert note is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "parse.invalid"
