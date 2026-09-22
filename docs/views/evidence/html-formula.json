@@ -1,0 +1,241 @@
+{
+  "formula": "html(escapeHTML(if(note.text, note.text.toString(), \"\")).replace(/\\[\\[([^|\\]\\n]+)\\|([^\\]\\n]+)\\]\\]/g, '<a class=\"internal-link\" data-href=\"$1\" href=\"$1\">$2</a>').replace(/\\[\\[([^\\]\\n]+)\\]\\]/g, '<a class=\"internal-link\" data-href=\"$1\" href=\"$1\">$1</a>').replace(/\\n/g, '<br>'))",
+  "method": "Obsidian in-memory Base query and real table-cell renderer; hidden DOM; native navigation intercepted; no window focus or tab changes",
+  "samples": [
+    {
+      "name": "bare links",
+      "input": "Meet [[reference/types/Clue]] and [[reference/types/Content]].",
+      "version": "1.13.7",
+      "community": [],
+      "sourceValue": "Meet [[reference/types/Clue]] and [[reference/types/Content]].",
+      "probe": {
+        "html": "Meet <a href=\"reference/types/Clue\" data-href=\"reference/types/Clue\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">reference/types/Clue</a> and <a href=\"reference/types/Content\" data-href=\"reference/types/Content\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">reference/types/Content</a>.",
+        "text": "Meet reference/types/Clue and reference/types/Content.",
+        "links": [
+          {
+            "label": "reference/types/Clue",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          },
+          {
+            "label": "reference/types/Content",
+            "target": "reference/types/Content",
+            "resolved": "reference/types/Content.md"
+          }
+        ],
+        "navigationCalls": [],
+        "scriptCount": 0
+      },
+      "native": {
+        "html": "<span class=\"internal-link\" data-href=\"reference/types/Clue\" draggable=\"true\">native control</span>",
+        "text": "native control",
+        "links": [
+          {
+            "label": "native control",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          }
+        ],
+        "navigationCalls": [
+          [
+            "reference/types/Clue",
+            "",
+            false
+          ]
+        ],
+        "scriptCount": 0
+      },
+      "raw": {
+        "html": "[[reference/types/Clue|raw Markdown]]",
+        "text": "[[reference/types/Clue|raw Markdown]]",
+        "links": [],
+        "navigationCalls": [],
+        "scriptCount": 0
+      }
+    },
+    {
+      "name": "aliases and duplicate basenames",
+      "input": "[[reference/types/Clue|type]] versus [[reference/templates/Clue|template]].",
+      "version": "1.13.7",
+      "community": [],
+      "sourceValue": "[[reference/types/Clue|type]] versus [[reference/templates/Clue|template]].",
+      "probe": {
+        "html": "<a href=\"reference/types/Clue\" data-href=\"reference/types/Clue\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">type</a> versus <a href=\"reference/templates/Clue\" data-href=\"reference/templates/Clue\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">template</a>.",
+        "text": "type versus template.",
+        "links": [
+          {
+            "label": "type",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          },
+          {
+            "label": "template",
+            "target": "reference/templates/Clue",
+            "resolved": "reference/templates/Clue.md"
+          }
+        ],
+        "navigationCalls": [],
+        "scriptCount": 0
+      },
+      "native": {
+        "html": "<span class=\"internal-link\" data-href=\"reference/types/Clue\" draggable=\"true\">native control</span>",
+        "text": "native control",
+        "links": [
+          {
+            "label": "native control",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          }
+        ],
+        "navigationCalls": [
+          [
+            "reference/types/Clue",
+            "",
+            false
+          ]
+        ],
+        "scriptCount": 0
+      },
+      "raw": {
+        "html": "[[reference/types/Clue|raw Markdown]]",
+        "text": "[[reference/types/Clue|raw Markdown]]",
+        "links": [],
+        "navigationCalls": [],
+        "scriptCount": 0
+      }
+    },
+    {
+      "name": "heading and extension",
+      "input": "[[reference/types/Content.md#Fields|fields]]",
+      "version": "1.13.7",
+      "community": [],
+      "sourceValue": "[[reference/types/Content.md#Fields|fields]]",
+      "probe": {
+        "html": "<a href=\"reference/types/Content.md#Fields\" data-href=\"reference/types/Content.md#Fields\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">fields</a>",
+        "text": "fields",
+        "links": [
+          {
+            "label": "fields",
+            "target": "reference/types/Content.md#Fields",
+            "resolved": "reference/types/Content.md"
+          }
+        ],
+        "navigationCalls": [],
+        "scriptCount": 0
+      },
+      "native": {
+        "html": "<span class=\"internal-link\" data-href=\"reference/types/Clue\" draggable=\"true\">native control</span>",
+        "text": "native control",
+        "links": [
+          {
+            "label": "native control",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          }
+        ],
+        "navigationCalls": [
+          [
+            "reference/types/Clue",
+            "",
+            false
+          ]
+        ],
+        "scriptCount": 0
+      },
+      "raw": {
+        "html": "[[reference/types/Clue|raw Markdown]]",
+        "text": "[[reference/types/Clue|raw Markdown]]",
+        "links": [],
+        "navigationCalls": [],
+        "scriptCount": 0
+      }
+    },
+    {
+      "name": "escaping and multiline",
+      "input": "Literal <script>alert(1)</script> & \"quotes\".\n[[reference/types/Clue|A & B < C \"quoted\"]]",
+      "version": "1.13.7",
+      "community": [],
+      "sourceValue": "Literal <script>alert(1)</script> & \"quotes\".\n[[reference/types/Clue|A & B < C \"quoted\"]]",
+      "probe": {
+        "html": "Literal &lt;script&gt;alert(1)&lt;/script&gt; &amp; \"quotes\".<br><a href=\"reference/types/Clue\" data-href=\"reference/types/Clue\" class=\"internal-link\" target=\"_blank\" rel=\"noopener nofollow\">A &amp; B &lt; C \"quoted\"</a>",
+        "text": "Literal <script>alert(1)</script> & \"quotes\".A & B < C \"quoted\"",
+        "links": [
+          {
+            "label": "A & B < C \"quoted\"",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          }
+        ],
+        "navigationCalls": [],
+        "scriptCount": 0
+      },
+      "native": {
+        "html": "<span class=\"internal-link\" data-href=\"reference/types/Clue\" draggable=\"true\">native control</span>",
+        "text": "native control",
+        "links": [
+          {
+            "label": "native control",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          }
+        ],
+        "navigationCalls": [
+          [
+            "reference/types/Clue",
+            "",
+            false
+          ]
+        ],
+        "scriptCount": 0
+      },
+      "raw": {
+        "html": "[[reference/types/Clue|raw Markdown]]",
+        "text": "[[reference/types/Clue|raw Markdown]]",
+        "links": [],
+        "navigationCalls": [],
+        "scriptCount": 0
+      }
+    },
+    {
+      "name": "null",
+      "input": null,
+      "version": "1.13.7",
+      "community": [],
+      "sourceValue": null,
+      "probe": {
+        "html": "",
+        "text": "",
+        "links": [],
+        "navigationCalls": [],
+        "scriptCount": 0
+      },
+      "native": {
+        "html": "<span class=\"internal-link\" data-href=\"reference/types/Clue\" draggable=\"true\">native control</span>",
+        "text": "native control",
+        "links": [
+          {
+            "label": "native control",
+            "target": "reference/types/Clue",
+            "resolved": "reference/types/Clue.md"
+          }
+        ],
+        "navigationCalls": [
+          [
+            "reference/types/Clue",
+            "",
+            false
+          ]
+        ],
+        "scriptCount": 0
+      },
+      "raw": {
+        "html": "[[reference/types/Clue|raw Markdown]]",
+        "text": "[[reference/types/Clue|raw Markdown]]",
+        "links": [],
+        "navigationCalls": [],
+        "scriptCount": 0
+      }
+    }
+  ],
+  "outcome": "HTML formula parses, renders prose/aliases and reflects successive canonical source edits on reevaluation. HTML links do not invoke internal navigation in Bases 1.13.7; native link() positive control does. Not a working replacement; no production views changed."
+}

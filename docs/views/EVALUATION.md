@@ -1,5 +1,10 @@
 # Issue #25 evaluation
 
+**Latest decision:** snapshots are rejected. The [HTML formula experiment](HTML-FORMULA.md)
+rendered anchor-shaped text but failed internal-link navigation in Obsidian 1.13.7.
+It has not been applied to production. The earlier snapshot-based implementation
+below remains superseded work awaiting replacement, not an approved solution.
+
 ## Current revision: tables with original columns
 
 All replacement views now use tables. Their displayed fields, labels and column
@@ -131,8 +136,9 @@ content. An unmounted view is not evidence of successful rendering.
 
 ## Outstanding review and integration
 
-The explicit-refresh preparation tradeoff still needs user review, and final
-integration into #24's installable package remains part of #25. This draft does
+The snapshot preparation implementation has been rejected and needs a live
+replacement. The package integration plan below belongs to the earlier fallback
+proposal and is superseded if no command-based fallback remains. This draft does
 not close the issue. No #24 package branch/PR was available during implementation.
 Move the bounded single-Session refresher into that same package/parser/resolver,
 retain checksum ownership, atomic replacement and stale/conflict behavior, verify
