@@ -1,5 +1,7 @@
 """Shared link utilities reject malformed syntax and preserve scan recovery."""
 
+from pathlib import Path
+
 import pytest
 
 from armarium.lib import iter_wikilinks, parse_wikilink
@@ -13,6 +15,12 @@ from armarium.lib import iter_wikilinks, parse_wikilink
         (r"[[Café\|Display]]", False, "Café"),
         ("[[Note#Heading|Display]]", False, "Note"),
         ("[[#^block]]", False, ""),
+        ("[[campaign_2/reference/Campaign]]", True, "campaign_2/reference/Campaign"),
+        (
+            "[[reference/views/clue-index.base#Closed]]",
+            False,
+            "reference/views/clue-index.base",
+        ),
     ],
 )
 def test_parse_wikilink(value: str, canonical: bool, expected: str) -> None:
@@ -67,3 +75,35 @@ def test_iter_wikilinks_returns_parsed_targets_and_preserves_self_anchors() -> N
     assert isinstance(results[3], ValueError)
     assert "target must not be empty" in str(results[3])
     assert results[4] == "Café"
+
+
+def test_iter_wikilinks_accepts_named_base_embeds_and_preparation_lists() -> None:
+    text = (
+        "![[reference/views/clue-index.base#Active]]\n"
+        'prepared_clues: ["[[C-2-0001]]", "[[C-2-0002]]"]\n'
+        "![[reference/views/prepared-clues.base]]\n"
+    )
+    assert list(iter_wikilinks(text)) == [
+        "reference/views/clue-index.base",
+        "C-2-0001",
+        "C-2-0002",
+        "reference/views/prepared-clues.base",
+    ]
+
+
+@pytest.mark.parametrize("vault", ["starter", "example"])
+def test_shipped_vault_link_syntax(vault: str) -> None:
+    """Exercise current templates, shared records, both campaigns and Base embeds.
+
+    This checks only syntax, not target existence, scope or view execution.
+    """
+    root = Path(__file__).resolve().parents[1] / "vaults" / vault
+    files = list(root.rglob("*.md"))
+    assert files
+    for path in files:
+        errors = [
+            str(item)
+            for item in iter_wikilinks(path.read_text())
+            if isinstance(item, ValueError)
+        ]
+        assert not errors, (path.relative_to(root), errors)
