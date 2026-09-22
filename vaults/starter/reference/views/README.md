@@ -8,6 +8,10 @@ Then enable the community plugin **Frontmatter Markdown Links** by **mnaoumov**:
 1. Open Settings → Community plugins and turn on community plugins if restricted.
 2. Select Browse, search for **Frontmatter Markdown Links**, and select Install.
 3. Select **Enable**. Installing alone does not turn it on.
+4. In Settings → Appearance → CSS snippets, keep **armarium-prose** enabled.
+   It ships enabled in the starter/example vault and makes linked prose flow as
+   one paragraph instead of separate flex columns. For an existing vault, copy
+   `.obsidian/snippets/armarium-prose.css` and enable it there.
 
 Tested combination: Obsidian 1.13.7 with Frontmatter Markdown Links 3.0.2.
 The plugin is required for clickable wikilinks embedded within `text` and `summary`

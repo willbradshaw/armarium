@@ -28,6 +28,11 @@ been added to Content Active Clues. Canonical fields, Events and Loot are preser
 Invalid preparation selections are excluded rather than rendered: missing records,
 wrong types/subtypes and wrong campaigns. Duplicate selections produce one row.
 
+A bundled `armarium-prose` CSS snippet switches only the text/summary formula
+cells from Bases' flex layout to normal inline paragraph flow. It is enabled in
+both vaults' appearance settings. The plugin inserts separate spans for prose and
+links, which otherwise become separate flex items and lose normal word spacing.
+
 ## Verification
 
 [Current background integration evidence](evidence/live-tables.json) records real
@@ -37,6 +42,11 @@ that disposable vault. Tables were mounted transparent and noninteractive so the
 actual virtualized cells could render. The harness does not open notes, change
 active tabs, show or focus windows, or take screenshots. Link navigation is
 intercepted at `openLinkText`, recording its actual target without changing tabs.
+
+[Inline-flow evidence](evidence/prose-layout.json) compares every visible
+character's position against a plain-paragraph reference at 250, 600 and 1000px
+for both Text and Summary. All six cases pass; six snippet-disabled controls
+reproduce the broken flex layout. The previous row-height check alone missed this.
 
 **29 background integration checks passed.** They cover:
 
@@ -77,13 +87,17 @@ python3 -m venv /private/tmp/armarium-views-venv
 For background integration, use a disposable vault under the exact
 `/private/tmp/armarium25-review/` root, with the example fixture contents, named
 `armarium25-starter`. Enable core Bases and install/enable Frontmatter Markdown
-Links 3.0.2 there. A Bases embed must already be loaded in the active Reading-view
+Links 3.0.2 and the bundled `armarium-prose` CSS snippet there. A Bases embed must already be loaded in the active Reading-view
 note. The isolated Obsidian profile must expose CDP on port 9225. Then:
 
 ```sh
 ARMARIUM_PYTHON=/private/tmp/armarium-views-venv/bin/python \
   node tests/views/check_live_tables.mjs /private/tmp/live-tables.json
 ```
+
+Run `node tests/views/check_prose_layout.mjs /private/tmp/prose-layout.json` for
+the separate inline-flow regression. It toggles the snippet in the disposable
+vault for its negative controls and restores it enabled.
 
 The harness rejects other vault roots. It restores changed fixture notes and
 unloads its test controllers even on failure. Plugin installation/enabling is an

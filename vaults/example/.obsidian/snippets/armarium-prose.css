@@ -1,0 +1,13 @@
+/* Keep linked prose in a normal paragraph flow, rather than Bases' flex row.
+   Scope this to Armarium's canonical text/summary display formulas. */
+.bases-td:is([data-property="formula.text"], [data-property="formula.summary"])
+  > .bases-rendered-value {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bases-td:is([data-property="formula.text"], [data-property="formula.summary"])
+  > .bases-rendered-value span {
+  display: inline;
+}
