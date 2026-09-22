@@ -50,9 +50,9 @@ into a separately labeled subsection and update the campaign path.
 
 ## Schema
 
-A Content note requires `type`, `subtype`, `summary` and the subtype fields
-listed above. Its body contains Notes, Active Clues and Appearances headings in
-that order. Each campaign block includes `first_session` and `last_session`;
-Object campaign blocks also include `held_by`.
+A Content note’s frontmatter requires `type`, `subtype`, `summary` and the
+subtype fields listed above. Its body contains Notes, Active Clues and
+Appearances headings in that order. Each campaign block includes `first_session`
+and `last_session`; Object campaign blocks also include `held_by`.
 
 See the [Content schema](../schemas/content.schema.json).

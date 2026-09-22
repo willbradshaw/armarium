@@ -10,15 +10,16 @@ filename, and the Sessions query's campaign path.
 
 ## Schema
 
-A Clue requires `type`, `status`, nonblank `text`, `subjects`, `first_session`
-and `last_session`. Status links to one of the six supplied statuses. Subjects
-are Content links: null means unidentified, and `[]` means none recorded.
+A Clue’s frontmatter requires `type`, `status`, nonblank `text`, `subjects`,
+`first_session` and `last_session`. Status links to one of the six supplied
+statuses. Subjects are Content links: null means unidentified, and `[]` means
+none recorded.
 
 `first_session` links to the first Session for which the Clue was prepared or
 used; `last_session` links to its latest introduction or development in play.
 Both may be null. Preparation alone can set first; setting last requires first.
-Superseded Clues also require a replacement Clue link in `superseded_by`; otherwise
-that field is optional and nullable.
+Superseded Clues also require a replacement Clue link in `superseded_by`;
+otherwise that field is optional and nullable.
 
 The body contains only `## Sessions` followed by one nonempty view fenced with
 three backticks.
