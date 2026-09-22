@@ -1,0 +1,29 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[Type]]"
+    },
+    "body": "A definition.\n"
+  },
+  "cases": [
+    {
+      "name": "empty body",
+      "body": "",
+      "valid": true
+    },
+    {
+      "name": "wrong type",
+      "frontmatter": {
+        "type": "[[Reference]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "aliased type",
+      "frontmatter": {
+        "type": "[[Type|Label]]"
+      },
+      "valid": false
+    }
+  ]
+}

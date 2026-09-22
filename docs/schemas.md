@@ -19,9 +19,14 @@ Each supported `type` has a schema in the vault's `reference/schemas/` directory
 | `[[types/Player]]` | `player.schema.json` |
 | `[[types/Transcript]]` | `transcript.schema.json` |
 | `[[Reference]]` | `reference.schema.json` |
+| `[[Type]]` | `type.schema.json` |
+| `[[Status]]` | `status.schema.json` |
 
-Schemas apply to typed records, not unfinished templates or untyped supporting
-documents such as indexes, type definitions and `applies_to` status definitions.
+Type definitions are Type records, including Type itself and the Status type
+definition. Status definitions are Status records and require an `applies_to`
+canonical wikilink to one type definition. Both allow custom metadata and free
+Markdown bodies. A submitted record missing its type is not exempt from validation;
+unfinished templates remain a separate category.
 References are local. The tests enable URI and date format assertions.
 
 ## Limits
@@ -42,7 +47,7 @@ From the repository root, without installing Armarium:
 ```sh
 python3 -m venv /tmp/armarium-schema-venv
 /tmp/armarium-schema-venv/bin/pip install -r tests/schemas/requirements.txt
-/tmp/armarium-schema-venv/bin/python -m unittest discover -s tests/schemas -v
+/tmp/armarium-schema-venv/bin/python -m pytest tests/schemas -q
 ```
 
 Tests cover meta-schemas, offline references, parsed JSON fixtures, committed

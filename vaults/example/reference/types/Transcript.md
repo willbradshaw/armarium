@@ -1,3 +1,6 @@
+---
+type: "[[Type]]"
+---
 Transcript pages contain cleaned, attributed speech from a session, grouped under
 content headings. They live under the campaign's `sessions/transcripts/` directory
 and link to their Session through the `session` field.

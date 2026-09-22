@@ -8,6 +8,7 @@ import unittest
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry
 import yaml
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS = ROOT / 'vaults/starter/reference/schemas'
@@ -18,6 +19,8 @@ MAPPING = {
     '[[types/Player]]': 'player',
     '[[types/Transcript]]': 'transcript',
     '[[Reference]]': 'reference',
+    '[[Type]]': 'type',
+    '[[Status]]': 'status',
 }
 
 
@@ -174,7 +177,7 @@ class SchemaTests(unittest.TestCase):
         self.assertTrue(campaign_types, 'The example must exercise campaign records')
         for campaign, kinds in campaign_types.items():
             with self.subTest(campaign=campaign.name):
-                self.assertEqual(kinds, set(MAPPING.values()))
+                self.assertEqual(kinds, set(MAPPING.values()) - {'type', 'status'})
 
     def test_date_normalization_and_format_assertions(self):
         self.assertIn('uri', FormatChecker.checkers)
@@ -198,6 +201,55 @@ class SchemaTests(unittest.TestCase):
                 with self.subTest(path=path.name):
                     self.assertEqual(path.read_bytes(), (example / path.name).read_bytes())
 
+
+class TestDefinitionSchemas:
+    @pytest.mark.parametrize(
+        ("vault", "folder", "declared_type", "path"),
+        [
+            (vault, folder, declared_type, path)
+            for vault in ("starter", "example")
+            for folder, declared_type in (("types", "Type"), ("statuses", "Status"))
+            for path in sorted(
+                (ROOT / "vaults" / vault / "reference" / folder).glob("*.md")
+            )
+        ],
+        ids=lambda value: value.name if isinstance(value, Path) else value,
+    )
+    def test_typed_definition(
+        self, vault: str, folder: str, declared_type: str, path: Path
+    ) -> None:
+        root = ROOT / "vaults" / vault
+        text = path.read_text()
+        assert text.startswith("---\n")
+        metadata, body = text[4:].split("\n---\n", 1)
+        frontmatter = yaml.safe_load(metadata)
+        assert frontmatter["type"] == f"[[{declared_type}]]"
+        schema = json.loads(
+            (
+                root / "reference/schemas" / f"{declared_type.lower()}.schema.json"
+            ).read_text()
+        )
+        assert (
+            list(
+                Draft202012Validator(schema).iter_errors(
+                    {"frontmatter": frontmatter, "body": body}
+                )
+            )
+            == []
+        )
+        if folder == "statuses":
+            target = root / "reference" / (frontmatter["applies_to"][2:-2] + ".md")
+            assert target.is_file()
+            target_metadata = target.read_text()[4:].split("\n---\n", 1)[0]
+            assert yaml.safe_load(target_metadata)["type"] == "[[Type]]"
+
+    @pytest.mark.parametrize("vault", ["starter", "example"])
+    @pytest.mark.parametrize("name", ["Type", "Status"])
+    def test_type_definitions_exist(self, vault: str, name: str) -> None:
+        path = ROOT / "vaults" / vault / "reference/types" / f"{name}.md"
+        assert path.is_file()
+        metadata = path.read_text()[4:].split("\n---\n", 1)[0]
+        assert yaml.safe_load(metadata)["type"] == "[[Type]]"
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Type definition",
+  "description": "A typed definition represented by JSON-compatible frontmatter and a Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[Type]]"
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string"
+    }
+  }
+}
