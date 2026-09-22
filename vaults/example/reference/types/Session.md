@@ -13,8 +13,8 @@ instructions in Scene notes; record what actually happened under Events.
 
 ## Schema
 
-The [Session schema](../schemas/session.schema.json) uses the shared
-[parsed-note contract and standalone checks](../schemas/README.md).
+The [Session schema](../schemas/session.schema.json) validates parsed
+`{frontmatter, body}` records.
 
 Require `type`, `date`, `campaign`, `session_number`, `players_absent`,
 `in_game_start_date` and `in_game_end_date`. The campaign is a non-null campaign

@@ -41,4 +41,6 @@ The supplied links and queries target campaign 1.
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
 in Git. The copied vault can be its own Git repository.
 
+For schema integration and testing, see [Schema development](docs/schemas.md).
+
 Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium/issues).

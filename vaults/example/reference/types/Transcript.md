@@ -8,8 +8,8 @@ use `[Player?]` or `[?]` when attribution or hearing is uncertain.
 
 ## Schema
 
-The [Transcript schema](../schemas/transcript.schema.json) uses the shared
-[parsed-note contract and standalone checks](../schemas/README.md).
+The [Transcript schema](../schemas/transcript.schema.json) validates parsed
+`{frontmatter, body}` records.
 
 Require `type` and a non-null Session wikilink in `session`. A completed
 Transcript needs at least one level-two content heading followed by an attributed

@@ -2,8 +2,8 @@ Pages with `type: "[[Reference]]"` are structural, taxonomic, or index pages, su
 
 ## Schema
 
-The [Reference schema](../schemas/reference.schema.json) uses the shared
-[parsed-note contract and standalone checks](../schemas/README.md).
+The [Reference schema](../schemas/reference.schema.json) validates parsed
+`{frontmatter, body}` records.
 
 Only explicitly typed pages use this schema. Require `type: "[[Reference]]"`;
 no other keys or body headings are required. Custom fields and an empty body are

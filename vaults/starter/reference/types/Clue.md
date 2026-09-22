@@ -10,8 +10,8 @@ filename, and the Sessions query's campaign path.
 
 ## Schema
 
-The [Clue schema](../schemas/clue.schema.json) uses the shared
-[parsed-note contract and standalone checks](../schemas/README.md).
+The [Clue schema](../schemas/clue.schema.json) validates parsed
+`{frontmatter, body}` records.
 
 `type`, `status`, `text`, `subjects`, `first_session` and `last_session` are
 required. Text must contain non-whitespace text; a blank candidate is still a

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Armarium Transcript note",
-  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body. See README.md for normalization, mapping and validation limits.",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body.",
   "type": "object",
   "required": [
     "frontmatter",

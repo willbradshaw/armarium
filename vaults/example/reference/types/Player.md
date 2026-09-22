@@ -5,8 +5,8 @@ Use [[templates/Player]]. A PC's `player` field must link to a Player page.
 
 ## Schema
 
-The [Player schema](../schemas/player.schema.json) uses the shared
-[parsed-note contract and standalone checks](../schemas/README.md).
+The [Player schema](../schemas/player.schema.json) validates parsed
+`{frontmatter, body}` records.
 
 Require `type` and `plays`. Use a list of PC Content links; `[]` explicitly
 permits an unassigned Player. Null, a single scalar link, and empty link items
