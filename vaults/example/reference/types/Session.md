@@ -11,7 +11,8 @@ update the path, campaign link and campaign number in the filename.
 campaign; Locations and NPCs must be matching Content subtypes, shared or in this
 campaign. List order is display order. Preparation shows current Clue `text` and
 Content `summary`, including in past Sessions. Put session-specific instructions
-in Scene notes and actual play under Events.
+in Scene notes and actual play under Events. Secrets & Clues, Locations and
+Important NPCs each contain exactly one Base embed and no additional text.
 
 When campaigns use the same reference filename, qualify links with the shortest
 unique path, for example `campaign_2/reference/Campaign`. Update existing

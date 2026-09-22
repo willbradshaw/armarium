@@ -214,7 +214,12 @@
     "body": {
       "type": "string",
       "pattern": "(?:^|\\n)## Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Active Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Appearances[ \\t]*(?=\\r?\\n|$)",
-      "description": "Requires level-two Notes, Active Clues and Appearances headings in that order, with free Markdown inside each section. The pattern accepts duplicate headings and matching headings inside fenced code. Use one Active Clues query and one Appearances list across campaigns, with campaign identity carried by the linked record IDs. Appearances record actual interaction and noteworthy PC contributions; incidental mentions, preparation and attendance alone do not qualify."
+      "description": "Requires Notes, Active Clues and Appearances headings in order. Active Clues contains exactly one Base embed; Notes and Appearances allow free Markdown. Use one Appearances list across campaigns, with campaign identity carried by linked Session IDs. Duplicates and matching headings inside fenced code can satisfy these regexes. Embed target existence and view execution require separate checks.",
+      "allOf": [
+        {
+          "pattern": "(?:^|\\n)## Active\\ Clues[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Appearances[ \\t]*(?=\\r?\\n|$)"
+        }
+      ]
     }
   },
   "$defs": {

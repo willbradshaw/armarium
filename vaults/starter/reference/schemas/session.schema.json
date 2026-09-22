@@ -119,7 +119,18 @@
     "body": {
       "type": "string",
       "pattern": "(?:^|\\n)# Preparation[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Starting scene[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Other scenes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Secrets & Clues[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Locations[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Important NPCs[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Scene notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Encounters[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Prepared rewards[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n# Notes[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Preamble[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Events[ \\t]*(?=\\r?\\n|$)[\\s\\S]*?\\n## Rewards[ \\t]*(?=\\r?\\n|$)",
-      "description": "Template level-one and level-two headings in order, through Rewards, with unconstrained Markdown between them. Loot and other subsections are optional. Duplicates and matching lines inside code fences can satisfy this regex."
+      "description": "Template level-one and level-two headings in order, through Rewards. Secrets & Clues, Locations and Important NPCs each contain exactly one Base embed. Other sections allow free Markdown; Loot and other subsections are optional. Duplicates and matching headings inside fenced code can satisfy these regexes. Embed target existence and view execution require separate checks.",
+      "allOf": [
+        {
+          "pattern": "(?:^|\\n)## Secrets\\ \\&\\ Clues[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Locations[ \\t]*(?=\\r?\\n|$)"
+        },
+        {
+          "pattern": "(?:^|\\n)## Locations[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Important\\ NPCs[ \\t]*(?=\\r?\\n|$)"
+        },
+        {
+          "pattern": "(?:^|\\n)## Important\\ NPCs[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*!\\[\\[(?!\\s)[^\\[\\]#|\\r\\n]+\\.base(?:#[^\\[\\]|\\r\\n]+)?\\]\\][ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*## Scene\\ notes[ \\t]*(?=\\r?\\n|$)"
+        }
+      ]
     }
   },
   "$defs": {

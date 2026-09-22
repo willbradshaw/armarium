@@ -6,7 +6,7 @@
       "summary": null,
       "stats": null
     },
-    "body": "## Notes\n## Active Clues\n## Appearances\n"
+    "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
   },
   "cases": [
     {
@@ -120,6 +120,46 @@
           "last_session": null
         }
       }
+    },
+    {
+      "name": "Active Clues missing embed",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues Dataview block",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n```dataview\nLIST\n```\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues fenced Base",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n```base\nviews: []\n```\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues inline expression",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n`= [[Example]].summary`\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues two embeds",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues extra prose",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\nCommentary\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues ordinary link",
+      "valid": false,
+      "body": "## Notes\n## Active Clues\n[[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Active Clues named view",
+      "valid": true,
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base#Selected]]\n## Appearances\n"
     }
   ]
 }

@@ -46,7 +46,7 @@ contributions rather than attendance. Use `N/A` only when there are no appearanc
 Keep acquisition and transfer history in Session records when current possession
 changes.
 
-Use one Active Clues view. Its scope follows this note’s location: shared
+Active Clues contains exactly one Base embed and no additional text. Its scope follows this note’s location: shared
 `content/` items include active Clues from all campaigns; items under
 `campaigns/campaign_N/` include only that campaign. Only Pending or Hinted Clues
 whose canonical `subjects` link to this item appear. Do not split Active Clues
