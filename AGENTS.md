@@ -9,7 +9,6 @@
 # Testing conventions
 
 - Tests for a source module `X.py` belong in `test_X.py`.
-
 - Cover every class, function, and method with dedicated tests, including private
   helpers and properties.
 - Organize tests into classes named for the class, function, or method under test
