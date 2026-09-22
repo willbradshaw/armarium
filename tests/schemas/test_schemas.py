@@ -1,14 +1,14 @@
 """Standalone schema checks; no Armarium runtime or production parser."""
 import copy
-from datetime import date, datetime
 import json
-from pathlib import Path
 import unittest
+from datetime import date, datetime
+from pathlib import Path
 
+import pytest
+import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry
-import yaml
-import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS = ROOT / 'vaults/starter/reference/schemas'
