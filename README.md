@@ -40,8 +40,8 @@ Use Obsidian **1.13.7+**, enable the **Bases** core plugin, and install **and en
 This community plugin makes wikilinks inside table text clickable. Enable it in
 each new or copied vault; Armarium does not bundle plugin code. Keep the included
 **armarium-prose** CSS snippet enabled under Settings → Appearance for normal
-spacing around links. Clue views and
-preparation tables update live from canonical fields and selected records.
+spacing around links. Clue views and preparation tables update live from canonical
+fields and selected records.
 See [view setup and instructions](vaults/starter/reference/views/README.md).
 
 `.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
