@@ -12,7 +12,10 @@ campaign_2:
 
 [[Darian Holt]] and [[Bram Kest]] split earnings after repairs and supplies.
 Either can call off a dive. Their working rule is to rescue people before arguing
-over goods, even when that leaves them with nothing to sell.
+over goods, even when that leaves them with nothing to sell. Darian chooses the
+approach and organizes the boat; Bram assesses the wreck and directs recovery.
+Darian tends to believe they still have time. Bram wants another measurement
+before committing. Their hardest decisions come when both habits cost minutes.
 
 ## Active Clues
 

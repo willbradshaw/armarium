@@ -1,7 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: "PC"
-summary: "A salvage diver who counts every person aboard before he counts the cargo."
+summary: "A meticulous wreck surveyor and rescue diver with a hullwright's eye for failing timber and a dry bedside manner."
 player: "[[Peter]]"
 campaign_2:
   first_session: "[[S-2-001]]"
@@ -10,10 +10,17 @@ campaign_2:
 
 ## Notes
 
-Bram learned diving by retrieving dropped tools beneath harbor
-hoists. He checks his partner's knots twice and his own three times. With
-[[Darian Holt]], he runs the [[Tern Salvage Company]]; he refuses jobs that treat
-trapped sailors as an inconvenience to salvage.
+Bram repaired hulls beneath harbor hoists before taking work underwater. He reads
+a wreck through its seams, fastenings and shifting loads, marking where to brace
+or cut before moving anything heavy. Aboard [[Tern]], he surveys damage, plans
+safe extractions and tends rescued sailors until they reach shore. He wants to
+establish a repair yard where working crews can mend a damaged hull affordably.
+
+He speaks in measurements, asks one question at a time and offers reassurance
+with very dry jokes. He is slow to trust a plan he has not checked himself; a
+changing tide can make his insistence on one more inspection costly. With
+[[Darian Holt]], he runs the [[Tern Salvage Company]]. Darian gets people ready
+to act; Bram sets the load limits and the point at which they stop.
 
 ## Active Clues
 
