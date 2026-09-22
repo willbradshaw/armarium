@@ -14,3 +14,12 @@ jobs:
       - run: mypy src
       - run: pytest
       - run: python -m build
+      - name: Validate every shipped vault
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          from armarium.infrastructure import shipped_vaults
+          for vault in shipped_vaults(Path.cwd()):
+              subprocess.run(["armarium", "validate", str(vault), "--vault", str(vault)], check=True)
+          PY

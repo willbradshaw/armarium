@@ -5,6 +5,7 @@ from pathlib import Path
 from armarium.context import check
 from armarium.discovery import files, find_vault
 from armarium.index import VaultIndex
+from armarium.infrastructure import check as check_infrastructure
 from armarium.lib import Diagnostic, Result
 from armarium.schemas import Schemas
 
@@ -77,5 +78,7 @@ def validate(path: Path, vault: Path | None = None) -> Result:
         result.checked += partial.checked
         result.skipped += partial.skipped
         result.unsupported += partial.unsupported
+    if path == root:
+        result.diagnostics.extend(check_infrastructure(root))
     result.diagnostics.sort()
     return result

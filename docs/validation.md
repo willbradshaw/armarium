@@ -36,3 +36,9 @@ Malformed wikilink delimiters and empty targets produce `link.syntax` errors
 with a metadata field or body line. Scanning continues to later links. The shared
 `parse_wikilink()` utility raises `ValueError` for malformed input; file checks
 convert it into a diagnostic. Illustrative code fences remain excluded.
+
+A vault-root scan additionally requires shared reference infrastructure and at
+least one numeric `campaign_N` folder with the documented content/clues/sessions/
+reference layout. Additional user folders are allowed. The empty starter is valid;
+forms need not be filled. `.git` alone never identifies a vault. CI discovers every
+direct child of `vaults/` and validates it independently with explicit context.
