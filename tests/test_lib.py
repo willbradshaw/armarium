@@ -345,3 +345,28 @@ class TestResultReport:
             ("armarium", logging.INFO, "2 checked, 1 skipped, 1 unsupported"),
         ]
         assert result == Result(findings, checked=2, skipped=1, unsupported=1)
+
+
+class TestResultFailedFiles:
+    @pytest.mark.parametrize(
+        ("findings", "expected"),
+        [
+            ([], 0),
+            ([("a.md", "warning"), ("b.md", "info")], 0),
+            ([("a.md", "error")], 1),
+            ([("a.md", "error"), ("a.md", "error")], 1),
+            ([("a.md", "error"), ("b.md", "error"), ("c.md", "warning")], 2),
+        ],
+    )
+    def test_distinct_error_paths(
+        self,
+        findings: list[tuple[str, Literal["error", "warning", "info"]]],
+        expected: int,
+    ) -> None:
+        result = Result(
+            [
+                Diagnostic(path, "test", "Finding", severity=severity)
+                for path, severity in findings
+            ]
+        )
+        assert result.failed_files == expected

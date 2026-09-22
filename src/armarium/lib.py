@@ -175,6 +175,17 @@ class Result:
         )
 
     @property
+    def failed_files(self) -> int:
+        """Count distinct files with validation errors.
+
+        Returns:
+            int: Number of distinct diagnostic paths with error severity.
+                Multiple errors in one file count once; warnings and info
+                findings do not contribute.
+        """
+        return len({d.path for d in self.diagnostics if d.severity == "error"})
+
+    @property
     def failed(self) -> bool:
         """Report whether the accumulated findings include an error.
 

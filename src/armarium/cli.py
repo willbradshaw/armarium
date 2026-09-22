@@ -55,9 +55,7 @@ def main() -> None:
     result = validate_markdown(args.path, args.vault)
     result.report()
     if result.failed:
-        failed_files = len(
-            {d.path for d in result.diagnostics if d.severity == "error"}
-        )
+        failed_files = result.failed_files
         noun = "file" if failed_files == 1 else "files"
         raise ValidationError(f"{failed_files} {noun} failed validation")
 
