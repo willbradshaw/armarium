@@ -1,6 +1,7 @@
 """Vault-local Draft 2020-12 schemas with offline, confined references."""
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -15,35 +16,32 @@ from armarium.lib import Diagnostic
 from armarium.parse import Note
 
 
-class Schemas:
-    """Validate notes with this vault's lowercase <type>.schema.json files.
+@dataclass(frozen=True)
+class Schema:
+    """One loaded schema and the vault boundary for its references.
 
     Attributes:
-        root: Absolute vault path used to label diagnostics.
-        directory: The vault's reference/schemas directory.
+        path: Absolute path identifying this schema.
+        root: Absolute vault path used for confinement and diagnostic labels.
+        contents: Meta-validated JSON schema object or boolean.
     """
 
-    def __init__(self, root: Path) -> None:
-        """Select a vault without reading or creating any files.
+    path: Path
+    root: Path
+    contents: Any
+
+    @classmethod
+    def load(cls, path: Path, root: Path) -> "Schema":
+        """Read one confined schema and check its Draft 2020-12 syntax.
 
         Args:
-            root: Absolute or working-directory-relative vault path.
+            path: Schema file path, absolute or relative to the working directory.
+            root: Vault path, absolute or relative to the working directory.
 
         Returns:
-            None: Initialize the vault and schema directory paths.
-        """
-        self.root = root.absolute()
-        self.directory = self.root / "reference/schemas"
-
-    def read(self, path: Path) -> Any:
-        """Read a local JSON schema and check its Draft 2020-12 syntax.
-
-        Args:
-            path: Schema file path, relative to the working directory or absolute.
-
-        Returns:
-            Any: The schema object or boolean. An omitted $schema defaults to
-                Draft 2020-12; an explicit different dialect is rejected.
+            Schema: The loaded schema. An omitted $schema defaults to Draft
+                2020-12; an explicit different dialect is rejected. References
+                are retrieved later, as validation encounters them.
 
         Raises:
             OSError: The schema cannot be read.
@@ -51,9 +49,11 @@ class Schemas:
                 the declared dialect is unsupported.
             SchemaError: The schema fails Draft 2020-12 meta-validation.
         """
-        if not self.directory.resolve().is_relative_to(
-            self.root.resolve()
-        ) or not path.resolve().is_relative_to(self.directory.resolve()):
+        root, path = root.absolute(), path.absolute()
+        directory = root / "reference/schemas"
+        if not directory.resolve().is_relative_to(
+            root.resolve()
+        ) or not path.resolve().is_relative_to(directory.resolve()):
             raise ValueError("schema reference escapes reference/schemas")
         data = json.loads(path.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(data)
@@ -63,7 +63,7 @@ class Schemas:
             != "https://json-schema.org/draft/2020-12/schema"
         ):
             raise ValueError("schema must use Draft 2020-12")
-        return data
+        return cls(path, root, data)
 
     def retrieve(self, uri: str) -> Resource[Any]:
         """Retrieve a referenced schema using only a confined local file URI.
@@ -84,49 +84,36 @@ class Schemas:
         parsed = urlparse(uri)
         if parsed.scheme != "file" or parsed.netloc:
             raise NoSuchResource(uri)
+        referenced = self.load(Path(unquote(parsed.path)), self.root)
         return Resource.from_contents(
-            self.read(Path(unquote(parsed.path))), default_specification=DRAFT202012
+            referenced.contents, default_specification=DRAFT202012
         )
 
-    def validate(self, note: Note) -> tuple[bool, list[Diagnostic]]:
-        """Validate a typed note and report schema coverage and failures.
+    def validate(self, note: Note) -> list[Diagnostic]:
+        """Validate a note against this explicitly loaded schema.
 
         Args:
-            note: Parsed note inside this vault with a canonical declared type.
+            note: Parsed note inside this vault. Schema selection is independent
+                of validation; this method does not inspect the declared type.
 
         Returns:
-            tuple[bool, list[Diagnostic]]: Whether a schema was found, plus
-                findings. Missing schemas return False and a schema.unsupported
-                warning. Found schemas return True with schema.instance errors
-                for invalid note data or schema.invalid for schema/read/reference
-                failures. Successful validation returns True and an empty list.
-                References are resolved as validation encounters them; this does
-                not audit unused branches of the schema. No files are modified.
+            list[Diagnostic]: Field-located schema.instance errors, schema.invalid
+                findings for reference failures, or an empty list on success.
+                References are resolved as encountered, without auditing unused
+                branches. The loaded contents and source files are not modified.
 
         Raises:
-            ValueError: The note has no canonical type or lies outside the vault.
+            ValueError: The note lies outside the vault.
         """
-        kind = note.kind
-        if kind is None:
-            raise ValueError("schema validation requires a canonical note type")
-        path = self.directory / f"{kind.lower()}.schema.json"
         relative = note.path.absolute().relative_to(self.root).as_posix()
-        if not path.exists():
-            return False, [
-                Diagnostic(
-                    relative,
-                    "schema.unsupported",
-                    f"no vault-local schema for {kind}; validation is partial",
-                    severity="warning",
-                )
-            ]
         try:
-            schema = self.read(path)
-            resource = Resource.from_contents(schema, default_specification=DRAFT202012)
+            resource = Resource.from_contents(
+                self.contents, default_specification=DRAFT202012
+            )
             registry: Registry[Any] = Registry(retrieve=self.retrieve)  # type: ignore[call-arg]
-            registry = registry.with_resource(path.as_uri(), resource)
+            registry = registry.with_resource(self.path.as_uri(), resource)
             validator = Draft202012Validator(
-                {"$ref": path.as_uri()},
+                {"$ref": self.path.as_uri()},
                 registry=registry,
                 format_checker=FormatChecker(),
             )
@@ -136,7 +123,7 @@ class Schemas:
                 ),
                 key=lambda e: str(list(e.absolute_path)),
             )
-            return True, [
+            return [
                 Diagnostic(
                     relative,
                     "schema.instance",
@@ -153,4 +140,40 @@ class Schemas:
             Unresolvable,
             RecursionError,
         ) as exc:
-            return True, [Diagnostic(relative, "schema.invalid", str(exc))]
+            return [Diagnostic(relative, "schema.invalid", str(exc))]
+
+
+def select_schema(note: Note, root: Path) -> tuple[Schema | None, list[Diagnostic]]:
+    """Load the vault-local schema selected by a note's canonical type.
+
+    Args:
+        note: Parsed note inside the vault with a canonical declared type.
+        root: Vault path, absolute or relative to the working directory.
+
+    Returns:
+        tuple[Schema | None, list[Diagnostic]]: A loaded schema and no findings,
+            or None with a schema.unsupported warning for missing coverage or a
+            schema.invalid error for an unreadable/invalid schema. This function
+            selects and loads the schema; it does not validate the note.
+
+    Raises:
+        ValueError: The note has no canonical type or lies outside the vault.
+    """
+    kind = note.kind
+    if kind is None:
+        raise ValueError("schema selection requires a canonical note type")
+    relative = note.path.absolute().relative_to(root.absolute()).as_posix()
+    path = root / "reference/schemas" / f"{kind.lower()}.schema.json"
+    if not path.exists():
+        return None, [
+            Diagnostic(
+                relative,
+                "schema.unsupported",
+                f"no vault-local schema for {kind}; validation is partial",
+                severity="warning",
+            )
+        ]
+    try:
+        return Schema.load(path, root), []
+    except (OSError, ValueError, SchemaError, RecursionError) as exc:
+        return None, [Diagnostic(relative, "schema.invalid", str(exc))]
