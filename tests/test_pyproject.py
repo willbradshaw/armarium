@@ -1,6 +1,7 @@
 """Build and installed-command acceptance for the package configuration."""
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -75,7 +76,9 @@ class TestPyproject:
         )
         assert process.returncode == 0, process.stderr
 
-    @pytest.mark.parametrize("scenario", ["valid", "invalid", "unsupported", "usage"])
+    @pytest.mark.parametrize(
+        "scenario", ["valid", "invalid", "unsupported", "missing", "usage"]
+    )
     def test_installed_command(
         self, installed: tuple[Path, Path, Path], tmp_path: Path, scenario: str
     ) -> None:
@@ -99,12 +102,13 @@ class TestPyproject:
             for key, value in os.environ.items()
             if key not in {"PYTHONPATH", "PYTHONHOME"}
         }
+        arguments = [str(command), "validate"]
+        if scenario != "usage":
+            arguments.append(
+                str(working / "missing.md" if scenario == "missing" else path)
+            )
         process = subprocess.run(
-            [
-                str(command),
-                "validate",
-                str(path if scenario != "usage" else working / "missing.md"),
-            ],
+            arguments,
             cwd=working,
             env=environment,
             capture_output=True,
@@ -113,13 +117,27 @@ class TestPyproject:
         )
         assert (
             process.returncode
-            == {"valid": 0, "invalid": 1, "unsupported": 0, "usage": 2}[scenario]
+            == {"valid": 0, "invalid": 1, "unsupported": 0, "missing": 1, "usage": 2}[
+                scenario
+            ]
         ), process.stderr
         assert process.stdout == ""
         if scenario == "usage":
-            assert "ERROR:" in process.stderr
+            assert "usage: armarium validate" in process.stderr
+            assert "error:" in process.stderr
+        elif scenario == "missing":
+            assert "ValueError:" in process.stderr
         else:
             assert "1 checked" in process.stderr
+            assert re.match(
+                r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{2} UTC\] (INFO|WARNING|ERROR): ",
+                process.stderr,
+            )
+        assert ("Traceback" in process.stderr) == (scenario in {"invalid", "missing"})
+        if scenario == "invalid":
+            assert process.stderr.rstrip().endswith(
+                "ValidationError: 1 file failed validation"
+            )
         if scenario == "unsupported":
             assert "1 unsupported" in process.stderr
         assert path.read_text() == text
