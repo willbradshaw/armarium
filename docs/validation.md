@@ -42,3 +42,12 @@ least one numeric `campaign_N` folder with the documented content/clues/sessions
 reference layout. Additional user folders are allowed. The empty starter is valid;
 forms need not be filled. `.git` alone never identifies a vault. CI discovers every
 direct child of `vaults/` and validates it independently with explicit context.
+
+Content Appearances use `- [[Session]]: description`, optionally grouped under
+`### campaign_N`. Checks reconcile each campaign block's first/last Sessions with
+actual recorded bullets, chronological order, duplicates and campaign agreement.
+Empty histories are valid. Clue subjects must equal canonical Content targets in
+`text`; display aliases do not change identity. Clue first/last Sessions track
+preparation/introduction, so they are not reconciled with Content appearances.
+Preparation-only and abandoned Clues remain valid. Mentions and PC attendance never
+create appearances. The advisory Session review report remains separate (#16).

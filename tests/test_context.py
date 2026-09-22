@@ -8,6 +8,11 @@ from armarium.index import VaultIndex
 from armarium.validation import validate
 
 
+def context_rules(path: Path) -> set[str]:
+    """Context assertions remain focused as later stages add history rules."""
+    return {rule for rule in rules(path) if not rule.startswith("history.")}
+
+
 def rules(path: Path) -> set[str]:
     return {d.rule for d in validate(path).diagnostics if d.severity == "error"}
 
@@ -20,7 +25,7 @@ def test_suffix_alias_assets_unicode_and_anchors(vault: Path) -> None:
     )
     (vault / "assets/hand out.txt").write_text("asset")
     (vault / "content/Café.md").write_text("untyped page")
-    assert not rules(path)
+    assert not context_rules(path)
     (vault / "content/Other.md").write_text("---\naliases: [Nickname]\n---\n")
     path.write_text(VALID + "[[Nickname]]")
     assert "link.missing" in rules(path)
@@ -28,13 +33,13 @@ def test_suffix_alias_assets_unicode_and_anchors(vault: Path) -> None:
     path.write_text(VALID + "[[Content]]")
     assert "link.ambiguous" in rules(path)
     path.write_text(VALID + "[[types/Content]]")
-    assert not rules(path)
+    assert not context_rules(path)
 
 
 def test_fences_queries_and_malformed_dependency(vault: Path) -> None:
     path = write(vault, VALID + "\n```markdown\n[[Missing]]\n```\n")
     (vault / "content/Bad.md").write_text("---\nx: [\n---\n")
-    assert not rules(path)
+    assert not context_rules(path)
     path.write_text(VALID + "\n```dataview\nWHERE x = [[Missing]]\n```\n")
     assert "link.missing" in rules(path)
     path.write_text(VALID + "`= [[Missing]].text`")
@@ -60,7 +65,7 @@ def test_placement_identity_campaign_and_kinds(vault: Path) -> None:
     pc.write_text(
         VALID.replace("subtype: Lore", 'subtype: Location\nparent_location: "[[Test]]"')
     )
-    assert not rules(pc)
+    assert not context_rules(pc)
     pc.write_text(
         VALID.replace("subtype: Lore", 'subtype: Faction\nmembers: ["[[Test]]"]')
     )
@@ -77,7 +82,7 @@ def test_multidigit_campaign_and_status(vault: Path) -> None:
         '---\ntype: "[[types/Session]]"\nsession_number: 2\n'
         'campaign: "[[campaign_42/reference/Campaign]]"\n---\n'
     )
-    assert not rules(path)
+    assert not context_rules(path)
     content = write(
         vault,
         VALID.replace(

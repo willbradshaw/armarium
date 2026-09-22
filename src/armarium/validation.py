@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from armarium.consistency import check as check_consistency
 from armarium.context import check
 from armarium.discovery import files, find_vault
 from armarium.index import VaultIndex
@@ -49,6 +50,7 @@ def validate_file(path: Path, index: VaultIndex) -> Result:
         result.diagnostics.extend(errors)
     if note is not None and not relative.startswith("reference/templates/"):
         result.diagnostics.extend(check(note, index))
+        result.diagnostics.extend(check_consistency(note, index))
     result.diagnostics.sort()
     return result
 
