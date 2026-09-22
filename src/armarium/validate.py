@@ -51,7 +51,7 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
             ],
             skipped=1,
         )
-    if note.kind is None:
+    if note.parsed_type is None:
         return Result(
             diagnostics=[
                 Diagnostic(
