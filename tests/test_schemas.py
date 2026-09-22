@@ -416,7 +416,17 @@ class TestSelectSchema:
 
     @pytest.mark.parametrize("vault", ["starter", "example"])
     @pytest.mark.parametrize(
-        "kind", ["content", "clue", "session", "transcript", "player", "reference"]
+        "kind",
+        [
+            "content",
+            "clue",
+            "session",
+            "transcript",
+            "player",
+            "reference",
+            "type",
+            "status",
+        ],
     )
     def test_shipped_schema_contract(self, vault: str, kind: str) -> None:
         fixture = json.loads(Path(f"tests/schemas/fixtures/{kind}.json").read_text())[
