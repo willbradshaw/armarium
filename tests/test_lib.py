@@ -13,6 +13,7 @@ from armarium.lib import (
     VaultNotFoundError,
     _find_wikilink_candidates,
     check_vault,
+    find_campaign,
     find_children,
     find_files,
     find_vault,
@@ -507,3 +508,22 @@ class TestResultAddContext:
         result = Result([Diagnostic("note.md", "rule", "Finding")])
         with pytest.raises(ValueError):
             result.add_context("vault", relative_to="elsewhere")
+
+
+class TestFindCampaign:
+    @pytest.mark.parametrize(
+        "path, expected",
+        [
+            ("campaigns/campaign_42/content/note.md", "campaign_42"),
+            ("campaigns/campaign_1/content/nested/note.md", "campaign_1"),
+            ("content/note.md", None),
+            ("campaigns/campaign_other/note.md", None),
+            ("other/campaigns/campaign_1/note.md", None),
+        ],
+    )
+    def test_scope(self, tmp_path: Path, path: str, expected: str | None) -> None:
+        assert find_campaign(tmp_path / path, tmp_path) == expected
+
+    def test_outside(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError):
+            find_campaign(tmp_path.parent / "outside.md", tmp_path)

@@ -1,5 +1,6 @@
 """Read-only entry points coordinating parsing and record validation."""
 
+import re
 from pathlib import Path
 
 from armarium.index import VaultIndex
@@ -8,9 +9,11 @@ from armarium.lib import (
     Result,
     VaultNotFoundError,
     check_vault,
+    find_campaign,
     find_children,
     find_files,
     find_vault,
+    parse_wikilink,
 )
 from armarium.parse import Note
 from armarium.schemas import select_schema
@@ -107,6 +110,8 @@ def validate_markdown(
         index = VaultIndex(root)
         index.notes[path] = (note, [])
     diagnostics.extend(validate_wikilinks(note, index))
+    diagnostics.extend(validate_placement(note, index))
+    diagnostics.extend(validate_identity(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -204,3 +209,124 @@ def validate_wikilink(
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
     return None
+
+
+def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check the record's directory against its declared type.
+
+    Args:
+        note: Selected record; templates are excluded by the caller.
+        index: Index supplying the selected vault boundary.
+
+    Returns:
+        list[Diagnostic]: A placement error for a misplaced built-in type.
+            Unknown custom types and Reference records have no placement rule.
+    """
+    kind = note.parsed_type
+    directories = {
+        "Content": "content",
+        "Session": "sessions",
+        "Clue": "clues",
+        "Transcript": "sessions/transcripts",
+        "Player": "reference/players",
+        "Type": "reference/types",
+        "Status": "reference/statuses",
+    }
+    if kind not in directories:
+        return []
+    scope = find_campaign(note.path, index.root)
+    prefix = index.root
+    if scope and kind not in {"Type", "Status"}:
+        prefix /= f"campaigns/{scope}"
+    expected = prefix / directories[kind]
+    valid = note.path.is_relative_to(expected)
+    if kind in {"Session", "Clue", "Transcript", "Player"} and not scope:
+        valid = False
+    # The Transcript subtree is reserved for transcripts, not Session records.
+    if kind == "Session" and note.path.is_relative_to(expected / "transcripts"):
+        valid = False
+    if valid:
+        return []
+    return [
+        Diagnostic(
+            note.path.relative_to(index.root).as_posix(),
+            "record.placement",
+            f"{kind} belongs under {expected.relative_to(index.root)}"
+            + (
+                " inside a numeric campaign"
+                if scope is None and kind not in {"Content", "Type", "Status"}
+                else ""
+            ),
+        )
+    ]
+
+
+def validate_identity(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check campaign record filenames and their explicit identity fields.
+
+    Args:
+        note: Selected record; templates are excluded by the caller.
+        index: Whole-vault index used to resolve campaign and Session links.
+
+    Returns:
+        list[Diagnostic]: Filename, Session ordinal, campaign overview or
+            Transcript/Session filename disagreement. Link errors are reported
+            separately by validate_wikilinks.
+    """
+    scope = find_campaign(note.path, index.root)
+    kind = note.parsed_type
+    if scope is None or kind not in {"Session", "Clue", "Transcript"}:
+        return []
+    path = note.path.relative_to(index.root).as_posix()
+    number = scope.removeprefix("campaign_")
+    pattern = (
+        rf"C-{number}-[0-9]{{4}}" if kind == "Clue" else rf"S-{number}-([0-9]{{3}})"
+    )
+    if kind == "Transcript":
+        pattern += " Transcript"
+    match = re.fullmatch(pattern, note.path.stem)
+    diagnostics: list[Diagnostic] = []
+    if match is None:
+        diagnostics.append(
+            Diagnostic(path, "record.identity", f"{kind} filename must match {pattern}")
+        )
+    elif kind == "Session" and (
+        type(note.frontmatter.get("session_number")) is not int
+        or note.frontmatter["session_number"] != int(match[1])
+    ):
+        diagnostics.append(
+            Diagnostic(
+                path,
+                "record.identity",
+                "session_number must match filename ordinal",
+                "session_number",
+            )
+        )
+    if kind in {"Session", "Transcript"}:
+        field = "campaign" if kind == "Session" else "session"
+        try:
+            target = parse_wikilink(note.frontmatter.get(field))
+        except ValueError:
+            return diagnostics  # The schema or link checker reports invalid syntax.
+        resolved, _ = index.resolve(target, note.path)
+        if resolved is not None:
+            if kind == "Session":
+                if resolved != index.root / f"campaigns/{scope}/reference/Campaign.md":
+                    diagnostics.append(
+                        Diagnostic(
+                            path,
+                            "campaign.mismatch",
+                            "campaign must link to the containing campaign overview",
+                            field,
+                        )
+                    )
+            elif note.path.stem != f"{resolved.stem} Transcript":
+                diagnostics.append(
+                    Diagnostic(
+                        path,
+                        "record.identity",
+                        "Transcript filename must match its linked Session plus ' Transcript'",
+                        field,
+                    )
+                )
+    return diagnostics

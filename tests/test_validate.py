@@ -16,7 +16,9 @@ from armarium.parse import Note
 from armarium.validate import (
     validate,
     validate_directory,
+    validate_identity,
     validate_markdown,
+    validate_placement,
     validate_wikilink,
     validate_wikilinks,
 )
@@ -690,3 +692,125 @@ class TestValidateWikilink:
         assert validate_wikilink(target, tmp_path / "selected.md", index) == expected
         parsed = {"target": "target.md", "bad": "bad.md"}.get(target)
         assert set(index.notes) == ({tmp_path / parsed} if parsed else set())
+
+
+class TestValidatePlacement:
+    @pytest.mark.parametrize(
+        "kind, relative, valid",
+        [
+            ("Content", "content/Note.md", True),
+            ("Content", "content/nested/Note.md", True),
+            ("Content", "campaigns/campaign_42/content/nested/Note.md", True),
+            ("Content", "other/Note.md", False),
+            ("Session", "campaigns/campaign_42/sessions/nested/S-42-001.md", True),
+            (
+                "Session",
+                "campaigns/campaign_42/sessions/transcripts/S-42-001.md",
+                False,
+            ),
+            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md", True),
+            (
+                "Transcript",
+                "campaigns/campaign_42/sessions/transcripts/S-42-001 Transcript.md",
+                True,
+            ),
+            ("Player", "campaigns/campaign_42/reference/players/Player.md", True),
+            ("Player", "reference/players/Player.md", False),
+            ("Type", "reference/types/Type.md", True),
+            ("Status", "reference/statuses/Pending.md", True),
+            ("Status", "campaigns/campaign_42/reference/statuses/Pending.md", False),
+            ("Reference", "anywhere.md", True),
+            ("Custom", "anywhere.md", True),
+        ],
+    )
+    def test_placement(
+        self, tmp_path: Path, kind: str, relative: str, valid: bool
+    ) -> None:
+        note = Note(tmp_path / relative, {"type": f"[[{kind}]]"}, "", 1)
+        result = validate_placement(note, VaultIndex(tmp_path))
+        assert [d.rule for d in result] == ([] if valid else ["record.placement"])
+        if result:
+            assert result[0].path == relative
+
+
+class TestValidateIdentity:
+    @pytest.mark.parametrize(
+        "kind, name, ordinal, target, rule",
+        [
+            (
+                "Session",
+                "S-42-002",
+                2,
+                "campaigns/campaign_42/reference/Campaign",
+                None,
+            ),
+            (
+                "Session",
+                "S-42-002",
+                3,
+                "campaigns/campaign_42/reference/Campaign",
+                "record.identity",
+            ),
+            (
+                "Session",
+                "S-42-001",
+                True,
+                "campaigns/campaign_42/reference/Campaign",
+                "record.identity",
+            ),
+            (
+                "Session",
+                "S-1-002",
+                2,
+                "campaigns/campaign_42/reference/Campaign",
+                "record.identity",
+            ),
+            ("Session", "S-42-002", 2, "S-42-002", "campaign.mismatch"),
+            ("Session", "S-42-002", 2, "missing", None),
+            ("Clue", "C-42-0001", None, "", None),
+            ("Clue", "C-42-001", None, "", "record.identity"),
+            ("Transcript", "S-42-002 Transcript", None, "S-42-002", None),
+            ("Transcript", "S-42-003 Transcript", None, "S-42-002", "record.identity"),
+        ],
+    )
+    def test_identity(
+        self,
+        tmp_path: Path,
+        kind: str,
+        name: str,
+        ordinal: object,
+        target: str,
+        rule: str | None,
+    ) -> None:
+        for relative in (
+            "campaigns/campaign_42/reference/Campaign.md",
+            "campaigns/campaign_42/sessions/S-42-002.md",
+        ):
+            path = tmp_path / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("")
+        field = "session" if kind == "Transcript" else "campaign"
+        note = Note(
+            tmp_path / f"campaigns/campaign_42/{name}.md",
+            {"type": f"[[{kind}]]", "session_number": ordinal, field: f"[[{target}]]"},
+            "",
+            1,
+        )
+        result = validate_identity(note, VaultIndex(tmp_path))
+        assert [d.rule for d in result] == ([rule] if rule else [])
+
+    @pytest.mark.parametrize(
+        "kind, relative",
+        [
+            ("Content", "content/Note.md"),
+            ("Session", "S-42-001.md"),
+            ("Session", "campaigns/campaign_42/S-42-001.md"),
+        ],
+    )
+    def test_no_context_or_invalid_link(
+        self, tmp_path: Path, kind: str, relative: str
+    ) -> None:
+        note = Note(
+            tmp_path / relative, {"type": f"[[{kind}]]", "session_number": 1}, "", 1
+        )
+        assert validate_identity(note, VaultIndex(tmp_path)) == []
