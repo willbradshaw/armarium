@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from armarium.index import VaultIndex
@@ -18,10 +19,56 @@ from armarium.lib import (
 from armarium.parse import Note
 from armarium.schemas import select_schema
 
-# Top-level frontmatter fields whose links must target a record of a given type,
-# on every record and on records of particular types.
-LINK_TYPES = {"type": "Type", "status": "Status"}
-RECORD_LINK_TYPES = {"Status": {"applies_to": "Type"}}
+
+@dataclass(frozen=True)
+class Target:
+    """Requirements on the record that a type-bound field links to.
+
+    Attributes:
+        record_type: Required declared type of the target.
+        subtypes: Permitted Content subtypes, or empty for any subtype.
+        campaign: Campaign directory name (campaign_N) the target must belong
+            to, or None for no fixed campaign.
+        local: Whether the target must belong to the campaign containing the
+            linking record; no restriction applies when that record is outside
+            every campaign. Shared Content outside every campaign satisfies
+            either campaign requirement.
+    """
+
+    record_type: str
+    subtypes: frozenset[str] = frozenset()
+    campaign: str | None = None
+    local: bool = False
+
+
+# Top-level frontmatter fields whose links must target a record of a given type:
+# on every record, then by the record's (type, subtype), where entries under
+# (type, None) apply to every record of that type.
+LINK_TARGETS = {"type": Target("Type"), "status": Target("Status")}
+RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
+    ("Status", None): {"applies_to": Target("Type")},
+    ("Content", "PC"): {"player": Target("Player", local=True)},
+    ("Content", "Location"): {
+        "parent_location": Target("Content", frozenset({"Location"}), local=True)
+    },
+    ("Content", "Faction"): {
+        "members": Target("Content", frozenset({"PC", "NPC"}), local=True)
+    },
+    ("Player", None): {"plays": Target("Content", frozenset({"PC"}), local=True)},
+    ("Transcript", None): {"session": Target("Session", local=True)},
+    ("Clue", None): {
+        "subjects": Target("Content", local=True),
+        "first_session": Target("Session", local=True),
+        "last_session": Target("Session", local=True),
+    },
+    ("Session", None): {
+        "campaign": Target("Reference", local=True),
+        "players_absent": Target("Player", local=True),
+        "prepared_clues": Target("Clue", local=True),
+        "prepared_locations": Target("Content", frozenset({"Location"}), local=True),
+        "prepared_npcs": Target("Content", frozenset({"NPC"}), local=True),
+    },
+}
 
 
 def validate(path: Path, vault: Path | None = None) -> Result:
@@ -168,8 +215,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
     """Check every link the note contains against the vault.
 
-    Links anywhere within a type-bound top-level field must target a correctly
-    placed record of that field's type.
+    Links within a type-bound top-level field must target a correctly placed
+    record meeting that field's Target requirements; see _link_targets.
 
     Args:
         note: Selected note inside the indexed vault.
@@ -182,20 +229,42 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
-    types = LINK_TYPES | RECORD_LINK_TYPES.get(note.parsed_type or "", {})
+    targets = _link_targets(note)
     diagnostics: list[Diagnostic] = []
     for link in note.links:
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
-            problem = validate_wikilink(link.target, note, index, types.get(link.field))
+            problem = validate_wikilink(
+                link.target, note, index, targets.get(link.field)
+            )
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
     return diagnostics
 
 
+def _link_targets(note: Note) -> dict[str, Target]:
+    """Collect the Target requirements for a note's type-bound fields.
+
+    Args:
+        note: Selected record whose type and subtype select the requirements.
+
+    Returns:
+        dict[str, Target]: Requirements keyed by top-level field: the universal
+            fields, then those for the record's type and, when its subtype is a
+            string, for its (type, subtype). Custom fields are not interpreted
+            by name.
+    """
+    kind = note.parsed_type or ""
+    subtype = note.frontmatter.get("subtype")
+    targets = LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
+    if isinstance(subtype, str):
+        targets |= RECORD_LINK_TARGETS.get((kind, subtype), {})
+    return targets
+
+
 def validate_wikilink(
-    target: str, note: Note, index: VaultIndex, record_type: str | None = None
+    target: str, note: Note, index: VaultIndex, expected: Target | None = None
 ) -> tuple[str, str] | None:
     """Check that one wikilink target resolves to a usable vault file.
 
@@ -204,13 +273,14 @@ def validate_wikilink(
         note: Note containing the link; its path breaks resolution ties and its
             declared type takes part in target-specific checks.
         index: Whole-vault file index and lazy note cache for this run.
-        record_type: Required declared type of the target, or None for any file.
+        expected: Requirements on the target record, or None for any file.
 
     Returns:
         tuple[str, str] | None: Rule and message for a missing, ambiguous or
-            unparseable target, one that is not a correctly placed record of the
-            required type, or one failing that type's own check; None when the
-            target is usable. Only a linked Markdown note is parsed.
+            unparseable target; one that is not a correctly placed record of
+            the expected type and subtype; one outside the expected campaign;
+            or one failing its type's own check. None when the target is
+            usable. Only a linked Markdown note is parsed.
     """
     resolved, rule = index.resolve(target, note.path)
     if rule:
@@ -221,15 +291,30 @@ def validate_wikilink(
         if failures:
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
-    if record_type is None:
+    if expected is None:
         return None
+    kind = expected.record_type
     if (
         linked is None
-        or linked.parsed_type != record_type
+        or linked.parsed_type != kind
         or validate_placement(linked, index)
     ):
-        return "link.type", f"[[{target}]] must link to a placed {record_type} record"
-    check = _TARGET_CHECKS.get(record_type)
+        return "link.type", f"[[{target}]] must link to a placed {kind} record"
+    subtype = linked.frontmatter.get("subtype")
+    if expected.subtypes and (
+        not isinstance(subtype, str) or subtype not in expected.subtypes
+    ):
+        allowed = ", ".join(sorted(expected.subtypes))
+        return "link.type", f"[[{target}]] must link to a {kind} with subtype {allowed}"
+    required = expected.campaign
+    if expected.local:
+        required = find_campaign(note.path, index.root)
+    scope = find_campaign(linked.path, index.root)
+    shared = kind == "Content" and scope is None
+    if required is not None and scope != required and not shared:
+        allowed = required + (" or shared content" if kind == "Content" else "")
+        return "campaign.mismatch", f"[[{target}]] must belong to {allowed}"
+    check = _TARGET_CHECKS.get(kind)
     return check(linked, note, index) if check else None
 
 

@@ -3,6 +3,7 @@
 import json
 import shutil
 from collections.abc import Callable
+from dataclasses import FrozenInstanceError
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,9 @@ from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Note
 from armarium.validate import (
+    LINK_TARGETS,
+    Target,
+    _link_targets,
     _validate_wikilink_status,
     validate,
     validate_directory,
@@ -50,6 +54,25 @@ def write_note(vault: Path) -> Callable[..., Path]:
         return path
 
     return write
+
+
+def write_records(root: Path, records: dict[str, str]) -> None:
+    """Write frontmatter-only records plus placed definitions of every built-in type."""
+    for name in (
+        "Type",
+        "Content",
+        "Player",
+        "Session",
+        "Clue",
+        "Transcript",
+        "Reference",
+        "Status",
+    ):
+        records.setdefault(f"reference/types/{name}.md", 'type: "[[Type]]"')
+    for relative, text in records.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"---\n{text}\n---\n")
 
 
 class TestValidateMarkdown:
@@ -699,6 +722,57 @@ class TestValidateWikilinks:
         assert [(d.rule, d.field) for d in result] == expected
 
 
+class TestTarget:
+    def test_defaults(self) -> None:
+        assert Target("Content") == Target("Content", frozenset(), None, False)
+        with pytest.raises(FrozenInstanceError):
+            setattr(Target("Content"), "campaign", "campaign_1")
+
+    @pytest.mark.parametrize(
+        "relative, metadata, expected",
+        [
+            (
+                "campaigns/campaign_42/reference/players/P.md",
+                {"type": "[[Player]]", "plays": ["[[PC1]]", "[[NPC1]]"]},
+                [("link.type", "plays.1")],
+            ),
+            (
+                "campaigns/campaign_42/clues/C-42-0001.md",
+                {"type": "[[Clue]]", "subjects": ["[[PC1]]", "[[Shared]]", "[[Far]]"]},
+                [("campaign.mismatch", "subjects.2")],
+            ),
+            (
+                "content/Thing.md",
+                {
+                    "type": "[[Content]]",
+                    "custom": {"plays": "[[NPC1]]"},
+                    "notes": "[[Far]]",
+                },
+                [],
+            ),
+        ],
+    )
+    def test_relationships(
+        self,
+        tmp_path: Path,
+        relative: str,
+        metadata: dict[str, object],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/content/PC1.md": 'type: "[[Content]]"\nsubtype: PC',
+                "campaigns/campaign_42/content/NPC1.md": 'type: "[[Content]]"\nsubtype: NPC',
+                "content/Shared.md": 'type: "[[Content]]"\nsubtype: Lore',
+                "campaigns/campaign_7/content/Far.md": 'type: "[[Content]]"\nsubtype: Lore',
+            },
+        )
+        note = Note(tmp_path / relative, metadata, "", 1)
+        result = validate_wikilinks(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == expected
+
+
 class TestValidateWikilink:
     @pytest.mark.parametrize(
         "target, record_type, rule",
@@ -725,7 +799,131 @@ class TestValidateWikilink:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body)
         note = Note(tmp_path / "selected.md", {}, "", 1)
-        problem = validate_wikilink(target, note, VaultIndex(tmp_path), record_type)
+        expected = Target(record_type) if record_type else None
+        problem = validate_wikilink(target, note, VaultIndex(tmp_path), expected)
+        assert (problem[0] if problem else None) == rule
+
+    @pytest.mark.parametrize(
+        "metadata, subtypes, rule",
+        [
+            ('type: "[[Content]]"\nsubtype: PC', {"PC"}, None),
+            ('type: "[[Content]]"\nsubtype: PC', set(), None),
+            ('type: "[[Content]]"\nsubtype: NPC', {"PC"}, "link.type"),
+            ('type: "[[Content]]"\nsubtype: [PC]', {"PC"}, "link.type"),
+            ('type: "[[Content]]"', {"PC"}, "link.type"),
+        ],
+    )
+    def test_subtype(
+        self, tmp_path: Path, metadata: str, subtypes: set[str], rule: str | None
+    ) -> None:
+        for name, text in {
+            "reference/types/Content.md": 'type: "[[Type]]"',
+            "content/Target.md": metadata,
+        }.items():
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\n{text}\n---\n")
+        note = Note(tmp_path / "selected.md", {}, "", 1)
+        expected = Target("Content", frozenset(subtypes))
+        problem = validate_wikilink("Target", note, VaultIndex(tmp_path), expected)
+        assert (problem[0] if problem else None) == rule
+
+    @pytest.mark.parametrize(
+        "source, relative, kind, expected, rule",
+        [
+            (
+                "content/N.md",
+                "campaigns/campaign_42/content/Target.md",
+                "Content",
+                Target("Content", campaign="campaign_42"),
+                None,
+            ),
+            (
+                "content/N.md",
+                "campaigns/campaign_42/content/Target.md",
+                "Content",
+                Target("Content"),
+                None,
+            ),
+            (
+                "content/N.md",
+                "campaigns/campaign_7/content/Target.md",
+                "Content",
+                Target("Content", campaign="campaign_42"),
+                "campaign.mismatch",
+            ),
+            (
+                "content/N.md",
+                "content/Target.md",
+                "Content",
+                Target("Content", campaign="campaign_42"),
+                None,
+            ),
+            (
+                "content/N.md",
+                "campaigns/campaign_42/sessions/S-42-001.md",
+                "Session",
+                Target("Session", campaign="campaign_42"),
+                None,
+            ),
+            (
+                "content/N.md",
+                "campaigns/campaign_7/sessions/S-7-001.md",
+                "Session",
+                Target("Session", campaign="campaign_42"),
+                "campaign.mismatch",
+            ),
+            (
+                "campaigns/campaign_42/clues/C-42-0001.md",
+                "campaigns/campaign_42/sessions/S-42-001.md",
+                "Session",
+                Target("Session", local=True),
+                None,
+            ),
+            (
+                "campaigns/campaign_42/clues/C-42-0001.md",
+                "campaigns/campaign_7/sessions/S-7-001.md",
+                "Session",
+                Target("Session", local=True),
+                "campaign.mismatch",
+            ),
+            (
+                "campaigns/campaign_42/clues/C-42-0001.md",
+                "content/Target.md",
+                "Content",
+                Target("Content", local=True),
+                None,
+            ),
+            (
+                "content/N.md",
+                "campaigns/campaign_7/sessions/S-7-001.md",
+                "Session",
+                Target("Session", local=True),
+                None,
+            ),
+        ],
+    )
+    def test_campaign(
+        self,
+        tmp_path: Path,
+        source: str,
+        relative: str,
+        kind: str,
+        expected: Target,
+        rule: str | None,
+    ) -> None:
+        for name, text in {
+            "reference/types/Content.md": 'type: "[[Type]]"',
+            "reference/types/Session.md": 'type: "[[Type]]"',
+            relative: f'type: "[[{kind}]]"\nsession_number: 1',
+        }.items():
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\n{text}\n---\n")
+        note = Note(tmp_path / source, {}, "", 1)
+        problem = validate_wikilink(
+            Path(relative).stem, note, VaultIndex(tmp_path), expected
+        )
         assert (problem[0] if problem else None) == rule
 
     @pytest.mark.parametrize(
@@ -916,3 +1114,38 @@ class TestValidateWikilinkStatus:
         note = Note(tmp_path / "selected.md", {"type": record_type}, "", 1)
         problem = _validate_wikilink_status(status, note, index)
         assert problem == (("status.applicability", message) if message else None)
+
+
+class TestLinkTargets:
+    @pytest.mark.parametrize(
+        "metadata, expected",
+        [
+            (
+                {"type": "[[Player]]"},
+                {"plays": Target("Content", frozenset({"PC"}), local=True)},
+            ),
+            (
+                {"type": "[[Content]]", "subtype": "PC"},
+                {"player": Target("Player", local=True)},
+            ),
+            ({"type": "[[Content]]", "subtype": ["PC"]}, {}),
+            ({"type": "[[Content]]", "subtype": "Lore"}, {}),
+            ({"type": "[[Custom]]", "plays": "[[X]]"}, {}),
+            ({}, {}),
+            (
+                {"type": "[[Clue]]"},
+                {
+                    "subjects": Target("Content", local=True),
+                    "first_session": Target("Session", local=True),
+                    "last_session": Target("Session", local=True),
+                },
+            ),
+            ({"type": "[[Status]]"}, {"applies_to": Target("Type")}),
+            ({"type": "[[Status]]", "subtype": "Odd"}, {"applies_to": Target("Type")}),
+        ],
+    )
+    def test_targets(
+        self, tmp_path: Path, metadata: dict[str, object], expected: dict[str, Target]
+    ) -> None:
+        note = Note(tmp_path / "selected.md", metadata, "", 1)
+        assert _link_targets(note) == LINK_TARGETS | expected
