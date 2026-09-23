@@ -218,7 +218,13 @@ class TestNoteParsedType:
 class TestLink:
     @pytest.mark.parametrize(
         ("location", "field"),
-        [("", ""), ("status", "status"), ("subjects.0", "subjects")],
+        [
+            ("", ""),
+            ("status", "status"),
+            ("subjects.0", "subjects"),
+            ("campaign_1.held_by.2", "campaign_1.held_by"),
+            ("custom.1.links.0.0", "custom.links"),
+        ],
     )
     def test_field(self, location: str, field: str) -> None:
         assert Link("Target", location, 0).field == field

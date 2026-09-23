@@ -118,12 +118,15 @@ class Link:
 
     @property
     def field(self) -> str:
-        """Return the top-level frontmatter field containing the link.
+        """Return the frontmatter field containing the link, ignoring list indices.
 
         Returns:
-            str: The location's first segment, or an empty string for body links.
+            str: The location without numeric segments, so links in a field's
+                list share its name: ``subjects.0`` gives ``subjects`` and
+                ``campaign_1.held_by.2`` gives ``campaign_1.held_by``. Empty
+                for body links.
         """
-        return self.location.split(".", 1)[0]
+        return ".".join(part for part in self.location.split(".") if not part.isdigit())
 
 
 @dataclass(frozen=True)
