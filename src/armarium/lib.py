@@ -349,3 +349,27 @@ def find_children(root: Path) -> list[Path]:
         and not path.is_symlink()
         and not (path.is_dir() and path.name in {"__pycache__", "node_modules"})
     )
+
+
+def find_campaign(path: Path, root: Path) -> str | None:
+    """Identify a path's containing numeric campaign directory.
+
+    Args:
+        path: Record path within root, using the same absolute or relative form.
+        root: Vault directory.
+
+    Returns:
+        str | None: campaign_N for a path under campaigns/campaign_N, otherwise
+            None for shared or other vault paths.
+
+    Raises:
+        ValueError: The path is not inside root.
+    """
+    parts = path.relative_to(root).parts
+    if (
+        len(parts) > 2
+        and parts[0] == "campaigns"
+        and re.fullmatch(r"campaign_[0-9]+", parts[1])
+    ):
+        return parts[1]
+    return None

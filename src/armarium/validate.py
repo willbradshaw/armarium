@@ -1,5 +1,6 @@
 """Read-only entry points coordinating parsing and record validation."""
 
+import re
 from pathlib import Path
 
 from armarium.index import VaultIndex
@@ -8,6 +9,7 @@ from armarium.lib import (
     Result,
     VaultNotFoundError,
     check_vault,
+    find_campaign,
     find_children,
     find_files,
     find_vault,
@@ -107,6 +109,8 @@ def validate_markdown(
         index = VaultIndex(root)
         index.notes[path] = (note, [])
     diagnostics.extend(validate_wikilinks(note, index))
+    diagnostics.extend(validate_placement(note, index))
+    diagnostics.extend(validate_filename(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -204,3 +208,96 @@ def validate_wikilink(
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
     return None
+
+
+def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check the record's directory against its declared type.
+
+    Args:
+        note: Selected record; templates are excluded by the caller.
+        index: Index supplying the selected vault boundary.
+
+    Returns:
+        list[Diagnostic]: A placement error for a misplaced built-in type.
+            Unknown custom types and Reference records have no placement rule.
+    """
+    kind = note.parsed_type
+    directories = {
+        "Content": "content",
+        "Session": "sessions",
+        "Clue": "clues",
+        "Transcript": "sessions/transcripts",
+        "Player": "reference/players",
+        "Type": "reference/types",
+        "Status": "reference/statuses",
+    }
+    if kind not in directories:
+        return []
+    scope = find_campaign(note.path, index.root)
+    prefix = index.root
+    if scope and kind not in {"Type", "Status"}:
+        prefix /= f"campaigns/{scope}"
+    expected = prefix / directories[kind]
+    valid = note.path.is_relative_to(expected)
+    if kind in {"Session", "Clue", "Transcript", "Player"} and not scope:
+        valid = False
+    # The Transcript subtree is reserved for transcripts, not Session records.
+    if kind == "Session" and note.path.is_relative_to(expected / "transcripts"):
+        valid = False
+    if valid:
+        return []
+    return [
+        Diagnostic(
+            note.path.relative_to(index.root).as_posix(),
+            "record.placement",
+            f"{kind} belongs under {expected.relative_to(index.root)}"
+            + (
+                " inside a numeric campaign"
+                if scope is None and kind not in {"Content", "Type", "Status"}
+                else ""
+            ),
+        )
+    ]
+
+
+def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check campaign record filenames and the Session ordinal they encode.
+
+    Args:
+        note: Selected record; templates are excluded by the caller.
+        index: Index supplying the selected vault boundary.
+
+    Returns:
+        list[Diagnostic]: A Session, Clue or Transcript filename that does not
+            match its campaign's pattern, or a Session whose session_number
+            differs from its filename. Other types and records outside numeric
+            campaigns have no filename rule.
+    """
+    scope = find_campaign(note.path, index.root)
+    kind = note.parsed_type
+    if scope is None or kind not in {"Session", "Clue", "Transcript"}:
+        return []
+    path = note.path.relative_to(index.root).as_posix()
+    number = scope.removeprefix("campaign_")
+    pattern = {
+        "Clue": rf"C-{number}-[0-9]{{4}}",
+        "Session": rf"S-{number}-([0-9]{{3}})",
+        "Transcript": rf"S-{number}-[0-9]{{3}} Transcript",
+    }[kind]
+    match = re.fullmatch(pattern, note.path.stem)
+    if match is None:
+        return [
+            Diagnostic(path, "record.identity", f"{kind} filename must match {pattern}")
+        ]
+    ordinal = note.frontmatter.get("session_number")
+    # bool is an int subclass, so compare the exact type.
+    if kind == "Session" and (type(ordinal) is not int or ordinal != int(match[1])):
+        return [
+            Diagnostic(
+                path,
+                "record.identity",
+                "session_number must match filename ordinal",
+                "session_number",
+            )
+        ]
+    return []
