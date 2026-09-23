@@ -1,0 +1,102 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[Status]]",
+      "applies_to": "[[types/Clue]]"
+    },
+    "body": "A definition.\n"
+  },
+  "cases": [
+    {
+      "name": "empty body",
+      "body": "",
+      "valid": true
+    },
+    {
+      "name": "wrong type",
+      "frontmatter": {
+        "type": "[[Reference]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "aliased type",
+      "frontmatter": {
+        "type": "[[Status|Label]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "custom type",
+      "frontmatter": {
+        "applies_to": "[[types/Custom]]"
+      },
+      "valid": true
+    },
+    {
+      "name": "short link",
+      "frontmatter": {
+        "applies_to": "[[Clue]]"
+      },
+      "valid": true
+    },
+    {
+      "name": "null",
+      "frontmatter": {
+        "applies_to": null
+      },
+      "valid": false
+    },
+    {
+      "name": "array",
+      "frontmatter": {
+        "applies_to": [
+          "[[Clue]]"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "empty",
+      "frontmatter": {
+        "applies_to": ""
+      },
+      "valid": false
+    },
+    {
+      "name": "blank target",
+      "frontmatter": {
+        "applies_to": "[[ ]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "plain text",
+      "frontmatter": {
+        "applies_to": "Clue"
+      },
+      "valid": false
+    },
+    {
+      "name": "alias",
+      "frontmatter": {
+        "applies_to": "[[Clue|Label]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "anchor",
+      "frontmatter": {
+        "applies_to": "[[Clue#Heading]]"
+      },
+      "valid": false
+    },
+    {
+      "name": "multiline",
+      "frontmatter": {
+        "applies_to": "[[Clue\nOther]]"
+      },
+      "valid": false
+    }
+  ]
+}

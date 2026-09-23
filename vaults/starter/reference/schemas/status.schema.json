@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Status definition",
+  "description": "A typed definition represented by JSON-compatible frontmatter and a Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "applies_to"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[Status]]"
+        },
+        "applies_to": {
+          "type": "string",
+          "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\](?![\\s\\S])",
+          "description": "Canonical wikilink to a type definition. Target existence and kind require vault-aware validation."
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string"
+    }
+  }
+}

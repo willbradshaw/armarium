@@ -1,10 +1,24 @@
-"""Shared link utilities reject malformed syntax and preserve scan recovery."""
+"""Shared syntax and vault-discovery utilities."""
 
+import logging
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
-from armarium.lib import _find_wikilink_candidates, iter_wikilinks, parse_wikilink
+from armarium.lib import (
+    Diagnostic,
+    Result,
+    ValidationError,
+    VaultNotFoundError,
+    _find_wikilink_candidates,
+    check_vault,
+    find_children,
+    find_files,
+    find_vault,
+    iter_wikilinks,
+    parse_wikilink,
+)
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
 
@@ -136,3 +150,360 @@ class TestIterWikilinks:
                 if isinstance(item, ValueError)
             ]
             assert not errors, (path.relative_to(root), errors)
+
+
+class TestFindVault:
+    @pytest.mark.parametrize(
+        "target", [".", "content", "content/note.md", "content/new.md"]
+    )
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_inferred_root(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        target: str,
+        relative: bool,
+    ) -> None:
+        root = tmp_path / "vault with spaces"
+        (root / "reference/types").mkdir(parents=True)
+        (root / "campaigns").mkdir()
+        (root / "content").mkdir()
+        (root / "content/note.md").write_text("note")
+        monkeypatch.chdir(tmp_path)
+        path = root / target
+        assert (
+            find_vault(path.relative_to(tmp_path) if relative else path)
+            == root.resolve()
+        )
+
+    def test_nearest_vault(self, tmp_path: Path) -> None:
+        nested = tmp_path / "outer/nested"
+        for root in (tmp_path / "outer", nested):
+            (root / "reference/types").mkdir(parents=True)
+            (root / "campaigns").mkdir()
+        assert find_vault(nested / "note.md") == nested.resolve()
+
+    @pytest.mark.parametrize("marker", [".git", "reference/types", "campaigns"])
+    def test_incomplete_structure(self, tmp_path: Path, marker: str) -> None:
+        (tmp_path / marker).mkdir(parents=True)
+        with pytest.raises(ValueError, match="cannot infer vault"):
+            find_vault(tmp_path / "note.md")
+
+    def test_inferred_symlink_cannot_select_destination_vault(
+        self, tmp_path: Path
+    ) -> None:
+        first, second = tmp_path / "first", tmp_path / "second"
+        for root in (first, second):
+            (root / "reference/types").mkdir(parents=True)
+            (root / "campaigns").mkdir()
+        (second / "note.md").write_text("outside")
+        link = first / "note.md"
+        link.symlink_to(second / "note.md")
+        with pytest.raises(ValueError, match="escapes the inferred vault"):
+            find_vault(link)
+
+
+class TestCheckVault:
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_explicit_root_without_markers(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
+    ) -> None:
+        root = tmp_path / "incomplete"
+        root.mkdir()
+        monkeypatch.chdir(tmp_path)
+        selected = Path("incomplete") if relative else root
+        assert check_vault(selected / "new.md", selected) == root.resolve()
+
+    @pytest.mark.parametrize(
+        "problem", ["missing-root", "file-root", "outside", "symlink-escape"]
+    )
+    def test_invalid_explicit_boundary(self, tmp_path: Path, problem: str) -> None:
+        root = tmp_path / "vault"
+        target = root / "note.md"
+        if problem == "file-root":
+            root.write_text("file")
+        elif problem != "missing-root":
+            root.mkdir()
+            outside = tmp_path / "outside.md"
+            outside.write_text("outside")
+            if problem == "outside":
+                target = outside
+            else:
+                target.symlink_to(outside)
+        with pytest.raises(ValueError, match="selected vault directory"):
+            check_vault(target, root)
+
+
+class TestFindFiles:
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_sorted_files_of_all_types(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
+    ) -> None:
+        names = ["z.md", "nested/Café.md", "assets/map.png", "view.base", "schema.json"]
+        for name in names:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name)
+        monkeypatch.chdir(tmp_path)
+        root = Path(".") if relative else tmp_path
+        assert find_files(root) == sorted(root / name for name in names)
+        assert all((tmp_path / name).read_text() == name for name in names)
+
+    @pytest.mark.parametrize(
+        "excluded",
+        [".git", ".obsidian", ".scratch", ".hidden", "__pycache__", "node_modules"],
+    )
+    def test_excluded_directories(self, tmp_path: Path, excluded: str) -> None:
+        directory = tmp_path / "nested" / excluded
+        directory.mkdir(parents=True)
+        (directory / "ignored.md").write_text("ignored")
+        (tmp_path / ".gitkeep").touch()
+        assert find_files(tmp_path) == []
+
+    @pytest.mark.parametrize("kind", ["file", "directory", "broken", "cycle"])
+    def test_ignores_symlinks(self, tmp_path: Path, kind: str) -> None:
+        root = tmp_path / "vault"
+        root.mkdir()
+        target = tmp_path / "target"
+        if kind == "file":
+            target.write_text("outside")
+        elif kind == "directory":
+            target.mkdir()
+            (target / "outside.md").write_text("outside")
+        elif kind == "cycle":
+            target = root
+        (root / "link").symlink_to(target)
+        assert find_files(root) == []
+
+    def test_empty_directory(self, tmp_path: Path) -> None:
+        assert find_files(tmp_path) == []
+
+    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
+    def test_invalid_root(self, tmp_path: Path, kind: str) -> None:
+        root = tmp_path / "root"
+        if kind == "file":
+            root.write_text("file")
+        elif kind == "symlink":
+            root.symlink_to(tmp_path, target_is_directory=True)
+        with pytest.raises(ValueError, match="real directory"):
+            find_files(root)
+
+
+class TestDiagnosticReport:
+    @pytest.mark.parametrize(
+        ("severity", "level", "line", "field", "location"),
+        [
+            ("error", logging.ERROR, 0, "", "note.md"),
+            ("warning", logging.WARNING, 3, "", "note.md:3"),
+            ("info", logging.INFO, 0, "type", "note.md [type]"),
+            ("error", logging.ERROR, 3, "type", "note.md:3 [type]"),
+        ],
+    )
+    def test_finding(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        severity: Literal["error", "warning", "info"],
+        level: int,
+        line: int,
+        field: str,
+        location: str,
+    ) -> None:
+        diagnostic = Diagnostic(
+            "note.md",
+            "record.type",
+            "A finding",
+            line=line,
+            field=field,
+            severity=severity,
+        )
+        with caplog.at_level(logging.INFO, logger="armarium"):
+            diagnostic.report()
+        assert caplog.record_tuples == [
+            ("armarium", level, f"{location}: record.type: A finding"),
+        ]
+
+
+class TestResultReport:
+    @pytest.mark.parametrize("with_findings", [False, True])
+    def test_findings_then_counts(
+        self, caplog: pytest.LogCaptureFixture, with_findings: bool
+    ) -> None:
+        findings = (
+            [
+                Diagnostic("first.md", "first", "First", severity="warning"),
+                Diagnostic("second.md", "second", "Second"),
+            ]
+            if with_findings
+            else []
+        )
+        result = Result(findings, checked=2, skipped=1, unsupported=1)
+        with caplog.at_level(logging.INFO, logger="armarium"):
+            result.report()
+        expected = (
+            [
+                ("armarium", logging.WARNING, "first.md: first: First"),
+                ("armarium", logging.ERROR, "second.md: second: Second"),
+            ]
+            if with_findings
+            else []
+        )
+        assert caplog.record_tuples == expected + [
+            ("armarium", logging.INFO, "2 checked, 1 skipped, 1 unsupported"),
+        ]
+        assert result == Result(findings, checked=2, skipped=1, unsupported=1)
+
+
+class TestResultFailedFiles:
+    @pytest.mark.parametrize(
+        ("findings", "expected"),
+        [
+            ([], 0),
+            ([("a.md", "warning"), ("b.md", "info")], 0),
+            ([("a.md", "error")], 1),
+            ([("a.md", "error"), ("a.md", "error")], 1),
+            ([("a.md", "error"), ("b.md", "error"), ("c.md", "warning")], 2),
+        ],
+    )
+    def test_distinct_error_paths(
+        self,
+        findings: list[tuple[str, Literal["error", "warning", "info"]]],
+        expected: int,
+    ) -> None:
+        result = Result(
+            [
+                Diagnostic(path, "test", "Finding", severity=severity)
+                for path, severity in findings
+            ]
+        )
+        assert result.failed_files == expected
+
+
+class TestValidationError:
+    def test_preserves_message(self) -> None:
+        error = ValidationError("2 files failed validation")
+        assert isinstance(error, Exception)
+        assert str(error) == "2 files failed validation"
+
+
+class TestResultAdd:
+    @pytest.mark.parametrize("empty", [False, True])
+    def test_combines_without_mutating_inputs(self, empty: bool) -> None:
+        left = Result([Diagnostic("z.md", "z", "Error")], checked=1, skipped=2)
+        right = (
+            Result()
+            if empty
+            else Result(
+                [Diagnostic("a.md", "a", "Warning", severity="warning")],
+                checked=2,
+                unsupported=1,
+            )
+        )
+        combined = left + right
+        assert combined.checked == (1 if empty else 3)
+        assert combined.skipped == 2
+        assert combined.unsupported == (0 if empty else 1)
+        assert [d.path for d in combined.diagnostics] == (
+            ["z.md"] if empty else ["a.md", "z.md"]
+        )
+        assert sum([left, right], Result()) == combined
+        combined.diagnostics.clear()
+        assert len(left.diagnostics) == 1
+        assert len(right.diagnostics) == (0 if empty else 1)
+
+    def test_unsupported_operand(self) -> None:
+        assert Result().__add__(object()) is NotImplemented
+
+
+class TestVaultNotFoundError:
+    def test_discovery_failure_is_specific(self, tmp_path: Path) -> None:
+        with pytest.raises(VaultNotFoundError, match="cannot infer vault"):
+            find_vault(tmp_path)
+        assert isinstance(VaultNotFoundError("Missing"), ValueError)
+
+
+class TestFindChildren:
+    def test_sorted_immediate_children_and_exclusions(self, tmp_path: Path) -> None:
+        for name in ("folder", ".git", "__pycache__", "node_modules"):
+            (tmp_path / name).mkdir()
+            (tmp_path / name / "nested.md").write_text("nested")
+        (tmp_path / "a.md").write_text("visible")
+        (tmp_path / ".hidden.md").write_text("hidden")
+        (tmp_path / "link").symlink_to(tmp_path / "folder", target_is_directory=True)
+        assert find_children(tmp_path) == [tmp_path / "a.md", tmp_path / "folder"]
+
+    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
+    def test_invalid_root(self, tmp_path: Path, kind: str) -> None:
+        root = tmp_path / "root"
+        if kind == "file":
+            root.write_text("file")
+        elif kind == "symlink":
+            root.symlink_to(tmp_path, target_is_directory=True)
+        with pytest.raises(ValueError, match="real directory"):
+            find_children(root)
+
+
+class TestResultAddContext:
+    @pytest.mark.parametrize("context", ["vault", Path("parent/vault"), Path(".")])
+    @pytest.mark.parametrize("empty", [False, True])
+    def test_prefixes_paths_without_mutating_original(
+        self, context: str | Path, empty: bool
+    ) -> None:
+        findings = (
+            []
+            if empty
+            else [Diagnostic("nested/note.md", "rule", "Finding", field="type", line=3)]
+        )
+        original = Result(findings, checked=2, skipped=1, unsupported=1)
+        prefixed = original.add_context(context)
+        assert (prefixed.checked, prefixed.skipped, prefixed.unsupported) == (2, 1, 1)
+        assert (
+            prefixed is not original
+            and prefixed.diagnostics is not original.diagnostics
+        )
+        if not empty:
+            assert prefixed.diagnostics == [
+                Diagnostic(
+                    (Path(context) / "nested/note.md").as_posix(),
+                    "rule",
+                    "Finding",
+                    field="type",
+                    line=3,
+                )
+            ]
+            assert original.diagnostics[0].path == "nested/note.md"
+        else:
+            assert prefixed.diagnostics == []
+
+    def test_nested_contexts_keep_failed_files_distinct(self) -> None:
+        result = Result([Diagnostic("note.md", "rule", "Finding")], checked=1)
+        combined = result.add_context("a") + result.add_context("b")
+        assert combined.add_context("vaults").failed_files == 2
+        assert [d.path for d in combined.add_context("vaults").diagnostics] == [
+            "vaults/a/note.md",
+            "vaults/b/note.md",
+        ]
+
+    @pytest.mark.parametrize(
+        ("base", "expected"),
+        [
+            (".", "vault/nested/note.md"),
+            ("vault", "nested/note.md"),
+            ("vault/nested", "note.md"),
+        ],
+    )
+    @pytest.mark.parametrize("absolute", [False, True])
+    def test_rebases_paths(
+        self, tmp_path: Path, base: str, expected: str, absolute: bool
+    ) -> None:
+        original = Result([Diagnostic("nested/note.md", "rule", "Finding")], checked=1)
+        context = tmp_path / "vault" if absolute else Path("vault")
+        relative_to = tmp_path / base if absolute else Path(base)
+        rebased = original.add_context(context, relative_to=relative_to)
+        assert rebased.diagnostics[0].path == expected
+        assert rebased.checked == 1
+        assert original.diagnostics[0].path == "nested/note.md"
+
+    def test_rejects_unrelated_base(self) -> None:
+        result = Result([Diagnostic("note.md", "rule", "Finding")])
+        with pytest.raises(ValueError):
+            result.add_context("vault", relative_to="elsewhere")

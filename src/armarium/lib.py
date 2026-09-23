@@ -1,9 +1,13 @@
 """Shared utilities and data types for Armarium."""
 
+import logging
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Literal
+
+from armarium.logging import logger
 
 # -----------------------------------------------------------------------------
 # Wikilink parsing
@@ -101,11 +105,15 @@ def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
 # -----------------------------------------------------------------------------
 
 
+class ValidationError(Exception):
+    """A completed validation run contains errors."""
+
+
 @dataclass(frozen=True, order=True)
 class Diagnostic:
-    """Describe one problem or informational finding without printing it.
+    """Describe one problem or informational finding.
 
-    Parsing and validation return these records to their caller. The CLI renders
+    Parsing and validation return these records to their caller. The CLI reports
     them for a person; directory scans collect them so one bad file does not stop
     the scan. For example, malformed YAML produces a ``parse.invalid`` error.
 
@@ -125,6 +133,22 @@ class Diagnostic:
     line: int = 0
     severity: Literal["error", "warning", "info"] = "error"
 
+    def report(self) -> None:
+        """Log this finding with its severity and available source location."""
+        levels = {
+            "error": logging.ERROR,
+            "warning": logging.WARNING,
+            "info": logging.INFO,
+        }
+        location = self.path
+        if self.line:
+            location += f":{self.line}"
+        if self.field:
+            location += f" [{self.field}]"
+        logger.log(
+            levels[self.severity], "%s: %s: %s", location, self.rule, self.message
+        )
+
 
 @dataclass
 class Result:
@@ -134,14 +158,78 @@ class Result:
         diagnostics: Findings collected by the checks, owned by this result.
         checked: Number of records checked.
         skipped: Number of files deliberately excluded from record checks.
-        unsupported: Checked records without an available type schema; these
-            can still receive checks that do not require a schema.
+        unsupported: Checked records without an available type schema. Each
+            receives an error diagnostic and fails validation.
     """
 
     diagnostics: list[Diagnostic] = field(default_factory=list)
     checked: int = 0
     skipped: int = 0
     unsupported: int = 0
+
+    def __add__(self, other: "Result") -> "Result":
+        """Combine two validation results without modifying either operand.
+
+        Args:
+            other: Result to combine with this one.
+
+        Returns:
+            Result: A new result with sorted diagnostics and summed counts.
+        """
+        if not isinstance(other, Result):
+            return NotImplemented
+        return Result(
+            diagnostics=sorted(self.diagnostics + other.diagnostics),
+            checked=self.checked + other.checked,
+            skipped=self.skipped + other.skipped,
+            unsupported=self.unsupported + other.unsupported,
+        )
+
+    def add_context(
+        self, context: str | Path, *, relative_to: str | Path | None = None
+    ) -> "Result":
+        """Prefix or rebase diagnostic paths without changing this result.
+
+        Args:
+            context: Directory path to prepend to each diagnostic.
+            relative_to: Optional directory to express the resulting paths
+                relative to. Use the same absolute or relative basis as context.
+
+        Returns:
+            Result: A new result with adjusted paths and unchanged counts.
+
+        Raises:
+            ValueError: A prefixed path is not beneath relative_to.
+        """
+        diagnostics = []
+        for diagnostic in self.diagnostics:
+            path = Path(context) / diagnostic.path
+            if relative_to is not None:
+                path = path.relative_to(relative_to)
+            diagnostics.append(replace(diagnostic, path=path.as_posix()))
+        return replace(self, diagnostics=diagnostics)
+
+    def report(self) -> None:
+        """Report each finding in order, then log coverage counts at INFO."""
+        for diagnostic in self.diagnostics:
+            diagnostic.report()
+        logger.info(
+            "%s checked, %s skipped, %s unsupported",
+            self.checked,
+            self.skipped,
+            self.unsupported,
+        )
+
+    @property
+    def failed_files(self) -> int:
+        """Count distinct files with validation errors.
+
+        Returns:
+            int: Number of distinct diagnostic paths with error severity.
+                Multiple errors in one file count once; warnings and info
+                findings do not contribute.
+        """
+        return len({d.path for d in self.diagnostics if d.severity == "error"})
 
     @property
     def failed(self) -> bool:
@@ -152,3 +240,112 @@ class Result:
                 findings and coverage counts alone do not fail validation.
         """
         return any(d.severity == "error" for d in self.diagnostics)
+
+
+# -----------------------------------------------------------------------------
+# Vault discovery
+# -----------------------------------------------------------------------------
+
+
+class VaultNotFoundError(ValueError):
+    """No enclosing vault has the required discovery markers."""
+
+
+def find_vault(path: Path) -> Path:
+    """Find the nearest enclosing vault.
+
+    Args:
+        path: Target file or directory, absolute or relative to the working
+            directory. The target need not exist yet.
+
+    Returns:
+        Path: Resolved vault directory. Inference requires reference/types and
+            campaigns directories; a repository marker alone is insufficient.
+
+    Raises:
+        VaultNotFoundError: No enclosing vault has the discovery markers.
+        ValueError: The target resolves outside the inferred vault.
+    """
+    target = path.absolute()
+    # Infer from the target's location before resolving symlinks, so an escaping
+    # link cannot silently select a different vault around its destination.
+    for candidate in (target, *target.parents):
+        if (candidate / "reference/types").is_dir() and (
+            candidate / "campaigns"
+        ).is_dir():
+            root = candidate.resolve()
+            if not target.resolve().is_relative_to(root):
+                raise ValueError("target escapes the inferred vault")
+            return root
+    raise VaultNotFoundError("cannot infer vault; supply --vault PATH")
+
+
+def check_vault(path: Path, vault: Path) -> Path:
+    """Check that a target is contained within an explicitly selected vault.
+
+    Args:
+        path: Target file or directory; it need not exist yet.
+        vault: Selected vault directory. Structural discovery markers are not
+            required, so incomplete vaults can still be checked.
+
+    Returns:
+        Path: Resolved vault root after checking containment, including symlinks.
+
+    Raises:
+        ValueError: The vault is not a directory or the target resolves outside it.
+    """
+    root = vault.resolve()
+    if not root.is_dir() or not path.resolve().is_relative_to(root):
+        raise ValueError("target must be inside the selected vault directory")
+    return root
+
+
+def find_files(root: Path) -> list[Path]:
+    """List visible regular files below a directory in deterministic path order.
+
+    Args:
+        root: Directory to traverse. A symlink as the starting root is rejected.
+
+    Returns:
+        list[Path]: Sorted file paths retaining the root's absolute or relative
+            form. Includes all file extensions. Hidden entries, __pycache__,
+            node_modules and all descendant symlinks are excluded.
+
+    Raises:
+        ValueError: The root is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    found: list[Path] = []
+    pending = [root]
+    while pending:
+        for path in find_children(pending.pop()):
+            if path.is_dir():
+                pending.append(path)
+            elif path.is_file():
+                found.append(path)
+    return sorted(found)
+
+
+def find_children(root: Path) -> list[Path]:
+    """List visible immediate children using the shared traversal exclusions.
+
+    Args:
+        root: Real directory to inspect; a symlink root is rejected.
+
+    Returns:
+        list[Path]: Sorted files and directories, excluding hidden entries,
+            symlinks and the __pycache__ and node_modules directories.
+
+    Raises:
+        ValueError: The root is a symlink or is not a directory.
+        OSError: The directory cannot be read.
+    """
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("file discovery requires a real directory")
+    return sorted(
+        path
+        for path in root.iterdir()
+        if not path.name.startswith(".")
+        and not path.is_symlink()
+        and not (path.is_dir() and path.name in {"__pycache__", "node_modules"})
+    )

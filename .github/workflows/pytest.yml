@@ -1,0 +1,21 @@
+name: Tests
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  pytest-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-python
+      - run: python -m pytest -q -m "not package"
+
+  pytest-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-python
+      - run: python -m pytest -q -m package

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "armarium"
+version = "0.1.0"
+description = "Read-only validation for Armarium Markdown vaults"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+  "PyYAML>=6,<7",
+  "jsonschema[format]>=4.23,<5",
+  "referencing>=0.35,<1",
+]
+
+[project.scripts]
+armarium = "armarium.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "build>=1,<2",
+  "pytest>=8",
+  "ruff==0.16.8",
+  "mypy",
+  "types-PyYAML",
+  "types-jsonschema",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/armarium"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src", "/tests", "/vaults", "/docs", "/README.md", "/pyproject.toml",
+  "/ruff.toml", "/AGENTS.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["package: builds distributions and installs a wheel in a fresh environment"]
+
+[tool.mypy]
+strict = true

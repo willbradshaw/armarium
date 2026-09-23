@@ -1,3 +1,6 @@
+---
+type: "[[Type]]"
+---
 # Content
 
 Content pages describe characters, places, groups, objects, or setting lore.
