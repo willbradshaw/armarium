@@ -5,6 +5,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from jsonschema.exceptions import SchemaError
+
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
@@ -18,7 +20,7 @@ from armarium.lib import (
     find_vault,
 )
 from armarium.parse import Note
-from armarium.schemas import select_schema
+from armarium.schemas import Schema, select_schema
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,39 @@ class Target:
     campaign: str | None = None
     local: bool = False
 
+
+# Infrastructure every vault must contain. Extra folders and files are allowed.
+VAULT_DIRECTORIES = (
+    "assets",
+    "campaigns",
+    "content",
+    "reference/schemas",
+    "reference/statuses",
+    "reference/templates",
+    "reference/types",
+    "reference/views",
+)
+VAULT_TYPES = (
+    "Clue",
+    "Content",
+    "Player",
+    "Reference",
+    "Session",
+    "Status",
+    "Transcript",
+    "Type",
+)
+VAULT_STATUSES = ("Abandoned", "Dormant", "Hinted", "Pending", "Revealed", "Superseded")
+VAULT_TEMPLATES = ("Clue", "Content", "Player", "Session", "Transcript")
+CAMPAIGN_DIRECTORIES = (
+    "clues",
+    "content",
+    "reference/indexes",
+    "reference/players",
+    "sessions",
+    "sessions/transcripts",
+)
+CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
 
 # Top-level frontmatter fields whose links must target a record of a given type:
 # on every record, then by the record's (type, subtype), where entries under
@@ -190,6 +225,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
             to the scanned directory. Markdown outside discovered vaults is
             ignored. Empty directories succeed with zero counts. Templates
             receive the same parse-only handling as single-file validation.
+            Every vault root that is scanned, whether selected or discovered,
+            also receives the validate_vault infrastructure checks.
 
     Raises:
         ValueError: The target is not a real directory, or the explicit vault
@@ -213,7 +250,99 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
     result = sum(
         (validate_markdown(file, context, index=index) for file in files), Result()
     )
+    # A vault root, whether named directly or found by recursion, must also
+    # carry the shared infrastructure; a directory inside a vault need not.
+    if path.resolve() == context:
+        result += Result(diagnostics=validate_vault(context))
     return result.add_context(context, relative_to=path.resolve())
+
+
+def validate_vault(root: Path) -> list[Diagnostic]:
+    """Check a vault root's shared infrastructure and campaign layout.
+
+    Args:
+        root: Resolved vault directory.
+
+    Returns:
+        list[Diagnostic]: Findings attributed to the vault itself (an empty
+            path, which directory validation rebases onto the vault), each
+            naming the affected entry. Extra folders and files are allowed;
+            record contents are validated separately.
+    """
+    diagnostics: list[Diagnostic] = []
+
+    def report(rule: str, message: str) -> None:
+        diagnostics.append(Diagnostic("", rule, message))
+
+    def require(relative: str, directory: bool) -> None:
+        path = root / relative
+        present = path.is_dir() if directory else path.is_file()
+        if path.is_symlink() or not present:
+            kind = "directory" if directory else "file"
+            report("vault.required", f"required {kind} {relative} is missing")
+
+    for relative in VAULT_DIRECTORIES:
+        require(relative, True)
+    for name in VAULT_TYPES:
+        require(f"reference/types/{name}.md", False)
+    for name in VAULT_STATUSES:
+        require(f"reference/statuses/{name}.md", False)
+    for name in VAULT_TEMPLATES:
+        require(f"reference/templates/{name}.md", False)
+
+    campaigns = root / "campaigns"
+    if not campaigns.is_dir() or campaigns.is_symlink():
+        report("vault.campaign", "cannot check campaigns: campaigns/ is missing")
+    else:
+        found = []
+        for child in find_children(campaigns):
+            if child.is_dir() and CAMPAIGN_NAME.fullmatch(child.name):
+                found.append(child.name)
+            else:
+                report(
+                    "vault.campaign",
+                    f"campaigns/{child.name} is not a campaign_N directory",
+                )
+        if not found:
+            report("vault.campaign", "campaigns/ has no campaign_N directory")
+        for name in found:
+            for relative in CAMPAIGN_DIRECTORIES:
+                require(f"campaigns/{name}/{relative}", True)
+            for relative in CAMPAIGN_FILES:
+                require(f"campaigns/{name}/{relative}", False)
+
+    # Schemas and Type definitions correspond by name: Clue.md <-> clue.schema.json.
+    types = root / "reference/types"
+    schemas = root / "reference/schemas"
+    for directory in (types, schemas):
+        if not directory.is_dir() or directory.is_symlink():
+            relative = directory.relative_to(root).as_posix()
+            report(
+                "schema.missing", f"cannot check schema coverage: {relative} is missing"
+            )
+            return diagnostics
+    definitions = {
+        file.stem for file in find_files(types) if file.suffix.lower() == ".md"
+    }
+    schema_names: set[str] = set()
+    for file in find_files(schemas):
+        relative = file.relative_to(root).as_posix()
+        if not file.name.endswith(".schema.json"):
+            if file.suffix.lower() == ".json":
+                report("schema.unused", f"{relative} is not named <type>.schema.json")
+            continue
+        try:
+            Schema.load(file, root)
+        except (OSError, ValueError, SchemaError, RecursionError) as exc:
+            report("schema.invalid", f"{relative}: {exc}")
+        name = file.name.removesuffix(".schema.json")
+        schema_names.add(name)
+        if name not in {definition.lower() for definition in definitions}:
+            report("schema.unused", f"{relative} matches no Type definition")
+    for definition in sorted(definitions):
+        if definition.lower() not in schema_names:
+            report("schema.missing", f"no vault-local schema for {definition}")
+    return diagnostics
 
 
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
