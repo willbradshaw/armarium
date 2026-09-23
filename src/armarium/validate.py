@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 from armarium.index import VaultIndex
@@ -69,12 +69,6 @@ RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
         "prepared_npcs": Target("Content", frozenset({"NPC"}), local=True),
     },
 }
-# Fields inside a Content record's campaign_N block, bound to that campaign.
-CAMPAIGN_BLOCK_TARGETS = {
-    "first_session": Target("Session"),
-    "last_session": Target("Session"),
-}
-OBJECT_HOLDER = Target("Content", frozenset({"PC", "NPC", "Faction"}))
 
 
 def validate(path: Path, vault: Path | None = None) -> Result:
@@ -278,10 +272,13 @@ def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
     if kind == "Content":
         for field, value in note.frontmatter.items():
             if re.fullmatch(r"campaign_[0-9]+", field) and isinstance(value, dict):
-                for key, target in CAMPAIGN_BLOCK_TARGETS.items():
-                    targets[f"{field}.{key}"] = replace(target, campaign=field)
+                # Block fields are bound to that block's campaign, not the record's.
+                targets[f"{field}.first_session"] = Target("Session", campaign=field)
+                targets[f"{field}.last_session"] = Target("Session", campaign=field)
                 if subtype == "Object":
-                    targets[f"{field}.held_by"] = replace(OBJECT_HOLDER, campaign=field)
+                    targets[f"{field}.held_by"] = Target(
+                        "Content", frozenset({"PC", "NPC", "Faction"}), field
+                    )
     return targets
 
 
