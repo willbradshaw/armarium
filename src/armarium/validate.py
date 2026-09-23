@@ -13,7 +13,6 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
-    parse_wikilink,
 )
 from armarium.parse import Note
 from armarium.schemas import select_schema
@@ -111,7 +110,7 @@ def validate_markdown(
         index.notes[path] = (note, [])
     diagnostics.extend(validate_wikilinks(note, index))
     diagnostics.extend(validate_placement(note, index))
-    diagnostics.extend(validate_identity(note, index))
+    diagnostics.extend(validate_filename(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -261,17 +260,18 @@ def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
     ]
 
 
-def validate_identity(note: Note, index: VaultIndex) -> list[Diagnostic]:
-    """Check campaign record filenames and their explicit identity fields.
+def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check campaign record filenames and the Session ordinal they encode.
 
     Args:
         note: Selected record; templates are excluded by the caller.
-        index: Whole-vault index used to resolve campaign and Session links.
+        index: Index supplying the selected vault boundary.
 
     Returns:
-        list[Diagnostic]: Filename, Session ordinal, campaign overview or
-            Transcript/Session filename disagreement. Link errors are reported
-            separately by validate_wikilinks.
+        list[Diagnostic]: A Session, Clue or Transcript filename that does not
+            match its campaign's pattern, or a Session whose session_number
+            differs from its filename. Other types and records outside numeric
+            campaigns have no filename rule.
     """
     scope = find_campaign(note.path, index.root)
     kind = note.parsed_type
@@ -279,54 +279,25 @@ def validate_identity(note: Note, index: VaultIndex) -> list[Diagnostic]:
         return []
     path = note.path.relative_to(index.root).as_posix()
     number = scope.removeprefix("campaign_")
-    pattern = (
-        rf"C-{number}-[0-9]{{4}}" if kind == "Clue" else rf"S-{number}-([0-9]{{3}})"
-    )
-    if kind == "Transcript":
-        pattern += " Transcript"
+    pattern = {
+        "Clue": rf"C-{number}-[0-9]{{4}}",
+        "Session": rf"S-{number}-([0-9]{{3}})",
+        "Transcript": rf"S-{number}-[0-9]{{3}} Transcript",
+    }[kind]
     match = re.fullmatch(pattern, note.path.stem)
-    diagnostics: list[Diagnostic] = []
     if match is None:
-        diagnostics.append(
+        return [
             Diagnostic(path, "record.identity", f"{kind} filename must match {pattern}")
-        )
-    elif kind == "Session" and (
-        type(note.frontmatter.get("session_number")) is not int
-        or note.frontmatter["session_number"] != int(match[1])
-    ):
-        diagnostics.append(
+        ]
+    ordinal = note.frontmatter.get("session_number")
+    # bool is an int subclass, so compare the exact type.
+    if kind == "Session" and (type(ordinal) is not int or ordinal != int(match[1])):
+        return [
             Diagnostic(
                 path,
                 "record.identity",
                 "session_number must match filename ordinal",
                 "session_number",
             )
-        )
-    if kind in {"Session", "Transcript"}:
-        field = "campaign" if kind == "Session" else "session"
-        try:
-            target = parse_wikilink(note.frontmatter.get(field))
-        except ValueError:
-            return diagnostics  # The schema or link checker reports invalid syntax.
-        resolved, _ = index.resolve(target, note.path)
-        if resolved is not None:
-            if kind == "Session":
-                if resolved != index.root / f"campaigns/{scope}/reference/Campaign.md":
-                    diagnostics.append(
-                        Diagnostic(
-                            path,
-                            "campaign.mismatch",
-                            "campaign must link to the containing campaign overview",
-                            field,
-                        )
-                    )
-            elif note.path.stem != f"{resolved.stem} Transcript":
-                diagnostics.append(
-                    Diagnostic(
-                        path,
-                        "record.identity",
-                        "Transcript filename must match its linked Session plus ' Transcript'",
-                        field,
-                    )
-                )
-    return diagnostics
+        ]
+    return []

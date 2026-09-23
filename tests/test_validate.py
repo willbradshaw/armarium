@@ -16,7 +16,7 @@ from armarium.parse import Note
 from armarium.validate import (
     validate,
     validate_directory,
-    validate_identity,
+    validate_filename,
     validate_markdown,
     validate_placement,
     validate_wikilink,
@@ -733,84 +733,40 @@ class TestValidatePlacement:
             assert result[0].path == relative
 
 
-class TestValidateIdentity:
+class TestValidateFilename:
     @pytest.mark.parametrize(
-        "kind, name, ordinal, target, rule",
+        "kind, relative, ordinal, field",
         [
-            (
-                "Session",
-                "S-42-002",
-                2,
-                "campaigns/campaign_42/reference/Campaign",
-                None,
-            ),
-            (
-                "Session",
-                "S-42-002",
-                3,
-                "campaigns/campaign_42/reference/Campaign",
-                "record.identity",
-            ),
-            (
-                "Session",
-                "S-42-001",
-                True,
-                "campaigns/campaign_42/reference/Campaign",
-                "record.identity",
-            ),
-            (
-                "Session",
-                "S-1-002",
-                2,
-                "campaigns/campaign_42/reference/Campaign",
-                "record.identity",
-            ),
-            ("Session", "S-42-002", 2, "S-42-002", "campaign.mismatch"),
-            ("Session", "S-42-002", 2, "missing", None),
-            ("Clue", "C-42-0001", None, "", None),
-            ("Clue", "C-42-001", None, "", "record.identity"),
-            ("Transcript", "S-42-002 Transcript", None, "S-42-002", None),
-            ("Transcript", "S-42-003 Transcript", None, "S-42-002", "record.identity"),
+            ("Session", "campaigns/campaign_42/S-42-002.md", 2, None),
+            ("Session", "campaigns/campaign_42/S-42-002.md", 3, "session_number"),
+            ("Session", "campaigns/campaign_42/S-42-001.md", True, "session_number"),
+            ("Session", "campaigns/campaign_42/S-42-001.md", None, "session_number"),
+            ("Session", "campaigns/campaign_42/S-1-002.md", 2, ""),
+            ("Session", "campaigns/campaign_42/S-42-02.md", 2, ""),
+            ("Clue", "campaigns/campaign_42/C-42-0001.md", None, None),
+            ("Clue", "campaigns/campaign_42/C-42-001.md", None, ""),
+            ("Transcript", "campaigns/campaign_42/S-42-002 Transcript.md", None, None),
+            ("Transcript", "campaigns/campaign_42/S-42-002.md", None, ""),
+            ("Content", "campaigns/campaign_42/Anything.md", None, None),
+            ("Session", "S-1-002.md", 3, None),
+            ("Session", "campaigns/other/S-1-002.md", 3, None),
         ],
     )
-    def test_identity(
+    def test_filename(
         self,
         tmp_path: Path,
         kind: str,
-        name: str,
+        relative: str,
         ordinal: object,
-        target: str,
-        rule: str | None,
+        field: str | None,
     ) -> None:
-        for relative in (
-            "campaigns/campaign_42/reference/Campaign.md",
-            "campaigns/campaign_42/sessions/S-42-002.md",
-        ):
-            path = tmp_path / relative
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("")
-        field = "session" if kind == "Transcript" else "campaign"
         note = Note(
-            tmp_path / f"campaigns/campaign_42/{name}.md",
-            {"type": f"[[{kind}]]", "session_number": ordinal, field: f"[[{target}]]"},
+            tmp_path / relative,
+            {"type": f"[[{kind}]]", "session_number": ordinal},
             "",
             1,
         )
-        result = validate_identity(note, VaultIndex(tmp_path))
-        assert [d.rule for d in result] == ([rule] if rule else [])
-
-    @pytest.mark.parametrize(
-        "kind, relative",
-        [
-            ("Content", "content/Note.md"),
-            ("Session", "S-42-001.md"),
-            ("Session", "campaigns/campaign_42/S-42-001.md"),
-        ],
-    )
-    def test_no_context_or_invalid_link(
-        self, tmp_path: Path, kind: str, relative: str
-    ) -> None:
-        note = Note(
-            tmp_path / relative, {"type": f"[[{kind}]]", "session_number": 1}, "", 1
+        result = validate_filename(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == (
+            [] if field is None else [("record.identity", field)]
         )
-        assert validate_identity(note, VaultIndex(tmp_path)) == []
