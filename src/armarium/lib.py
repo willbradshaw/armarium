@@ -227,14 +227,12 @@ class VaultNotFoundError(ValueError):
     """No enclosing vault has the required discovery markers."""
 
 
-def find_vault(path: Path, explicit: Path | None = None) -> Path:
-    """Find the nearest enclosing vault or check an explicit vault boundary.
+def find_vault(path: Path) -> Path:
+    """Find the nearest enclosing vault.
 
     Args:
         path: Target file or directory, absolute or relative to the working
             directory. The target need not exist yet.
-        explicit: Optional vault directory. Explicit selection does not require
-            structural markers, so incomplete vaults can still be checked.
 
     Returns:
         Path: Resolved vault directory. Inference requires reference/types and
@@ -242,15 +240,9 @@ def find_vault(path: Path, explicit: Path | None = None) -> Path:
 
     Raises:
         VaultNotFoundError: No enclosing vault has the discovery markers.
-        ValueError: The explicit root is not a directory, or the target resolves
-            outside the selected vault.
+        ValueError: The target resolves outside the inferred vault.
     """
     target = path.absolute()
-    if explicit is not None:
-        root = explicit.resolve()
-        if not root.is_dir() or not target.resolve().is_relative_to(root):
-            raise ValueError("target must be inside the selected vault directory")
-        return root
     # Infer from the target's location before resolving symlinks, so an escaping
     # link cannot silently select a different vault around its destination.
     for candidate in (target, *target.parents):
@@ -262,6 +254,26 @@ def find_vault(path: Path, explicit: Path | None = None) -> Path:
                 raise ValueError("target escapes the inferred vault")
             return root
     raise VaultNotFoundError("cannot infer vault; supply --vault PATH")
+
+
+def check_vault(path: Path, vault: Path) -> Path:
+    """Check that a target is contained within an explicitly selected vault.
+
+    Args:
+        path: Target file or directory; it need not exist yet.
+        vault: Selected vault directory. Structural discovery markers are not
+            required, so incomplete vaults can still be checked.
+
+    Returns:
+        Path: Resolved vault root after checking containment, including symlinks.
+
+    Raises:
+        ValueError: The vault is not a directory or the target resolves outside it.
+    """
+    root = vault.resolve()
+    if not root.is_dir() or not path.resolve().is_relative_to(root):
+        raise ValueError("target must be inside the selected vault directory")
+    return root
 
 
 def find_files(root: Path) -> list[Path]:

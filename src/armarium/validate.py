@@ -7,6 +7,7 @@ from armarium.lib import (
     Diagnostic,
     Result,
     VaultNotFoundError,
+    check_vault,
     find_children,
     find_files,
     find_vault,
@@ -41,7 +42,7 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     """
     if path.is_symlink() or not path.is_file() or path.suffix.lower() != ".md":
         raise ValueError("target must be a regular Markdown file, not a symlink")
-    root = find_vault(path, vault)
+    root = check_vault(path, vault) if vault is not None else find_vault(path)
     path = path.resolve()
     relative = path.relative_to(root).as_posix()
     note, diagnostics = Note.parse(path, root)
@@ -106,7 +107,7 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
     if path.is_symlink() or not path.is_dir():
         raise ValueError("directory validation requires a real directory")
     try:
-        context = find_vault(path, vault) if vault is not None else find_vault(path)
+        context = check_vault(path, vault) if vault is not None else find_vault(path)
     except VaultNotFoundError as exc:
         return _validate_unscoped_directory(path, str(exc))
     return _validate_directory_files(path, context)

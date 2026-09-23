@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 import yaml
 
-from armarium.lib import Result, find_files, find_vault
+from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.validate import (
     _validate_directory_files,
     _validate_unscoped_directory,
@@ -478,10 +478,13 @@ class TestValidateDirectory:
             for name in ("a.md", "b.md"):
                 (root / name).write_text('---\ntype: "[[Widget]]"\n---\n')
         discover = Mock(wraps=find_vault)
+        check = Mock(wraps=check_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
+        monkeypatch.setattr("armarium.validate.check_vault", check)
         # Select once for the whole subtree; explicit vaults bypass discovery.
         for _ in range(2):
             discover.reset_mock()
+            check.reset_mock()
             result = validate_directory(outer, outer if explicit else None)
             assert result.checked == 4
             assert result.failed_files == 0
@@ -491,9 +494,7 @@ class TestValidateDirectory:
                 assert inferred[0].args == (outer,)
             # Each file still passes through the explicit containment check.
             contained = [
-                call
-                for call in discover.call_args_list
-                if len(call.args) == 2 and call.args[0].suffix == ".md"
+                call for call in check.call_args_list if call.args[0].suffix == ".md"
             ]
             assert len(contained) == 4
 

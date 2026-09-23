@@ -12,6 +12,7 @@ from armarium.lib import (
     ValidationError,
     VaultNotFoundError,
     _find_wikilink_candidates,
+    check_vault,
     find_children,
     find_files,
     find_vault,
@@ -188,6 +189,21 @@ class TestFindVault:
         with pytest.raises(ValueError, match="cannot infer vault"):
             find_vault(tmp_path / "note.md")
 
+    def test_inferred_symlink_cannot_select_destination_vault(
+        self, tmp_path: Path
+    ) -> None:
+        first, second = tmp_path / "first", tmp_path / "second"
+        for root in (first, second):
+            (root / "reference/types").mkdir(parents=True)
+            (root / "campaigns").mkdir()
+        (second / "note.md").write_text("outside")
+        link = first / "note.md"
+        link.symlink_to(second / "note.md")
+        with pytest.raises(ValueError, match="escapes the inferred vault"):
+            find_vault(link)
+
+
+class TestCheckVault:
     @pytest.mark.parametrize("relative", [False, True])
     def test_explicit_root_without_markers(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
@@ -196,7 +212,7 @@ class TestFindVault:
         root.mkdir()
         monkeypatch.chdir(tmp_path)
         selected = Path("incomplete") if relative else root
-        assert find_vault(selected / "new.md", selected) == root.resolve()
+        assert check_vault(selected / "new.md", selected) == root.resolve()
 
     @pytest.mark.parametrize(
         "problem", ["missing-root", "file-root", "outside", "symlink-escape"]
@@ -215,20 +231,7 @@ class TestFindVault:
             else:
                 target.symlink_to(outside)
         with pytest.raises(ValueError, match="selected vault directory"):
-            find_vault(target, root)
-
-    def test_inferred_symlink_cannot_select_destination_vault(
-        self, tmp_path: Path
-    ) -> None:
-        first, second = tmp_path / "first", tmp_path / "second"
-        for root in (first, second):
-            (root / "reference/types").mkdir(parents=True)
-            (root / "campaigns").mkdir()
-        (second / "note.md").write_text("outside")
-        link = first / "note.md"
-        link.symlink_to(second / "note.md")
-        with pytest.raises(ValueError, match="escapes the inferred vault"):
-            find_vault(link)
+            check_vault(target, root)
 
 
 class TestFindFiles:
