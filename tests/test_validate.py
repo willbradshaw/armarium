@@ -11,7 +11,12 @@ import pytest
 import yaml
 
 from armarium.lib import Result, find_files, find_vault
-from armarium.validate import validate_directory, validate_markdown
+from armarium.validate import (
+    _validate_files,
+    _validate_tree,
+    validate_directory,
+    validate_markdown,
+)
 
 
 @pytest.fixture
@@ -457,7 +462,7 @@ class TestValidateDirectory:
         assert all(p.read_bytes() == data for p, data in before.items())
 
     @pytest.mark.parametrize("explicit", [False, True])
-    def test_reuses_context_within_folders_and_respects_nested_vaults(
+    def test_selected_vault_applies_to_entire_subtree(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, explicit: bool
     ) -> None:
         from unittest.mock import Mock
@@ -473,20 +478,16 @@ class TestValidateDirectory:
                 (root / name).write_text('---\ntype: "[[Widget]]"\n---\n')
         discover = Mock(wraps=find_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
-        # A new scan gets a fresh cache; an explicit vault bypasses inference.
+        # Select once for the whole subtree; explicit vaults bypass discovery.
         for _ in range(2):
             discover.reset_mock()
             result = validate_directory(outer, outer if explicit else None)
             assert result.checked == 4
-            assert result.failed_files == (0 if explicit else 2)
+            assert result.failed_files == 0
             inferred = [call for call in discover.call_args_list if len(call.args) == 1]
-            assert len(inferred) == (0 if explicit else 2)
+            assert len(inferred) == (0 if explicit else 1)
             if not explicit:
-                assert {call.args[0].parent for call in inferred} == {outer, inner}
-                assert {d.path for d in result.diagnostics} == {
-                    "nested/a.md",
-                    "nested/b.md",
-                }
+                assert inferred[0].args == (outer,)
             # Each file still passes through the explicit containment check.
             contained = [
                 call
@@ -494,3 +495,59 @@ class TestValidateDirectory:
                 if len(call.args) == 2 and call.args[0].suffix == ".md"
             ]
             assert len(contained) == 4
+
+
+class TestValidateTree:
+    @pytest.mark.parametrize("found", [False, True])
+    def test_discovers_once_per_vault_subtree(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, found: bool
+    ) -> None:
+        from unittest.mock import Mock
+
+        path = tmp_path / "container" / "vault"
+        (path / "records/deep").mkdir(parents=True)
+        if found:
+            (path / "reference/types").mkdir(parents=True)
+            (path / "campaigns").mkdir()
+        files = [path / "records/first.md", path / "records/deep/second.md"]
+        for file in files:
+            file.write_text("Untyped")
+        discover = Mock(wraps=find_vault)
+        monkeypatch.setattr("armarium.validate.find_vault", discover)
+        results = list(_validate_tree(tmp_path, files, tmp_path))
+        assert sum(r.checked for r in results) == 2
+        diagnostics = [d for r in results for d in r.diagnostics]
+        assert {d.rule for d in diagnostics} == {
+            "record.type" if found else "vault.context"
+        }
+        assert {d.path for d in diagnostics} == {
+            "container/vault/records/first.md",
+            "container/vault/records/deep/second.md",
+        }
+        inferred = [
+            call.args[0] for call in discover.call_args_list if len(call.args) == 1
+        ]
+        expected = [tmp_path, tmp_path / "container", path]
+        if not found:
+            expected += [path / "records", path / "records/deep"]
+        assert inferred == expected
+
+    def test_empty_tree(self, tmp_path: Path) -> None:
+        assert list(_validate_tree(tmp_path, [], tmp_path)) == []
+
+
+class TestValidateFiles:
+    @pytest.mark.parametrize("outside", [False, True])
+    def test_explicit_context_and_paths(self, tmp_path: Path, outside: bool) -> None:
+        root = tmp_path / "vault"
+        root.mkdir()
+        file = (tmp_path if outside else root) / "note.md"
+        file.write_text("Untyped")
+        if outside:
+            with pytest.raises(ValueError, match="inside the selected vault"):
+                list(_validate_files([file], root, tmp_path))
+        else:
+            results = list(_validate_files([file], root, tmp_path))
+            assert len(results) == 1 and results[0].checked == 1
+            assert results[0].diagnostics[0].path == "vault/note.md"
+            assert results[0].diagnostics[0].rule == "record.type"

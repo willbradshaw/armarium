@@ -1,5 +1,6 @@
 """Read-only entry points coordinating parsing and record validation."""
 
+from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 
@@ -75,14 +76,14 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
 
 
 def validate_directory(path: Path, vault: Path | None = None) -> Result:
-    """Validate visible Markdown descendants, even across multiple vaults.
+    """Validate visible Markdown descendants, discovering vaults as needed.
 
     Args:
         path: Directory to scan recursively. Hidden entries, caches,
             node_modules and symlinks are excluded by find_files.
         vault: Optional explicit vault containing the entire selected directory.
-            Otherwise cache inferred vault roots by parent directory per scan;
-            separate and nested vaults keep their own context.
+            Otherwise try the selected directory, then descend until a vault
+            is found. A selected vault applies to its entire subtree.
 
     Returns:
         Result: Aggregated findings and counts, with diagnostic paths relative
@@ -98,33 +99,80 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
     """
     if vault is not None:
         vault = find_vault(path, vault)
-    files = find_files(path)
+    files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
     root = path.resolve()
-    vaults: dict[Path, Path] = {}
-    result = Result()
-    for file in files:
-        if file.suffix.lower() != ".md":
-            continue
-        relative = file.relative_to(path).as_posix()
-        context = vault if vault is not None else vaults.get(file.parent)
-        if context is None:
-            try:
-                context = find_vault(file)
-            except ValueError as exc:
-                result.checked += 1
-                result.diagnostics.append(
-                    Diagnostic(relative, "vault.context", str(exc))
+    results = list(
+        _validate_files(files, vault, root)
+        if vault is not None
+        else _validate_tree(path, files, root)
+    )
+    return Result(
+        diagnostics=sorted(d for result in results for d in result.diagnostics),
+        checked=sum(result.checked for result in results),
+        skipped=sum(result.skipped for result in results),
+        unsupported=sum(result.unsupported for result in results),
+    )
+
+
+def _validate_tree(path: Path, files: list[Path], root: Path) -> Iterator[Result]:
+    """Descend through directories until a vault can be selected.
+
+    Args:
+        path: Directory at the current discovery step.
+        files: Visible Markdown descendants already collected by find_files.
+        root: Resolved scan root used to label diagnostics consistently.
+
+    Yields:
+        Result: File validation results, or context errors for files encountered
+            before a vault is found. Once selected, a vault applies to all its
+            descendants, including any nested vault directories.
+    """
+    if not files:
+        return
+    try:
+        vault = find_vault(path)
+    except ValueError as exc:
+        # Group the existing file list instead of walking the filesystem again.
+        children: dict[Path, list[Path]] = {}
+        for file in files:
+            if file.parent == path:
+                yield Result(
+                    diagnostics=[
+                        Diagnostic(
+                            file.resolve().relative_to(root).as_posix(),
+                            "vault.context",
+                            str(exc),
+                        )
+                    ],
+                    checked=1,
                 )
-                continue
-            # Cache only this folder: descendants may belong to a nested vault.
-            vaults[file.parent] = context
-        checked = validate_markdown(file, context)
-        result.checked += checked.checked
-        result.skipped += checked.skipped
-        result.unsupported += checked.unsupported
-        result.diagnostics.extend(
-            replace(d, path=(context / d.path).relative_to(root).as_posix())
-            for d in checked.diagnostics
+            else:
+                child = path / file.relative_to(path).parts[0]
+                children.setdefault(child, []).append(file)
+        for child, descendants in sorted(children.items()):
+            yield from _validate_tree(child, descendants, root)
+    else:
+        yield from _validate_files(files, vault, root)
+
+
+def _validate_files(files: list[Path], vault: Path, root: Path) -> Iterator[Result]:
+    """Validate files within one explicitly selected vault.
+
+    Args:
+        files: Markdown files to validate in their supplied order.
+        vault: Resolved vault root, passed explicitly to validate_markdown.
+        root: Resolved scan root used to label diagnostics consistently.
+
+    Yields:
+        Result: Each file's findings and counts, with paths relative to root.
+            Per-file containment checks remain active.
+    """
+    for file in files:
+        result = validate_markdown(file, vault)
+        yield replace(
+            result,
+            diagnostics=[
+                replace(d, path=(vault / d.path).relative_to(root).as_posix())
+                for d in result.diagnostics
+            ],
         )
-    result.diagnostics.sort()
-    return result
