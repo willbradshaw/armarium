@@ -1498,22 +1498,32 @@ class TestValidateVault:
             (d.path, d.rule, d.message) for d in result
         ]
 
-    def test_removed_types_directory_reports_each_definition(
-        self, tmp_path: Path
+    @pytest.mark.parametrize(
+        "relative, message",
+        [
+            ("campaigns", "cannot check campaigns: campaigns/ is missing"),
+            (
+                "reference/types",
+                "cannot check schema coverage: reference/types is missing",
+            ),
+            (
+                "reference/schemas",
+                "cannot check schema coverage: reference/schemas is missing",
+            ),
+        ],
+    )
+    def test_missing_directory_stops_dependent_checks(
+        self, tmp_path: Path, relative: str, message: str
     ) -> None:
         make_vault(tmp_path)
-        shutil.rmtree(tmp_path / "reference/types")
-        messages = {(d.rule, d.message) for d in validate_vault(tmp_path)}
-        assert (
-            "vault.required",
-            "required directory reference/types is missing",
-        ) in messages
-        assert (
-            "vault.required",
-            "required file reference/types/Clue.md is missing",
-        ) in messages
-        # Without definitions every schema is unused; that is reported, not skipped.
-        assert sum(rule == "schema.unused" for rule, _ in messages) == len(VAULT_TYPES)
+        shutil.rmtree(tmp_path / relative)
+        messages = [d.message for d in validate_vault(tmp_path)]
+        assert f"required directory {relative} is missing" in messages
+        assert message in messages
+        # The dependent checks say they cannot run rather than reporting every
+        # entry as absent or every schema as unused.
+        assert not any(m.endswith("is not a campaign_N directory") for m in messages)
+        assert not any("matches no Type definition" in m for m in messages)
 
     @pytest.mark.parametrize(
         "layout, expected",

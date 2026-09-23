@@ -265,16 +265,9 @@ def validate_vault(root: Path) -> list[Diagnostic]:
 
     Returns:
         list[Diagnostic]: Findings attributed to the vault itself (an empty
-            path, which directory validation rebases onto the vault), naming
-            the affected entry in the message: required directories,
-            definitions and templates that are missing or symlinks
-            (vault.required); campaigns/ entries that are not campaign_N
-            directories, no campaign at all, or a campaign missing its layout
-            (vault.campaign); schemas that fail to load (schema.invalid); Type
-            definitions without a schema (schema.missing) and schema files
-            without a Type definition (schema.unused). Extra folders and files
-            are allowed. The blank starter vault passes; record contents are
-            validated separately.
+            path, which directory validation rebases onto the vault), each
+            naming the affected entry. Extra folders and files are allowed;
+            record contents are validated separately.
     """
     diagnostics: list[Diagnostic] = []
 
@@ -298,33 +291,41 @@ def validate_vault(root: Path) -> list[Diagnostic]:
         require(f"reference/templates/{name}.md", False)
 
     campaigns = root / "campaigns"
-    found = []
-    for child in find_children(campaigns) if campaigns.is_dir() else []:
-        if child.is_dir() and CAMPAIGN_NAME.fullmatch(child.name):
-            found.append(child.name)
-        else:
-            report(
-                "vault.campaign",
-                f"campaigns/{child.name} is not a campaign_N directory",
-            )
-    if campaigns.is_dir() and not found:
-        report("vault.campaign", "campaigns/ has no campaign_N directory")
-    for name in found:
-        for relative in CAMPAIGN_DIRECTORIES:
-            require(f"campaigns/{name}/{relative}", True)
-        for relative in CAMPAIGN_FILES:
-            require(f"campaigns/{name}/{relative}", False)
+    if not campaigns.is_dir() or campaigns.is_symlink():
+        report("vault.campaign", "cannot check campaigns: campaigns/ is missing")
+    else:
+        found = []
+        for child in find_children(campaigns):
+            if child.is_dir() and CAMPAIGN_NAME.fullmatch(child.name):
+                found.append(child.name)
+            else:
+                report(
+                    "vault.campaign",
+                    f"campaigns/{child.name} is not a campaign_N directory",
+                )
+        if not found:
+            report("vault.campaign", "campaigns/ has no campaign_N directory")
+        for name in found:
+            for relative in CAMPAIGN_DIRECTORIES:
+                require(f"campaigns/{name}/{relative}", True)
+            for relative in CAMPAIGN_FILES:
+                require(f"campaigns/{name}/{relative}", False)
 
     # Schemas and Type definitions correspond by name: Clue.md <-> clue.schema.json.
     types = root / "reference/types"
-    definitions = {
-        file.stem
-        for file in (find_files(types) if types.is_dir() else [])
-        if file.suffix.lower() == ".md"
-    }
     schemas = root / "reference/schemas"
+    for directory in (types, schemas):
+        if not directory.is_dir() or directory.is_symlink():
+            relative = directory.relative_to(root).as_posix()
+            report(
+                "schema.missing", f"cannot check schema coverage: {relative} is missing"
+            )
+            return diagnostics
+    definitions = {
+        file.stem for file in find_files(types) if file.suffix.lower() == ".md"
+    }
     schema_names: set[str] = set()
-    for file in find_files(schemas) if schemas.is_dir() else []:
+    for file in find_files(schemas):
         relative = file.relative_to(root).as_posix()
         if not file.name.endswith(".schema.json"):
             if file.suffix.lower() == ".json":
