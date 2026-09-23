@@ -109,39 +109,25 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
     try:
         context = check_vault(path, vault) if vault is not None else find_vault(path)
     except VaultNotFoundError as exc:
-        return _validate_unscoped_directory(path, str(exc))
+        result = Result()
+        for child in find_children(path):
+            if child.is_dir():
+                checked = validate_directory(child)
+                checked = replace(
+                    checked,
+                    diagnostics=[
+                        replace(d, path=(Path(child.name) / d.path).as_posix())
+                        for d in checked.diagnostics
+                    ],
+                )
+                result += checked
+            elif child.is_file() and child.suffix.lower() == ".md":
+                result += Result(
+                    diagnostics=[Diagnostic(child.name, "vault.context", str(exc))],
+                    checked=1,
+                )
+        return result
     return _validate_directory_files(path, context)
-
-
-def _validate_unscoped_directory(path: Path, message: str) -> Result:
-    """Recurse into child directories and report unscoped Markdown files.
-
-    Args:
-        path: Directory for which vault discovery failed.
-        message: Explanation of the failed vault discovery.
-
-    Returns:
-        Result: Combined child results with paths relative to this directory.
-            Direct Markdown children receive context errors, not exemptions.
-    """
-    result = Result()
-    for child in find_children(path):
-        if child.is_dir():
-            checked = validate_directory(child)
-            checked = replace(
-                checked,
-                diagnostics=[
-                    replace(d, path=(Path(child.name) / d.path).as_posix())
-                    for d in checked.diagnostics
-                ],
-            )
-            result += checked
-        elif child.is_file() and child.suffix.lower() == ".md":
-            result += Result(
-                diagnostics=[Diagnostic(child.name, "vault.context", message)],
-                checked=1,
-            )
-    return result
 
 
 def _validate_directory_files(path: Path, vault: Path) -> Result:

@@ -13,7 +13,6 @@ import yaml
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.validate import (
     _validate_directory_files,
-    _validate_unscoped_directory,
     validate_directory,
     validate_markdown,
 )
@@ -498,8 +497,6 @@ class TestValidateDirectory:
             ]
             assert len(contained) == 4
 
-
-class TestValidateUnscopedDirectory:
     @pytest.mark.parametrize("found", [False, True])
     def test_discovers_once_per_vault_subtree(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, found: bool
@@ -516,7 +513,7 @@ class TestValidateUnscopedDirectory:
             file.write_text("Untyped")
         discover = Mock(wraps=find_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
-        result = _validate_unscoped_directory(tmp_path, "No vault")
+        result = validate_directory(tmp_path)
         assert result.checked == 2
         diagnostics = result.diagnostics
         assert {d.rule for d in diagnostics} == {
@@ -529,13 +526,10 @@ class TestValidateUnscopedDirectory:
         inferred = [
             call.args[0] for call in discover.call_args_list if len(call.args) == 1
         ]
-        expected = [tmp_path / "container", path]
+        expected = [tmp_path, tmp_path / "container", path]
         if not found:
             expected += [path / "records", path / "records/deep"]
         assert inferred == expected
-
-    def test_empty_tree(self, tmp_path: Path) -> None:
-        assert _validate_unscoped_directory(tmp_path, "No vault") == Result()
 
 
 class TestValidateDirectoryFiles:
