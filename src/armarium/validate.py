@@ -433,16 +433,24 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Index supplying the selected vault boundary.
 
     Returns:
-        list[Diagnostic]: A Session, Clue or Transcript filename that does not
-            match its campaign's pattern, or a Session whose session_number
-            differs from its filename. Other types and records outside numeric
-            campaigns have no filename rule.
+        list[Diagnostic]: A Session, Clue or Transcript outside every campaign,
+            one whose filename does not match its campaign's pattern, or a
+            Session whose session_number differs from its filename. Other
+            types have no filename rule.
     """
     scope = find_campaign(note.path, index.root)
     kind = note.parsed_type
-    if scope is None or kind not in {"Session", "Clue", "Transcript"}:
+    if kind not in {"Session", "Clue", "Transcript"}:
         return []
     path = note.path.relative_to(index.root).as_posix()
+    if scope is None:
+        return [
+            Diagnostic(
+                path,
+                "record.identity",
+                f"cannot check {kind} filename: record is outside every campaign",
+            )
+        ]
     number = scope.removeprefix("campaign_")
     pattern = {
         "Clue": rf"C-{number}-[0-9]{{4}}",
@@ -533,20 +541,22 @@ def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Whole-vault index used to resolve the link.
 
     Returns:
-        list[Diagnostic]: A Session whose campaign is not the containing
-            campaign's overview, a Transcript not named after its linked
-            Session plus " Transcript", or an identity link that cannot be
-            resolved. Records outside numeric campaigns and other types have
-            no identity link.
+        list[Diagnostic]: A Session or Transcript outside every campaign, one
+            whose identity link cannot be resolved, a Session whose campaign is
+            not the containing campaign's overview, or a Transcript not named
+            after its linked Session plus " Transcript". Other types have no
+            identity link.
     """
     scope = find_campaign(note.path, index.root)
     kind = note.parsed_type
-    if scope is None or kind not in {"Session", "Transcript"}:
+    if kind not in {"Session", "Transcript"}:
         return []
     path = note.path.relative_to(index.root).as_posix()
     field = "campaign" if kind == "Session" else "session"
     resolved, error = index.resolve_field(note, field)
-    if error is not None:
+    if scope is None:
+        message = f"cannot check {kind} identity: record is outside every campaign"
+    elif error is not None:
         message = f"cannot check {kind} identity: {error}"
     elif kind == "Session":
         if resolved == index.root / f"campaigns/{scope}/reference/Campaign.md":

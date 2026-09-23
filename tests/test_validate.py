@@ -1033,8 +1033,11 @@ class TestValidateFilename:
             ("Transcript", "campaigns/campaign_42/S-42-002 Transcript.md", None, None),
             ("Transcript", "campaigns/campaign_42/S-42-002.md", None, ""),
             ("Content", "campaigns/campaign_42/Anything.md", None, None),
-            ("Session", "S-1-002.md", 3, None),
-            ("Session", "campaigns/other/S-1-002.md", 3, None),
+            ("Content", "Anything.md", None, None),
+            ("Session", "S-1-002.md", 2, ""),
+            ("Session", "campaigns/other/S-1-002.md", 2, ""),
+            ("Clue", "clues/C-1-0001.md", None, ""),
+            ("Transcript", "S-1-002 Transcript.md", None, ""),
         ],
     )
     def test_filename(
@@ -1359,13 +1362,39 @@ class TestValidateIdentityLinks:
         )
 
     @pytest.mark.parametrize(
-        "kind, relative",
+        "kind, relative, expected",
         [
-            ("Content", "content/N.md"),
-            ("Session", "sessions/S-1-001.md"),
-            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md"),
+            ("Content", "content/N.md", None),
+            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md", None),
+            (
+                "Session",
+                "sessions/S-1-001.md",
+                (
+                    "campaign.mismatch",
+                    "cannot check Session identity: record is outside every campaign",
+                    "campaign",
+                ),
+            ),
+            (
+                "Transcript",
+                "campaigns/other/S-1-001 Transcript.md",
+                (
+                    "record.identity",
+                    "cannot check Transcript identity: record is outside every campaign",
+                    "session",
+                ),
+            ),
         ],
     )
-    def test_no_identity_link(self, tmp_path: Path, kind: str, relative: str) -> None:
+    def test_outside_campaign_or_other_type(
+        self,
+        tmp_path: Path,
+        kind: str,
+        relative: str,
+        expected: tuple[str, str, str] | None,
+    ) -> None:
         note = Note(tmp_path / relative, {"type": f"[[{kind}]]"}, "", 1)
-        assert validate_identity_links(note, VaultIndex(tmp_path)) == []
+        result = validate_identity_links(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.message, d.field) for d in result] == (
+            [expected] if expected else []
+        )
