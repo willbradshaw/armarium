@@ -883,11 +883,24 @@ class TestValidateWikilinkStatus:
                 "status reference/statuses/Pending.md: cannot uniquely resolve "
                 "[[missing]]",
             ),
-            ('applies_to: "[[Content]]"', "[[missing]]", None),
+            (
+                'applies_to: "[[Content]]"',
+                "[[missing]]",
+                "cannot check applicability: cannot uniquely resolve [[missing]]",
+            ),
+            (
+                'applies_to: "[[Content]]"',
+                None,
+                "cannot check applicability: type must hold exactly one wikilink",
+            ),
         ],
     )
     def test_applicability(
-        self, tmp_path: Path, applies_to: str, record_type: str, message: str | None
+        self,
+        tmp_path: Path,
+        applies_to: str,
+        record_type: str | None,
+        message: str | None,
     ) -> None:
         for name, text in {
             "reference/types/Clue.md": 'type: "[[Type]]"',

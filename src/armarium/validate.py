@@ -245,16 +245,17 @@ def _validate_wikilink_status(
 
     Returns:
         tuple[str, str] | None: An applicability error when the Status has no
-            usable applies_to, or when applies_to and the record's type resolve
-            to different files. A record whose own type link is unusable gets
-            no second error here; that link is reported alongside this one.
+            usable applies_to, the record has no usable type link, or the two
+            resolve to different files.
     """
     applies_to, error = index.resolve_field(status, "applies_to")
     if error is not None:
         relative = status.path.relative_to(index.root)
         return "status.applicability", f"status {relative}: {error}"
     record_type, error = index.resolve_field(note, "type")
-    if error is not None or applies_to == record_type:
+    if error is not None:
+        return "status.applicability", f"cannot check applicability: {error}"
+    if applies_to == record_type:
         return None
     return (
         "status.applicability",
