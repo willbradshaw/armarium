@@ -152,7 +152,7 @@ def select_schema(note: Note, root: Path) -> tuple[Schema | None, list[Diagnosti
 
     Returns:
         tuple[Schema | None, list[Diagnostic]]: A loaded schema and no findings,
-            or None with a schema.unsupported warning for missing coverage or a
+            or None with a schema.unsupported error for a missing schema or a
             schema.invalid error for an unreadable/invalid schema. This function
             selects and loads the schema; it does not validate the note.
 
@@ -169,8 +169,7 @@ def select_schema(note: Note, root: Path) -> tuple[Schema | None, list[Diagnosti
             Diagnostic(
                 relative,
                 "schema.unsupported",
-                f"no vault-local schema for {parsed_type}; validation is partial",
-                severity="warning",
+                f"no vault-local schema for {parsed_type}",
             )
         ]
     try:

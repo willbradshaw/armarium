@@ -51,7 +51,7 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
             with an explicit informational diagnostic. Type/status definitions
             are records too and require declared types and schema validation.
             Typed files receive their vault-local schema checks;
-            absent schemas produce partial-coverage warnings. Invalid schemas
+            absent schemas produce errors. Invalid schemas
             fail validation without being counted as missing coverage.
             No source files are modified and no other records are checked.
 

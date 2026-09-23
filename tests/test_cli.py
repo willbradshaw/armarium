@@ -45,8 +45,8 @@ class TestMain:
             (
                 '---\ntype: "[[Unknown]]"\n---\n',
                 "note.md",
-                0,
-                "WARNING: note.md: schema.unsupported",
+                1,
+                "ERROR: note.md: schema.unsupported",
                 "1 checked, 0 skipped, 1 unsupported",
             ),
             (
@@ -116,7 +116,8 @@ class TestMain:
         monkeypatch.setattr(
             sys, "argv", ["armarium", "validate", str(path), "--vault", str(tmp_path)]
         )
-        assert main() is None
+        with pytest.raises(ValidationError, match="1 file failed validation"):
+            main()
         assert "1 unsupported" in capsys.readouterr().err
 
     @pytest.mark.parametrize(
@@ -271,5 +272,5 @@ class TestParseArgs:
         assert output.err == ""
         if "validate" in argv:
             assert "Exit codes:" in output.out
-            assert "partial-coverage warnings" in output.out
+            assert "Missing schemas are errors." in " ".join(output.out.split())
             assert "stderr" in output.out

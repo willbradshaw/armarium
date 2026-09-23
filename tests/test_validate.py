@@ -83,7 +83,7 @@ class TestValidateMarkdown:
     @pytest.mark.parametrize(
         ("schema", "rule", "unsupported", "failed"),
         [
-            (None, "schema.unsupported", 1, False),
+            (None, "schema.unsupported", 1, True),
             ("{", "schema.invalid", 0, True),
             ('{"type": 12}', "schema.invalid", 0, True),
             ('{"$ref": "https://example.invalid/schema"}', "schema.invalid", 0, True),
@@ -281,7 +281,7 @@ class TestValidateMarkdown:
         path = tmp_path / "note.md"
         path.write_text('---\ntype: "[[Widget]]"\n---\n')
         result = validate_markdown(path, tmp_path)
-        assert result.unsupported == 1 and not result.failed
+        assert result.unsupported == 1 and result.failed
 
     @pytest.mark.parametrize(
         "kind",
@@ -384,7 +384,7 @@ class TestValidateDirectory:
             for d in r.diagnostics
             if d.path.startswith("content/")
         )
-        assert result.failed_files == 2
+        assert result.failed_files == 3
         assert all(p.read_bytes() == data for p, data in before.items())
 
     def test_multiple_vaults_and_unscoped_markdown(self, tmp_path: Path) -> None:

@@ -117,7 +117,7 @@ class TestPyproject:
         )
         assert (
             process.returncode
-            == {"valid": 0, "invalid": 1, "unsupported": 0, "missing": 1, "usage": 2}[
+            == {"valid": 0, "invalid": 1, "unsupported": 1, "missing": 1, "usage": 2}[
                 scenario
             ]
         ), process.stderr
@@ -133,8 +133,10 @@ class TestPyproject:
                 r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{2} UTC\] (INFO|WARNING|ERROR): ",
                 process.stderr,
             )
-        assert ("Traceback" in process.stderr) == (scenario in {"invalid", "missing"})
-        if scenario == "invalid":
+        assert ("Traceback" in process.stderr) == (
+            scenario in {"invalid", "unsupported", "missing"}
+        )
+        if scenario in {"invalid", "unsupported"}:
             assert process.stderr.rstrip().endswith(
                 "ValidationError: 1 file failed validation"
             )

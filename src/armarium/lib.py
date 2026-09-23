@@ -158,8 +158,8 @@ class Result:
         diagnostics: Findings collected by the checks, owned by this result.
         checked: Number of records checked.
         skipped: Number of files deliberately excluded from record checks.
-        unsupported: Checked records without an available type schema; these
-            can still receive checks that do not require a schema.
+        unsupported: Checked records without an available type schema. Each
+            receives an error diagnostic and fails validation.
     """
 
     diagnostics: list[Diagnostic] = field(default_factory=list)

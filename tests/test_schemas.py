@@ -350,16 +350,16 @@ class TestSelectSchema:
         assert schema.path == path
         assert schema.contents is False
 
-    def test_missing_schema_has_partial_coverage(self, root: Path, note: Note) -> None:
+    def test_missing_schema_is_error(self, root: Path, note: Note) -> None:
         schema, diagnostics = select_schema(note, root)
         assert schema is None and len(diagnostics) == 1
-        warning = diagnostics[0]
-        assert (warning.path, warning.rule, warning.severity) == (
+        error = diagnostics[0]
+        assert (error.path, error.rule, error.severity) == (
             "content/Example.md",
             "schema.unsupported",
-            "warning",
+            "error",
         )
-        assert "Widget" in warning.message
+        assert "Widget" in error.message
 
     @pytest.mark.parametrize(
         "contents",
