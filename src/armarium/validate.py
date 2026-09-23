@@ -81,7 +81,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         path: Directory to scan recursively. Hidden entries, caches,
             node_modules and symlinks are excluded by find_files.
         vault: Optional explicit vault containing the entire selected directory.
-            Otherwise infer vault context separately for each Markdown file.
+            Otherwise cache inferred vault roots by parent directory per scan;
+            separate and nested vaults keep their own context.
 
     Returns:
         Result: Aggregated findings and counts, with diagnostic paths relative
@@ -99,17 +100,24 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         vault = find_vault(path, vault)
     files = find_files(path)
     root = path.resolve()
+    vaults: dict[Path, Path] = {}
     result = Result()
     for file in files:
         if file.suffix.lower() != ".md":
             continue
         relative = file.relative_to(path).as_posix()
-        try:
-            context = find_vault(file, vault)
-        except ValueError as exc:
-            result.checked += 1
-            result.diagnostics.append(Diagnostic(relative, "vault.context", str(exc)))
-            continue
+        context = vault if vault is not None else vaults.get(file.parent)
+        if context is None:
+            try:
+                context = find_vault(file)
+            except ValueError as exc:
+                result.checked += 1
+                result.diagnostics.append(
+                    Diagnostic(relative, "vault.context", str(exc))
+                )
+                continue
+            # Cache only this folder: descendants may belong to a nested vault.
+            vaults[file.parent] = context
         checked = validate_markdown(file, context)
         result.checked += checked.checked
         result.skipped += checked.skipped

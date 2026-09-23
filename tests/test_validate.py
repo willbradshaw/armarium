@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 import yaml
 
-from armarium.lib import Result, find_files
+from armarium.lib import Result, find_files, find_vault
 from armarium.validate import validate_directory, validate_markdown
 
 
@@ -455,3 +455,42 @@ class TestValidateDirectory:
         assert not result.failed and result.unsupported == 0
         assert result.checked > 0 and result.skipped == 5
         assert all(p.read_bytes() == data for p, data in before.items())
+
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_reuses_context_within_folders_and_respects_nested_vaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, explicit: bool
+    ) -> None:
+        from unittest.mock import Mock
+
+        outer = tmp_path / "outer"
+        inner = outer / "nested"
+        for root, schema in ((outer, "true"), (inner, "false")):
+            (root / "reference/types").mkdir(parents=True)
+            (root / "reference/schemas").mkdir()
+            (root / "campaigns").mkdir()
+            (root / "reference/schemas/widget.schema.json").write_text(schema)
+            for name in ("a.md", "b.md"):
+                (root / name).write_text('---\ntype: "[[Widget]]"\n---\n')
+        discover = Mock(wraps=find_vault)
+        monkeypatch.setattr("armarium.validate.find_vault", discover)
+        # A new scan gets a fresh cache; an explicit vault bypasses inference.
+        for _ in range(2):
+            discover.reset_mock()
+            result = validate_directory(outer, outer if explicit else None)
+            assert result.checked == 4
+            assert result.failed_files == (0 if explicit else 2)
+            inferred = [call for call in discover.call_args_list if len(call.args) == 1]
+            assert len(inferred) == (0 if explicit else 2)
+            if not explicit:
+                assert {call.args[0].parent for call in inferred} == {outer, inner}
+                assert {d.path for d in result.diagnostics} == {
+                    "nested/a.md",
+                    "nested/b.md",
+                }
+            # Each file still passes through the explicit containment check.
+            contained = [
+                call
+                for call in discover.call_args_list
+                if len(call.args) == 2 and call.args[0].suffix == ".md"
+            ]
+            assert len(contained) == 4
