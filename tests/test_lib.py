@@ -8,7 +8,9 @@ import pytest
 
 from armarium.lib import (
     Diagnostic,
+    Item,
     Result,
+    Section,
     ValidationError,
     VaultNotFoundError,
     _find_wikilink_candidates,
@@ -19,6 +21,7 @@ from armarium.lib import (
     find_vault,
     iter_wikilinks,
     parse_wikilink,
+    sections,
 )
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
@@ -527,3 +530,60 @@ class TestFindCampaign:
     def test_outside(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
             find_campaign(tmp_path.parent / "outside.md", tmp_path)
+
+
+FENCE = "`" * 3
+
+
+class TestSections:
+    def test_headings_and_blocks(self) -> None:
+        body = (
+            "Preamble paragraph.\n\n"
+            "# Title\n"
+            "Intro.\n\n"
+            "## Appearances\n\n"
+            "- [[S-1-001]]: Met the\n  crew.\n"
+            "* [[S-1-002]]: Left.\n  - nested item\n"
+            "+ Third.\n\n"
+            "Stray paragraph.\n\n"
+            f"{FENCE}\n## Not a heading\n- [[X]]: not an item\n{FENCE}\n\n"
+            "Setext\n---\n"
+            "1. ordered\n"
+            "> - quoted item\n"
+            "### campaign_1\n"
+            "- [[S-1-003]]: Sub.\n\n"
+            "[[S-1-004]]: not a reference definition\n"
+        )
+        assert sections(body) == [
+            Section("Title", 1, 3, (), (4,)),
+            Section(
+                "Appearances",
+                2,
+                6,
+                (
+                    Item("[[S-1-001]]: Met the crew.", 8),
+                    Item("[[S-1-002]]: Left.", 10),
+                    Item("Third.", 12),
+                ),
+                (14, 16),
+            ),
+            Section("Setext", 2, 21, (), (23, 24)),
+            Section("campaign_1", 3, 25, (Item("[[S-1-003]]: Sub.", 26),), (28,)),
+        ]
+
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            ("", []),
+            ("No headings\n- item\n", []),
+            ("## A\n## B\n", [Section("A", 2, 1), Section("B", 2, 2)]),
+            (
+                "## Empty item\n-\n- \n",
+                [Section("Empty item", 2, 1, (Item("", 2), Item("", 3)))],
+            ),
+            ("## Code\n    indented code\n", [Section("Code", 2, 1, (), (2,))]),
+            ("##No space\n", []),
+        ],
+    )
+    def test_edges(self, body: str, expected: list[Section]) -> None:
+        assert sections(body) == expected

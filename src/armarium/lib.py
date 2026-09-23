@@ -7,6 +7,8 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal
 
+from markdown_it import MarkdownIt
+
 from armarium.logging import logger
 
 # -----------------------------------------------------------------------------
@@ -98,6 +100,98 @@ def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
             yield exc
         else:
             yield target
+
+
+# -----------------------------------------------------------------------------
+# Markdown structure
+# -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Item:
+    """One top-level bullet-list item within a section.
+
+    Attributes:
+        text: The item's first paragraph with wrapped lines joined by spaces;
+            nested lists and later paragraphs are not included.
+        line: One-based body line on which the item starts.
+    """
+
+    text: str
+    line: int
+
+
+@dataclass(frozen=True)
+class Section:
+    """A heading and the top-level blocks beneath it.
+
+    A section runs to the next heading of any level, so a subheading starts a
+    new section rather than nesting. Only top-level blocks are described:
+    content inside block quotes or nested lists belongs to its container.
+
+    Attributes:
+        title: Heading text as written.
+        level: Heading level, 1 to 6.
+        line: One-based body line of the heading.
+        items: Items of the section's top-level bullet lists, in order.
+        other: One-based lines of other top-level blocks (paragraphs, ordered
+            lists, fenced or indented code, quotes, rules, tables), in order.
+    """
+
+    title: str
+    level: int
+    line: int
+    items: tuple[Item, ...] = ()
+    other: tuple[int, ...] = ()
+
+
+def sections(body: str) -> list[Section]:
+    """Split a Markdown body into its headed sections.
+
+    CommonMark parsing decides what is a heading, a list or code, so headings
+    inside fenced code do not count and setext headings do. Text before the
+    first heading belongs to no section and is not returned.
+
+    Args:
+        body: Markdown after the frontmatter.
+
+    Returns:
+        list[Section]: Sections in document order.
+    """
+    tokens = MarkdownIt("commonmark").parse(body)
+    found: list[Section] = []
+    current: Section | None = None
+    items: list[Item] = []
+    other: list[int] = []
+
+    def close() -> None:
+        if current is not None:
+            found.append(replace(current, items=tuple(items), other=tuple(other)))
+
+    for position, token in enumerate(tokens):
+        if token.level != 0 or token.map is None:
+            continue  # Closing tokens and nested content are not blocks.
+        line = token.map[0] + 1
+        if token.type == "heading_open":
+            close()
+            current = Section(tokens[position + 1].content, int(token.tag[1]), line)
+            items, other = [], []
+        elif current is None:
+            continue
+        elif token.type == "bullet_list_open":
+            for index in range(position + 1, len(tokens)):
+                inner = tokens[index]
+                if inner.type == "bullet_list_close" and inner.level == 0:
+                    break
+                if inner.type == "list_item_open" and inner.level == 1:
+                    text = ""
+                    if tokens[index + 1].type == "paragraph_open":
+                        text = tokens[index + 2].content.replace("\n", " ")
+                    items.append(Item(text, inner.map[0] + 1 if inner.map else line))
+        else:
+            other.append(line)
+    close()
+    return found
 
 
 # -----------------------------------------------------------------------------
