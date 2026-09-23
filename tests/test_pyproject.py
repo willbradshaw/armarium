@@ -77,7 +77,8 @@ class TestPyproject:
         assert process.returncode == 0, process.stderr
 
     @pytest.mark.parametrize(
-        "scenario", ["valid", "invalid", "unsupported", "missing", "usage"]
+        "scenario",
+        ["valid", "invalid", "unsupported", "missing", "usage", "broken-link"],
     )
     def test_installed_command(
         self, installed: tuple[Path, Path, Path], tmp_path: Path, scenario: str
@@ -95,6 +96,8 @@ class TestPyproject:
             if scenario == "invalid"
             else f'---\ntype: "[[{"Unknown" if scenario == "unsupported" else "Widget"}]]"\n---\n'
         )
+        if scenario == "broken-link":
+            text += "[[Missing target]]\n"
         path.write_text(text)
         working = tmp_path / "unrelated"
         working.mkdir()
@@ -118,11 +121,18 @@ class TestPyproject:
         )
         assert (
             process.returncode
-            == {"valid": 0, "invalid": 1, "unsupported": 1, "missing": 1, "usage": 2}[
-                scenario
-            ]
+            == {
+                "valid": 0,
+                "invalid": 1,
+                "unsupported": 1,
+                "missing": 1,
+                "usage": 2,
+                "broken-link": 1,
+            }[scenario]
         ), process.stderr
         assert process.stdout == ""
+        if scenario == "broken-link":
+            assert "link.missing" in process.stderr
         if scenario == "usage":
             assert "usage: armarium validate" in process.stderr
             assert "error:" in process.stderr
@@ -135,9 +145,9 @@ class TestPyproject:
                 process.stderr,
             )
         assert ("Traceback" in process.stderr) == (
-            scenario in {"invalid", "unsupported", "missing"}
+            scenario in {"invalid", "unsupported", "missing", "broken-link"}
         )
-        if scenario in {"invalid", "unsupported"}:
+        if scenario in {"invalid", "unsupported", "broken-link"}:
             assert process.stderr.rstrip().endswith(
                 "ValidationError: 1 file failed validation"
             )

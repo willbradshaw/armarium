@@ -20,8 +20,10 @@ from armarium.validate import (
     _link_targets,
     _validate_wikilink_status,
     validate,
+    validate_campaigns,
     validate_directory,
     validate_filename,
+    validate_identity_links,
     validate_markdown,
     validate_placement,
     validate_wikilink,
@@ -745,6 +747,15 @@ class TestTarget:
                 "content/Thing.md",
                 {
                     "type": "[[Content]]",
+                    "subtype": "Object",
+                    "campaign_42": {"held_by": "[[NPC1]]", "first_session": "[[PC1]]"},
+                },
+                [("link.type", "campaign_42.first_session")],
+            ),
+            (
+                "content/Thing.md",
+                {
+                    "type": "[[Content]]",
                     "custom": {"plays": "[[NPC1]]"},
                     "notes": "[[Far]]",
                 },
@@ -1022,8 +1033,11 @@ class TestValidateFilename:
             ("Transcript", "campaigns/campaign_42/S-42-002 Transcript.md", None, None),
             ("Transcript", "campaigns/campaign_42/S-42-002.md", None, ""),
             ("Content", "campaigns/campaign_42/Anything.md", None, None),
-            ("Session", "S-1-002.md", 3, None),
-            ("Session", "campaigns/other/S-1-002.md", 3, None),
+            ("Content", "Anything.md", None, None),
+            ("Session", "S-1-002.md", 2, ""),
+            ("Session", "campaigns/other/S-1-002.md", 2, ""),
+            ("Clue", "clues/C-1-0001.md", None, ""),
+            ("Transcript", "S-1-002 Transcript.md", None, ""),
         ],
     )
     def test_filename(
@@ -1142,10 +1156,245 @@ class TestLinkTargets:
             ),
             ({"type": "[[Status]]"}, {"applies_to": Target("Type")}),
             ({"type": "[[Status]]", "subtype": "Odd"}, {"applies_to": Target("Type")}),
+            (
+                {"type": "[[Clue]]", "status": "[[Superseded]]"},
+                {
+                    "subjects": Target("Content", local=True),
+                    "first_session": Target("Session", local=True),
+                    "last_session": Target("Session", local=True),
+                    "superseded_by": Target("Clue", local=True),
+                },
+            ),
+            (
+                {
+                    "type": "[[Content]]",
+                    "subtype": "Object",
+                    "campaign_42": {},
+                    "campaign_7": None,
+                    "campaign_extra": {},
+                },
+                {
+                    "campaign_42.first_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                    "campaign_42.last_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                    "campaign_42.held_by": Target(
+                        "Content", frozenset({"PC", "NPC", "Faction"}), "campaign_42"
+                    ),
+                },
+            ),
+            (
+                {"type": "[[Content]]", "subtype": "Lore", "campaign_42": {}},
+                {
+                    "campaign_42.first_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                    "campaign_42.last_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                },
+            ),
         ],
     )
     def test_targets(
         self, tmp_path: Path, metadata: dict[str, object], expected: dict[str, Target]
     ) -> None:
+        write_records(
+            tmp_path, {"reference/statuses/Superseded.md": 'type: "[[Status]]"'}
+        )
         note = Note(tmp_path / "selected.md", metadata, "", 1)
-        assert _link_targets(note) == LINK_TARGETS | expected
+        assert _link_targets(note, VaultIndex(tmp_path)) == LINK_TARGETS | expected
+
+
+class TestValidateCampaigns:
+    @pytest.mark.parametrize(
+        "relative, metadata, expected",
+        [
+            ("content/N.md", {"type": "[[Content]]", "campaign_42": {}}, []),
+            (
+                "campaigns/campaign_42/content/N.md",
+                {"type": "[[Content]]", "campaign_42": {}},
+                [],
+            ),
+            (
+                "campaigns/campaign_7/content/N.md",
+                {"type": "[[Content]]", "campaign_42": {}},
+                [("campaign.mismatch", "campaign_42")],
+            ),
+            (
+                "content/N.md",
+                {"type": "[[Content]]", "campaign_9": {}},
+                [("campaign.mismatch", "campaign_9")],
+            ),
+            (
+                "content/N.md",
+                {"type": "[[Content]]", "campaign_9": None, "campaign_extra": {}},
+                [("campaign.block", "campaign_9")],
+            ),
+            (
+                "campaigns/campaign_42/content/N.md",
+                {"type": "[[Content]]", "campaign_42": "[[Session]]"},
+                [("campaign.block", "campaign_42")],
+            ),
+            (
+                "campaigns/campaign_7/clues/C.md",
+                {"type": "[[Clue]]", "campaign_9": {}},
+                [],
+            ),
+            (
+                "campaigns/seven/clues/C.md",
+                {"type": "[[Clue]]"},
+                [("campaign.name", "")],
+            ),
+            (
+                "campaigns/campaign_7.md",
+                {"type": "[[Reference]]"},
+                [("campaign.name", "")],
+            ),
+            (
+                "campaigns/campaign_x/content/N.md",
+                {"type": "[[Content]]", "campaign_9": {}},
+                [("campaign.name", ""), ("campaign.mismatch", "campaign_9")],
+            ),
+            (
+                "campaigns/campaign_7/reference/Campaign.md",
+                {"type": "[[Reference]]"},
+                [],
+            ),
+        ],
+    )
+    def test_campaigns(
+        self,
+        tmp_path: Path,
+        relative: str,
+        metadata: dict[str, object],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        (tmp_path / "campaigns/campaign_42").mkdir(parents=True)
+        (tmp_path / "campaigns/campaign_7").mkdir(parents=True)
+        note = Note(tmp_path / relative, metadata, "", 1)
+        result = validate_campaigns(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == expected
+
+
+class TestValidateIdentityLinks:
+    @pytest.mark.parametrize(
+        "kind, name, target, expected",
+        [
+            ("Session", "S-42-002", "[[reference/Campaign]]", None),
+            (
+                "Session",
+                "S-42-002",
+                "[[reference/Other]]",
+                (
+                    "campaign.mismatch",
+                    "campaign must link to the containing campaign overview",
+                ),
+            ),
+            (
+                "Session",
+                "S-42-002",
+                "[[missing]]",
+                (
+                    "campaign.mismatch",
+                    "cannot check Session identity: cannot uniquely resolve [[missing]]",
+                ),
+            ),
+            (
+                "Session",
+                "S-42-002",
+                None,
+                (
+                    "campaign.mismatch",
+                    "cannot check Session identity: campaign must hold exactly one wikilink",
+                ),
+            ),
+            ("Transcript", "S-42-002 Transcript", "[[S-42-002]]", None),
+            (
+                "Transcript",
+                "S-42-003 Transcript",
+                "[[S-42-002]]",
+                (
+                    "record.identity",
+                    "Transcript filename must match its linked Session plus ' Transcript'",
+                ),
+            ),
+            (
+                "Transcript",
+                "S-42-003 Transcript",
+                "[[broken",
+                (
+                    "record.identity",
+                    "cannot check Transcript identity: use [[target]] with balanced "
+                    "double brackets on one line",
+                ),
+            ),
+        ],
+    )
+    def test_links(
+        self,
+        tmp_path: Path,
+        kind: str,
+        name: str,
+        target: str | None,
+        expected: tuple[str, str] | None,
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/reference/Campaign.md": 'type: "[[Reference]]"',
+                "campaigns/campaign_42/reference/Other.md": 'type: "[[Reference]]"',
+                "campaigns/campaign_42/sessions/S-42-002.md": 'type: "[[Session]]"',
+            },
+        )
+        field = "campaign" if kind == "Session" else "session"
+        note = Note(
+            tmp_path / f"campaigns/campaign_42/sessions/{name}.md",
+            {"type": f"[[{kind}]]", field: target},
+            "",
+            1,
+        )
+        result = validate_identity_links(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.message, d.field) for d in result] == (
+            [(*expected, field)] if expected else []
+        )
+
+    @pytest.mark.parametrize(
+        "kind, relative, expected",
+        [
+            ("Content", "content/N.md", None),
+            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md", None),
+            (
+                "Session",
+                "sessions/S-1-001.md",
+                (
+                    "campaign.mismatch",
+                    "cannot check Session identity: record is outside every campaign",
+                    "campaign",
+                ),
+            ),
+            (
+                "Transcript",
+                "campaigns/other/S-1-001 Transcript.md",
+                (
+                    "record.identity",
+                    "cannot check Transcript identity: record is outside every campaign",
+                    "session",
+                ),
+            ),
+        ],
+    )
+    def test_outside_campaign_or_other_type(
+        self,
+        tmp_path: Path,
+        kind: str,
+        relative: str,
+        expected: tuple[str, str, str] | None,
+    ) -> None:
+        note = Note(tmp_path / relative, {"type": f"[[{kind}]]"}, "", 1)
+        result = validate_identity_links(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.message, d.field) for d in result] == (
+            [expected] if expected else []
+        )
