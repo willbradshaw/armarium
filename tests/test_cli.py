@@ -270,6 +270,3 @@ class TestParseArgs:
         output = capsys.readouterr()
         assert "usage: armarium" in output.out
         assert output.err == ""
-        if "validate" in argv:
-            assert "Exit codes:" in output.out
-            assert "stderr" in output.out

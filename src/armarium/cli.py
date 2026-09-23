@@ -32,11 +32,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "files within a directory. Excludes Markdown files outside valid "
             "Obsidian vaults; single-file mode will fail if outside a vault."
         ),
-        epilog=(
-            "Exit codes: 0 no errors (including skips and warnings), "
-            "1 validation or execution errors, 2 invalid command arguments. "
-            "UTC-timestamped diagnostics and counts are logged to stderr."
-        ),
     )
     command.add_argument(
         "path", type=Path, help="Markdown file or directory to validate"

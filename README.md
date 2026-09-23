@@ -60,4 +60,4 @@ armarium validate path/to/record.md
 armarium validate .
 ```
 
-See `armarium validate --help` for options and exit codes.
+See `armarium validate --help` for options.
