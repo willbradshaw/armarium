@@ -160,6 +160,25 @@ class TestMain:
         ):
             main()
 
+    @pytest.mark.parametrize("valid", [False, True])
+    def test_directory(
+        self,
+        vault: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        valid: bool,
+    ) -> None:
+        (vault / "record.md").write_text(
+            '---\ntype: "[[Widget]]"\n---\n' if valid else "Untyped"
+        )
+        monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(vault)])
+        if valid:
+            assert main() is None
+        else:
+            with pytest.raises(ValidationError, match="1 file failed validation"):
+                main()
+        assert "1 checked" in capsys.readouterr().err
+
     @pytest.mark.parametrize("scenario", ["valid", "invalid", "missing"])
     def test_module_entry_point(
         self, vault: Path, tmp_path: Path, scenario: str

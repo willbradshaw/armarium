@@ -1,8 +1,9 @@
 """Read-only entry points coordinating parsing and record validation."""
 
+from dataclasses import replace
 from pathlib import Path
 
-from armarium.lib import Diagnostic, Result, find_vault
+from armarium.lib import Diagnostic, Result, find_files, find_vault
 from armarium.parse import Note
 from armarium.schemas import select_schema
 
@@ -71,3 +72,51 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
         checked=1,
         unsupported=int(any(d.rule == "schema.unsupported" for d in diagnostics)),
     )
+
+
+def validate_directory(path: Path, vault: Path | None = None) -> Result:
+    """Validate visible Markdown descendants, even across multiple vaults.
+
+    Args:
+        path: Directory to scan recursively. Hidden entries, caches,
+            node_modules and symlinks are excluded by find_files.
+        vault: Optional explicit vault containing the entire selected directory.
+            Otherwise infer vault context separately for each Markdown file.
+
+    Returns:
+        Result: Aggregated findings and counts, with diagnostic paths relative
+            to the scanned directory. Files without inferable vault context
+            are errors. Empty directories succeed with zero counts. Templates
+            receive the same parse-only handling as single-file validation.
+
+    Raises:
+        ValueError: The target is not a real directory, or the explicit vault
+            does not contain it.
+        OSError: Directory traversal fails. The scan does not claim completeness
+            when part of the directory cannot be read.
+    """
+    if vault is not None:
+        vault = find_vault(path, vault)
+    files = find_files(path)
+    root = path.resolve()
+    result = Result()
+    for file in files:
+        if file.suffix.lower() != ".md":
+            continue
+        relative = file.relative_to(path).as_posix()
+        try:
+            context = find_vault(file, vault)
+        except ValueError as exc:
+            result.checked += 1
+            result.diagnostics.append(Diagnostic(relative, "vault.context", str(exc)))
+            continue
+        checked = validate_markdown(file, context)
+        result.checked += checked.checked
+        result.skipped += checked.skipped
+        result.unsupported += checked.unsupported
+        result.diagnostics.extend(
+            replace(d, path=(context / d.path).relative_to(root).as_posix())
+            for d in checked.diagnostics
+        )
+    result.diagnostics.sort()
+    return result

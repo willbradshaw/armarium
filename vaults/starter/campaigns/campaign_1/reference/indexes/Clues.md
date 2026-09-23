@@ -1,4 +1,5 @@
 ---
+type: "[[Reference]]"
 aliases:
   - Secrets and Clues
   - Secrets

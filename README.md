@@ -50,13 +50,14 @@ For schema integration and testing, see [Schema development](docs/schemas.md).
 
 Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium/issues).
 
-## Validate a record
+## Validate records
 
 With Python 3.14+, install from this checkout and validate a record:
 
 ```sh
 python -m pip install .
 armarium validate path/to/record.md
+armarium validate vaults/
 ```
 
 See `armarium validate --help` for options and exit codes.

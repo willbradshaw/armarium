@@ -143,8 +143,13 @@ class TestPyproject:
         assert path.read_text() == text
 
     @pytest.mark.parametrize("vault", ["starter", "example"])
+    @pytest.mark.parametrize("directory", [False, True])
     def test_fresh_vault_copy(
-        self, installed: tuple[Path, Path, Path], tmp_path: Path, vault: str
+        self,
+        installed: tuple[Path, Path, Path],
+        tmp_path: Path,
+        vault: str,
+        directory: bool,
     ) -> None:
         _, command, _ = installed
         source = Path(__file__).resolve().parents[1] / "vaults" / vault
@@ -153,7 +158,7 @@ class TestPyproject:
         record = target / "reference/types/Type.md"
         before = record.read_bytes()
         process = subprocess.run(
-            [str(command), "validate", str(record)],
+            [str(command), "validate", str(target if directory else record)],
             cwd=tmp_path,
             env={
                 key: value
@@ -166,5 +171,10 @@ class TestPyproject:
         )
         assert process.returncode == 0, process.stdout + process.stderr
         assert process.stdout == ""
-        assert process.stderr.endswith("INFO: 1 checked, 0 skipped, 0 unsupported\n")
+        if directory:
+            assert process.stderr.endswith("5 skipped, 0 unsupported\n")
+        else:
+            assert process.stderr.endswith(
+                "INFO: 1 checked, 0 skipped, 0 unsupported\n"
+            )
         assert record.read_bytes() == before

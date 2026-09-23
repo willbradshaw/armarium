@@ -1,4 +1,4 @@
-"""Command-line adapter for read-only single-file Markdown validation."""
+"""Command-line adapter for read-only Markdown validation."""
 
 import argparse
 from collections.abc import Sequence
@@ -6,7 +6,7 @@ from pathlib import Path
 
 from armarium.lib import ValidationError
 from armarium.logging import configure_logging
-from armarium.validate import validate_markdown
+from armarium.validate import validate_directory, validate_markdown
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -16,7 +16,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         argv: Arguments without the executable name, or None to read sys.argv.
 
     Returns:
-        argparse.Namespace: Selected command, Markdown path and optional vault.
+        argparse.Namespace: Selected command, file or directory path, and
+            optional vault.
 
     Raises:
         SystemExit: Argparse exits with 0 for help or 2 for invalid arguments.
@@ -25,12 +26,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     commands = parser.add_subparsers(dest="command", required=True)
     command = commands.add_parser(
         "validate",
-        help="validate one Markdown file",
+        help="validate a Markdown file or directory",
         description=(
-            "Parse and schema-validate one Markdown file without changing it. "
+            "Parse and schema-validate a Markdown file or all Markdown "
+            "descendants of a directory without changing them. "
             "Missing types are errors; templates are skipped after parsing. "
-            "Missing schemas produce partial-coverage warnings. Directory and "
-            "vault-wide checks are not supported yet."
+            "Missing schemas produce partial-coverage warnings. "
+            "Directories infer vault context per file; missing context is an error. "
+            "Hidden entries, __pycache__, node_modules and symlinks are excluded. "
+            "Link and vault-structure checks are not supported yet."
         ),
         epilog=(
             "Exit codes: 0 no errors (including skips and warnings), "
@@ -38,7 +42,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "UTC-timestamped diagnostics and counts are logged to stderr."
         ),
     )
-    command.add_argument("path", type=Path, help="Markdown file to validate")
+    command.add_argument(
+        "path", type=Path, help="Markdown file or directory to validate"
+    )
     command.add_argument("--vault", type=Path, help="explicit vault directory")
     return parser.parse_args(argv)
 
@@ -53,7 +59,8 @@ def main() -> None:
     """
     args = parse_args()
     configure_logging()
-    result = validate_markdown(args.path, args.vault)
+    validate = validate_directory if args.path.is_dir() else validate_markdown
+    result = validate(args.path, args.vault)
     result.report()
     if result.failed:
         failed_files = result.failed_files

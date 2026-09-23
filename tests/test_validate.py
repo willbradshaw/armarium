@@ -10,7 +10,8 @@ from typing import Any
 import pytest
 import yaml
 
-from armarium.validate import validate_markdown
+from armarium.lib import Result, find_files
+from armarium.validate import validate_directory, validate_markdown
 
 
 @pytest.fixture
@@ -339,3 +340,118 @@ class TestValidateMarkdown:
         result = validate_markdown(path)
         assert result.failed and result.checked == 1 and result.skipped == 0
         assert result.diagnostics[0].rule == "schema.instance"
+
+
+class TestValidateDirectory:
+    @pytest.mark.parametrize("relative", [False, True])
+    def test_matches_individual_checks(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
+    ) -> None:
+        from dataclasses import replace
+
+        records = {
+            "content/good.MD": '---\ntype: "[[Widget]]"\n---\n',
+            "content/nested/bad.md": "---\nx: [\n---\n",
+            "content/untyped.md": "No type",
+            "content/unknown.md": '---\ntype: "[[Unknown]]"\n---\n',
+            "reference/templates/Widget.md": "---\n---\n",
+        }
+        (vault / "reference/schemas/widget.schema.json").write_text("true")
+        for name, text in records.items():
+            file = vault / name
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_text(text)
+        before = {p: p.read_bytes() for p in find_files(vault)}
+        monkeypatch.chdir(vault.parent)
+        target = Path(vault.name) if relative else vault
+        result = validate_directory(target)
+        individual = [validate_markdown(vault / name) for name in sorted(records)]
+        assert result == Result(
+            diagnostics=sorted(d for r in individual for d in r.diagnostics),
+            checked=4,
+            skipped=1,
+            unsupported=1,
+        )
+        subtree = validate_directory(target / "content")
+        assert subtree.checked == 4 and subtree.skipped == 0
+        assert subtree.diagnostics == sorted(
+            replace(d, path=d.path.removeprefix("content/"))
+            for r in individual
+            for d in r.diagnostics
+            if d.path.startswith("content/")
+        )
+        assert result.failed_files == 2
+        assert all(p.read_bytes() == data for p, data in before.items())
+
+    def test_multiple_vaults_and_unscoped_markdown(self, tmp_path: Path) -> None:
+        for name in ("a", "b"):
+            root = tmp_path / name
+            (root / "reference/types").mkdir(parents=True)
+            (root / "campaigns").mkdir()
+            (root / "same.md").write_text("Untyped")
+        (tmp_path / "README.md").write_text("Repository documentation")
+        result = validate_directory(tmp_path)
+        assert result.checked == result.failed_files == 3
+        assert [(d.path, d.rule) for d in result.diagnostics] == [
+            ("README.md", "vault.context"),
+            ("a/same.md", "record.type"),
+            ("b/same.md", "record.type"),
+        ]
+
+    def test_explicit_vault_without_markers(self, tmp_path: Path) -> None:
+        (tmp_path / "record.md").write_text("Untyped")
+        result = validate_directory(tmp_path, tmp_path)
+        assert result.checked == 1
+        assert result.diagnostics[0].rule == "record.type"
+
+    def test_empty_directory(self, tmp_path: Path) -> None:
+        assert validate_directory(tmp_path) == Result()
+
+    @pytest.mark.parametrize(
+        "excluded", [".git", ".obsidian", ".scratch", "__pycache__", "node_modules"]
+    )
+    def test_exclusions(self, vault: Path, excluded: str) -> None:
+        hidden = vault / excluded
+        hidden.mkdir()
+        (hidden / "bad.md").write_text("Untyped")
+        (vault / "image.png").write_bytes(b"not markdown")
+        (vault / "view.base").write_text("filters: []")
+        (vault / "link.md").symlink_to(hidden / "bad.md")
+        assert validate_directory(vault) == Result()
+
+    @pytest.mark.parametrize("kind", ["file", "missing", "symlink", "outside"])
+    def test_invalid_target(self, tmp_path: Path, kind: str) -> None:
+        target = tmp_path / "target"
+        explicit = None
+        if kind == "file":
+            target.write_text("file")
+        elif kind == "symlink":
+            target.symlink_to(tmp_path, target_is_directory=True)
+        elif kind == "outside":
+            target.mkdir()
+            explicit = tmp_path / "vault"
+            explicit.mkdir()
+        with pytest.raises(ValueError):
+            validate_directory(target, explicit)
+
+    def test_traversal_error_propagates(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from unittest.mock import Mock
+
+        monkeypatch.setattr(
+            "armarium.validate.find_files", Mock(side_effect=PermissionError("denied"))
+        )
+        with pytest.raises(PermissionError, match="denied"):
+            validate_directory(tmp_path)
+
+    @pytest.mark.parametrize("name", ["starter", "example"])
+    def test_shipped_vault_copy(self, tmp_path: Path, name: str) -> None:
+        source = Path(__file__).resolve().parents[1] / "vaults" / name
+        root = tmp_path / "copied vault"
+        shutil.copytree(source, root)
+        before = {p: p.read_bytes() for p in find_files(root)}
+        result = validate_directory(root)
+        assert not result.failed and result.unsupported == 0
+        assert result.checked > 0 and result.skipped == 5
+        assert all(p.read_bytes() == data for p, data in before.items())
