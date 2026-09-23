@@ -17,6 +17,11 @@ from armarium.lib import (
 from armarium.parse import Note
 from armarium.schemas import select_schema
 
+# Top-level frontmatter fields whose links must target a record of a given type,
+# on every record and on records of particular types.
+LINK_TYPES = {"type": "Type", "status": "Status"}
+RECORD_LINK_TYPES = {"Status": {"applies_to": "Type"}}
+
 
 def validate(path: Path, vault: Path | None = None) -> Result:
     """Validate a Markdown file or directory using the appropriate checks.
@@ -111,6 +116,7 @@ def validate_markdown(
     diagnostics.extend(validate_wikilinks(note, index))
     diagnostics.extend(validate_placement(note, index))
     diagnostics.extend(validate_filename(note, index))
+    diagnostics.extend(validate_status(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -162,6 +168,9 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
     """Check every link the note contains against the vault.
 
+    Links anywhere within a type-bound top-level field must target a correctly
+    placed record of that field's type.
+
     Args:
         note: Selected note inside the indexed vault.
         index: Whole-vault file index and lazy note cache for this run.
@@ -173,19 +182,22 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
+    types = LINK_TYPES | RECORD_LINK_TYPES.get(note.parsed_type or "", {})
     diagnostics: list[Diagnostic] = []
     for link in note.links:
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
-            problem = validate_wikilink(link.target, note.path, index)
+            problem = validate_wikilink(
+                link.target, note.path, index, types.get(link.field)
+            )
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
     return diagnostics
 
 
 def validate_wikilink(
-    target: str, source: Path, index: VaultIndex
+    target: str, source: Path, index: VaultIndex, record_type: str | None = None
 ) -> tuple[str, str] | None:
     """Check that one wikilink target resolves to a usable vault file.
 
@@ -193,20 +205,29 @@ def validate_wikilink(
         target: Parsed wikilink target, without alias, heading or block suffix.
         source: Note containing the link, used to break resolution ties.
         index: Whole-vault file index and lazy note cache for this run.
+        record_type: Required declared type of the target, or None for any file.
 
     Returns:
         tuple[str, str] | None: Rule and message for a missing, ambiguous or
-            unparseable target; None when the target is usable. Only a linked
+            unparseable target, or one that is not a correctly placed record of
+            the required type; None when the target is usable. Only a linked
             Markdown note is parsed.
     """
     resolved, rule = index.resolve(target, source)
     if rule:
         return rule, f"cannot uniquely resolve [[{target}]]; use a vault-relative path"
+    linked = None
     if resolved is not None and resolved.suffix.lower() == ".md":
-        _, failures = index.parse(resolved)
+        linked, failures = index.parse(resolved)
         if failures:
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
+    if record_type is not None and (
+        linked is None
+        or linked.parsed_type != record_type
+        or validate_placement(linked, index)
+    ):
+        return "link.type", f"[[{target}]] must link to a placed {record_type} record"
     return None
 
 
@@ -301,3 +322,54 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
             )
         ]
     return []
+
+
+def validate_status(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check that a record's status applies to the record's own type.
+
+    Args:
+        note: Selected record; its declared type has already been parsed.
+        index: Whole-vault index used to inspect the linked Status.
+
+    Returns:
+        list[Diagnostic]: An error when the linked Status's applies_to does not
+            resolve to the same Type definition as the record's type. Missing or
+            wrongly typed status links are reported by validate_wikilinks.
+    """
+    resolved = _resolve_field(note, "status", index)
+    if resolved is None or resolved.suffix.lower() != ".md":
+        return []
+    status, _ = index.parse(resolved)
+    if status is None or status.parsed_type != "Status":
+        return []
+    if _resolve_field(status, "applies_to", index) == _resolve_field(
+        note, "type", index
+    ):
+        return []
+    return [
+        Diagnostic(
+            note.path.relative_to(index.root).as_posix(),
+            "status.applicability",
+            f"status does not apply to {note.parsed_type} records",
+            "status",
+        )
+    ]
+
+
+def _resolve_field(note: Note, field: str, index: VaultIndex) -> Path | None:
+    """Resolve the link held directly by one top-level frontmatter field.
+
+    Args:
+        note: Note containing the field.
+        field: Top-level frontmatter field name.
+        index: Whole-vault index used for resolution.
+
+    Returns:
+        Path | None: The unique file named by the field's first well-formed
+            link, or None when the field holds no such link or the link does
+            not resolve uniquely.
+    """
+    for link in note.links:
+        if link.location == field and link.error is None:
+            return index.resolve(link.target, note.path)[0]
+    return None

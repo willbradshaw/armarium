@@ -14,11 +14,13 @@ from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Note
 from armarium.validate import (
+    _resolve_field,
     validate,
     validate_directory,
     validate_filename,
     validate_markdown,
     validate_placement,
+    validate_status,
     validate_wikilink,
     validate_wikilinks,
 )
@@ -392,13 +394,16 @@ class TestValidateDirectory:
         from dataclasses import replace
 
         records = {
-            "content/good.MD": '---\ntype: "[[Widget]]"\n---\n',
+            "content/good.MD": '---\ntype: "[[types/Widget]]"\n---\n',
+            "reference/types/Widget.md": '---\ntype: "[[Type]]"\n---\n',
+            "reference/types/Type.md": '---\ntype: "[[Type]]"\n---\n',
             "content/nested/bad.md": "---\nx: [\n---\n",
             "content/untyped.md": "No type",
             "content/unknown.md": '---\ntype: "[[Unknown]]"\n---\n',
             "reference/templates/Widget.md": "---\n---\n",
         }
         (vault / "reference/schemas/widget.schema.json").write_text("true")
+        (vault / "reference/schemas/type.schema.json").write_text("true")
         for name, text in records.items():
             file = vault / name
             file.parent.mkdir(parents=True, exist_ok=True)
@@ -410,7 +415,7 @@ class TestValidateDirectory:
         individual = [validate_markdown(vault / name) for name in sorted(records)]
         assert result == Result(
             diagnostics=sorted(d for r in individual for d in r.diagnostics),
-            checked=4,
+            checked=6,
             skipped=1,
             unsupported=1,
         )
@@ -651,8 +656,76 @@ class TestValidateWikilinks:
             ("link.missing", "", 8),
         ]
 
+    @pytest.mark.parametrize(
+        "metadata, expected",
+        [
+            ({"type": "[[Clue]]", "status": "[[Pending]]"}, []),
+            ({"type": "[[Pending]]"}, [("link.type", "type")]),
+            ({"type": "[[Clue]]", "status": "[[Clue]]"}, [("link.type", "status")]),
+            ({"type": "[[Clue]]", "status": ["[[Clue]]"]}, [("link.type", "status.0")]),
+            (
+                {"type": "[[Clue]]", "status": "[[missing]]"},
+                [("link.missing", "status")],
+            ),
+            ({"type": "[[Clue]]", "applies_to": "[[Pending]]"}, []),
+            ({"status": "[[Clue]]"}, [("link.type", "status")]),
+            ({"type": "[[Clue]]", "other": {"type": "[[Pending]]"}}, []),
+            (
+                {"type": "[[Status]]", "applies_to": "[[Pending]]"},
+                [("link.type", "applies_to")],
+            ),
+        ],
+    )
+    def test_typed_fields(
+        self,
+        tmp_path: Path,
+        metadata: dict[str, object],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        for name, kind in {
+            "reference/types/Clue.md": "Type",
+            "reference/types/Status.md": "Type",
+            "reference/types/Type.md": "Type",
+            "reference/statuses/Pending.md": "Status",
+        }.items():
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f'---\ntype: "[[{kind}]]"\n---\n')
+        note = Note(tmp_path / "selected.md", metadata, "", 1)
+        result = validate_wikilinks(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == expected
+
 
 class TestValidateWikilink:
+    @pytest.mark.parametrize(
+        "target, record_type, rule",
+        [
+            ("Clue", "Type", None),
+            ("Clue", None, None),
+            ("Clue", "Status", "link.type"),
+            ("Stray", "Type", "link.type"),
+            ("Untyped", "Type", "link.type"),
+            ("image.png", "Type", "link.type"),
+            ("missing", "Type", "link.missing"),
+        ],
+    )
+    def test_record_type(
+        self, tmp_path: Path, target: str, record_type: str | None, rule: str | None
+    ) -> None:
+        for name, body in {
+            "reference/types/Clue.md": '---\ntype: "[[Type]]"\n---\n',
+            "elsewhere/Stray.md": '---\ntype: "[[Type]]"\n---\n',
+            "content/Untyped.md": "plain",
+            "image.png": "asset",
+        }.items():
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(body)
+        problem = validate_wikilink(
+            target, tmp_path / "selected.md", VaultIndex(tmp_path), record_type
+        )
+        assert (problem[0] if problem else None) == rule
+
     @pytest.mark.parametrize(
         "target, expected",
         [
@@ -769,4 +842,68 @@ class TestValidateFilename:
         result = validate_filename(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == (
             [] if field is None else [("record.identity", field)]
+        )
+
+
+class TestValidateStatus:
+    @pytest.mark.parametrize(
+        "definition, status, rule",
+        [
+            ('type: "[[Status]]"\napplies_to: "[[types/Clue]]"', "[[Pending]]", None),
+            (
+                'type: "[[Status]]"\napplies_to: "[[Content]]"',
+                "[[Pending]]",
+                "status.applicability",
+            ),
+            ('type: "[[Status]]"', "[[Pending]]", "status.applicability"),
+            (
+                'type: "[[Status]]"\napplies_to: broken',
+                "[[Pending]]",
+                "status.applicability",
+            ),
+            ('type: "[[Type]]"\napplies_to: "[[Content]]"', "[[Pending]]", None),
+            ("x: [", "[[Pending]]", None),
+            ('type: "[[Status]]"\napplies_to: "[[Content]]"', "[[missing]]", None),
+            ('type: "[[Status]]"\napplies_to: "[[Content]]"', None, None),
+        ],
+    )
+    def test_applicability(
+        self, tmp_path: Path, definition: str, status: str | None, rule: str | None
+    ) -> None:
+        for name, text in {
+            "reference/types/Clue.md": 'type: "[[Type]]"',
+            "reference/types/Content.md": 'type: "[[Type]]"',
+            "reference/statuses/Pending.md": definition,
+        }.items():
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\n{text}\n---\n")
+        note = Note(
+            tmp_path / "selected.md", {"type": "[[Clue]]", "status": status}, "", 1
+        )
+        result = validate_status(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == (
+            [(rule, "status")] if rule else []
+        )
+
+
+class TestResolveField:
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("[[Target]]", "Target.md"),
+            ("[[Target|Alias]]", "Target.md"),
+            ("[[Target]] [[missing]]", "Target.md"),
+            (["[[Target]]"], None),
+            ("[[missing]]", None),
+            ("[[broken", None),
+            ("plain", None),
+            (None, None),
+        ],
+    )
+    def test_resolve(self, tmp_path: Path, value: object, expected: str | None) -> None:
+        (tmp_path / "Target.md").write_text("")
+        note = Note(tmp_path / "selected.md", {"field": value}, "", 1)
+        assert _resolve_field(note, "field", VaultIndex(tmp_path)) == (
+            tmp_path / expected if expected else None
         )
