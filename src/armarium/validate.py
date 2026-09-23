@@ -244,12 +244,17 @@ def _validate_wikilink_status(
         index: Whole-vault index used to resolve applies_to and the record type.
 
     Returns:
-        tuple[str, str] | None: An applicability error when the Status's
-            applies_to and the record's type resolve to different files.
+        tuple[str, str] | None: An applicability error when the Status has no
+            usable applies_to, or when applies_to and the record's type resolve
+            to different files. A record whose own type link is unusable gets
+            no second error here; that link is reported alongside this one.
     """
-    if _resolve_field(status, "applies_to", index) == _resolve_field(
-        note, "type", index
-    ):
+    applies_to, error = index.resolve_field(status, "applies_to")
+    if error is not None:
+        relative = status.path.relative_to(index.root)
+        return "status.applicability", f"status {relative}: {error}"
+    record_type, error = index.resolve_field(note, "type")
+    if error is not None or applies_to == record_type:
         return None
     return (
         "status.applicability",
@@ -354,22 +359,3 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
             )
         ]
     return []
-
-
-def _resolve_field(note: Note, field: str, index: VaultIndex) -> Path | None:
-    """Resolve the link held directly by one top-level frontmatter field.
-
-    Args:
-        note: Note containing the field.
-        field: Top-level frontmatter field name.
-        index: Whole-vault index used for resolution.
-
-    Returns:
-        Path | None: The unique file named by the field's first well-formed
-            link, or None when the field holds no such link or the link does
-            not resolve uniquely.
-    """
-    for link in note.links:
-        if link.location == field and link.error is None:
-            return index.resolve(link.target, note.path)[0]
-    return None

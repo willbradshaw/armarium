@@ -14,7 +14,6 @@ from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Note
 from armarium.validate import (
-    _resolve_field,
     _validate_wikilink_status,
     validate,
     validate_directory,
@@ -851,16 +850,44 @@ class TestValidateFilename:
 
 class TestValidateWikilinkStatus:
     @pytest.mark.parametrize(
-        "applies_to, rule",
+        "applies_to, record_type, message",
         [
-            ('applies_to: "[[types/Clue]]"', None),
-            ('applies_to: "[[Content]]"', "status.applicability"),
-            ("", "status.applicability"),
-            ("applies_to: broken", "status.applicability"),
+            ('applies_to: "[[types/Clue]]"', "[[Clue]]", None),
+            ('applies_to: "[[Clue|Alias]]"', "[[types/Clue.md]]", None),
+            (
+                'applies_to: "[[Content]]"',
+                "[[Clue]]",
+                "status does not apply to Clue records",
+            ),
+            (
+                "",
+                "[[Clue]]",
+                "status reference/statuses/Pending.md: applies_to must hold "
+                "exactly one wikilink",
+            ),
+            (
+                'applies_to: ["[[Clue]]"]',
+                "[[Clue]]",
+                "status reference/statuses/Pending.md: applies_to must hold "
+                "exactly one wikilink",
+            ),
+            (
+                'applies_to: "[[broken"',
+                "[[Clue]]",
+                "status reference/statuses/Pending.md: use [[target]] with "
+                "balanced double brackets on one line",
+            ),
+            (
+                'applies_to: "[[missing]]"',
+                "[[Clue]]",
+                "status reference/statuses/Pending.md: cannot uniquely resolve "
+                "[[missing]]",
+            ),
+            ('applies_to: "[[Content]]"', "[[missing]]", None),
         ],
     )
     def test_applicability(
-        self, tmp_path: Path, applies_to: str, rule: str | None
+        self, tmp_path: Path, applies_to: str, record_type: str, message: str | None
     ) -> None:
         for name, text in {
             "reference/types/Clue.md": 'type: "[[Type]]"',
@@ -873,28 +900,6 @@ class TestValidateWikilinkStatus:
         index = VaultIndex(tmp_path)
         status, _ = index.parse(tmp_path / "reference/statuses/Pending.md")
         assert status is not None
-        note = Note(tmp_path / "selected.md", {"type": "[[Clue]]"}, "", 1)
+        note = Note(tmp_path / "selected.md", {"type": record_type}, "", 1)
         problem = _validate_wikilink_status(status, note, index)
-        assert (problem[0] if problem else None) == rule
-
-
-class TestResolveField:
-    @pytest.mark.parametrize(
-        "value, expected",
-        [
-            ("[[Target]]", "Target.md"),
-            ("[[Target|Alias]]", "Target.md"),
-            ("[[Target]] [[missing]]", "Target.md"),
-            (["[[Target]]"], None),
-            ("[[missing]]", None),
-            ("[[broken", None),
-            ("plain", None),
-            (None, None),
-        ],
-    )
-    def test_resolve(self, tmp_path: Path, value: object, expected: str | None) -> None:
-        (tmp_path / "Target.md").write_text("")
-        note = Note(tmp_path / "selected.md", {"field": value}, "", 1)
-        assert _resolve_field(note, "field", VaultIndex(tmp_path)) == (
-            tmp_path / expected if expected else None
-        )
+        assert problem == (("status.applicability", message) if message else None)

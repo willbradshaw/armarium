@@ -64,6 +64,40 @@ class TestVaultIndexResolve:
             VaultIndex(tmp_path).resolve("", tmp_path.parent / "outside.md")
 
 
+class TestVaultIndexResolveField:
+    @pytest.mark.parametrize(
+        ("value", "resolved", "error"),
+        [
+            ("[[Target]]", "Target.md", None),
+            ("[[Target|Alias]]", "Target.md", None),
+            ("[[Target.md#Heading]]", "Target.md", None),
+            ("[[Target]] [[Target]]", None, "field must hold exactly one wikilink"),
+            (["[[Target]]"], None, "field must hold exactly one wikilink"),
+            ("plain", None, "field must hold exactly one wikilink"),
+            (None, None, "field must hold exactly one wikilink"),
+            (
+                "[[broken",
+                None,
+                "use [[target]] with balanced double brackets on one line",
+            ),
+            ("[[missing]]", None, "cannot uniquely resolve [[missing]]"),
+            ("[[same]]", None, "cannot uniquely resolve [[same]]"),
+        ],
+    )
+    def test_field(
+        self, tmp_path: Path, value: object, resolved: str | None, error: str | None
+    ) -> None:
+        for name in ("Target.md", "a/same.md", "b/same.md"):
+            path = tmp_path / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text("")
+        note = Note(tmp_path / "selected.md", {"field": value}, "", 1)
+        assert VaultIndex(tmp_path).resolve_field(note, "field") == (
+            tmp_path / resolved if resolved else None,
+            error,
+        )
+
+
 class TestVaultIndexParse:
     @pytest.mark.parametrize(
         "text, failed", [("plain note", False), ("---\nx: [\n---\n", True)]

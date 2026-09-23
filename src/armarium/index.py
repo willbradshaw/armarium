@@ -80,6 +80,31 @@ class VaultIndex:
             return next(iter(candidates)), None
         return None, "link.ambiguous" if candidates else "link.missing"
 
+    def resolve_field(self, note: Note, field: str) -> tuple[Path | None, str | None]:
+        """Resolve the single wikilink held by one top-level frontmatter field.
+
+        Args:
+            note: Parsed note inside this vault.
+            field: Top-level frontmatter field name, such as "type".
+
+        Returns:
+            tuple[Path | None, str | None]: (file_path, None) when the field
+                holds exactly one well-formed link naming exactly one file.
+                Otherwise (None, message) saying why not: the field holds no
+                link or several, the link text is malformed, or the target is
+                missing or ambiguous.
+        """
+        links = [link for link in note.links if link.location == field]
+        if len(links) != 1:
+            return None, f"{field} must hold exactly one wikilink"
+        (link,) = links
+        if link.error is not None:
+            return None, link.error
+        resolved, rule = self.resolve(link.target, note.path)
+        if rule:
+            return None, f"cannot uniquely resolve [[{link.target}]]"
+        return resolved, None
+
     def parse(self, path: Path) -> tuple[Note | None, list[Diagnostic]]:
         """Parse a Markdown target once, retaining failures as well as notes.
 
