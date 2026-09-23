@@ -1228,7 +1228,12 @@ class TestValidateCampaigns:
             (
                 "content/N.md",
                 {"type": "[[Content]]", "campaign_9": None, "campaign_extra": {}},
-                [],
+                [("campaign.block", "campaign_9")],
+            ),
+            (
+                "campaigns/campaign_42/content/N.md",
+                {"type": "[[Content]]", "campaign_42": "[[Session]]"},
+                [("campaign.block", "campaign_42")],
             ),
             (
                 "campaigns/campaign_7/clues/C.md",

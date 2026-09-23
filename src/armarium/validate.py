@@ -477,10 +477,9 @@ def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
     Returns:
         list[Diagnostic]: A record under campaigns/ that is not inside a
-            campaign_N directory, or a Content record's campaign_N mapping whose
-            directory does not exist or differs from the campaign containing
-            the record. Blocks that are not mappings are left to schema
-            validation.
+            campaign_N directory; a Content record's campaign_N field that is
+            not a mapping; or one whose directory does not exist or differs
+            from the campaign containing the record.
     """
     relative = note.path.relative_to(index.root)
     parts = relative.parts
@@ -497,10 +496,19 @@ def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
         return diagnostics
     scope = find_campaign(note.path, index.root)
     for field, block in note.frontmatter.items():
-        if not CAMPAIGN_NAME.fullmatch(field) or not isinstance(block, dict):
+        if not CAMPAIGN_NAME.fullmatch(field):
             continue
         directory = index.root / "campaigns" / field
-        if (
+        if not isinstance(block, dict):
+            diagnostics.append(
+                Diagnostic(
+                    relative.as_posix(),
+                    "campaign.block",
+                    "campaign block must be a mapping of campaign state",
+                    field,
+                )
+            )
+        elif (
             not directory.is_dir()
             or directory.is_symlink()
             or (scope is not None and scope != field)
