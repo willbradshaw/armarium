@@ -28,7 +28,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "validate",
         help="validate a Markdown file or directory",
         description=(
-            "Parse and schema-validate a single Markdown file, or all Markdown "
+            "Check parsing, schemas and links for a Markdown file, or all Markdown "
             "files within a directory. Excludes Markdown files outside valid "
             "Obsidian vaults; single-file mode will fail if outside a vault."
         ),

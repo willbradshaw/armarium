@@ -30,6 +30,8 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def write_note(vault: Path) -> Callable[..., Path]:
+    (vault / "reference/types/Widget.md").write_text('---\ntype: "[[Type]]"\n---\n')
+
     def write(
         metadata: dict[str, Any],
         body: str = "## Notes\n",
@@ -311,7 +313,10 @@ class TestValidateMarkdown:
         )
         before = path.read_bytes()
         result = validate_markdown(path)
-        assert result.diagnostics == []
+        # These schema fixtures are not complete contextual vault fixtures.
+        assert not any(
+            d.rule.startswith(("schema.", "parse.")) for d in result.diagnostics
+        )
         assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
         assert path.read_bytes() == before
 
@@ -344,6 +349,33 @@ class TestValidateMarkdown:
         result = validate_markdown(path)
         assert result.failed and result.checked == 1 and result.skipped == 0
         assert result.diagnostics[0].rule == "schema.instance"
+
+    def test_rejects_different_vault(self, tmp_path: Path) -> None:
+        from armarium.index import VaultIndex
+
+        root = tmp_path / "vault"
+        root.mkdir()
+        path = root / "note.md"
+        path.write_text("note")
+        with pytest.raises(ValueError, match="index must belong"):
+            validate_markdown(path, root, index=VaultIndex(tmp_path))
+
+    def test_shared_index(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        from armarium.index import VaultIndex
+        from armarium.parse import Note
+
+        (tmp_path / "reference/types").mkdir(parents=True)
+        (tmp_path / "reference/schemas").mkdir()
+        (tmp_path / "reference/schemas/widget.schema.json").write_text("true")
+        for name in ("a", "b", "Widget"):
+            (tmp_path / f"{name}.md").write_text('---\ntype: "[[Widget]]"\n---\n')
+        with patch("armarium.validate.VaultIndex", wraps=VaultIndex) as build:
+            with patch.object(Note, "parse", wraps=Note.parse) as parse:
+                validate_directory(tmp_path, tmp_path)
+        assert build.call_count == 1
+        assert parse.call_count == 3
 
 
 class TestValidateDirectory:
@@ -475,6 +507,11 @@ class TestValidateDirectory:
             (root / "reference/schemas/widget.schema.json").write_text(schema)
             for name in ("a.md", "b.md"):
                 (root / name).write_text('---\ntype: "[[Widget]]"\n---\n')
+        for name in ("Widget", "Type"):
+            (outer / f"reference/types/{name}.md").write_text(
+                '---\ntype: "[[Type]]"\n---\n'
+            )
+        (outer / "reference/schemas/type.schema.json").write_text("true")
         discover = Mock(wraps=find_vault)
         check = Mock(wraps=check_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
@@ -484,7 +521,7 @@ class TestValidateDirectory:
             discover.reset_mock()
             check.reset_mock()
             result = validate_directory(outer, outer if explicit else None)
-            assert result.checked == 4
+            assert result.checked == 6
             assert result.failed_files == 0
             inferred = [call for call in discover.call_args_list if len(call.args) == 1]
             assert len(inferred) == (0 if explicit else 1)
@@ -494,7 +531,7 @@ class TestValidateDirectory:
             contained = [
                 call for call in check.call_args_list if call.args[0].suffix == ".md"
             ]
-            assert len(contained) == 4
+            assert len(contained) == 6
 
     @pytest.mark.parametrize("found", [False, True])
     def test_discovers_once_per_vault_subtree(

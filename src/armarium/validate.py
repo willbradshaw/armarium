@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from armarium.check import check_links
+from armarium.index import VaultIndex
 from armarium.lib import (
     Diagnostic,
     Result,
@@ -35,7 +37,9 @@ def validate(path: Path, vault: Path | None = None) -> Result:
     return validate_markdown(path, vault)
 
 
-def validate_markdown(path: Path, vault: Path | None = None) -> Result:
+def validate_markdown(
+    path: Path, vault: Path | None = None, *, index: VaultIndex | None = None
+) -> Result:
     """Parse and schema-validate one supplied Markdown file.
 
     Args:
@@ -43,6 +47,7 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
             directory. Direct symlink targets are excluded.
         vault: Optional explicit vault boundary; otherwise infer the nearest
             enclosing vault from its structural markers.
+        index: Optional index for this vault, shared during directory validation.
 
     Returns:
         Result: Diagnostics and checked/skipped/unsupported counts for this
@@ -53,7 +58,8 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
             Typed files receive their vault-local schema checks;
             absent schemas produce errors. Invalid schemas
             fail validation without being counted as missing coverage.
-            No source files are modified and no other records are checked.
+            Links are checked against the whole vault; only linked Markdown
+            dependencies are parsed. No source files are modified.
 
     Raises:
         ValueError: The target is not a regular Markdown file, is a symlink,
@@ -64,7 +70,11 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     root = check_vault(path, vault) if vault is not None else find_vault(path)
     path = path.resolve()
     relative = path.relative_to(root).as_posix()
-    note, diagnostics = Note.parse(path, root)
+    if index is not None and index.root != root:
+        raise ValueError("index must belong to the selected vault")
+    note, diagnostics = (
+        index.parse(path) if index is not None else Note.parse(path, root)
+    )
     if note is None:
         return Result(diagnostics=diagnostics, checked=1)
     if path.is_relative_to(root / "reference/templates"):
@@ -94,6 +104,10 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     schema, diagnostics = select_schema(note, root)
     if schema is not None:
         diagnostics.extend(schema.validate(note))
+    if index is None:
+        index = VaultIndex(root)
+        index.notes[path] = (note, [])
+    diagnostics.extend(check_links(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -135,5 +149,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         ]
         return sum(results, Result())
     files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
-    result = sum((validate_markdown(file, context) for file in files), Result())
+    index = VaultIndex(context)
+    result = sum(
+        (validate_markdown(file, context, index=index) for file in files), Result()
+    )
     return result.add_context(context, relative_to=path.resolve())

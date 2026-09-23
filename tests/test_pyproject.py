@@ -88,6 +88,7 @@ class TestPyproject:
         (root / "reference/schemas").mkdir()
         (root / "campaigns").mkdir()
         (root / "reference/schemas/widget.schema.json").write_text("true")
+        (root / "reference/types/Widget.md").write_text('---\ntype: "[[Type]]"\n---\n')
         path = root / "note.md"
         text = (
             "untyped"
