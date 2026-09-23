@@ -15,12 +15,12 @@ from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Note
 from armarium.validate import (
     _resolve_field,
+    _validate_wikilink_status,
     validate,
     validate_directory,
     validate_filename,
     validate_markdown,
     validate_placement,
-    validate_status,
     validate_wikilink,
     validate_wikilinks,
 )
@@ -660,6 +660,10 @@ class TestValidateWikilinks:
         "metadata, expected",
         [
             ({"type": "[[Clue]]", "status": "[[Pending]]"}, []),
+            (
+                {"type": "[[Type]]", "status": "[[Pending]]"},
+                [("status.applicability", "status")],
+            ),
             ({"type": "[[Pending]]"}, [("link.type", "type")]),
             ({"type": "[[Clue]]", "status": "[[Clue]]"}, [("link.type", "status")]),
             ({"type": "[[Clue]]", "status": ["[[Clue]]"]}, [("link.type", "status.0")]),
@@ -682,15 +686,15 @@ class TestValidateWikilinks:
         metadata: dict[str, object],
         expected: list[tuple[str, str]],
     ) -> None:
-        for name, kind in {
-            "reference/types/Clue.md": "Type",
-            "reference/types/Status.md": "Type",
-            "reference/types/Type.md": "Type",
-            "reference/statuses/Pending.md": "Status",
+        for name, text in {
+            "reference/types/Clue.md": 'type: "[[Type]]"',
+            "reference/types/Status.md": 'type: "[[Type]]"',
+            "reference/types/Type.md": 'type: "[[Type]]"',
+            "reference/statuses/Pending.md": 'type: "[[Status]]"\napplies_to: "[[Clue]]"',
         }.items():
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(f'---\ntype: "[[{kind}]]"\n---\n')
+            path.write_text(f"---\n{text}\n---\n")
         note = Note(tmp_path / "selected.md", metadata, "", 1)
         result = validate_wikilinks(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == expected
@@ -721,9 +725,8 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body)
-        problem = validate_wikilink(
-            target, tmp_path / "selected.md", VaultIndex(tmp_path), record_type
-        )
+        note = Note(tmp_path / "selected.md", {}, "", 1)
+        problem = validate_wikilink(target, note, VaultIndex(tmp_path), record_type)
         assert (problem[0] if problem else None) == rule
 
     @pytest.mark.parametrize(
@@ -762,7 +765,8 @@ class TestValidateWikilink:
             path.parent.mkdir(exist_ok=True)
             path.write_text(body)
         index = VaultIndex(tmp_path)
-        assert validate_wikilink(target, tmp_path / "selected.md", index) == expected
+        note = Note(tmp_path / "selected.md", {}, "", 1)
+        assert validate_wikilink(target, note, index) == expected
         parsed = {"target": "target.md", "bad": "bad.md"}.get(target)
         assert set(index.notes) == ({tmp_path / parsed} if parsed else set())
 
@@ -845,46 +849,33 @@ class TestValidateFilename:
         )
 
 
-class TestValidateStatus:
+class TestValidateWikilinkStatus:
     @pytest.mark.parametrize(
-        "definition, status, rule",
+        "applies_to, rule",
         [
-            ('type: "[[Status]]"\napplies_to: "[[types/Clue]]"', "[[Pending]]", None),
-            (
-                'type: "[[Status]]"\napplies_to: "[[Content]]"',
-                "[[Pending]]",
-                "status.applicability",
-            ),
-            ('type: "[[Status]]"', "[[Pending]]", "status.applicability"),
-            (
-                'type: "[[Status]]"\napplies_to: broken',
-                "[[Pending]]",
-                "status.applicability",
-            ),
-            ('type: "[[Type]]"\napplies_to: "[[Content]]"', "[[Pending]]", None),
-            ("x: [", "[[Pending]]", None),
-            ('type: "[[Status]]"\napplies_to: "[[Content]]"', "[[missing]]", None),
-            ('type: "[[Status]]"\napplies_to: "[[Content]]"', None, None),
+            ('applies_to: "[[types/Clue]]"', None),
+            ('applies_to: "[[Content]]"', "status.applicability"),
+            ("", "status.applicability"),
+            ("applies_to: broken", "status.applicability"),
         ],
     )
     def test_applicability(
-        self, tmp_path: Path, definition: str, status: str | None, rule: str | None
+        self, tmp_path: Path, applies_to: str, rule: str | None
     ) -> None:
         for name, text in {
             "reference/types/Clue.md": 'type: "[[Type]]"',
             "reference/types/Content.md": 'type: "[[Type]]"',
-            "reference/statuses/Pending.md": definition,
+            "reference/statuses/Pending.md": f'type: "[[Status]]"\n{applies_to}',
         }.items():
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(
-            tmp_path / "selected.md", {"type": "[[Clue]]", "status": status}, "", 1
-        )
-        result = validate_status(note, VaultIndex(tmp_path))
-        assert [(d.rule, d.field) for d in result] == (
-            [(rule, "status")] if rule else []
-        )
+        index = VaultIndex(tmp_path)
+        status, _ = index.parse(tmp_path / "reference/statuses/Pending.md")
+        assert status is not None
+        note = Note(tmp_path / "selected.md", {"type": "[[Clue]]"}, "", 1)
+        problem = _validate_wikilink_status(status, note, index)
+        assert (problem[0] if problem else None) == rule
 
 
 class TestResolveField:
