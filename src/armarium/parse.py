@@ -3,13 +3,14 @@
 import math
 from dataclasses import dataclass
 from datetime import date, datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
 import yaml
 from yaml.nodes import MappingNode
 
-from armarium.lib import Diagnostic, parse_wikilink
+from armarium.lib import Diagnostic, iter_wikilinks, parse_wikilink
 
 
 class FrontmatterLoader(yaml.SafeLoader):
@@ -98,6 +99,37 @@ class FrontmatterLoader(yaml.SafeLoader):
 
 
 @dataclass(frozen=True)
+class Link:
+    """One wikilink found in a note, and where it was found.
+
+    Attributes:
+        target: File target inside the brackets, without alias or anchor. Empty
+            for a self-anchor such as ``[[#Heading]]`` or for malformed text.
+        location: Dotted frontmatter location such as ``subjects.0`` or
+            ``campaign_1.first_session``, or an empty string for a body link.
+        line: One-based source line of a body link, or 0 for frontmatter.
+        error: Parser message when the link text is malformed, otherwise None.
+    """
+
+    target: str
+    location: str
+    line: int
+    error: str | None = None
+
+    @property
+    def field(self) -> str:
+        """Return the frontmatter field containing the link, ignoring list indices.
+
+        Returns:
+            str: The location without numeric segments, so links in a field's
+                list share its name: ``subjects.0`` gives ``subjects`` and
+                ``campaign_1.held_by.2`` gives ``campaign_1.held_by``. Empty
+                for body links.
+        """
+        return ".".join(part for part in self.location.split(".") if not part.isdigit())
+
+
+@dataclass(frozen=True)
 class Note:
     """A note's parsed metadata, Markdown body and source location.
 
@@ -136,6 +168,48 @@ class Note:
         except ValueError:
             return None
         return target.removesuffix(".md").rsplit("/", 1)[-1] if target else None
+
+    @cached_property
+    def links(self) -> list[Link]:
+        """Find every wikilink in frontmatter strings and Markdown body lines.
+
+        Nested mappings and lists are walked so each link keeps its location.
+        Body lines are scanned as written, including inline and fenced code.
+
+        Returns:
+            list[Link]: Frontmatter links in metadata order, then body links in
+                source order. Malformed link text is included with its error so
+                callers can report it. No target is resolved here.
+        """
+        # Pop metadata first, then body lines in source order. Reverse children
+        # when adding them to the stack so nested values retain their order.
+        pending: list[tuple[str, int, object]] = [
+            ("", number, text)
+            for number, text in reversed(
+                list(enumerate(self.body.splitlines(), self.body_start_line))
+            )
+        ]
+        pending.append(("", 0, self.frontmatter))
+        links: list[Link] = []
+        while pending:
+            location, line, value = pending.pop()
+            if isinstance(value, dict):
+                pending.extend(
+                    (f"{location}.{key}" if location else key, 0, item)
+                    for key, item in reversed(value.items())
+                )
+            elif isinstance(value, list):
+                pending.extend(
+                    (f"{location}.{number}", 0, value[number])
+                    for number in reversed(range(len(value)))
+                )
+            elif isinstance(value, str):
+                for target in iter_wikilinks(value):
+                    if isinstance(target, ValueError):
+                        links.append(Link("", location, line, str(target)))
+                    else:
+                        links.append(Link(target, location, line))
+        return links
 
     @classmethod
     def parse(cls, path: Path, root: Path) -> tuple["Note | None", list[Diagnostic]]:

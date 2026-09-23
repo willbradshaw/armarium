@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from armarium.index import VaultIndex
 from armarium.lib import (
     Diagnostic,
     Result,
@@ -35,7 +36,9 @@ def validate(path: Path, vault: Path | None = None) -> Result:
     return validate_markdown(path, vault)
 
 
-def validate_markdown(path: Path, vault: Path | None = None) -> Result:
+def validate_markdown(
+    path: Path, vault: Path | None = None, *, index: VaultIndex | None = None
+) -> Result:
     """Parse and schema-validate one supplied Markdown file.
 
     Args:
@@ -43,6 +46,7 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
             directory. Direct symlink targets are excluded.
         vault: Optional explicit vault boundary; otherwise infer the nearest
             enclosing vault from its structural markers.
+        index: Optional index for this vault, shared during directory validation.
 
     Returns:
         Result: Diagnostics and checked/skipped/unsupported counts for this
@@ -53,7 +57,8 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
             Typed files receive their vault-local schema checks;
             absent schemas produce errors. Invalid schemas
             fail validation without being counted as missing coverage.
-            No source files are modified and no other records are checked.
+            Links are checked against the whole vault; only linked Markdown
+            dependencies are parsed. No source files are modified.
 
     Raises:
         ValueError: The target is not a regular Markdown file, is a symlink,
@@ -64,7 +69,11 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     root = check_vault(path, vault) if vault is not None else find_vault(path)
     path = path.resolve()
     relative = path.relative_to(root).as_posix()
-    note, diagnostics = Note.parse(path, root)
+    if index is not None and index.root != root:
+        raise ValueError("index must belong to the selected vault")
+    note, diagnostics = (
+        index.parse(path) if index is not None else Note.parse(path, root)
+    )
     if note is None:
         return Result(diagnostics=diagnostics, checked=1)
     if path.is_relative_to(root / "reference/templates"):
@@ -94,6 +103,10 @@ def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     schema, diagnostics = select_schema(note, root)
     if schema is not None:
         diagnostics.extend(schema.validate(note))
+    if index is None:
+        index = VaultIndex(root)
+        index.notes[path] = (note, [])
+    diagnostics.extend(validate_wikilinks(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -135,5 +148,59 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         ]
         return sum(results, Result())
     files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
-    result = sum((validate_markdown(file, context) for file in files), Result())
+    index = VaultIndex(context)
+    result = sum(
+        (validate_markdown(file, context, index=index) for file in files), Result()
+    )
     return result.add_context(context, relative_to=path.resolve())
+
+
+def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check every link the note contains against the vault.
+
+    Args:
+        note: Selected note inside the indexed vault.
+        index: Whole-vault file index and lazy note cache for this run.
+
+    Returns:
+        list[Diagnostic]: Findings attributed to the selected note, with metadata
+            locations or body source lines. Unrelated notes are not parsed.
+            Heading and block existence, query execution and ordinary URLs are
+            excluded.
+    """
+    path = note.path.relative_to(index.root).as_posix()
+    diagnostics: list[Diagnostic] = []
+    for link in note.links:
+        if link.error is not None:
+            problem: tuple[str, str] | None = ("link.syntax", link.error)
+        else:
+            problem = validate_wikilink(link.target, note.path, index)
+        if problem is not None:
+            diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
+    return diagnostics
+
+
+def validate_wikilink(
+    target: str, source: Path, index: VaultIndex
+) -> tuple[str, str] | None:
+    """Check that one wikilink target resolves to a usable vault file.
+
+    Args:
+        target: Parsed wikilink target, without alias, heading or block suffix.
+        source: Note containing the link, used to break resolution ties.
+        index: Whole-vault file index and lazy note cache for this run.
+
+    Returns:
+        tuple[str, str] | None: Rule and message for a missing, ambiguous or
+            unparseable target; None when the target is usable. Only a linked
+            Markdown note is parsed.
+    """
+    resolved, rule = index.resolve(target, source)
+    if rule:
+        return rule, f"cannot uniquely resolve [[{target}]]; use a vault-relative path"
+    if resolved is not None and resolved.suffix.lower() == ".md":
+        _, failures = index.parse(resolved)
+        if failures:
+            relative = resolved.relative_to(index.root)
+            return "link.malformed", f"referenced note {relative} cannot be parsed"
+    return None

@@ -10,7 +10,7 @@ import pytest
 import yaml
 from yaml.nodes import MappingNode
 
-from armarium.parse import FrontmatterLoader, Note
+from armarium.parse import FrontmatterLoader, Link, Note
 
 
 class TestFrontmatterLoader:
@@ -213,6 +213,96 @@ class TestNoteParsedType:
         self, metadata: dict[str, Any], expected: str | None
     ) -> None:
         assert Note(Path("example.md"), metadata, "", 1).parsed_type == expected
+
+
+class TestLink:
+    @pytest.mark.parametrize(
+        ("location", "field"),
+        [
+            ("", ""),
+            ("status", "status"),
+            ("subjects.0", "subjects"),
+            ("campaign_1.held_by.2", "campaign_1.held_by"),
+            ("custom.1.links.0.0", "custom.links"),
+        ],
+    )
+    def test_field(self, location: str, field: str) -> None:
+        assert Link("Target", location, 0).field == field
+
+
+class TestNoteLinks:
+    @pytest.mark.parametrize(
+        ("metadata", "expected"),
+        [
+            (
+                {"subjects": ["[[First]]", "[[Second]]"]},
+                [Link("First", "subjects.0", 0), Link("Second", "subjects.1", 0)],
+            ),
+            (
+                {"campaign_1": {"first_session": "[[Session]]"}},
+                [Link("Session", "campaign_1.first_session", 0)],
+            ),
+            (
+                {
+                    "custom": [None, {"links": [["[[Nested]]"]]}, "[[Last]]"],
+                    "after": "[[After|Alias]] [[After.md#Heading]]",
+                },
+                [
+                    Link("Nested", "custom.1.links.0.0", 0),
+                    Link("Last", "custom.2", 0),
+                    Link("After", "after", 0),
+                    Link("After.md", "after", 0),
+                ],
+            ),
+            (
+                {
+                    "count": 1,
+                    "flag": False,
+                    "fraction": 1.5,
+                    "empty": None,
+                    "list": [],
+                    "mapping": {},
+                    "summary": "plain text",
+                },
+                [],
+            ),
+            (
+                {"subjects": ["[[broken", "[[Missing]]"]},
+                [
+                    Link(
+                        "",
+                        "subjects.0",
+                        0,
+                        "use [[target]] with balanced double brackets on one line",
+                    ),
+                    Link("Missing", "subjects.1", 0),
+                ],
+            ),
+        ],
+    )
+    def test_frontmatter(self, metadata: dict[str, Any], expected: list[Link]) -> None:
+        from copy import deepcopy
+
+        original = deepcopy(metadata)
+        note = Note(Path("example.md"), metadata, "", 1)
+        assert note.links == expected
+        assert note.frontmatter == original
+
+    def test_body_after_frontmatter(self) -> None:
+        note = Note(
+            Path("example.md"),
+            {"nested": ["[[Meta]]"]},
+            "[[broken [[Other]]\n\n```\n[[#^block]] ![[image.png]]\n```\n",
+            8,
+        )
+        assert note.links == [
+            Link("Meta", "nested.0", 0),
+            Link("", "", 8, "use [[target]] with balanced double brackets on one line"),
+            Link("Other", "", 8),
+            Link("", "", 11),
+            Link("image.png", "", 11),
+        ]
+        assert note.links is note.links
 
 
 class TestNoteParse:

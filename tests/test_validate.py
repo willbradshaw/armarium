@@ -10,11 +10,15 @@ from typing import Any
 import pytest
 import yaml
 
+from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
+from armarium.parse import Note
 from armarium.validate import (
     validate,
     validate_directory,
     validate_markdown,
+    validate_wikilink,
+    validate_wikilinks,
 )
 
 
@@ -30,6 +34,8 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def write_note(vault: Path) -> Callable[..., Path]:
+    (vault / "reference/types/Widget.md").write_text('---\ntype: "[[Type]]"\n---\n')
+
     def write(
         metadata: dict[str, Any],
         body: str = "## Notes\n",
@@ -311,7 +317,10 @@ class TestValidateMarkdown:
         )
         before = path.read_bytes()
         result = validate_markdown(path)
-        assert result.diagnostics == []
+        # These schema fixtures are not complete contextual vault fixtures.
+        assert not any(
+            d.rule.startswith(("schema.", "parse.")) for d in result.diagnostics
+        )
         assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
         assert path.read_bytes() == before
 
@@ -344,6 +353,33 @@ class TestValidateMarkdown:
         result = validate_markdown(path)
         assert result.failed and result.checked == 1 and result.skipped == 0
         assert result.diagnostics[0].rule == "schema.instance"
+
+    def test_rejects_different_vault(self, tmp_path: Path) -> None:
+        from armarium.index import VaultIndex
+
+        root = tmp_path / "vault"
+        root.mkdir()
+        path = root / "note.md"
+        path.write_text("note")
+        with pytest.raises(ValueError, match="index must belong"):
+            validate_markdown(path, root, index=VaultIndex(tmp_path))
+
+    def test_shared_index(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        from armarium.index import VaultIndex
+        from armarium.parse import Note
+
+        (tmp_path / "reference/types").mkdir(parents=True)
+        (tmp_path / "reference/schemas").mkdir()
+        (tmp_path / "reference/schemas/widget.schema.json").write_text("true")
+        for name in ("a", "b", "Widget"):
+            (tmp_path / f"{name}.md").write_text('---\ntype: "[[Widget]]"\n---\n')
+        with patch("armarium.validate.VaultIndex", wraps=VaultIndex) as build:
+            with patch.object(Note, "parse", wraps=Note.parse) as parse:
+                validate_directory(tmp_path, tmp_path)
+        assert build.call_count == 1
+        assert parse.call_count == 3
 
 
 class TestValidateDirectory:
@@ -475,6 +511,11 @@ class TestValidateDirectory:
             (root / "reference/schemas/widget.schema.json").write_text(schema)
             for name in ("a.md", "b.md"):
                 (root / name).write_text('---\ntype: "[[Widget]]"\n---\n')
+        for name in ("Widget", "Type"):
+            (outer / f"reference/types/{name}.md").write_text(
+                '---\ntype: "[[Type]]"\n---\n'
+            )
+        (outer / "reference/schemas/type.schema.json").write_text("true")
         discover = Mock(wraps=find_vault)
         check = Mock(wraps=check_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
@@ -484,7 +525,7 @@ class TestValidateDirectory:
             discover.reset_mock()
             check.reset_mock()
             result = validate_directory(outer, outer if explicit else None)
-            assert result.checked == 4
+            assert result.checked == 6
             assert result.failed_files == 0
             inferred = [call for call in discover.call_args_list if len(call.args) == 1]
             assert len(inferred) == (0 if explicit else 1)
@@ -494,7 +535,7 @@ class TestValidateDirectory:
             contained = [
                 call for call in check.call_args_list if call.args[0].suffix == ".md"
             ]
-            assert len(contained) == 4
+            assert len(contained) == 6
 
     @pytest.mark.parametrize("found", [False, True])
     def test_discovers_once_per_vault_subtree(
@@ -565,3 +606,87 @@ class TestValidate:
             target.symlink_to(tmp_path, target_is_directory=True)
         with pytest.raises(ValueError):
             validate(target, tmp_path)
+
+
+class TestValidateWikilinks:
+    @pytest.mark.parametrize(
+        "text, rule",
+        [
+            ("[[target|Alias]] [[target.md#Heading]] [[#^block]] ![[image.png]]", None),
+            ("[[missing]]", "link.missing"),
+            ("[[broken", "link.syntax"),
+            ("```markdown\n[[missing]]\n```", "link.missing"),
+            ("```dataview\n[[missing]]\n```", "link.missing"),
+            ("`[[missing]]`", "link.missing"),
+            ("`= [[missing]].text`", "link.missing"),
+        ],
+    )
+    def test_body(self, tmp_path: Path, text: str, rule: str | None) -> None:
+        for name, body in {
+            "selected.md": text,
+            "target.md": "plain",
+            "image.png": "asset",
+        }.items():
+            (tmp_path / name).write_text(body)
+        note = Note(tmp_path / "selected.md", {}, text, 5)
+        result = validate_wikilinks(note, VaultIndex(tmp_path))
+        assert [d.rule for d in result] == ([rule] if rule else [])
+        if result:
+            assert result[0].path == "selected.md"
+            assert result[0].line == (6 if text.startswith("```") else 5)
+
+    def test_metadata_and_recovery(self, tmp_path: Path) -> None:
+        note = Note(
+            tmp_path / "selected.md",
+            {"nested": ["[[missing]]"]},
+            "[[broken [[other]]",
+            8,
+        )
+        result = validate_wikilinks(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field, d.line) for d in result] == [
+            ("link.missing", "nested.0", 0),
+            ("link.syntax", "", 8),
+            ("link.missing", "", 8),
+        ]
+
+
+class TestValidateWikilink:
+    @pytest.mark.parametrize(
+        "target, expected",
+        [
+            ("target", None),
+            ("image.png", None),
+            (
+                "missing",
+                (
+                    "link.missing",
+                    "cannot uniquely resolve [[missing]]; use a vault-relative path",
+                ),
+            ),
+            (
+                "same",
+                (
+                    "link.ambiguous",
+                    "cannot uniquely resolve [[same]]; use a vault-relative path",
+                ),
+            ),
+            ("bad", ("link.malformed", "referenced note bad.md cannot be parsed")),
+        ],
+    )
+    def test_target(
+        self, tmp_path: Path, target: str, expected: tuple[str, str] | None
+    ) -> None:
+        for name, body in {
+            "target.md": "plain",
+            "image.png": "asset",
+            "bad.md": "---\nx: [\n---\n",
+            "a/same.md": "",
+            "b/same.md": "",
+        }.items():
+            path = tmp_path / name
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(body)
+        index = VaultIndex(tmp_path)
+        assert validate_wikilink(target, tmp_path / "selected.md", index) == expected
+        parsed = {"target": "target.md", "bad": "bad.md"}.get(target)
+        assert set(index.notes) == ({tmp_path / parsed} if parsed else set())

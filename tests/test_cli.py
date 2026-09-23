@@ -21,6 +21,9 @@ def vault(tmp_path: Path) -> Path:
     (root / "reference/schemas").mkdir()
     (root / "campaigns").mkdir()
     (root / "reference/schemas/widget.schema.json").write_text("true")
+    for name in ("Widget", "Type"):
+        (root / f"reference/types/{name}.md").write_text('---\ntype: "[[Type]]"\n---\n')
+    (root / "reference/schemas/type.schema.json").write_text("true")
     return root
 
 
@@ -83,6 +86,10 @@ class TestMain:
         diagnostic: str,
         counts: str,
     ) -> None:
+        if "Unknown" in text:
+            (vault / "reference/types/Unknown.md").write_text(
+                '---\ntype: "[[Type]]"\n---\n'
+            )
         path = vault / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text)
@@ -178,7 +185,7 @@ class TestMain:
         else:
             with pytest.raises(ValidationError, match="1 file failed validation"):
                 main()
-        assert "1 checked" in capsys.readouterr().err
+        assert "3 checked" in capsys.readouterr().err
 
     @pytest.mark.parametrize("directory", [False, True])
     def test_loose_markdown_requires_context_only_for_file_targets(
