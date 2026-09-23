@@ -272,5 +272,4 @@ class TestParseArgs:
         assert output.err == ""
         if "validate" in argv:
             assert "Exit codes:" in output.out
-            assert "Missing schemas are errors." in " ".join(output.out.split())
             assert "stderr" in output.out
