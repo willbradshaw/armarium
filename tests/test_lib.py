@@ -16,6 +16,8 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    iter_markdown_lines,
+    iter_text_values,
     iter_wikilinks,
     parse_wikilink,
 )
@@ -507,3 +509,57 @@ class TestResultAddContext:
         result = Result([Diagnostic("note.md", "rule", "Finding")])
         with pytest.raises(ValueError):
             result.add_context("vault", relative_to="elsewhere")
+
+
+class TestIterTextValues:
+    @pytest.mark.parametrize(
+        "value, prefix, expected",
+        [
+            (
+                {"a": ["one", {"b": "two"}, None, 4, False]},
+                "",
+                [("a.0", "one"), ("a.1.b", "two")],
+            ),
+            (["one"], "field", [("field.0", "one")]),
+            (["one"], "", [("0", "one")]),
+            ("text", "", [("", "text")]),
+            (None, "", []),
+            ({}, "", []),
+        ],
+    )
+    def test_values(
+        self, value: object, prefix: str, expected: list[tuple[str, str]]
+    ) -> None:
+        assert list(iter_text_values(value, prefix)) == expected
+
+
+class TestIterMarkdownLines:
+    @pytest.mark.parametrize("delimiter", ["```", "~~~~"])
+    @pytest.mark.parametrize(
+        "language, visible",
+        [("markdown", False), ("", False), ("dataview", True), ("dataviewjs", True)],
+    )
+    def test_fences(self, delimiter: str, language: str, visible: bool) -> None:
+        body = f"before\n{delimiter}{language}\n[[inside]]\n{delimiter}\nafter"
+        assert list(iter_markdown_lines(body)) == (
+            [(1, "before"), (3, "[[inside]]"), (5, "after")]
+            if visible
+            else [(1, "before"), (5, "after")]
+        )
+
+    @pytest.mark.parametrize(
+        "body, expected",
+        [
+            ("````\n```\n[[hidden]]\n````\n[[visible]]", [(5, "[[visible]]")]),
+            ("~~~\n```\n[[hidden]]", []),
+            ("```dataview\n~~~\n[[target]]", [(2, "~~~"), (3, "[[target]]")]),
+            ("```\n[[unclosed example]]", []),
+            ("[[target]] `[[example]]`", [(1, "[[target]] " + " " * 13)]),
+            ("`= [[target]].text`", [(1, "`= [[target]].text`")]),
+            ("`$= [[target]]`", [(1, "`$= [[target]]`")]),
+            ("``[[example]]`` [[target]]", [(1, " " * 15 + " [[target]]")]),
+            ("", []),
+        ],
+    )
+    def test_regions(self, body: str, expected: list[tuple[int, str]]) -> None:
+        assert list(iter_markdown_lines(body)) == expected
