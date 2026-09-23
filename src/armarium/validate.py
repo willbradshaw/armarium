@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from armarium.check import check_links
 from armarium.index import VaultIndex
 from armarium.lib import (
     Diagnostic,
@@ -12,6 +11,7 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    iter_wikilinks,
 )
 from armarium.parse import Note
 from armarium.schemas import select_schema
@@ -107,7 +107,7 @@ def validate_markdown(
     if index is None:
         index = VaultIndex(root)
         index.notes[path] = (note, [])
-    diagnostics.extend(check_links(note, index))
+    diagnostics.extend(validate_wikilinks(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -154,3 +154,83 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         (validate_markdown(file, context, index=index) for file in files), Result()
     )
     return result.add_context(context, relative_to=path.resolve())
+
+
+def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check links in frontmatter strings and every Markdown body line.
+
+    Walk nested metadata here so link errors retain their field/list locations.
+    Body lines are scanned as written, including inline and fenced code.
+
+    Args:
+        note: Selected note inside the indexed vault.
+        index: Whole-vault file index and lazy note cache for this run.
+
+    Returns:
+        list[Diagnostic]: Findings attributed to the selected note, with metadata
+            fields or body source lines. Unrelated notes are not parsed. Heading
+            and block existence, query execution and ordinary URLs are excluded.
+    """
+    path = note.path.relative_to(index.root).as_posix()
+    # Pop metadata first, then body lines in source order. Reverse children when
+    # adding them to the stack so nested mappings and lists retain their order.
+    pending: list[tuple[str, int, object]] = [
+        ("", number, text)
+        for number, text in reversed(
+            list(enumerate(note.body.splitlines(), note.body_start_line))
+        )
+    ]
+    pending.append(("", 0, note.frontmatter))
+    diagnostics: list[Diagnostic] = []
+    while pending:
+        field, line, value = pending.pop()
+        if isinstance(value, dict):
+            pending.extend(
+                (f"{field}.{key}" if field else key, 0, item)
+                for key, item in reversed(value.items())
+            )
+            continue
+        if isinstance(value, list):
+            pending.extend(
+                (f"{field}.{number}", 0, value[number])
+                for number in reversed(range(len(value)))
+            )
+            continue
+        if not isinstance(value, str):
+            continue
+        for target in iter_wikilinks(value):
+            if isinstance(target, ValueError):
+                diagnostics.append(
+                    Diagnostic(path, "link.syntax", str(target), field, line)
+                )
+                continue
+            problem = validate_wikilink(target, note.path, index)
+            if problem is not None:
+                diagnostics.append(Diagnostic(path, *problem, field, line))
+    return diagnostics
+
+
+def validate_wikilink(
+    target: str, source: Path, index: VaultIndex
+) -> tuple[str, str] | None:
+    """Check that one wikilink target resolves to a usable vault file.
+
+    Args:
+        target: Parsed wikilink target, without alias, heading or block suffix.
+        source: Note containing the link, used to break resolution ties.
+        index: Whole-vault file index and lazy note cache for this run.
+
+    Returns:
+        tuple[str, str] | None: Rule and message for a missing, ambiguous or
+            unparseable target; None when the target is usable. Only a linked
+            Markdown note is parsed.
+    """
+    resolved, rule = index.resolve(target, source)
+    if rule:
+        return rule, f"cannot uniquely resolve [[{target}]]; use a vault-relative path"
+    if resolved is not None and resolved.suffix.lower() == ".md":
+        _, failures = index.parse(resolved)
+        if failures:
+            relative = resolved.relative_to(index.root)
+            return "link.malformed", f"referenced note {relative} cannot be parsed"
+    return None
