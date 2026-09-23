@@ -176,16 +176,37 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         valid: bool,
     ) -> None:
-        (vault / "record.md").write_text(
+        # A directory inside the vault gets record checks only; see the
+        # vault-root test below for infrastructure checks.
+        (vault / "content").mkdir()
+        (vault / "content/record.md").write_text(
             '---\ntype: "[[Widget]]"\n---\n' if valid else "Untyped"
         )
-        monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(vault)])
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "validate", str(vault / "content")]
+        )
         if valid:
             assert main() is None
         else:
             with pytest.raises(ValidationError, match="1 file failed validation"):
                 main()
-        assert "3 checked" in capsys.readouterr().err
+        assert "1 checked" in capsys.readouterr().err
+
+    def test_vault_root_reports_infrastructure(
+        self,
+        vault: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        (vault / "record.md").write_text('---\ntype: "[[Widget]]"\n---\n')
+        monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(vault)])
+        # Every record passes, but the minimal fixture lacks required
+        # infrastructure, which is reported against the vault root itself.
+        with pytest.raises(ValidationError, match="1 file failed validation"):
+            main()
+        err = capsys.readouterr().err
+        assert "3 checked" in err
+        assert ".: vault.required: required directory assets is missing" in err
 
     @pytest.mark.parametrize("directory", [False, True])
     def test_loose_markdown_requires_context_only_for_file_targets(

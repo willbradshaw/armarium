@@ -15,7 +15,13 @@ from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Note
 from armarium.validate import (
+    CAMPAIGN_DIRECTORIES,
+    CAMPAIGN_FILES,
     LINK_TARGETS,
+    VAULT_DIRECTORIES,
+    VAULT_STATUSES,
+    VAULT_TEMPLATES,
+    VAULT_TYPES,
     Target,
     _link_targets,
     _validate_wikilink_status,
@@ -26,6 +32,7 @@ from armarium.validate import (
     validate_identity_links,
     validate_markdown,
     validate_placement,
+    validate_vault,
     validate_wikilink,
     validate_wikilinks,
 )
@@ -75,6 +82,23 @@ def write_records(root: Path, records: dict[str, str]) -> None:
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"---\n{text}\n---\n")
+
+
+def make_vault(root: Path) -> None:
+    """Create the smallest vault that validate_vault accepts."""
+    for relative in VAULT_DIRECTORIES + tuple(
+        f"campaigns/campaign_1/{d}" for d in CAMPAIGN_DIRECTORIES
+    ):
+        (root / relative).mkdir(parents=True, exist_ok=True)
+    for relative in (
+        *(f"reference/types/{name}.md" for name in VAULT_TYPES),
+        *(f"reference/statuses/{name}.md" for name in VAULT_STATUSES),
+        *(f"reference/templates/{name}.md" for name in VAULT_TEMPLATES),
+        *(f"campaigns/campaign_1/{name}" for name in CAMPAIGN_FILES),
+    ):
+        (root / relative).write_text("")
+    for name in VAULT_TYPES:
+        (root / f"reference/schemas/{name.lower()}.schema.json").write_text("true")
 
 
 class TestValidateMarkdown:
@@ -437,8 +461,13 @@ class TestValidateDirectory:
         target = Path(vault.name) if relative else vault
         result = validate_directory(target)
         individual = [validate_markdown(vault / name) for name in sorted(records)]
+        # The vault root is the target, so its infrastructure is checked too;
+        # the content/ subtree below is not a root and gets record checks only.
         assert result == Result(
-            diagnostics=sorted(d for r in individual for d in r.diagnostics),
+            diagnostics=sorted(
+                [d for r in individual for d in r.diagnostics]
+                + [replace(d, path=".") for d in validate_vault(vault)]
+            ),
             checked=6,
             skipped=1,
             unsupported=1,
@@ -451,7 +480,8 @@ class TestValidateDirectory:
             for d in r.diagnostics
             if d.path.startswith("content/")
         )
-        assert result.failed_files == 3
+        # Three records fail, plus the vault root for its missing infrastructure.
+        assert result.failed_files == 4
         assert all(p.read_bytes() == data for p, data in before.items())
 
     def test_multiple_vaults_and_unscoped_markdown(self, tmp_path: Path) -> None:
@@ -462,17 +492,32 @@ class TestValidateDirectory:
             (root / "same.md").write_text("Untyped")
         (tmp_path / "README.md").write_text("Repository documentation")
         result = validate_directory(tmp_path)
-        assert result.checked == result.failed_files == 2
-        assert [(d.path, d.rule) for d in result.diagnostics] == [
+        assert result.checked == 2
+        records = [d for d in result.diagnostics if d.rule == "record.type"]
+        assert [(d.path, d.rule) for d in records] == [
             ("a/same.md", "record.type"),
             ("b/same.md", "record.type"),
         ]
+        # Each discovered vault root also gets infrastructure checks, attributed
+        # to that root, so two records and two roots fail.
+        assert result.failed_files == 4
+        assert {d.path for d in result.diagnostics if d.rule == "vault.required"} == {
+            "a",
+            "b",
+        }
 
     def test_explicit_vault_without_markers(self, tmp_path: Path) -> None:
+        from dataclasses import replace
+
         (tmp_path / "record.md").write_text("Untyped")
         result = validate_directory(tmp_path, tmp_path)
         assert result.checked == 1
-        assert result.diagnostics[0].rule == "record.type"
+        assert [(d.path, d.rule) for d in result.diagnostics if d.path != "."] == [
+            ("record.md", "record.type")
+        ]
+        assert [d for d in result.diagnostics if d.path == "."] == sorted(
+            replace(d, path=".") for d in validate_vault(tmp_path)
+        )
 
     def test_empty_directory(self, tmp_path: Path) -> None:
         assert validate_directory(tmp_path) == Result()
@@ -481,13 +526,17 @@ class TestValidateDirectory:
         "excluded", [".git", ".obsidian", ".scratch", "__pycache__", "node_modules"]
     )
     def test_exclusions(self, vault: Path, excluded: str) -> None:
+        from dataclasses import replace
+
         hidden = vault / excluded
         hidden.mkdir()
         (hidden / "bad.md").write_text("Untyped")
         (vault / "image.png").write_bytes(b"not markdown")
         (vault / "view.base").write_text("filters: []")
         (vault / "link.md").symlink_to(hidden / "bad.md")
-        assert validate_directory(vault) == Result()
+        assert validate_directory(vault) == Result(
+            diagnostics=sorted(replace(d, path=".") for d in validate_vault(vault))
+        )
 
     @pytest.mark.parametrize("kind", ["file", "missing", "symlink", "outside"])
     def test_invalid_target(self, tmp_path: Path, kind: str) -> None:
@@ -557,7 +606,8 @@ class TestValidateDirectory:
             check.reset_mock()
             result = validate_directory(outer, outer if explicit else None)
             assert result.checked == 6
-            assert result.failed_files == 0
+            # Only the outer root fails, for its minimal infrastructure.
+            assert {d.path for d in result.diagnostics} == {"."}
             inferred = [call for call in discover.call_args_list if len(call.args) == 1]
             assert len(inferred) == (0 if explicit else 1)
             if not explicit:
@@ -586,8 +636,12 @@ class TestValidateDirectory:
         monkeypatch.setattr("armarium.validate.find_vault", discover)
         result = validate_directory(tmp_path)
         assert result.checked == (2 if found else 0)
-        diagnostics = result.diagnostics
+        diagnostics = [d for d in result.diagnostics if d.path != "container/vault"]
         assert {d.rule for d in diagnostics} == ({"record.type"} if found else set())
+        assert (
+            bool([d for d in result.diagnostics if d.path == "container/vault"])
+            is found
+        )
         assert {d.path for d in diagnostics} == (
             {
                 "container/vault/records/first.md",
@@ -618,11 +672,16 @@ class TestValidate:
             (vault / "reference/types").rmdir()
         target = vault if directory else vault / "first.md"
         result = validate(target, vault if explicit else None)
-        assert result.checked == result.failed_files == (2 if directory else 1)
-        assert {d.path for d in result.diagnostics} == (
+        assert result.checked == (2 if directory else 1)
+        # A directory target is the vault root, so the root's missing
+        # infrastructure is reported against "." as well; a file target is not.
+        records = [d for d in result.diagnostics if d.path != "."]
+        assert result.failed_files == len(records) + (1 if directory else 0)
+        assert {d.path for d in records} == (
             {"first.md", "second.md"} if directory else {"first.md"}
         )
-        assert {d.rule for d in result.diagnostics} == {"record.type"}
+        assert {d.rule for d in records} == {"record.type"}
+        assert any(d.path == "." for d in result.diagnostics) is directory
 
     @pytest.mark.parametrize("kind", ["missing", "text", "file-link", "directory-link"])
     def test_invalid_target(self, tmp_path: Path, kind: str) -> None:
@@ -1398,3 +1457,169 @@ class TestValidateIdentityLinks:
         assert [(d.rule, d.message, d.field) for d in result] == (
             [expected] if expected else []
         )
+
+
+class TestValidateVault:
+    def test_minimal_vault_passes(self, tmp_path: Path) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "notes/extra").mkdir(parents=True)
+        (tmp_path / "campaigns/campaign_1/extra.md").write_text("")
+        (tmp_path / "reference/schemas/README.md").write_text("")
+        assert validate_vault(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        "relative, kind",
+        [
+            ("assets", "directory"),
+            ("reference/views", "directory"),
+            ("reference/types/Type.md", "file"),
+            ("reference/statuses/Superseded.md", "file"),
+            ("reference/templates/Clue.md", "file"),
+            ("campaigns/campaign_1/sessions/transcripts", "directory"),
+            ("campaigns/campaign_1/reference/Campaign.md", "file"),
+            ("campaigns/campaign_1/reference/indexes/Clues.md", "file"),
+        ],
+    )
+    @pytest.mark.parametrize("symlink", [False, True])
+    def test_required(
+        self, tmp_path: Path, relative: str, kind: str, symlink: bool
+    ) -> None:
+        make_vault(tmp_path)
+        path = tmp_path / relative
+        directory = path.is_dir()
+        if directory:
+            path.rmdir()
+        else:
+            path.unlink()
+        if symlink:
+            path.symlink_to(tmp_path / "content", target_is_directory=directory)
+        result = validate_vault(tmp_path)
+        assert ("", "vault.required", f"required {kind} {relative} is missing") in [
+            (d.path, d.rule, d.message) for d in result
+        ]
+
+    def test_removed_types_directory_reports_each_definition(
+        self, tmp_path: Path
+    ) -> None:
+        make_vault(tmp_path)
+        shutil.rmtree(tmp_path / "reference/types")
+        messages = {(d.rule, d.message) for d in validate_vault(tmp_path)}
+        assert (
+            "vault.required",
+            "required directory reference/types is missing",
+        ) in messages
+        assert (
+            "vault.required",
+            "required file reference/types/Clue.md is missing",
+        ) in messages
+        # Without definitions every schema is unused; that is reported, not skipped.
+        assert sum(rule == "schema.unused" for rule, _ in messages) == len(VAULT_TYPES)
+
+    @pytest.mark.parametrize(
+        "layout, expected",
+        [
+            ({}, ["campaigns/ has no campaign_N directory"]),
+            (
+                {"seven": True, "campaign_x": True, "notes.md": False},
+                [
+                    "campaigns/ has no campaign_N directory",
+                    "campaigns/campaign_x is not a campaign_N directory",
+                    "campaigns/notes.md is not a campaign_N directory",
+                    "campaigns/seven is not a campaign_N directory",
+                ],
+            ),
+            ({"campaign_1": True, "campaign_42": True}, []),
+        ],
+    )
+    def test_campaign_entries(
+        self, tmp_path: Path, layout: dict[str, bool], expected: list[str]
+    ) -> None:
+        make_vault(tmp_path)
+        shutil.rmtree(tmp_path / "campaigns/campaign_1")
+        for name, directory in layout.items():
+            path = tmp_path / "campaigns" / name
+            if directory:
+                for relative in CAMPAIGN_DIRECTORIES:
+                    (path / relative).mkdir(parents=True)
+                for relative in CAMPAIGN_FILES:
+                    (path / relative).write_text("")
+            else:
+                path.write_text("")
+        result = validate_vault(tmp_path)
+        assert (
+            sorted(d.message for d in result if d.rule == "vault.campaign") == expected
+        )
+        assert not any(d.rule == "vault.required" for d in result)
+
+    def test_incomplete_campaign(self, tmp_path: Path) -> None:
+        make_vault(tmp_path)
+        shutil.rmtree(tmp_path / "campaigns/campaign_1/reference")
+        assert sorted(d.message for d in validate_vault(tmp_path)) == [
+            "required directory campaigns/campaign_1/reference/indexes is missing",
+            "required directory campaigns/campaign_1/reference/players is missing",
+            "required file campaigns/campaign_1/reference/Campaign.md is missing",
+            "required file campaigns/campaign_1/reference/indexes/Clues.md is missing",
+        ]
+
+    @pytest.mark.parametrize(
+        "change, expected",
+        [
+            (
+                {"reference/schemas/clue.schema.json": "{"},
+                [("schema.invalid", "reference/schemas/clue.schema.json: ")],
+            ),
+            (
+                {"reference/schemas/clue.schema.json": '{"type": 12}'},
+                [("schema.invalid", "reference/schemas/clue.schema.json: ")],
+            ),
+            (
+                {"reference/schemas/widget.schema.json": "true"},
+                [
+                    (
+                        "schema.unused",
+                        "reference/schemas/widget.schema.json matches no Type definition",
+                    )
+                ],
+            ),
+            (
+                {"reference/schemas/settings.json": "{}"},
+                [
+                    (
+                        "schema.unused",
+                        "reference/schemas/settings.json is not named <type>.schema.json",
+                    )
+                ],
+            ),
+            (
+                {"reference/types/Widget.md": ""},
+                [("schema.missing", "no vault-local schema for Widget")],
+            ),
+            (
+                {
+                    "reference/types/nested/Widget.md": "",
+                    "reference/schemas/widget.schema.json": "true",
+                },
+                [],
+            ),
+        ],
+    )
+    def test_schema_correspondence(
+        self, tmp_path: Path, change: dict[str, str], expected: list[tuple[str, str]]
+    ) -> None:
+        make_vault(tmp_path)
+        for relative, text in change.items():
+            path = tmp_path / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        result = validate_vault(tmp_path)
+        assert len(result) == len(expected)
+        for diagnostic, (rule, message) in zip(result, expected, strict=True):
+            assert (diagnostic.rule, diagnostic.message[: len(message)]) == (
+                rule,
+                message,
+            )
+
+    @pytest.mark.parametrize("name", ["example", "starter"])
+    def test_shipped_vaults(self, name: str) -> None:
+        root = Path(__file__).resolve().parents[1] / "vaults" / name
+        assert validate_vault(root) == []
