@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from armarium.cli import main, parse_args
-from armarium.lib import Diagnostic, Result, ValidationError
+from armarium.lib import Diagnostic, Result, ValidationError, VaultNotFoundError
 from armarium.logging import logger
 
 
@@ -178,6 +178,26 @@ class TestMain:
             with pytest.raises(ValidationError, match="1 file failed validation"):
                 main()
         assert "1 checked" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("directory", [False, True])
+    def test_loose_markdown_requires_context_only_for_file_targets(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        directory: bool,
+    ) -> None:
+        note = tmp_path / "README.md"
+        note.write_text("Repository documentation")
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "validate", str(tmp_path if directory else note)]
+        )
+        if directory:
+            assert main() is None
+            assert "0 checked, 0 skipped, 0 unsupported" in capsys.readouterr().err
+        else:
+            with pytest.raises(VaultNotFoundError):
+                main()
 
     @pytest.mark.parametrize("scenario", ["valid", "invalid", "missing"])
     def test_module_entry_point(

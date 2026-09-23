@@ -11,4 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-python
-      - run: armarium validate vaults/
+      - run: armarium validate .

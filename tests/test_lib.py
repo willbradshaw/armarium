@@ -440,3 +440,45 @@ class TestFindChildren:
             root.symlink_to(tmp_path, target_is_directory=True)
         with pytest.raises(ValueError, match="real directory"):
             find_children(root)
+
+
+class TestResultAddContext:
+    @pytest.mark.parametrize("context", ["vault", Path("parent/vault"), Path(".")])
+    @pytest.mark.parametrize("empty", [False, True])
+    def test_prefixes_paths_without_mutating_original(
+        self, context: str | Path, empty: bool
+    ) -> None:
+        findings = (
+            []
+            if empty
+            else [Diagnostic("nested/note.md", "rule", "Finding", field="type", line=3)]
+        )
+        original = Result(findings, checked=2, skipped=1, unsupported=1)
+        prefixed = original.add_context(context)
+        assert (prefixed.checked, prefixed.skipped, prefixed.unsupported) == (2, 1, 1)
+        assert (
+            prefixed is not original
+            and prefixed.diagnostics is not original.diagnostics
+        )
+        if not empty:
+            assert prefixed.diagnostics == [
+                Diagnostic(
+                    (Path(context) / "nested/note.md").as_posix(),
+                    "rule",
+                    "Finding",
+                    field="type",
+                    line=3,
+                )
+            ]
+            assert original.diagnostics[0].path == "nested/note.md"
+        else:
+            assert prefixed.diagnostics == []
+
+    def test_nested_contexts_keep_failed_files_distinct(self) -> None:
+        result = Result([Diagnostic("note.md", "rule", "Finding")], checked=1)
+        combined = result.add_context("a") + result.add_context("b")
+        assert combined.add_context("vaults").failed_files == 2
+        assert [d.path for d in combined.add_context("vaults").diagnostics] == [
+            "vaults/a/note.md",
+            "vaults/b/note.md",
+        ]

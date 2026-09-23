@@ -57,7 +57,7 @@ With Python 3.14+, install from this checkout and validate a record:
 ```sh
 python -m pip install .
 armarium validate path/to/record.md
-armarium validate vaults/
+armarium validate .
 ```
 
 See `armarium validate --help` for options and exit codes.

@@ -3,7 +3,7 @@
 import logging
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal
 
@@ -183,6 +183,23 @@ class Result:
             checked=self.checked + other.checked,
             skipped=self.skipped + other.skipped,
             unsupported=self.unsupported + other.unsupported,
+        )
+
+    def add_context(self, context: str | Path) -> "Result":
+        """Prefix diagnostic paths without changing this result.
+
+        Args:
+            context: Relative directory path to prepend to each diagnostic.
+
+        Returns:
+            Result: A new result with prefixed paths and unchanged counts.
+        """
+        return replace(
+            self,
+            diagnostics=[
+                replace(d, path=(Path(context) / d.path).as_posix())
+                for d in self.diagnostics
+            ],
         )
 
     def report(self) -> None:

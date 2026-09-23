@@ -395,9 +395,8 @@ class TestValidateDirectory:
             (root / "same.md").write_text("Untyped")
         (tmp_path / "README.md").write_text("Repository documentation")
         result = validate_directory(tmp_path)
-        assert result.checked == result.failed_files == 3
+        assert result.checked == result.failed_files == 2
         assert [(d.path, d.rule) for d in result.diagnostics] == [
-            ("README.md", "vault.context"),
             ("a/same.md", "record.type"),
             ("b/same.md", "record.type"),
         ]
@@ -514,15 +513,17 @@ class TestValidateDirectory:
         discover = Mock(wraps=find_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
         result = validate_directory(tmp_path)
-        assert result.checked == 2
+        assert result.checked == (2 if found else 0)
         diagnostics = result.diagnostics
-        assert {d.rule for d in diagnostics} == {
-            "record.type" if found else "vault.context"
-        }
-        assert {d.path for d in diagnostics} == {
-            "container/vault/records/first.md",
-            "container/vault/records/deep/second.md",
-        }
+        assert {d.rule for d in diagnostics} == ({"record.type"} if found else set())
+        assert {d.path for d in diagnostics} == (
+            {
+                "container/vault/records/first.md",
+                "container/vault/records/deep/second.md",
+            }
+            if found
+            else set()
+        )
         inferred = [
             call.args[0] for call in discover.call_args_list if len(call.args) == 1
         ]

@@ -94,8 +94,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
 
     Returns:
         Result: Aggregated findings and counts, with diagnostic paths relative
-            to the scanned directory. Files without inferable vault context
-            are errors. Empty directories succeed with zero counts. Templates
+            to the scanned directory. Markdown outside discovered vaults is
+            ignored. Empty directories succeed with zero counts. Templates
             receive the same parse-only handling as single-file validation.
 
     Raises:
@@ -108,25 +108,13 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         raise ValueError("directory validation requires a real directory")
     try:
         context = check_vault(path, vault) if vault is not None else find_vault(path)
-    except VaultNotFoundError as exc:
-        result = Result()
-        for child in find_children(path):
-            if child.is_dir():
-                checked = validate_directory(child)
-                checked = replace(
-                    checked,
-                    diagnostics=[
-                        replace(d, path=(Path(child.name) / d.path).as_posix())
-                        for d in checked.diagnostics
-                    ],
-                )
-                result += checked
-            elif child.is_file() and child.suffix.lower() == ".md":
-                result += Result(
-                    diagnostics=[Diagnostic(child.name, "vault.context", str(exc))],
-                    checked=1,
-                )
-        return result
+    except VaultNotFoundError:
+        results = [
+            validate_directory(child).add_context(child.name)
+            for child in find_children(path)
+            if child.is_dir()
+        ]
+        return sum(results, Result())
     return _validate_directory_files(path, context)
 
 

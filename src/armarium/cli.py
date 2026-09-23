@@ -32,7 +32,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "descendants of a directory without changing them. "
             "Missing types are errors; templates are skipped after parsing. "
             "Missing schemas produce partial-coverage warnings. "
-            "Directories infer vault context per file; missing context is an error. "
+            "Directory scans discover vaults and ignore Markdown outside them. "
+            "Explicit file targets require vault context or --vault. "
             "Hidden entries, __pycache__, node_modules and symlinks are excluded. "
             "Link and vault-structure checks are not supported yet."
         ),
