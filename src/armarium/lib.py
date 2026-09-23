@@ -185,22 +185,29 @@ class Result:
             unsupported=self.unsupported + other.unsupported,
         )
 
-    def add_context(self, context: str | Path) -> "Result":
-        """Prefix diagnostic paths without changing this result.
+    def add_context(
+        self, context: str | Path, *, relative_to: str | Path | None = None
+    ) -> "Result":
+        """Prefix or rebase diagnostic paths without changing this result.
 
         Args:
-            context: Relative directory path to prepend to each diagnostic.
+            context: Directory path to prepend to each diagnostic.
+            relative_to: Optional directory to express the resulting paths
+                relative to. Use the same absolute or relative basis as context.
 
         Returns:
-            Result: A new result with prefixed paths and unchanged counts.
+            Result: A new result with adjusted paths and unchanged counts.
+
+        Raises:
+            ValueError: A prefixed path is not beneath relative_to.
         """
-        return replace(
-            self,
-            diagnostics=[
-                replace(d, path=(Path(context) / d.path).as_posix())
-                for d in self.diagnostics
-            ],
-        )
+        diagnostics = []
+        for diagnostic in self.diagnostics:
+            path = Path(context) / diagnostic.path
+            if relative_to is not None:
+                path = path.relative_to(relative_to)
+            diagnostics.append(replace(diagnostic, path=path.as_posix()))
+        return replace(self, diagnostics=diagnostics)
 
     def report(self) -> None:
         """Report each finding in order, then log coverage counts at INFO."""

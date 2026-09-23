@@ -482,3 +482,28 @@ class TestResultAddContext:
             "vaults/a/note.md",
             "vaults/b/note.md",
         ]
+
+    @pytest.mark.parametrize(
+        ("base", "expected"),
+        [
+            (".", "vault/nested/note.md"),
+            ("vault", "nested/note.md"),
+            ("vault/nested", "note.md"),
+        ],
+    )
+    @pytest.mark.parametrize("absolute", [False, True])
+    def test_rebases_paths(
+        self, tmp_path: Path, base: str, expected: str, absolute: bool
+    ) -> None:
+        original = Result([Diagnostic("nested/note.md", "rule", "Finding")], checked=1)
+        context = tmp_path / "vault" if absolute else Path("vault")
+        relative_to = tmp_path / base if absolute else Path(base)
+        rebased = original.add_context(context, relative_to=relative_to)
+        assert rebased.diagnostics[0].path == expected
+        assert rebased.checked == 1
+        assert original.diagnostics[0].path == "nested/note.md"
+
+    def test_rejects_unrelated_base(self) -> None:
+        result = Result([Diagnostic("note.md", "rule", "Finding")])
+        with pytest.raises(ValueError):
+            result.add_context("vault", relative_to="elsewhere")

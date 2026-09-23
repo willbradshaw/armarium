@@ -1,6 +1,5 @@
 """Read-only entry points coordinating parsing and record validation."""
 
-from dataclasses import replace
 from pathlib import Path
 
 from armarium.lib import (
@@ -131,10 +130,4 @@ def _validate_directory_files(path: Path, vault: Path) -> Result:
     """
     files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
     result = sum((validate_markdown(file, vault) for file in files), Result())
-    return replace(
-        result,
-        diagnostics=[
-            replace(d, path=(vault / d.path).relative_to(path.resolve()).as_posix())
-            for d in result.diagnostics
-        ],
-    )
+    return result.add_context(vault, relative_to=path.resolve())
