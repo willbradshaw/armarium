@@ -15,6 +15,26 @@ from armarium.parse import Note
 from armarium.schemas import select_schema
 
 
+def validate(path: Path, vault: Path | None = None) -> Result:
+    """Validate a Markdown file or directory using the appropriate checks.
+
+    Args:
+        path: File or directory to validate.
+        vault: Optional explicit vault boundary, passed to the selected validator.
+
+    Returns:
+        Result: Findings and counts from file or recursive directory validation.
+
+    Raises:
+        ValueError: The target or explicit vault is invalid, or a file has no
+            inferable vault context.
+        OSError: Directory traversal fails.
+    """
+    if path.is_dir():
+        return validate_directory(path, vault)
+    return validate_markdown(path, vault)
+
+
 def validate_markdown(path: Path, vault: Path | None = None) -> Result:
     """Parse and schema-validate one supplied Markdown file.
 

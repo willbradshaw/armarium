@@ -12,6 +12,7 @@ import yaml
 
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.validate import (
+    validate,
     validate_directory,
     validate_markdown,
 )
@@ -530,3 +531,37 @@ class TestValidateDirectory:
         if not found:
             expected += [path / "records", path / "records/deep"]
         assert inferred == expected
+
+
+class TestValidate:
+    @pytest.mark.parametrize("directory", [False, True])
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_file_or_directory(
+        self, vault: Path, directory: bool, explicit: bool
+    ) -> None:
+        for name in ("first.md", "second.md"):
+            (vault / name).write_text("Untyped")
+        # An incomplete vault must work when the caller provides its context.
+        if explicit:
+            (vault / "reference/types").rmdir()
+        target = vault if directory else vault / "first.md"
+        result = validate(target, vault if explicit else None)
+        assert result.checked == result.failed_files == (2 if directory else 1)
+        assert {d.path for d in result.diagnostics} == (
+            {"first.md", "second.md"} if directory else {"first.md"}
+        )
+        assert {d.rule for d in result.diagnostics} == {"record.type"}
+
+    @pytest.mark.parametrize("kind", ["missing", "text", "file-link", "directory-link"])
+    def test_invalid_target(self, tmp_path: Path, kind: str) -> None:
+        target = tmp_path / "target.txt"
+        if kind == "text":
+            target.write_text("Text")
+        elif kind == "file-link":
+            original = tmp_path / "note.md"
+            original.write_text("Untyped")
+            target.symlink_to(original)
+        elif kind == "directory-link":
+            target.symlink_to(tmp_path, target_is_directory=True)
+        with pytest.raises(ValueError):
+            validate(target, tmp_path)

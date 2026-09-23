@@ -6,7 +6,7 @@ from pathlib import Path
 
 from armarium.lib import ValidationError
 from armarium.logging import configure_logging
-from armarium.validate import validate_directory, validate_markdown
+from armarium.validate import validate
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -60,7 +60,6 @@ def main() -> None:
     """
     args = parse_args()
     configure_logging()
-    validate = validate_directory if args.path.is_dir() else validate_markdown
     result = validate(args.path, args.vault)
     result.report()
     if result.failed:

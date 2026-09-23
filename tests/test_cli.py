@@ -130,7 +130,7 @@ class TestMain:
     ) -> None:
         from unittest.mock import Mock
 
-        monkeypatch.setattr("armarium.cli.validate_markdown", Mock(side_effect=error))
+        monkeypatch.setattr("armarium.cli.validate", Mock(side_effect=error))
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", "note.md"])
         with pytest.raises(type(error)) as exc:
             main()
@@ -150,7 +150,7 @@ class TestMain:
             for rule in ("first", "second")
         ] + [Diagnostic("warning.md", "warning", "Warning", severity="warning")]
         monkeypatch.setattr(
-            "armarium.cli.validate_markdown",
+            "armarium.cli.validate",
             Mock(return_value=Result(findings, checked=files + 1)),
         )
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", "note.md"])
