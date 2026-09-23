@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from armarium.index import VaultIndex
@@ -69,6 +69,12 @@ RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
         "prepared_npcs": Target("Content", frozenset({"NPC"}), local=True),
     },
 }
+# Fields inside a Content record's campaign_N block, bound to that campaign.
+CAMPAIGN_BLOCK_TARGETS = {
+    "first_session": Target("Session"),
+    "last_session": Target("Session"),
+}
+OBJECT_HOLDER = Target("Content", frozenset({"PC", "NPC", "Faction"}))
 
 
 def validate(path: Path, vault: Path | None = None) -> Result:
@@ -94,7 +100,7 @@ def validate(path: Path, vault: Path | None = None) -> Result:
 def validate_markdown(
     path: Path, vault: Path | None = None, *, index: VaultIndex | None = None
 ) -> Result:
-    """Parse and schema-validate one supplied Markdown file.
+    """Validate one Markdown record against its schema and vault context.
 
     Args:
         path: Existing Markdown file, absolute or relative to the working
@@ -117,7 +123,8 @@ def validate_markdown(
 
     Raises:
         ValueError: The target is not a regular Markdown file, is a symlink,
-            lies outside the selected vault or has no inferable vault.
+            lies outside the selected vault, has no inferable vault, or the
+            supplied index belongs to another vault.
     """
     if path.is_symlink() or not path.is_file() or path.suffix.lower() != ".md":
         raise ValueError("target must be a regular Markdown file, not a symlink")
@@ -164,6 +171,8 @@ def validate_markdown(
     diagnostics.extend(validate_wikilinks(note, index))
     diagnostics.extend(validate_placement(note, index))
     diagnostics.extend(validate_filename(note, index))
+    diagnostics.extend(validate_campaigns(note, index))
+    diagnostics.extend(validate_identity_links(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -215,8 +224,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
     """Check every link the note contains against the vault.
 
-    Links within a type-bound top-level field must target a correctly placed
-    record meeting that field's Target requirements; see _link_targets.
+    Links within a type-bound field must target a correctly placed record
+    meeting that field's Target requirements; see _link_targets.
 
     Args:
         note: Selected note inside the indexed vault.
@@ -229,38 +238,70 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
-    targets = _link_targets(note)
+    targets = _link_targets(note, index)
     diagnostics: list[Diagnostic] = []
     for link in note.links:
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
-            problem = validate_wikilink(
-                link.target, note, index, targets.get(link.field)
-            )
+            expected = _expected_target(targets, link.location)
+            problem = validate_wikilink(link.target, note, index, expected)
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
     return diagnostics
 
 
-def _link_targets(note: Note) -> dict[str, Target]:
+def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
     """Collect the Target requirements for a note's type-bound fields.
 
     Args:
-        note: Selected record whose type and subtype select the requirements.
+        note: Selected record whose type, subtype, status and campaign blocks
+            select the requirements.
+        index: Whole-vault index used to resolve the record's status.
 
     Returns:
-        dict[str, Target]: Requirements keyed by top-level field: the universal
-            fields, then those for the record's type and, when its subtype is a
-            string, for its (type, subtype). Custom fields are not interpreted
-            by name.
+        dict[str, Target]: Requirements keyed by frontmatter location: the
+            universal fields, those for the record's (type, subtype),
+            superseded_by for a Superseded Clue, and campaign_N block fields
+            bound to campaign_N. Custom fields are not interpreted by name.
     """
     kind = note.parsed_type or ""
     subtype = note.frontmatter.get("subtype")
     targets = LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
     if isinstance(subtype, str):
         targets |= RECORD_LINK_TARGETS.get((kind, subtype), {})
+    if kind == "Clue":
+        # Replacement metadata outside Superseded status remains deferred to #36.
+        status, _ = index.resolve_field(note, "status")
+        if status is not None and status.stem == "Superseded":
+            targets["superseded_by"] = Target("Clue", local=True)
+    if kind == "Content":
+        for field, value in note.frontmatter.items():
+            if re.fullmatch(r"campaign_[0-9]+", field) and isinstance(value, dict):
+                for key, target in CAMPAIGN_BLOCK_TARGETS.items():
+                    targets[f"{field}.{key}"] = replace(target, campaign=field)
+                if subtype == "Object":
+                    targets[f"{field}.held_by"] = replace(OBJECT_HOLDER, campaign=field)
     return targets
+
+
+def _expected_target(targets: dict[str, Target], location: str) -> Target | None:
+    """Find the requirement covering a link by its most specific location.
+
+    Args:
+        targets: Requirements keyed by frontmatter location.
+        location: The link's location, such as ``subjects.0``.
+
+    Returns:
+        Target | None: The requirement for the longest leading segment path of
+            the location, or None for body links and unconstrained fields.
+    """
+    parts = location.split(".")
+    for end in range(len(parts), 0, -1):
+        expected = targets.get(".".join(parts[:end]))
+        if expected is not None:
+            return expected
+    return None
 
 
 def validate_wikilink(
@@ -445,3 +486,75 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
             )
         ]
     return []
+
+
+def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check that a Content record's campaign blocks name usable campaigns.
+
+    Args:
+        note: Selected record; only Content records carry campaign_N blocks.
+        index: Index supplying the vault boundary.
+
+    Returns:
+        list[Diagnostic]: A campaign_N mapping whose directory does not exist,
+            or which differs from the campaign containing the record. Blocks
+            that are not mappings are left to schema validation.
+    """
+    if note.parsed_type != "Content":
+        return []
+    scope = find_campaign(note.path, index.root)
+    diagnostics: list[Diagnostic] = []
+    for field, block in note.frontmatter.items():
+        if not re.fullmatch(r"campaign_[0-9]+", field) or not isinstance(block, dict):
+            continue
+        directory = index.root / "campaigns" / field
+        if (
+            not directory.is_dir()
+            or directory.is_symlink()
+            or (scope is not None and scope != field)
+        ):
+            diagnostics.append(
+                Diagnostic(
+                    note.path.relative_to(index.root).as_posix(),
+                    "campaign.mismatch",
+                    "campaign block must name an existing campaign compatible "
+                    "with the record's location",
+                    field,
+                )
+            )
+    return diagnostics
+
+
+def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check the link that names a campaign Session's or Transcript's identity.
+
+    Args:
+        note: Selected record; templates are excluded by the caller.
+        index: Whole-vault index used to resolve the link.
+
+    Returns:
+        list[Diagnostic]: A Session whose campaign is not the containing
+            campaign's overview, a Transcript not named after its linked
+            Session plus " Transcript", or an identity link that cannot be
+            resolved. Records outside numeric campaigns and other types have
+            no identity link.
+    """
+    scope = find_campaign(note.path, index.root)
+    kind = note.parsed_type
+    if scope is None or kind not in {"Session", "Transcript"}:
+        return []
+    path = note.path.relative_to(index.root).as_posix()
+    field = "campaign" if kind == "Session" else "session"
+    resolved, error = index.resolve_field(note, field)
+    if error is not None:
+        message = f"cannot check {kind} identity: {error}"
+    elif kind == "Session":
+        if resolved == index.root / f"campaigns/{scope}/reference/Campaign.md":
+            return []
+        message = "campaign must link to the containing campaign overview"
+    elif resolved is not None and note.path.stem == f"{resolved.stem} Transcript":
+        return []
+    else:
+        message = "Transcript filename must match its linked Session plus ' Transcript'"
+    rule = "campaign.mismatch" if kind == "Session" else "record.identity"
+    return [Diagnostic(path, rule, message, field)]

@@ -17,11 +17,14 @@ from armarium.parse import Note
 from armarium.validate import (
     LINK_TARGETS,
     Target,
+    _expected_target,
     _link_targets,
     _validate_wikilink_status,
     validate,
+    validate_campaigns,
     validate_directory,
     validate_filename,
+    validate_identity_links,
     validate_markdown,
     validate_placement,
     validate_wikilink,
@@ -745,6 +748,15 @@ class TestTarget:
                 "content/Thing.md",
                 {
                     "type": "[[Content]]",
+                    "subtype": "Object",
+                    "campaign_42": {"held_by": "[[NPC1]]", "first_session": "[[PC1]]"},
+                },
+                [("link.type", "campaign_42.first_session")],
+            ),
+            (
+                "content/Thing.md",
+                {
+                    "type": "[[Content]]",
                     "custom": {"plays": "[[NPC1]]"},
                     "notes": "[[Far]]",
                 },
@@ -1142,10 +1154,214 @@ class TestLinkTargets:
             ),
             ({"type": "[[Status]]"}, {"applies_to": Target("Type")}),
             ({"type": "[[Status]]", "subtype": "Odd"}, {"applies_to": Target("Type")}),
+            (
+                {"type": "[[Clue]]", "status": "[[Superseded]]"},
+                {
+                    "subjects": Target("Content", local=True),
+                    "first_session": Target("Session", local=True),
+                    "last_session": Target("Session", local=True),
+                    "superseded_by": Target("Clue", local=True),
+                },
+            ),
+            (
+                {
+                    "type": "[[Content]]",
+                    "subtype": "Object",
+                    "campaign_42": {},
+                    "campaign_7": None,
+                    "campaign_extra": {},
+                },
+                {
+                    "campaign_42.first_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                    "campaign_42.last_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                    "campaign_42.held_by": Target(
+                        "Content", frozenset({"PC", "NPC", "Faction"}), "campaign_42"
+                    ),
+                },
+            ),
+            (
+                {"type": "[[Content]]", "subtype": "Lore", "campaign_42": {}},
+                {
+                    "campaign_42.first_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                    "campaign_42.last_session": Target(
+                        "Session", campaign="campaign_42"
+                    ),
+                },
+            ),
         ],
     )
     def test_targets(
         self, tmp_path: Path, metadata: dict[str, object], expected: dict[str, Target]
     ) -> None:
+        write_records(
+            tmp_path, {"reference/statuses/Superseded.md": 'type: "[[Status]]"'}
+        )
         note = Note(tmp_path / "selected.md", metadata, "", 1)
-        assert _link_targets(note) == LINK_TARGETS | expected
+        assert _link_targets(note, VaultIndex(tmp_path)) == LINK_TARGETS | expected
+
+
+class TestExpectedTarget:
+    @pytest.mark.parametrize(
+        "location, expected",
+        [
+            ("subjects", "subjects"),
+            ("subjects.0", "subjects"),
+            ("campaign_42.held_by.0", "campaign_42.held_by"),
+            ("campaign_42.other", None),
+            ("other", None),
+            ("", None),
+        ],
+    )
+    def test_lookup(self, location: str, expected: str | None) -> None:
+        targets = {
+            "subjects": Target("Content"),
+            "campaign_42.held_by": Target("Content", campaign="campaign_42"),
+        }
+        assert _expected_target(targets, location) == (
+            targets[expected] if expected else None
+        )
+
+
+class TestValidateCampaigns:
+    @pytest.mark.parametrize(
+        "relative, metadata, expected",
+        [
+            ("content/N.md", {"type": "[[Content]]", "campaign_42": {}}, []),
+            (
+                "campaigns/campaign_42/content/N.md",
+                {"type": "[[Content]]", "campaign_42": {}},
+                [],
+            ),
+            (
+                "campaigns/campaign_7/content/N.md",
+                {"type": "[[Content]]", "campaign_42": {}},
+                ["campaign_42"],
+            ),
+            ("content/N.md", {"type": "[[Content]]", "campaign_9": {}}, ["campaign_9"]),
+            (
+                "content/N.md",
+                {"type": "[[Content]]", "campaign_9": None, "campaign_extra": {}},
+                [],
+            ),
+            (
+                "campaigns/campaign_7/clues/C.md",
+                {"type": "[[Clue]]", "campaign_9": {}},
+                [],
+            ),
+        ],
+    )
+    def test_blocks(
+        self,
+        tmp_path: Path,
+        relative: str,
+        metadata: dict[str, object],
+        expected: list[str],
+    ) -> None:
+        (tmp_path / "campaigns/campaign_42").mkdir(parents=True)
+        (tmp_path / "campaigns/campaign_7").mkdir(parents=True)
+        note = Note(tmp_path / relative, metadata, "", 1)
+        result = validate_campaigns(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == [
+            ("campaign.mismatch", field) for field in expected
+        ]
+
+
+class TestValidateIdentityLinks:
+    @pytest.mark.parametrize(
+        "kind, name, target, expected",
+        [
+            ("Session", "S-42-002", "[[reference/Campaign]]", None),
+            (
+                "Session",
+                "S-42-002",
+                "[[reference/Other]]",
+                (
+                    "campaign.mismatch",
+                    "campaign must link to the containing campaign overview",
+                ),
+            ),
+            (
+                "Session",
+                "S-42-002",
+                "[[missing]]",
+                (
+                    "campaign.mismatch",
+                    "cannot check Session identity: cannot uniquely resolve [[missing]]",
+                ),
+            ),
+            (
+                "Session",
+                "S-42-002",
+                None,
+                (
+                    "campaign.mismatch",
+                    "cannot check Session identity: campaign must hold exactly one wikilink",
+                ),
+            ),
+            ("Transcript", "S-42-002 Transcript", "[[S-42-002]]", None),
+            (
+                "Transcript",
+                "S-42-003 Transcript",
+                "[[S-42-002]]",
+                (
+                    "record.identity",
+                    "Transcript filename must match its linked Session plus ' Transcript'",
+                ),
+            ),
+            (
+                "Transcript",
+                "S-42-003 Transcript",
+                "[[broken",
+                (
+                    "record.identity",
+                    "cannot check Transcript identity: use [[target]] with balanced "
+                    "double brackets on one line",
+                ),
+            ),
+        ],
+    )
+    def test_links(
+        self,
+        tmp_path: Path,
+        kind: str,
+        name: str,
+        target: str | None,
+        expected: tuple[str, str] | None,
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/reference/Campaign.md": 'type: "[[Reference]]"',
+                "campaigns/campaign_42/reference/Other.md": 'type: "[[Reference]]"',
+                "campaigns/campaign_42/sessions/S-42-002.md": 'type: "[[Session]]"',
+            },
+        )
+        field = "campaign" if kind == "Session" else "session"
+        note = Note(
+            tmp_path / f"campaigns/campaign_42/sessions/{name}.md",
+            {"type": f"[[{kind}]]", field: target},
+            "",
+            1,
+        )
+        result = validate_identity_links(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.message, d.field) for d in result] == (
+            [(*expected, field)] if expected else []
+        )
+
+    @pytest.mark.parametrize(
+        "kind, relative",
+        [
+            ("Content", "content/N.md"),
+            ("Session", "sessions/S-1-001.md"),
+            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md"),
+        ],
+    )
+    def test_no_identity_link(self, tmp_path: Path, kind: str, relative: str) -> None:
+        note = Note(tmp_path / relative, {"type": f"[[{kind}]]"}, "", 1)
+        assert validate_identity_links(note, VaultIndex(tmp_path)) == []
