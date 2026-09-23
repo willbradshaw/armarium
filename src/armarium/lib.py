@@ -167,6 +167,24 @@ class Result:
     skipped: int = 0
     unsupported: int = 0
 
+    def __add__(self, other: "Result") -> "Result":
+        """Combine two validation results without modifying either operand.
+
+        Args:
+            other: Result to combine with this one.
+
+        Returns:
+            Result: A new result with sorted diagnostics and summed counts.
+        """
+        if not isinstance(other, Result):
+            return NotImplemented
+        return Result(
+            diagnostics=sorted(self.diagnostics + other.diagnostics),
+            checked=self.checked + other.checked,
+            skipped=self.skipped + other.skipped,
+            unsupported=self.unsupported + other.unsupported,
+        )
+
     def report(self) -> None:
         """Report each finding in order, then log coverage counts at INFO."""
         for diagnostic in self.diagnostics:
@@ -205,6 +223,10 @@ class Result:
 # -----------------------------------------------------------------------------
 
 
+class VaultNotFoundError(ValueError):
+    """No enclosing vault has the required discovery markers."""
+
+
 def find_vault(path: Path, explicit: Path | None = None) -> Path:
     """Find the nearest enclosing vault or check an explicit vault boundary.
 
@@ -219,8 +241,9 @@ def find_vault(path: Path, explicit: Path | None = None) -> Path:
             campaigns directories; a repository marker alone is insufficient.
 
     Raises:
-        ValueError: No vault can be inferred, the explicit root is not a
-            directory, or the target resolves outside the selected vault.
+        VaultNotFoundError: No enclosing vault has the discovery markers.
+        ValueError: The explicit root is not a directory, or the target resolves
+            outside the selected vault.
     """
     target = path.absolute()
     if explicit is not None:
@@ -238,7 +261,7 @@ def find_vault(path: Path, explicit: Path | None = None) -> Path:
             if not target.resolve().is_relative_to(root):
                 raise ValueError("target escapes the inferred vault")
             return root
-    raise ValueError("cannot infer vault; supply --vault PATH")
+    raise VaultNotFoundError("cannot infer vault; supply --vault PATH")
 
 
 def find_files(root: Path) -> list[Path]:
@@ -256,17 +279,37 @@ def find_files(root: Path) -> list[Path]:
         ValueError: The root is a symlink or is not a directory.
         OSError: A directory cannot be read.
     """
-    if root.is_symlink() or not root.is_dir():
-        raise ValueError("file discovery requires a real directory")
     found: list[Path] = []
     pending = [root]
     while pending:
-        for path in pending.pop().iterdir():
-            if path.name.startswith(".") or path.is_symlink():
-                continue
+        for path in find_children(pending.pop()):
             if path.is_dir():
-                if path.name not in {"__pycache__", "node_modules"}:
-                    pending.append(path)
+                pending.append(path)
             elif path.is_file():
                 found.append(path)
     return sorted(found)
+
+
+def find_children(root: Path) -> list[Path]:
+    """List visible immediate children using the shared traversal exclusions.
+
+    Args:
+        root: Real directory to inspect; a symlink root is rejected.
+
+    Returns:
+        list[Path]: Sorted files and directories, excluding hidden entries,
+            symlinks and the __pycache__ and node_modules directories.
+
+    Raises:
+        ValueError: The root is a symlink or is not a directory.
+        OSError: The directory cannot be read.
+    """
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("file discovery requires a real directory")
+    return sorted(
+        path
+        for path in root.iterdir()
+        if not path.name.startswith(".")
+        and not path.is_symlink()
+        and not (path.is_dir() and path.name in {"__pycache__", "node_modules"})
+    )

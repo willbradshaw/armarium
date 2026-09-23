@@ -10,7 +10,9 @@ from armarium.lib import (
     Diagnostic,
     Result,
     ValidationError,
+    VaultNotFoundError,
     _find_wikilink_candidates,
+    find_children,
     find_files,
     find_vault,
     iter_wikilinks,
@@ -378,3 +380,60 @@ class TestValidationError:
         error = ValidationError("2 files failed validation")
         assert isinstance(error, Exception)
         assert str(error) == "2 files failed validation"
+
+
+class TestResultAdd:
+    @pytest.mark.parametrize("empty", [False, True])
+    def test_combines_without_mutating_inputs(self, empty: bool) -> None:
+        left = Result([Diagnostic("z.md", "z", "Error")], checked=1, skipped=2)
+        right = (
+            Result()
+            if empty
+            else Result(
+                [Diagnostic("a.md", "a", "Warning", severity="warning")],
+                checked=2,
+                unsupported=1,
+            )
+        )
+        combined = left + right
+        assert combined.checked == (1 if empty else 3)
+        assert combined.skipped == 2
+        assert combined.unsupported == (0 if empty else 1)
+        assert [d.path for d in combined.diagnostics] == (
+            ["z.md"] if empty else ["a.md", "z.md"]
+        )
+        assert sum([left, right], Result()) == combined
+        combined.diagnostics.clear()
+        assert len(left.diagnostics) == 1
+        assert len(right.diagnostics) == (0 if empty else 1)
+
+    def test_unsupported_operand(self) -> None:
+        assert Result().__add__(object()) is NotImplemented
+
+
+class TestVaultNotFoundError:
+    def test_discovery_failure_is_specific(self, tmp_path: Path) -> None:
+        with pytest.raises(VaultNotFoundError, match="cannot infer vault"):
+            find_vault(tmp_path)
+        assert isinstance(VaultNotFoundError("Missing"), ValueError)
+
+
+class TestFindChildren:
+    def test_sorted_immediate_children_and_exclusions(self, tmp_path: Path) -> None:
+        for name in ("folder", ".git", "__pycache__", "node_modules"):
+            (tmp_path / name).mkdir()
+            (tmp_path / name / "nested.md").write_text("nested")
+        (tmp_path / "a.md").write_text("visible")
+        (tmp_path / ".hidden.md").write_text("hidden")
+        (tmp_path / "link").symlink_to(tmp_path / "folder", target_is_directory=True)
+        assert find_children(tmp_path) == [tmp_path / "a.md", tmp_path / "folder"]
+
+    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
+    def test_invalid_root(self, tmp_path: Path, kind: str) -> None:
+        root = tmp_path / "root"
+        if kind == "file":
+            root.write_text("file")
+        elif kind == "symlink":
+            root.symlink_to(tmp_path, target_is_directory=True)
+        with pytest.raises(ValueError, match="real directory"):
+            find_children(root)

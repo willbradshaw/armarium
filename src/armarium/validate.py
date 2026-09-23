@@ -1,10 +1,16 @@
 """Read-only entry points coordinating parsing and record validation."""
 
-from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 
-from armarium.lib import Diagnostic, Result, find_files, find_vault
+from armarium.lib import (
+    Diagnostic,
+    Result,
+    VaultNotFoundError,
+    find_children,
+    find_files,
+    find_vault,
+)
 from armarium.parse import Note
 from armarium.schemas import select_schema
 
@@ -97,82 +103,63 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         OSError: Directory traversal fails. The scan does not claim completeness
             when part of the directory cannot be read.
     """
-    if vault is not None:
-        vault = find_vault(path, vault)
-    files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
-    root = path.resolve()
-    results = list(
-        _validate_files(files, vault, root)
-        if vault is not None
-        else _validate_tree(path, files, root)
-    )
-    return Result(
-        diagnostics=sorted(d for result in results for d in result.diagnostics),
-        checked=sum(result.checked for result in results),
-        skipped=sum(result.skipped for result in results),
-        unsupported=sum(result.unsupported for result in results),
-    )
-
-
-def _validate_tree(path: Path, files: list[Path], root: Path) -> Iterator[Result]:
-    """Descend through directories until a vault can be selected.
-
-    Args:
-        path: Directory at the current discovery step.
-        files: Visible Markdown descendants already collected by find_files.
-        root: Resolved scan root used to label diagnostics consistently.
-
-    Yields:
-        Result: File validation results, or context errors for files encountered
-            before a vault is found. Once selected, a vault applies to all its
-            descendants, including any nested vault directories.
-    """
-    if not files:
-        return
+    if path.is_symlink() or not path.is_dir():
+        raise ValueError("directory validation requires a real directory")
     try:
-        vault = find_vault(path)
-    except ValueError as exc:
-        # Group the existing file list instead of walking the filesystem again.
-        children: dict[Path, list[Path]] = {}
-        for file in files:
-            if file.parent == path:
-                yield Result(
-                    diagnostics=[
-                        Diagnostic(
-                            file.resolve().relative_to(root).as_posix(),
-                            "vault.context",
-                            str(exc),
-                        )
-                    ],
-                    checked=1,
-                )
-            else:
-                child = path / file.relative_to(path).parts[0]
-                children.setdefault(child, []).append(file)
-        for child, descendants in sorted(children.items()):
-            yield from _validate_tree(child, descendants, root)
-    else:
-        yield from _validate_files(files, vault, root)
+        context = find_vault(path, vault) if vault is not None else find_vault(path)
+    except VaultNotFoundError as exc:
+        return _validate_unscoped_directory(path, str(exc))
+    return _validate_directory_files(path, context)
 
 
-def _validate_files(files: list[Path], vault: Path, root: Path) -> Iterator[Result]:
-    """Validate files within one explicitly selected vault.
+def _validate_unscoped_directory(path: Path, message: str) -> Result:
+    """Recurse into child directories and report unscoped Markdown files.
 
     Args:
-        files: Markdown files to validate in their supplied order.
-        vault: Resolved vault root, passed explicitly to validate_markdown.
-        root: Resolved scan root used to label diagnostics consistently.
+        path: Directory for which vault discovery failed.
+        message: Explanation of the failed vault discovery.
 
-    Yields:
-        Result: Each file's findings and counts, with paths relative to root.
+    Returns:
+        Result: Combined child results with paths relative to this directory.
+            Direct Markdown children receive context errors, not exemptions.
+    """
+    result = Result()
+    for child in find_children(path):
+        if child.is_dir():
+            checked = validate_directory(child)
+            checked = replace(
+                checked,
+                diagnostics=[
+                    replace(d, path=(Path(child.name) / d.path).as_posix())
+                    for d in checked.diagnostics
+                ],
+            )
+            result += checked
+        elif child.is_file() and child.suffix.lower() == ".md":
+            result += Result(
+                diagnostics=[Diagnostic(child.name, "vault.context", message)],
+                checked=1,
+            )
+    return result
+
+
+def _validate_directory_files(path: Path, vault: Path) -> Result:
+    """Collect and validate Markdown files with an explicit vault context.
+
+    Args:
+        path: Directory whose visible Markdown descendants should be checked.
+        vault: Resolved vault root, passed explicitly to validate_markdown.
+
+    Returns:
+        Result: Summed file results with diagnostic paths relative to path.
             Per-file containment checks remain active.
     """
-    for file in files:
-        result = validate_markdown(file, vault)
-        yield replace(
-            result,
-            diagnostics=[
-                replace(d, path=(vault / d.path).relative_to(root).as_posix())
-                for d in result.diagnostics
-            ],
-        )
+    files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
+    result = sum((validate_markdown(file, vault) for file in files), Result())
+    return replace(
+        result,
+        diagnostics=[
+            replace(d, path=(vault / d.path).relative_to(path.resolve()).as_posix())
+            for d in result.diagnostics
+        ],
+    )

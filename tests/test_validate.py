@@ -12,8 +12,8 @@ import yaml
 
 from armarium.lib import Result, find_files, find_vault
 from armarium.validate import (
-    _validate_files,
-    _validate_tree,
+    _validate_directory_files,
+    _validate_unscoped_directory,
     validate_directory,
     validate_markdown,
 )
@@ -445,7 +445,8 @@ class TestValidateDirectory:
         from unittest.mock import Mock
 
         monkeypatch.setattr(
-            "armarium.validate.find_files", Mock(side_effect=PermissionError("denied"))
+            "armarium.validate.find_children",
+            Mock(side_effect=PermissionError("denied")),
         )
         with pytest.raises(PermissionError, match="denied"):
             validate_directory(tmp_path)
@@ -497,7 +498,7 @@ class TestValidateDirectory:
             assert len(contained) == 4
 
 
-class TestValidateTree:
+class TestValidateUnscopedDirectory:
     @pytest.mark.parametrize("found", [False, True])
     def test_discovers_once_per_vault_subtree(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, found: bool
@@ -514,9 +515,9 @@ class TestValidateTree:
             file.write_text("Untyped")
         discover = Mock(wraps=find_vault)
         monkeypatch.setattr("armarium.validate.find_vault", discover)
-        results = list(_validate_tree(tmp_path, files, tmp_path))
-        assert sum(r.checked for r in results) == 2
-        diagnostics = [d for r in results for d in r.diagnostics]
+        result = _validate_unscoped_directory(tmp_path, "No vault")
+        assert result.checked == 2
+        diagnostics = result.diagnostics
         assert {d.rule for d in diagnostics} == {
             "record.type" if found else "vault.context"
         }
@@ -527,16 +528,16 @@ class TestValidateTree:
         inferred = [
             call.args[0] for call in discover.call_args_list if len(call.args) == 1
         ]
-        expected = [tmp_path, tmp_path / "container", path]
+        expected = [tmp_path / "container", path]
         if not found:
             expected += [path / "records", path / "records/deep"]
         assert inferred == expected
 
     def test_empty_tree(self, tmp_path: Path) -> None:
-        assert list(_validate_tree(tmp_path, [], tmp_path)) == []
+        assert _validate_unscoped_directory(tmp_path, "No vault") == Result()
 
 
-class TestValidateFiles:
+class TestValidateDirectoryFiles:
     @pytest.mark.parametrize("outside", [False, True])
     def test_explicit_context_and_paths(self, tmp_path: Path, outside: bool) -> None:
         root = tmp_path / "vault"
@@ -545,9 +546,9 @@ class TestValidateFiles:
         file.write_text("Untyped")
         if outside:
             with pytest.raises(ValueError, match="inside the selected vault"):
-                list(_validate_files([file], root, tmp_path))
+                _validate_directory_files(tmp_path, root)
         else:
-            results = list(_validate_files([file], root, tmp_path))
-            assert len(results) == 1 and results[0].checked == 1
-            assert results[0].diagnostics[0].path == "vault/note.md"
-            assert results[0].diagnostics[0].rule == "record.type"
+            result = _validate_directory_files(tmp_path, root)
+            assert result.checked == 1
+            assert result.diagnostics[0].path == "vault/note.md"
+            assert result.diagnostics[0].rule == "record.type"
