@@ -11,7 +11,6 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
-    iter_wikilinks,
 )
 from armarium.parse import Note
 from armarium.schemas import select_schema
@@ -157,10 +156,7 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
 
 
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
-    """Check links in frontmatter strings and every Markdown body line.
-
-    Walk nested metadata here so link errors retain their field/list locations.
-    Body lines are scanned as written, including inline and fenced code.
+    """Check every link the note contains against the vault.
 
     Args:
         note: Selected note inside the indexed vault.
@@ -168,45 +164,19 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
     Returns:
         list[Diagnostic]: Findings attributed to the selected note, with metadata
-            fields or body source lines. Unrelated notes are not parsed. Heading
-            and block existence, query execution and ordinary URLs are excluded.
+            locations or body source lines. Unrelated notes are not parsed.
+            Heading and block existence, query execution and ordinary URLs are
+            excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
-    # Pop metadata first, then body lines in source order. Reverse children when
-    # adding them to the stack so nested mappings and lists retain their order.
-    pending: list[tuple[str, int, object]] = [
-        ("", number, text)
-        for number, text in reversed(
-            list(enumerate(note.body.splitlines(), note.body_start_line))
-        )
-    ]
-    pending.append(("", 0, note.frontmatter))
     diagnostics: list[Diagnostic] = []
-    while pending:
-        field, line, value = pending.pop()
-        if isinstance(value, dict):
-            pending.extend(
-                (f"{field}.{key}" if field else key, 0, item)
-                for key, item in reversed(value.items())
-            )
-            continue
-        if isinstance(value, list):
-            pending.extend(
-                (f"{field}.{number}", 0, value[number])
-                for number in reversed(range(len(value)))
-            )
-            continue
-        if not isinstance(value, str):
-            continue
-        for target in iter_wikilinks(value):
-            if isinstance(target, ValueError):
-                diagnostics.append(
-                    Diagnostic(path, "link.syntax", str(target), field, line)
-                )
-                continue
-            problem = validate_wikilink(target, note.path, index)
-            if problem is not None:
-                diagnostics.append(Diagnostic(path, *problem, field, line))
+    for link in note.links:
+        if link.error is not None:
+            problem: tuple[str, str] | None = ("link.syntax", link.error)
+        else:
+            problem = validate_wikilink(link.target, note.path, index)
+        if problem is not None:
+            diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
     return diagnostics
 
 
