@@ -351,6 +351,10 @@ def find_children(root: Path) -> list[Path]:
     )
 
 
+# Name of a campaign directory directly under campaigns/.
+CAMPAIGN_NAME = re.compile(r"campaign_[0-9]+")
+
+
 def find_campaign(path: Path, root: Path) -> str | None:
     """Identify a path's containing numeric campaign directory.
 
@@ -366,10 +370,6 @@ def find_campaign(path: Path, root: Path) -> str | None:
         ValueError: The path is not inside root.
     """
     parts = path.relative_to(root).parts
-    if (
-        len(parts) > 2
-        and parts[0] == "campaigns"
-        and re.fullmatch(r"campaign_[0-9]+", parts[1])
-    ):
+    if len(parts) > 2 and parts[0] == "campaigns" and CAMPAIGN_NAME.fullmatch(parts[1]):
         return parts[1]
     return None

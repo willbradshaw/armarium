@@ -7,6 +7,7 @@ from pathlib import Path
 
 from armarium.index import VaultIndex
 from armarium.lib import (
+    CAMPAIGN_NAME,
     Diagnostic,
     Result,
     VaultNotFoundError,
@@ -238,8 +239,9 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
-            expected = _expected_target(targets, link.location)
-            problem = validate_wikilink(link.target, note, index, expected)
+            problem = validate_wikilink(
+                link.target, note, index, targets.get(link.field)
+            )
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
     return diagnostics
@@ -271,7 +273,7 @@ def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
             targets["superseded_by"] = Target("Clue", local=True)
     if kind == "Content":
         for field, value in note.frontmatter.items():
-            if re.fullmatch(r"campaign_[0-9]+", field) and isinstance(value, dict):
+            if CAMPAIGN_NAME.fullmatch(field) and isinstance(value, dict):
                 # Block fields are bound to that block's campaign, not the record's.
                 targets[f"{field}.first_session"] = Target("Session", campaign=field)
                 targets[f"{field}.last_session"] = Target("Session", campaign=field)
@@ -280,25 +282,6 @@ def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
                         "Content", frozenset({"PC", "NPC", "Faction"}), field
                     )
     return targets
-
-
-def _expected_target(targets: dict[str, Target], location: str) -> Target | None:
-    """Find the requirement covering a link by its most specific location.
-
-    Args:
-        targets: Requirements keyed by frontmatter location.
-        location: The link's location, such as ``subjects.0``.
-
-    Returns:
-        Target | None: The requirement for the longest leading segment path of
-            the location, or None for body links and unconstrained fields.
-    """
-    parts = location.split(".")
-    for end in range(len(parts), 0, -1):
-        expected = targets.get(".".join(parts[:end]))
-        if expected is not None:
-            return expected
-    return None
 
 
 def validate_wikilink(
@@ -486,23 +469,35 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
 
 def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
-    """Check that a Content record's campaign blocks name usable campaigns.
+    """Check the record's campaign directory and any campaign_N blocks.
 
     Args:
         note: Selected record; only Content records carry campaign_N blocks.
         index: Index supplying the vault boundary.
 
     Returns:
-        list[Diagnostic]: A campaign_N mapping whose directory does not exist,
-            or which differs from the campaign containing the record. Blocks
-            that are not mappings are left to schema validation.
+        list[Diagnostic]: A record under campaigns/ that is not inside a
+            campaign_N directory, or a Content record's campaign_N mapping whose
+            directory does not exist or differs from the campaign containing
+            the record. Blocks that are not mappings are left to schema
+            validation.
     """
-    if note.parsed_type != "Content":
-        return []
-    scope = find_campaign(note.path, index.root)
+    relative = note.path.relative_to(index.root)
+    parts = relative.parts
     diagnostics: list[Diagnostic] = []
+    if parts[0] == "campaigns" and not CAMPAIGN_NAME.fullmatch(parts[1]):
+        diagnostics.append(
+            Diagnostic(
+                relative.as_posix(),
+                "campaign.name",
+                "records under campaigns/ belong inside a campaign_N directory",
+            )
+        )
+    if note.parsed_type != "Content":
+        return diagnostics
+    scope = find_campaign(note.path, index.root)
     for field, block in note.frontmatter.items():
-        if not re.fullmatch(r"campaign_[0-9]+", field) or not isinstance(block, dict):
+        if not CAMPAIGN_NAME.fullmatch(field) or not isinstance(block, dict):
             continue
         directory = index.root / "campaigns" / field
         if (
@@ -512,7 +507,7 @@ def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
         ):
             diagnostics.append(
                 Diagnostic(
-                    note.path.relative_to(index.root).as_posix(),
+                    relative.as_posix(),
                     "campaign.mismatch",
                     "campaign block must name an existing campaign compatible "
                     "with the record's location",

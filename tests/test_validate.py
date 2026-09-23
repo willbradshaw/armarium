@@ -17,7 +17,6 @@ from armarium.parse import Note
 from armarium.validate import (
     LINK_TARGETS,
     Target,
-    _expected_target,
     _link_targets,
     _validate_wikilink_status,
     validate,
@@ -1206,28 +1205,6 @@ class TestLinkTargets:
         assert _link_targets(note, VaultIndex(tmp_path)) == LINK_TARGETS | expected
 
 
-class TestExpectedTarget:
-    @pytest.mark.parametrize(
-        "location, expected",
-        [
-            ("subjects", "subjects"),
-            ("subjects.0", "subjects"),
-            ("campaign_42.held_by.0", "campaign_42.held_by"),
-            ("campaign_42.other", None),
-            ("other", None),
-            ("", None),
-        ],
-    )
-    def test_lookup(self, location: str, expected: str | None) -> None:
-        targets = {
-            "subjects": Target("Content"),
-            "campaign_42.held_by": Target("Content", campaign="campaign_42"),
-        }
-        assert _expected_target(targets, location) == (
-            targets[expected] if expected else None
-        )
-
-
 class TestValidateCampaigns:
     @pytest.mark.parametrize(
         "relative, metadata, expected",
@@ -1241,9 +1218,13 @@ class TestValidateCampaigns:
             (
                 "campaigns/campaign_7/content/N.md",
                 {"type": "[[Content]]", "campaign_42": {}},
-                ["campaign_42"],
+                [("campaign.mismatch", "campaign_42")],
             ),
-            ("content/N.md", {"type": "[[Content]]", "campaign_9": {}}, ["campaign_9"]),
+            (
+                "content/N.md",
+                {"type": "[[Content]]", "campaign_9": {}},
+                [("campaign.mismatch", "campaign_9")],
+            ),
             (
                 "content/N.md",
                 {"type": "[[Content]]", "campaign_9": None, "campaign_extra": {}},
@@ -1254,22 +1235,40 @@ class TestValidateCampaigns:
                 {"type": "[[Clue]]", "campaign_9": {}},
                 [],
             ),
+            (
+                "campaigns/seven/clues/C.md",
+                {"type": "[[Clue]]"},
+                [("campaign.name", "")],
+            ),
+            (
+                "campaigns/campaign_7.md",
+                {"type": "[[Reference]]"},
+                [("campaign.name", "")],
+            ),
+            (
+                "campaigns/campaign_x/content/N.md",
+                {"type": "[[Content]]", "campaign_9": {}},
+                [("campaign.name", ""), ("campaign.mismatch", "campaign_9")],
+            ),
+            (
+                "campaigns/campaign_7/reference/Campaign.md",
+                {"type": "[[Reference]]"},
+                [],
+            ),
         ],
     )
-    def test_blocks(
+    def test_campaigns(
         self,
         tmp_path: Path,
         relative: str,
         metadata: dict[str, object],
-        expected: list[str],
+        expected: list[tuple[str, str]],
     ) -> None:
         (tmp_path / "campaigns/campaign_42").mkdir(parents=True)
         (tmp_path / "campaigns/campaign_7").mkdir(parents=True)
         note = Note(tmp_path / relative, metadata, "", 1)
         result = validate_campaigns(note, VaultIndex(tmp_path))
-        assert [(d.rule, d.field) for d in result] == [
-            ("campaign.mismatch", field) for field in expected
-        ]
+        assert [(d.rule, d.field) for d in result] == expected
 
 
 class TestValidateIdentityLinks:
