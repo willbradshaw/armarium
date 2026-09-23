@@ -119,7 +119,7 @@ class Schema:
             )
             errors = sorted(
                 validator.iter_errors(
-                    {"frontmatter": note.frontmatter, "body": note.body}
+                    {"frontmatter": dict(note.frontmatter), "body": note.body.text}
                 ),
                 key=lambda e: str(list(e.absolute_path)),
             )
@@ -159,7 +159,7 @@ def select_schema(note: Note, root: Path) -> tuple[Schema | None, list[Diagnosti
     Raises:
         ValueError: The note has no canonical type or lies outside the vault.
     """
-    parsed_type = note.parsed_type
+    parsed_type = note.frontmatter.type
     if parsed_type is None:
         raise ValueError("schema selection requires a canonical note type")
     relative = note.path.absolute().relative_to(root.absolute()).as_posix()

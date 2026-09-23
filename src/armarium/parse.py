@@ -1,6 +1,8 @@
 """Safe frontmatter parsing with duplicate detection and JSON normalization."""
 
 import math
+import re
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
 from functools import cached_property
@@ -8,9 +10,11 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from markdown_it import MarkdownIt
+from markdown_it.token import Token
 from yaml.nodes import MappingNode
 
-from armarium.lib import Diagnostic, iter_wikilinks, parse_wikilink
+from armarium.lib import CAMPAIGN_NAME, Diagnostic, iter_wikilinks, parse_wikilink
 
 
 class FrontmatterLoader(yaml.SafeLoader):
@@ -129,87 +133,321 @@ class Link:
         return ".".join(part for part in self.location.split(".") if not part.isdigit())
 
 
-@dataclass(frozen=True)
-class Note:
-    """A note's parsed metadata, Markdown body and source location.
+class Frontmatter(Mapping[str, Any]):
+    """A note's parsed YAML metadata and what checks derive from it.
 
-    Attributes:
-        path: Source Markdown file path.
-        frontmatter: JSON-compatible YAML metadata, or an empty mapping when
-            the note has no frontmatter.
-        body: Markdown after the closing frontmatter delimiter, or the entire
-            file when frontmatter is absent.
-        body_start_line: One-based source-file line at which body begins. This
-            is 1 without frontmatter. A check at one-based body line N reports
-            source line ``body_start_line + N - 1``. For an empty body, this is
-            the line immediately after the closing delimiter.
+    Behaves as a read-only mapping of the JSON-compatible values produced by
+    FrontmatterLoader; an absent frontmatter is an empty mapping.
     """
 
-    path: Path
-    frontmatter: dict[str, Any]
-    body: str
-    body_start_line: int
+    def __init__(self, data: Mapping[str, Any] | None = None) -> None:
+        """Wrap parsed metadata.
 
-    @property
-    def parsed_type(self) -> str | None:
+        Args:
+            data: Top-level mapping of the note's frontmatter, if any.
+        """
+        self._data: dict[str, Any] = dict(data or {})
+
+    def __getitem__(self, key: str) -> Any:
+        return self._data[key]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"Frontmatter({self._data!r})"
+
+    @cached_property
+    def type(self) -> str | None:
         """Return the declared record type name without resolving its target.
 
         Returns:
-            str | None: The final path component of the canonical type wikilink,
-                without an optional .md extension, or None if type is absent or
-                malformed. For example, ``[[types/Content.md]]`` declares Content.
-                Whether the target is the correct type definition is a contextual
-                check.
+            str | None: The final path component of the canonical ``type``
+                wikilink, without an optional .md extension, or None if the
+                field is absent or malformed. ``[[types/Content.md]]`` declares
+                Content. Whether the target is the correct definition is a
+                contextual check.
         """
         # Missing/invalid type is classified by record validation; other callers
         # of the shared parser receive its ValueError directly.
         try:
-            target = parse_wikilink(self.frontmatter.get("type"), canonical=True)
+            target = parse_wikilink(self._data.get("type"), canonical=True)
         except ValueError:
             return None
         return target.removesuffix(".md").rsplit("/", 1)[-1] if target else None
 
     @cached_property
-    def links(self) -> list[Link]:
-        """Find every wikilink in frontmatter strings and Markdown body lines.
-
-        Nested mappings and lists are walked so each link keeps its location.
-        Body lines are scanned as written, including inline and fenced code.
+    def campaigns(self) -> dict[str, dict[str, Any]]:
+        """Return the campaign_N fields that hold mappings.
 
         Returns:
-            list[Link]: Frontmatter links in metadata order, then body links in
-                source order. Malformed link text is included with its error so
-                callers can report it. No target is resolved here.
+            dict[str, dict[str, Any]]: Campaign directory name to its block, in
+                frontmatter order. A campaign_N field holding anything else is
+                left for checks to report.
         """
-        # Pop metadata first, then body lines in source order. Reverse children
-        # when adding them to the stack so nested values retain their order.
-        pending: list[tuple[str, int, object]] = [
-            ("", number, text)
-            for number, text in reversed(
-                list(enumerate(self.body.splitlines(), self.body_start_line))
-            )
-        ]
-        pending.append(("", 0, self.frontmatter))
+        return {
+            key: value
+            for key, value in self._data.items()
+            if CAMPAIGN_NAME.fullmatch(key) and isinstance(value, dict)
+        }
+
+    @cached_property
+    def links(self) -> tuple[Link, ...]:
+        """Find every wikilink in the frontmatter's strings.
+
+        Nested mappings and lists are walked so each link keeps its location.
+
+        Returns:
+            tuple[Link, ...]: Links in metadata order, with malformed link text
+                included with its error. No target is resolved here.
+        """
+        # Reverse children when adding them to the stack so nested values
+        # retain their order.
+        pending: list[tuple[str, object]] = [("", self._data)]
         links: list[Link] = []
         while pending:
-            location, line, value = pending.pop()
+            location, value = pending.pop()
             if isinstance(value, dict):
                 pending.extend(
-                    (f"{location}.{key}" if location else key, 0, item)
+                    (f"{location}.{key}" if location else key, item)
                     for key, item in reversed(value.items())
                 )
             elif isinstance(value, list):
                 pending.extend(
-                    (f"{location}.{number}", 0, value[number])
+                    (f"{location}.{number}", value[number])
                     for number in reversed(range(len(value)))
                 )
             elif isinstance(value, str):
                 for target in iter_wikilinks(value):
                     if isinstance(target, ValueError):
-                        links.append(Link("", location, line, str(target)))
+                        links.append(Link("", location, 0, str(target)))
                     else:
-                        links.append(Link(target, location, line))
-        return links
+                        links.append(Link(target, location, 0))
+        return tuple(links)
+
+
+@dataclass(frozen=True)
+class Block:
+    """One block of Markdown inside a section or another block.
+
+    Attributes:
+        kind: paragraph, item, list, ordered_list, quote, code, table, rule,
+            html, heading or other.
+        line: One-based source line on which the block starts.
+        text: A paragraph's text with wrapped lines joined; an item's first
+            paragraph; code contents; heading text. Empty otherwise.
+        children: A list's items, an item's further blocks, a quote's blocks.
+        block_id: An Obsidian ``^id`` ending a paragraph or item, if any.
+    """
+
+    kind: str
+    line: int
+    text: str = ""
+    children: tuple["Block", ...] = ()
+    block_id: str | None = None
+
+
+@dataclass(frozen=True)
+class Section:
+    """A heading, the blocks beneath it and its subsections.
+
+    Attributes:
+        title: Heading text as written.
+        level: Heading level, 1 to 6.
+        line: One-based source line of the heading.
+        blocks: Top-level blocks between this heading and the next.
+        children: Subsections, nested by heading level.
+    """
+
+    title: str
+    level: int
+    line: int
+    blocks: tuple[Block, ...] = ()
+    children: tuple["Section", ...] = ()
+
+
+_BLOCK_ID = re.compile(r"^(.*?)\s*\^([A-Za-z0-9-]+)$", re.S)
+
+
+@dataclass(frozen=True)
+class Body:
+    """A note's Markdown after the frontmatter, with its links and structure.
+
+    Attributes:
+        text: Markdown after the closing frontmatter delimiter, or the entire
+            file when frontmatter is absent.
+        start_line: One-based source-file line at which text begins; 1 without
+            frontmatter, otherwise the line after the closing delimiter.
+    """
+
+    text: str
+    start_line: int
+
+    @cached_property
+    def links(self) -> tuple[Link, ...]:
+        """Find every wikilink in the body, line by line.
+
+        Lines are scanned as written, including inline and fenced code.
+
+        Returns:
+            tuple[Link, ...]: Links in source order with source line numbers;
+                malformed link text is included with its error.
+        """
+        links: list[Link] = []
+        for line, text in enumerate(self.text.splitlines(), self.start_line):
+            for target in iter_wikilinks(text):
+                if isinstance(target, ValueError):
+                    links.append(Link("", "", line, str(target)))
+                else:
+                    links.append(Link(target, "", line))
+        return tuple(links)
+
+    @cached_property
+    def sections(self) -> tuple[Section, ...]:
+        """Return the body's heading tree, parsed as CommonMark plus tables.
+
+        Returns:
+            tuple[Section, ...]: Top-level sections in document order, each
+                holding its blocks and nested subsections. Headings inside
+                fenced code do not count; setext headings do.
+        """
+        return self._structure[1]
+
+    @cached_property
+    def preamble(self) -> tuple[Block, ...]:
+        """Return the blocks before the first heading.
+
+        Returns:
+            tuple[Block, ...]: Top-level blocks preceding any heading.
+        """
+        return self._structure[0]
+
+    @cached_property
+    def _structure(self) -> tuple[tuple[Block, ...], tuple[Section, ...]]:
+        tokens = MarkdownIt("commonmark").enable("table").parse(self.text)
+        preamble: list[Block] = []
+        roots: list[dict[str, Any]] = []  # mutable section builders
+        stack: list[dict[str, Any]] = []
+        position = 0
+        while position < len(tokens):
+            token = tokens[position]
+            end = _matching_close(tokens, position)
+            if token.type == "heading_open":
+                level = int(token.tag[1])
+                section = {
+                    "title": tokens[position + 1].content,
+                    "level": level,
+                    "line": self._line(token),
+                    "blocks": [],
+                    "children": [],
+                }
+                while stack and stack[-1]["level"] >= level:
+                    stack.pop()
+                (stack[-1]["children"] if stack else roots).append(section)
+                stack.append(section)
+            else:
+                block = self._block(tokens, position, end)
+                (stack[-1]["blocks"] if stack else preamble).append(block)
+            position = end + 1
+        return tuple(preamble), tuple(_freeze(section) for section in roots)
+
+    def _line(self, token: Token) -> int:
+        return (token.map[0] if token.map else 0) + self.start_line
+
+    def _blocks(self, tokens: list[Token], start: int, end: int) -> tuple[Block, ...]:
+        """Build the blocks for the tokens in [start, end)."""
+        blocks: list[Block] = []
+        position = start
+        while position < end:
+            close = _matching_close(tokens, position)
+            blocks.append(self._block(tokens, position, close))
+            position = close + 1
+        return tuple(blocks)
+
+    def _block(self, tokens: list[Token], start: int, end: int) -> Block:
+        """Build one block from its opening token at start and closing at end."""
+        token = tokens[start]
+        line = self._line(token)
+        kind = token.type.removesuffix("_open")
+        if kind == "paragraph":
+            text, block_id = _split_block_id(tokens[start + 1].content)
+            return Block("paragraph", line, text, block_id=block_id)
+        if kind == "heading":
+            return Block("heading", line, tokens[start + 1].content)
+        if kind in {"bullet_list", "ordered_list"}:
+            name = "list" if kind == "bullet_list" else "ordered_list"
+            return Block(name, line, children=self._blocks(tokens, start + 1, end))
+        if kind == "list_item":
+            children = self._blocks(tokens, start + 1, end)
+            if children and children[0].kind == "paragraph":
+                first, children = children[0], children[1:]
+                return Block("item", line, first.text, children, first.block_id)
+            return Block("item", line, children=children)
+        if kind == "blockquote":
+            return Block("quote", line, children=self._blocks(tokens, start + 1, end))
+        if kind == "table":
+            return Block("table", line)
+        if kind in {"fence", "code_block"}:
+            return Block("code", line, token.content)
+        return Block({"hr": "rule", "html_block": "html"}.get(kind, "other"), line)
+
+
+def _matching_close(tokens: list[Token], position: int) -> int:
+    """Return the index closing the token at position; itself when self-closing."""
+    depth = 0
+    for index in range(position, len(tokens)):
+        depth += tokens[index].nesting
+        if depth == 0:
+            return index
+    raise ValueError("unbalanced Markdown token stream")
+
+
+def _split_block_id(text: str) -> tuple[str, str | None]:
+    """Separate a trailing Obsidian ^block-id from paragraph text."""
+    text = text.replace("\n", " ")
+    match = _BLOCK_ID.fullmatch(text)
+    if match is None:
+        return text, None
+    return match[1], match[2]
+
+
+def _freeze(section: dict[str, Any]) -> Section:
+    """Convert a section builder and its children into frozen Sections."""
+    return Section(
+        section["title"],
+        section["level"],
+        section["line"],
+        tuple(section["blocks"]),
+        tuple(_freeze(child) for child in section["children"]),
+    )
+
+
+@dataclass(frozen=True)
+class Note:
+    """A note's parsed frontmatter and body.
+
+    Attributes:
+        path: Source Markdown file path.
+        frontmatter: Parsed metadata, empty when the note has none.
+        body: Markdown after the frontmatter, with its source position.
+    """
+
+    path: Path
+    frontmatter: Frontmatter
+    body: Body
+
+    @property
+    def links(self) -> tuple[Link, ...]:
+        """Return every wikilink in the note.
+
+        Returns:
+            tuple[Link, ...]: Frontmatter links in metadata order, then body
+                links in source order. No target is resolved here.
+        """
+        return self.frontmatter.links + self.body.links
 
     @classmethod
     def parse(cls, path: Path, root: Path) -> tuple["Note | None", list[Diagnostic]]:
@@ -238,7 +476,7 @@ class Note:
             text = path.read_text(encoding="utf-8-sig")
             lines = text.splitlines(keepends=True)
             if not lines or lines[0].strip() != "---":
-                return cls(path, {}, text, 1), []
+                return cls(path, Frontmatter(), Body(text, 1)), []
             end = next(
                 (i for i in range(1, len(lines)) if lines[i].strip() == "---"), None
             )
@@ -249,7 +487,8 @@ class Note:
                 data = {}
             if not isinstance(data, dict):
                 raise ValueError("frontmatter must be a mapping")
-            return cls(path, data, "".join(lines[end + 1 :]), end + 2), []
+            body = Body("".join(lines[end + 1 :]), end + 2)
+            return cls(path, Frontmatter(data), body), []
         except (
             OSError,
             UnicodeError,

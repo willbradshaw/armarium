@@ -180,7 +180,7 @@ def validate_markdown(
             ],
             skipped=1,
         )
-    if note.parsed_type is None:
+    if note.frontmatter.type is None:
         return Result(
             diagnostics=[
                 Diagnostic(
@@ -390,7 +390,7 @@ def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
             superseded_by for a Superseded Clue, and campaign_N block fields
             bound to campaign_N. Custom fields are not interpreted by name.
     """
-    kind = note.parsed_type or ""
+    kind = note.frontmatter.type or ""
     subtype = note.frontmatter.get("subtype")
     targets = LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
     if isinstance(subtype, str):
@@ -401,15 +401,14 @@ def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
         if status is not None and status.stem == "Superseded":
             targets["superseded_by"] = Target("Clue", local=True)
     if kind == "Content":
-        for field, value in note.frontmatter.items():
-            if CAMPAIGN_NAME.fullmatch(field) and isinstance(value, dict):
-                # Block fields are bound to that block's campaign, not the record's.
-                targets[f"{field}.first_session"] = Target("Session", campaign=field)
-                targets[f"{field}.last_session"] = Target("Session", campaign=field)
-                if subtype == "Object":
-                    targets[f"{field}.held_by"] = Target(
-                        "Content", frozenset({"PC", "NPC", "Faction"}), field
-                    )
+        for field in note.frontmatter.campaigns:
+            # Block fields are bound to that block's campaign, not the record's.
+            targets[f"{field}.first_session"] = Target("Session", campaign=field)
+            targets[f"{field}.last_session"] = Target("Session", campaign=field)
+            if subtype == "Object":
+                targets[f"{field}.held_by"] = Target(
+                    "Content", frozenset({"PC", "NPC", "Faction"}), field
+                )
     return targets
 
 
@@ -446,7 +445,7 @@ def validate_wikilink(
     kind = expected.record_type
     if (
         linked is None
-        or linked.parsed_type != kind
+        or linked.frontmatter.type != kind
         or validate_placement(linked, index)
     ):
         return "link.type", f"[[{target}]] must link to a placed {kind} record"
@@ -494,7 +493,7 @@ def _validate_wikilink_status(
         return None
     return (
         "status.applicability",
-        f"status does not apply to {note.parsed_type} records",
+        f"status does not apply to {note.frontmatter.type} records",
     )
 
 
@@ -515,7 +514,7 @@ def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
         list[Diagnostic]: A placement error for a misplaced built-in type.
             Unknown custom types and Reference records have no placement rule.
     """
-    kind = note.parsed_type
+    kind = note.frontmatter.type
     directories = {
         "Content": "content",
         "Session": "sessions",
@@ -568,7 +567,7 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
             types have no filename rule.
     """
     scope = find_campaign(note.path, index.root)
-    kind = note.parsed_type
+    kind = note.frontmatter.type
     if kind not in {"Session", "Clue", "Transcript"}:
         return []
     path = note.path.relative_to(index.root).as_posix()
@@ -629,7 +628,7 @@ def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
                 "records under campaigns/ belong inside a campaign_N directory",
             )
         )
-    if note.parsed_type != "Content":
+    if note.frontmatter.type != "Content":
         return diagnostics
     scope = find_campaign(note.path, index.root)
     for field, block in note.frontmatter.items():
@@ -677,7 +676,7 @@ def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
             identity link.
     """
     scope = find_campaign(note.path, index.root)
-    kind = note.parsed_type
+    kind = note.frontmatter.type
     if kind not in {"Session", "Transcript"}:
         return []
     path = note.path.relative_to(index.root).as_posix()

@@ -9,7 +9,7 @@ import pytest
 from jsonschema.exceptions import SchemaError
 from referencing.exceptions import NoSuchResource
 
-from armarium.parse import Note
+from armarium.parse import Body, Frontmatter, Note
 from armarium.schemas import Schema, select_schema
 
 
@@ -35,9 +35,8 @@ def write_schema(root: Path) -> Callable[..., Path]:
 def note(root: Path) -> Note:
     return Note(
         root / "content/Example.md",
-        {"type": "[[types/Widget]]", "name": "Example"},
-        "## Notes\n",
-        5,
+        Frontmatter({"type": "[[types/Widget]]", "name": "Example"}),
+        Body("## Notes\n", 5),
     )
 
 
@@ -197,7 +196,9 @@ class TestSchemaValidate:
         outside: bool,
     ) -> None:
         schema = Schema.load(write_schema(True), root)
-        note = Note((tmp_path if outside else root) / "note.md", {}, "", 1)
+        note = Note(
+            (tmp_path if outside else root) / "note.md", Frontmatter({}), Body("", 1)
+        )
         if outside:
             with pytest.raises(ValueError):
                 schema.validate(note)
@@ -225,7 +226,7 @@ class TestSchemaValidate:
         )
         assert path.read_bytes() == before
         assert note.frontmatter == {"type": "[[types/Widget]]", "name": "Example"}
-        assert note.body == "## Notes\n"
+        assert note.body.text == "## Notes\n"
 
     @pytest.mark.parametrize(
         ("schema", "field"),
@@ -301,7 +302,9 @@ class TestSchemaValidate:
         external: bool,
         valid: bool,
     ) -> None:
-        target = {"properties": {"body": {"const": note.body if valid else "Other"}}}
+        target = {
+            "properties": {"body": {"const": note.body.text if valid else "Other"}}
+        }
         if external:
             write_schema(target, "nested dir/helper.json")
             schema = {"$ref": "nested%20dir/helper.json"}
@@ -341,7 +344,11 @@ class TestSelectSchema:
         monkeypatch.chdir(root.parent)
         selected_root = Path(root.name) if relative else root
         selected_note = (
-            Note(note.path.relative_to(root.parent), note.frontmatter, note.body, 1)
+            Note(
+                note.path.relative_to(root.parent),
+                note.frontmatter,
+                Body(note.body.text, 1),
+            )
             if relative
             else note
         )
@@ -391,9 +398,8 @@ class TestSelectSchema:
     ) -> None:
         invalid = Note(
             tmp_path / "outside.md" if problem == "outside-vault" else note.path,
-            {} if problem == "missing-type" else note.frontmatter,
-            note.body,
-            1,
+            Frontmatter({}) if problem == "missing-type" else note.frontmatter,
+            Body(note.body.text, 1),
         )
         with pytest.raises(ValueError):
             select_schema(invalid, root)
@@ -405,7 +411,7 @@ class TestSelectSchema:
         other = tmp_path / "other"
         (other / "reference/schemas").mkdir(parents=True)
         (other / "reference/schemas/widget.schema.json").write_text("true")
-        other_note = Note(other / "note.md", note.frontmatter, note.body, 1)
+        other_note = Note(other / "note.md", note.frontmatter, Body(note.body.text, 1))
         for selected_note, selected_root, expected in [
             (note, root, False),
             (other_note, other, True),
@@ -433,7 +439,11 @@ class TestSelectSchema:
             "base"
         ]
         root = Path(f"vaults/{vault}")
-        note = Note(root / "record.md", fixture["frontmatter"], fixture["body"], 1)
+        note = Note(
+            root / "record.md",
+            Frontmatter(fixture["frontmatter"]),
+            Body(fixture["body"], 1),
+        )
         schema, diagnostics = select_schema(note, root)
         assert diagnostics == [] and schema is not None
         assert schema.validate(note) == []

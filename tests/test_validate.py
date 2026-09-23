@@ -13,7 +13,7 @@ import yaml
 
 from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
-from armarium.parse import Note
+from armarium.parse import Body, Frontmatter, Note
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
@@ -718,7 +718,7 @@ class TestValidateWikilinks:
             "image.png": "asset",
         }.items():
             (tmp_path / name).write_text(body)
-        note = Note(tmp_path / "selected.md", {}, text, 5)
+        note = Note(tmp_path / "selected.md", Frontmatter({}), Body(text, 5))
         result = validate_wikilinks(note, VaultIndex(tmp_path))
         assert [d.rule for d in result] == ([rule] if rule else [])
         if result:
@@ -728,9 +728,8 @@ class TestValidateWikilinks:
     def test_metadata_and_recovery(self, tmp_path: Path) -> None:
         note = Note(
             tmp_path / "selected.md",
-            {"nested": ["[[missing]]"]},
-            "[[broken [[other]]",
-            8,
+            Frontmatter({"nested": ["[[missing]]"]}),
+            Body("[[broken [[other]]", 8),
         )
         result = validate_wikilinks(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field, d.line) for d in result] == [
@@ -778,7 +777,7 @@ class TestValidateWikilinks:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(tmp_path / "selected.md", metadata, "", 1)
+        note = Note(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
         result = validate_wikilinks(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == expected
 
@@ -838,7 +837,7 @@ class TestTarget:
                 "campaigns/campaign_7/content/Far.md": 'type: "[[Content]]"\nsubtype: Lore',
             },
         )
-        note = Note(tmp_path / relative, metadata, "", 1)
+        note = Note(tmp_path / relative, Frontmatter(metadata), Body("", 1))
         result = validate_wikilinks(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == expected
 
@@ -868,7 +867,7 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body)
-        note = Note(tmp_path / "selected.md", {}, "", 1)
+        note = Note(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
         expected = Target(record_type) if record_type else None
         problem = validate_wikilink(target, note, VaultIndex(tmp_path), expected)
         assert (problem[0] if problem else None) == rule
@@ -893,7 +892,7 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(tmp_path / "selected.md", {}, "", 1)
+        note = Note(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
         expected = Target("Content", frozenset(subtypes))
         problem = validate_wikilink("Target", note, VaultIndex(tmp_path), expected)
         assert (problem[0] if problem else None) == rule
@@ -990,7 +989,7 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(tmp_path / source, {}, "", 1)
+        note = Note(tmp_path / source, Frontmatter({}), Body("", 1))
         problem = validate_wikilink(
             Path(relative).stem, note, VaultIndex(tmp_path), expected
         )
@@ -1032,7 +1031,7 @@ class TestValidateWikilink:
             path.parent.mkdir(exist_ok=True)
             path.write_text(body)
         index = VaultIndex(tmp_path)
-        note = Note(tmp_path / "selected.md", {}, "", 1)
+        note = Note(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
         assert validate_wikilink(target, note, index) == expected
         parsed = {"target": "target.md", "bad": "bad.md"}.get(target)
         assert set(index.notes) == ({tmp_path / parsed} if parsed else set())
@@ -1070,7 +1069,9 @@ class TestValidatePlacement:
     def test_placement(
         self, tmp_path: Path, kind: str, relative: str, valid: bool
     ) -> None:
-        note = Note(tmp_path / relative, {"type": f"[[{kind}]]"}, "", 1)
+        note = Note(
+            tmp_path / relative, Frontmatter({"type": f"[[{kind}]]"}), Body("", 1)
+        )
         result = validate_placement(note, VaultIndex(tmp_path))
         assert [d.rule for d in result] == ([] if valid else ["record.placement"])
         if result:
@@ -1109,9 +1110,8 @@ class TestValidateFilename:
     ) -> None:
         note = Note(
             tmp_path / relative,
-            {"type": f"[[{kind}]]", "session_number": ordinal},
-            "",
-            1,
+            Frontmatter({"type": f"[[{kind}]]", "session_number": ordinal}),
+            Body("", 1),
         )
         result = validate_filename(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == (
@@ -1184,7 +1184,9 @@ class TestValidateWikilinkStatus:
         index = VaultIndex(tmp_path)
         status, _ = index.parse(tmp_path / "reference/statuses/Pending.md")
         assert status is not None
-        note = Note(tmp_path / "selected.md", {"type": record_type}, "", 1)
+        note = Note(
+            tmp_path / "selected.md", Frontmatter({"type": record_type}), Body("", 1)
+        )
         problem = _validate_wikilink_status(status, note, index)
         assert problem == (("status.applicability", message) if message else None)
 
@@ -1263,7 +1265,7 @@ class TestLinkTargets:
         write_records(
             tmp_path, {"reference/statuses/Superseded.md": 'type: "[[Status]]"'}
         )
-        note = Note(tmp_path / "selected.md", metadata, "", 1)
+        note = Note(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
         assert _link_targets(note, VaultIndex(tmp_path)) == LINK_TARGETS | expected
 
 
@@ -1333,7 +1335,7 @@ class TestValidateCampaigns:
     ) -> None:
         (tmp_path / "campaigns/campaign_42").mkdir(parents=True)
         (tmp_path / "campaigns/campaign_7").mkdir(parents=True)
-        note = Note(tmp_path / relative, metadata, "", 1)
+        note = Note(tmp_path / relative, Frontmatter(metadata), Body("", 1))
         result = validate_campaigns(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == expected
 
@@ -1411,9 +1413,8 @@ class TestValidateIdentityLinks:
         field = "campaign" if kind == "Session" else "session"
         note = Note(
             tmp_path / f"campaigns/campaign_42/sessions/{name}.md",
-            {"type": f"[[{kind}]]", field: target},
-            "",
-            1,
+            Frontmatter({"type": f"[[{kind}]]", field: target}),
+            Body("", 1),
         )
         result = validate_identity_links(note, VaultIndex(tmp_path))
         assert [(d.rule, d.message, d.field) for d in result] == (
@@ -1452,7 +1453,9 @@ class TestValidateIdentityLinks:
         relative: str,
         expected: tuple[str, str, str] | None,
     ) -> None:
-        note = Note(tmp_path / relative, {"type": f"[[{kind}]]"}, "", 1)
+        note = Note(
+            tmp_path / relative, Frontmatter({"type": f"[[{kind}]]"}), Body("", 1)
+        )
         result = validate_identity_links(note, VaultIndex(tmp_path))
         assert [(d.rule, d.message, d.field) for d in result] == (
             [expected] if expected else []
