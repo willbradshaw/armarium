@@ -18,9 +18,9 @@ class TestCheckLinks:
             ("[[same]]", "link.ambiguous"),
             ("[[bad]]", "link.malformed"),
             ("[[broken", "link.syntax"),
-            ("```markdown\n[[missing]]\n```", None),
+            ("```markdown\n[[missing]]\n```", "link.missing"),
             ("```dataview\n[[missing]]\n```", "link.missing"),
-            ("`[[missing]]`", None),
+            ("`[[missing]]`", "link.missing"),
             ("`= [[missing]].text`", "link.missing"),
         ],
     )
@@ -59,3 +59,58 @@ class TestCheckLinks:
             ("link.syntax", "", 8),
             ("link.missing", "", 8),
         ]
+
+    @pytest.mark.parametrize(
+        "metadata, expected",
+        [
+            (
+                {"subjects": ["[[First]]", "[[Second]]"]},
+                [("link.missing", "subjects.0"), ("link.missing", "subjects.1")],
+            ),
+            (
+                {"campaign_1": {"first_session": "[[Session]]"}},
+                [("link.missing", "campaign_1.first_session")],
+            ),
+            (
+                {
+                    "custom": [None, {"links": [["[[Nested]]"]]}, "[[Last]]"],
+                    "after": "[[After]]",
+                },
+                [
+                    ("link.missing", "custom.1.links.0.0"),
+                    ("link.missing", "custom.2"),
+                    ("link.missing", "after"),
+                ],
+            ),
+            (
+                {
+                    "count": 1,
+                    "flag": False,
+                    "fraction": 1.5,
+                    "empty": None,
+                    "list": [],
+                    "mapping": {},
+                    "summary": "plain text",
+                },
+                [],
+            ),
+            (
+                {"subjects": ["[[broken", "[[Missing]]"]},
+                [("link.syntax", "subjects.0"), ("link.missing", "subjects.1")],
+            ),
+        ],
+    )
+    def test_frontmatter_locations(
+        self,
+        tmp_path: Path,
+        metadata: dict[str, object],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        from copy import deepcopy
+
+        original = deepcopy(metadata)
+        note = Note(tmp_path / "selected.md", metadata, "", 1)
+        result = check_links(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == expected
+        assert all(d.path == "selected.md" and d.line == 0 for d in result)
+        assert note.frontmatter == original
