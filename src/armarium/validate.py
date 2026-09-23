@@ -114,20 +114,6 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
             if child.is_dir()
         ]
         return sum(results, Result())
-    return _validate_directory_files(path, context)
-
-
-def _validate_directory_files(path: Path, vault: Path) -> Result:
-    """Collect and validate Markdown files with an explicit vault context.
-
-    Args:
-        path: Directory whose visible Markdown descendants should be checked.
-        vault: Resolved vault root, passed explicitly to validate_markdown.
-
-    Returns:
-        Result: Summed file results with diagnostic paths relative to path.
-            Per-file containment checks remain active.
-    """
     files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
-    result = sum((validate_markdown(file, vault) for file in files), Result())
-    return result.add_context(vault, relative_to=path.resolve())
+    result = sum((validate_markdown(file, context) for file in files), Result())
+    return result.add_context(context, relative_to=path.resolve())

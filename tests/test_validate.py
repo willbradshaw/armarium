@@ -12,7 +12,6 @@ import yaml
 
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.validate import (
-    _validate_directory_files,
     validate_directory,
     validate_markdown,
 )
@@ -531,20 +530,3 @@ class TestValidateDirectory:
         if not found:
             expected += [path / "records", path / "records/deep"]
         assert inferred == expected
-
-
-class TestValidateDirectoryFiles:
-    @pytest.mark.parametrize("outside", [False, True])
-    def test_explicit_context_and_paths(self, tmp_path: Path, outside: bool) -> None:
-        root = tmp_path / "vault"
-        root.mkdir()
-        file = (tmp_path if outside else root) / "note.md"
-        file.write_text("Untyped")
-        if outside:
-            with pytest.raises(ValueError, match="inside the selected vault"):
-                _validate_directory_files(tmp_path, root)
-        else:
-            result = _validate_directory_files(tmp_path, root)
-            assert result.checked == 1
-            assert result.diagnostics[0].path == "vault/note.md"
-            assert result.diagnostics[0].rule == "record.type"
