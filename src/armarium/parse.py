@@ -1,6 +1,7 @@
 """Safe frontmatter parsing with duplicate detection and JSON normalization."""
 
 import math
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -117,6 +118,37 @@ class Note:
     frontmatter: dict[str, Any]
     body: str
     body_start_line: int
+
+    def iter_frontmatter_strings(self) -> Iterator[tuple[str, str]]:
+        """Find frontmatter strings and their locations for link validation.
+
+        Walk nested mappings and lists in their original order. Strings are
+        yielded unchanged, whether or not they contain links; other scalars
+        such as numbers, booleans and null are ignored. The note is not modified.
+
+        Yields:
+            tuple[str, str]: A dotted field location and its string value.
+                For example, subjects: ["[[Harbour]]"] yields
+                ("subjects.0", "[[Harbour]]"). List indices start at zero;
+                a nested mapping can yield "campaign_1.first_session". These
+                locations label diagnostics, rather than representing YAML
+                syntax or source line numbers.
+        """
+        pending: list[tuple[str, object]] = list(reversed(self.frontmatter.items()))
+        while pending:
+            field, value = pending.pop()
+            if isinstance(value, str):
+                yield field, value
+            elif isinstance(value, dict):
+                # Push children in reverse so the stack visits them in source order.
+                pending.extend(
+                    (f"{field}.{key}", item) for key, item in reversed(value.items())
+                )
+            elif isinstance(value, list):
+                pending.extend(
+                    (f"{field}.{index}", value[index])
+                    for index in reversed(range(len(value)))
+                )
 
     @property
     def parsed_type(self) -> str | None:

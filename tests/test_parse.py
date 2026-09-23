@@ -331,3 +331,57 @@ class TestNoteParse:
         note, diagnostics = Note.parse(path, tmp_path)
         assert note is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "parse.invalid"
+
+
+class TestNoteIterFrontmatterStrings:
+    @pytest.mark.parametrize(
+        "metadata, expected",
+        [
+            ({}, []),
+            (
+                {"summary": "Plain text", "empty": ""},
+                [("summary", "Plain text"), ("empty", "")],
+            ),
+            (
+                {"subjects": ["[[Harbour]]", "[[Guild]]"]},
+                [("subjects.0", "[[Harbour]]"), ("subjects.1", "[[Guild]]")],
+            ),
+            (
+                {"campaign_1": {"first_session": "[[S-1-001]]", "last_session": None}},
+                [("campaign_1.first_session", "[[S-1-001]]")],
+            ),
+            (
+                {
+                    "items": [None, {"links": ["[[One]]", ["[[Two]]"]]}, "last"],
+                    "after": "end",
+                },
+                [
+                    ("items.1.links.0", "[[One]]"),
+                    ("items.1.links.1.0", "[[Two]]"),
+                    ("items.2", "last"),
+                    ("after", "end"),
+                ],
+            ),
+            (
+                {
+                    "count": 3,
+                    "fraction": 1.5,
+                    "flag": True,
+                    "unknown": None,
+                    "list": [],
+                    "mapping": {},
+                },
+                [],
+            ),
+        ],
+    )
+    def test_strings_and_locations(
+        self, metadata: dict[str, Any], expected: list[tuple[str, str]]
+    ) -> None:
+        from copy import deepcopy
+
+        original = deepcopy(metadata)
+        note = Note(Path("note.md"), metadata, "[[Body is not frontmatter]]", 1)
+        assert list(note.iter_frontmatter_strings()) == expected
+        assert list(note.iter_frontmatter_strings()) == expected
+        assert note.frontmatter == original
