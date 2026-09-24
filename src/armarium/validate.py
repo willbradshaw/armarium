@@ -100,6 +100,7 @@ RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
     ("Player", None): {"plays": Target("Content", frozenset({"PC"}), local=True)},
     ("Transcript", None): {"session": Target("Session", local=True)},
     ("Clue", None): {
+        "text": Target("Content", local=True),
         "subjects": Target("Content", local=True),
         "first_session": Target("Session", local=True),
         "last_session": Target("Session", local=True),
@@ -211,6 +212,7 @@ def validate_markdown(
     diagnostics.extend(validate_campaigns(note, index))
     diagnostics.extend(validate_identity_links(note, index))
     diagnostics.extend(validate_appearances(note, index))
+    diagnostics.extend(validate_clue(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -539,6 +541,84 @@ def _check_campaign_history(
             f"{location} must be [[{expected.stem}]]",
             location,
         )
+
+
+def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check a Clue's subjects against its text and the order of its Sessions.
+
+    Args:
+        note: Selected record; only Clues carry text, subjects and Session range.
+        index: Vault index used to resolve the links.
+
+    Returns:
+        list[Diagnostic]: subjects that are not exactly the records linked in
+            text, or a link that cannot be resolved for that comparison
+            (clue.subjects); a last_session without first_session
+            (history.range); a last_session before first_session, or a Session
+            that cannot be ordered (history.order).
+    """
+    if note.frontmatter.type != "Clue":
+        return []
+    findings = Findings(note.path.relative_to(index.root).as_posix())
+    # 1. Resolve every link in text and subjects
+    linked: dict[str, set[Path]] = {"text": set(), "subjects": set()}
+    comparable = True
+    for link in note.links:
+        if link.field not in linked:
+            continue
+        result = None if link.error else linked_note(link.target, note, index)
+        if not isinstance(result, Note):
+            reason = link.error or (result[1] if result else "not a note")
+            findings.add(
+                "clue.subjects", f"cannot check subjects: {reason}", link.location
+            )
+            comparable = False
+            continue
+        linked[link.field].add(result.path)
+    # 2. Compare the two sets
+    if comparable and linked["text"] != linked["subjects"]:
+        missing = sorted(p.stem for p in linked["text"] - linked["subjects"])
+        extra = sorted(p.stem for p in linked["subjects"] - linked["text"])
+        detail = "; ".join(
+            f"{label} {', '.join(f'[[{stem}]]' for stem in stems)}"
+            for label, stems in (("missing", missing), ("extra", extra))
+            if stems
+        )
+        findings.add(
+            "clue.subjects", f"subjects do not match text: {detail}", "subjects"
+        )
+    # 3. Read the Session ordinals
+    ordinals: dict[str, int | None] = {}
+    for field in ("first_session", "last_session"):
+        if note.frontmatter.get(field) is None:
+            ordinals[field] = None
+            continue
+        resolved, error = index.resolve_field(note, field)
+        session = (
+            index.parse(resolved)[0] if resolved and resolved.suffix == ".md" else None
+        )
+        ordinal = session.frontmatter.get("session_number") if session else None
+        if error or isinstance(ordinal, bool) or not isinstance(ordinal, int):
+            reason = error or f"{field} does not link a numbered Session"
+            findings.add("history.order", f"cannot order {field}: {reason}", field)
+            continue
+        ordinals[field] = ordinal
+    # 4. Validate the range
+    first, last = ordinals.get("first_session"), ordinals.get("last_session")
+    if "first_session" in ordinals and "last_session" in ordinals:
+        findings.diagnose(
+            last is not None and first is None,
+            "history.range",
+            "last_session requires first_session",
+            "last_session",
+        )
+        findings.diagnose(
+            last is not None and first is not None and last < first,
+            "history.order",
+            "last_session precedes first_session",
+            "last_session",
+        )
+    return findings.diagnostics
 
 
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:

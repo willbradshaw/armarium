@@ -31,6 +31,7 @@ from armarium.validate import (
     validate,
     validate_appearances,
     validate_campaigns,
+    validate_clue,
     validate_directory,
     validate_filename,
     validate_identity_links,
@@ -1249,6 +1250,7 @@ class TestLinkTargets:
             (
                 {"type": "[[Clue]]"},
                 {
+                    "text": Target("Content", local=True),
                     "subjects": Target("Content", local=True),
                     "first_session": Target("Session", local=True),
                     "last_session": Target("Session", local=True),
@@ -1259,6 +1261,7 @@ class TestLinkTargets:
             (
                 {"type": "[[Clue]]", "status": "[[Superseded]]"},
                 {
+                    "text": Target("Content", local=True),
                     "subjects": Target("Content", local=True),
                     "first_session": Target("Session", local=True),
                     "last_session": Target("Session", local=True),
@@ -2098,3 +2101,148 @@ class TestCheckCampaignHistory:
         ]
         _check_campaign_history(note, index, "campaign_42", history, findings)
         assert [d.rule for d in findings.diagnostics] == expected
+
+
+class TestValidateClue:
+    def records(self, tmp_path: Path) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/content/A.md": 'type: "[[Content]]"\nsubtype: Lore',
+                "content/B.md": 'type: "[[Content]]"\nsubtype: Lore',
+                "campaigns/campaign_42/sessions/S-42-001.md": 'type: "[[Session]]"\nsession_number: 1',
+                "campaigns/campaign_42/sessions/S-42-002.md": 'type: "[[Session]]"\nsession_number: 2',
+                "campaigns/campaign_42/sessions/S-42-009.md": 'type: "[[Session]]"\nsession_number: nine',
+            },
+        )
+        (tmp_path / "image.png").write_text("asset")
+
+    def clue(self, tmp_path: Path, **fields: object) -> Note:
+        metadata = {
+            "type": "[[Clue]]",
+            "text": "plain",
+            "subjects": [],
+            "first_session": None,
+            "last_session": None,
+            **fields,
+        }
+        return Note(
+            tmp_path / "campaigns/campaign_42/clues/C-42-0001.md",
+            Frontmatter(metadata),
+            Body("", 1),
+        )
+
+    @pytest.mark.parametrize(
+        "text, subjects, expected",
+        [
+            ("[[A]] met [[B]].", ["[[B]]", "[[A]]"], []),
+            ("[[A|the thing]] and [[content/B]].", ["[[A]]", "[[B]]"], []),
+            ("plain", [], []),
+            ("plain", None, []),
+            ("[[A]]", None, [("subjects", "missing [[A]]")]),
+            (
+                "[[image.png]]",
+                ["[[A]]"],
+                [("text", "cannot check subjects: not a note")],
+            ),
+            ("[[A]] and [[B]]", ["[[A]]"], [("subjects", "missing [[B]]")]),
+            ("[[A]]", ["[[A]]", "[[B]]"], [("subjects", "extra [[B]]")]),
+            ("plain", ["[[B]]", "[[A]]"], [("subjects", "extra [[A]], [[B]]")]),
+            (
+                "[[A]] and [[nope]]",
+                ["[[A]]"],
+                [("text", "cannot check subjects: cannot uniquely resolve [[nope]]")],
+            ),
+            (
+                "[[A]]",
+                ["[[A]]", "[[broken"],
+                [
+                    (
+                        "subjects.1",
+                        "cannot check subjects: use [[target]] with balanced double "
+                        "brackets on one line",
+                    )
+                ],
+            ),
+        ],
+    )
+    def test_subjects(
+        self,
+        tmp_path: Path,
+        text: str,
+        subjects: object,
+        expected: list[tuple[str, str]],
+    ) -> None:
+        self.records(tmp_path)
+        note = self.clue(tmp_path, text=text, subjects=subjects)
+        result = validate_clue(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == [
+            ("clue.subjects", field) for field, _ in expected
+        ]
+        for diagnostic, (_, fragment) in zip(result, expected, strict=True):
+            assert fragment in diagnostic.message
+
+    @pytest.mark.parametrize(
+        "first, last, expected",
+        [
+            (None, None, []),
+            ("[[S-42-001]]", None, []),
+            ("[[S-42-001]]", "[[S-42-001]]", []),
+            ("[[S-42-001]]", "[[S-42-002]]", []),
+            ("[[S-42-002]]", "[[S-42-001]]", [("history.order", "last_session")]),
+            (None, "[[S-42-001]]", [("history.range", "last_session")]),
+            ("[[S-42-009]]", "[[S-42-001]]", [("history.order", "first_session")]),
+            ("[[missing]]", "[[S-42-001]]", [("history.order", "first_session")]),
+            ("[[S-42-001]]", ["[[S-42-002]]"], [("history.order", "last_session")]),
+            ("[[S-42-001]]", "[[A]]", [("history.order", "last_session")]),
+        ],
+    )
+    def test_session_order(
+        self,
+        tmp_path: Path,
+        first: object,
+        last: object,
+        expected: list[tuple[str, str]],
+    ) -> None:
+        self.records(tmp_path)
+        note = self.clue(tmp_path, first_session=first, last_session=last)
+        result = validate_clue(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == expected
+        assert all(
+            d.message.startswith("cannot order") or d.rule == "history.range"
+            for d in result
+            if d.field == "first_session" or first is None
+        )
+
+    @pytest.mark.parametrize("kind", ["Content", "Session", "Player"])
+    def test_other_types(self, tmp_path: Path, kind: str) -> None:
+        note = Note(
+            tmp_path / "x.md",
+            Frontmatter({"type": f"[[{kind}]]", "text": "[[A]]"}),
+            Body("", 1),
+        )
+        assert validate_clue(note, VaultIndex(tmp_path)) == []
+
+    def test_text_links_are_typed(self, tmp_path: Path) -> None:
+        self.records(tmp_path)
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_7/content/Far.md": 'type: "[[Content]]"\nsubtype: Lore',
+                "campaigns/campaign_42/reference/players/P.md": 'type: "[[Player]]"',
+            },
+        )
+        note = self.clue(
+            tmp_path,
+            text="[[A]] told [[P]] about [[Far]] in [[S-42-001]].",
+            subjects=["[[A]]", "[[P]]", "[[Far]]", "[[S-42-001]]"],
+        )
+        result = validate_wikilinks(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field) for d in result] == [
+            ("link.type", "text"),
+            ("campaign.mismatch", "text"),
+            ("link.type", "text"),
+            ("link.type", "subjects.1"),
+            ("campaign.mismatch", "subjects.2"),
+            ("link.type", "subjects.3"),
+        ]

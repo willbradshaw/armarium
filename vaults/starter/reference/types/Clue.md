@@ -15,8 +15,9 @@ filename; the Sessions view derives its scope from the containing campaign folde
 
 A Clue’s frontmatter requires `type`, `status`, nonblank `text`, `subjects`,
 `first_session` and `last_session`. Status links to one of the six supplied
-statuses. Subjects are Content links: null means unidentified, and `[]` means
-none recorded.
+statuses. Every link in `text` must be a Content record in this campaign or in
+shared `content/`, and `subjects` lists exactly those records: null means
+unidentified, and `[]` means none recorded.
 
 `first_session` links to the first Session for which the Clue was prepared or
 used; `last_session` links to its latest introduction or development in play.
