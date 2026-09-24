@@ -361,6 +361,76 @@ class TestBodyLinks:
         assert body.links is body.links
 
 
+class TestBlockFromTokens:
+    @pytest.mark.parametrize(
+        ("text", "expected", "after"),
+        [
+            (
+                "Plain\nwrapped ^id-1\n",
+                Block("paragraph", 5, "Plain wrapped", block_id="id-1"),
+                3,
+            ),
+            (
+                "- one\n\n  more\n- two\n",
+                Block(
+                    "list",
+                    5,
+                    children=(
+                        Block("item", 5, "one", (Block("paragraph", 7, "more"),)),
+                        Block("item", 8, "two"),
+                    ),
+                ),
+                None,
+            ),
+            (
+                "> quoted\n",
+                Block("quote", 5, children=(Block("paragraph", 5, "quoted"),)),
+                None,
+            ),
+            ("***\n", Block("rule", 5), 1),
+            ("<div>x</div>\n", Block("html", 5), 1),
+        ],
+    )
+    def test_block(self, text: str, expected: Block, after: int | None) -> None:
+        tokens = Body._PARSER.parse(text)
+        block, position = Block.from_tokens(tokens, 0, 5)
+        assert block == expected
+        assert position == (after if after is not None else len(tokens))
+
+    def test_unbalanced_stream_is_an_error(self) -> None:
+        tokens = Body._PARSER.parse("- item\n")[:-1]  # drop the list's close
+        with pytest.raises(ValueError, match="unbalanced"):
+            Block.from_tokens(tokens, 0, 1)
+
+
+class TestSectionNest:
+    def test_levels(self) -> None:
+        a, b, c, d, e = (
+            Section("A", 1, 1),
+            Section("B", 2, 2),
+            Section("C", 3, 3),
+            Section("D", 2, 4),
+            Section("E", 1, 5),
+        )
+        block = Block("paragraph", 6, "text")
+        assert Section.nest([a, block, b, c, block, d, e, block]) == (
+            Section(
+                "A",
+                1,
+                1,
+                (block,),
+                (
+                    Section("B", 2, 2, (), (Section("C", 3, 3, (block,)),)),
+                    Section("D", 2, 4),
+                ),
+            ),
+            Section("E", 1, 5, (block,)),
+        )
+
+    def test_empty(self) -> None:
+        assert Section.nest([]) == ()
+
+
 class TestBody:
     def test_tree_and_blocks(self) -> None:
         text = (
