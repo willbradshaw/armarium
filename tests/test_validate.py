@@ -1718,8 +1718,42 @@ class TestValidateAppearances:
                         "last_session": "[[S-7-001]]",
                     },
                 },
-                ["- [[S-42-001]]: Met.", "- [[S-7-001]]: Elsewhere."],
+                ["- [[S-7-001]]: Elsewhere.", "- [[S-42-001]]: Met."],
                 [],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    },
+                    "campaign_7": {
+                        "first_session": "[[S-7-001]]",
+                        "last_session": "[[S-7-001]]",
+                    },
+                },
+                ["- [[S-42-001]]: Met.", "- [[S-7-001]]: Elsewhere."],
+                [("history.order", "", 0)],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    },
+                    "campaign_7": {
+                        "first_session": "[[S-7-001]]",
+                        "last_session": "[[S-7-001]]",
+                    },
+                },
+                [
+                    "- [[S-7-001]]: Away.",
+                    "- [[S-42-001]]: Met.",
+                    "- [[S-7-001]]: Back.",
+                ],
+                [("history.order", "", 0), ("history.duplicate", "", 0)],
             ),
             (
                 "content/N.md",

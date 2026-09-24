@@ -362,15 +362,18 @@ def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
     Returns:
         list[Diagnostic]: Problems with the Appearances section or its entries,
-            with each campaign's sequence of appearances, and with the
-            campaign_N blocks' first_session and last_session.
+            with the order of campaigns and of each campaign's appearances, and
+            with the campaign_N blocks' first_session and last_session.
     """
     if note.frontmatter.type != "Content":
         return []
     findings = Findings(note.path.relative_to(index.root).as_posix())
     # 1. Read the recorded appearances
     appearances = _read_appearances(note, index, findings)
-    # 2. Check each campaign with appearances or a block
+    # 2. Validate the sequence of campaigns
+    order = [int(campaign.removeprefix("campaign_")) for campaign, _, _ in appearances]
+    findings.diagnose(order != sorted(order), "history.order", "campaigns out of order")
+    # 3. Check each campaign with appearances or a block
     campaigns = {campaign for campaign, _, _ in appearances}
     for campaign in sorted(campaigns | note.frontmatter.campaigns.keys()):
         history = [(ordinal, path) for c, ordinal, path in appearances if c == campaign]
