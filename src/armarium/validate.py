@@ -4,12 +4,14 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import overload
 
 from jsonschema.exceptions import SchemaError
 
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
+    WIKILINK,
     Diagnostic,
     Findings,
     Result,
@@ -78,6 +80,9 @@ CAMPAIGN_DIRECTORIES = (
     "sessions/transcripts",
 )
 CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
+
+# An Appearances entry: a wikilink, a colon and a description.
+ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
 
 # Top-level frontmatter fields whose links must target a record of a given type:
 # on every record, then by the record's (type, subtype), where entries under
@@ -393,30 +398,27 @@ def _read_appearances(
     """
     history: dict[str, list[tuple[int, Path]]] = {}
     found = [s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"]
-    if findings.diagnose(
-        not found,
-        "history.format",
-        "cannot check appearances: no ## Appearances heading",
-    ):
+    if findings.diagnose(not found, "history.format", "no ## Appearances heading"):
         return history
     section, *repeated = found
-    for extra in repeated:
-        findings.add(
-            "history.format", "more than one ## Appearances heading", line=extra.line
-        )
-    for child in section.children:
-        findings.add(
-            "history.format",
-            "Appearances must not be split into subheadings",
-            line=child.line,
-        )
+    line = repeated[0].line if repeated else 0
+    findings.diagnose(
+        bool(repeated), "history.format", "repeated ## Appearances heading", line=line
+    )
+    line = section.children[0].line if section.children else 0
+    findings.diagnose(
+        bool(section.children),
+        "history.format",
+        "subheadings under Appearances",
+        line=line,
+    )
     scope = find_campaign(note.path, index.root)
     placeholder = 0
     for block in section.blocks:
         if findings.diagnose(
             block.kind != "list",
             "history.format",
-            "use - [[Session]]: description under Appearances",
+            "entry must be - [[Session]]: text",
             line=block.line,
         ):
             continue
@@ -424,35 +426,37 @@ def _read_appearances(
             if item.text == "N/A":
                 placeholder = item.line
                 continue
-            match = re.fullmatch(r"(\[\[[^\[\]|#]+\]\]): \S.*", item.text)
+            match = ENTRY.fullmatch(item.text)
             if match is None:
                 findings.add(
                     "history.format",
-                    "use - [[Session]]: description under Appearances",
+                    "entry must be - [[Session]]: text",
                     line=item.line,
                 )
                 continue
-            target = parse_wikilink(match[1])
-            problem = validate_wikilink(target, note, index, Target("Session"))
-            if problem is not None:
+            try:
+                target = parse_wikilink(match[1], canonical=True)
+            except ValueError as exc:
+                findings.add("history.format", f"entry link: {exc}", line=item.line)
+                continue
+            session = linked_note(target, note, index, Target("Session"))
+            if isinstance(session, tuple):
                 findings.add(
                     "history.entry",
-                    f"cannot check appearance: {problem[1]}",
+                    f"cannot check appearance: {session[1]}",
                     line=item.line,
                 )
                 continue
-            resolved, _ = index.resolve(target, note.path)
-            assert resolved is not None  # validate_wikilink resolved it
-            session, _ = index.parse(resolved)
-            assert session is not None  # and parsed it as a placed Session
-            campaign = find_campaign(resolved, index.root)
-            assert campaign is not None  # placement keeps Sessions inside campaigns
             ordinal = session.frontmatter.get("session_number")
-            if type(ordinal) is not int:
+            campaign = find_campaign(session.path, index.root)
+            if (
+                isinstance(ordinal, bool)
+                or not isinstance(ordinal, int)
+                or campaign is None
+            ):
                 findings.add(
                     "history.entry",
-                    f"cannot order appearance: {resolved.stem} has no integer "
-                    "session_number",
+                    f"cannot order appearance: {session.path.stem} has no session_number",
                     line=item.line,
                 )
                 continue
@@ -462,11 +466,11 @@ def _read_appearances(
                 f"appearance in {campaign} recorded in a {scope} record",
                 line=item.line,
             )
-            history.setdefault(campaign, []).append((ordinal, resolved))
+            history.setdefault(campaign, []).append((ordinal, session.path))
     findings.diagnose(
         bool(placeholder and history),
         "history.format",
-        "- N/A must be the only entry when appearances are recorded",
+        "N/A listed with appearances",
         line=placeholder,
     )
     return history
@@ -615,11 +619,44 @@ def validate_wikilink(
         expected: Requirements on the target record, or None for any file.
 
     Returns:
-        tuple[str, str] | None: Rule and message for a missing, ambiguous or
-            unparseable target; one that is not a correctly placed record of
-            the expected type and subtype; one outside the expected campaign;
-            or one failing its type's own check. None when the target is
-            usable. Only a linked Markdown note is parsed.
+        tuple[str, str] | None: The problem found by linked_note, or None when
+            the target is usable.
+    """
+    result = linked_note(target, note, index, expected)
+    return result if isinstance(result, tuple) else None
+
+
+@overload
+def linked_note(
+    target: str, note: Note, index: VaultIndex, expected: Target
+) -> Note | tuple[str, str]: ...
+
+
+@overload
+def linked_note(
+    target: str, note: Note, index: VaultIndex, expected: None = None
+) -> Note | tuple[str, str] | None: ...
+
+
+def linked_note(
+    target: str, note: Note, index: VaultIndex, expected: Target | None = None
+) -> Note | tuple[str, str] | None:
+    """Resolve one wikilink target and check it, returning the note it names.
+
+    Args:
+        target: Parsed wikilink target, without alias, heading or block suffix.
+        note: Note containing the link; its path breaks resolution ties and its
+            declared type takes part in target-specific checks.
+        index: Whole-vault file index and lazy note cache for this run.
+        expected: Requirements on the target record, or None for any file.
+
+    Returns:
+        Note | tuple[str, str] | None: The linked note when it parses and meets
+            expected; None when no record type is expected and the target is a
+            usable non-note file or self-anchor; otherwise the rule and message
+            for a missing, ambiguous or unparseable target, one that is not a
+            correctly placed record of the expected type and subtype, one
+            outside the expected campaign, or one failing its type's own check.
     """
     resolved, rule = index.resolve(target, note.path)
     if rule:
@@ -631,7 +668,7 @@ def validate_wikilink(
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
     if expected is None:
-        return None
+        return linked
     kind = expected.record_type
     if (
         linked is None
@@ -654,7 +691,8 @@ def validate_wikilink(
         allowed = required + (" or shared content" if kind == "Content" else "")
         return "campaign.mismatch", f"[[{target}]] must belong to {allowed}"
     check = _TARGET_CHECKS.get(kind)
-    return check(linked, note, index) if check else None
+    problem = check(linked, note, index) if check else None
+    return problem if problem is not None else linked
 
 
 def _validate_wikilink_status(

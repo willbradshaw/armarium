@@ -13,7 +13,8 @@ from armarium.logging import logger
 # Wikilink parsing
 # -----------------------------------------------------------------------------
 
-_WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
+# One complete wikilink; the group is its contents (target, alias, anchor).
+WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
 
 
 def parse_wikilink(value: object, *, canonical: bool = False) -> str:
@@ -37,7 +38,7 @@ def parse_wikilink(value: object, *, canonical: bool = False) -> str:
     """
     if not isinstance(value, str):
         raise ValueError("wikilink must be a string")
-    match = _WIKILINK.fullmatch(value)
+    match = WIKILINK.fullmatch(value)
     if match is None:
         raise ValueError("use [[target]] with balanced double brackets on one line")
     contents = match[1].replace("\\|", "|")

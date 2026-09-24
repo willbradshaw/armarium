@@ -27,6 +27,7 @@ from armarium.validate import (
     _link_targets,
     _read_appearances,
     _validate_wikilink_status,
+    linked_note,
     validate,
     validate_appearances,
     validate_campaigns,
@@ -843,6 +844,41 @@ class TestTarget:
         note = Note(tmp_path / relative, Frontmatter(metadata), Body("", 1))
         result = validate_wikilinks(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == expected
+
+
+class TestLinkedNote:
+    @pytest.mark.parametrize(
+        "target, expected, result",
+        [
+            ("Clue", None, "note"),
+            ("Clue", Target("Type"), "note"),
+            ("image.png", None, None),
+            ("", None, "self"),
+            ("image.png", Target("Type"), "link.type"),
+            ("Clue", Target("Status"), "link.type"),
+            ("missing", None, "link.missing"),
+            ("missing", Target("Type"), "link.missing"),
+        ],
+    )
+    def test_result(
+        self, tmp_path: Path, target: str, expected: Target | None, result: str | None
+    ) -> None:
+        write_records(tmp_path, {})
+        (tmp_path / "image.png").write_text("asset")
+        note = Note(
+            tmp_path / "reference/types/Clue.md",
+            Frontmatter({"type": "[[Type]]"}),
+            Body(""),
+        )
+        index = VaultIndex(tmp_path)
+        outcome = linked_note(target, note, index, expected)
+        if result in {"note", "self"}:
+            assert isinstance(outcome, Note)
+            assert outcome.path == tmp_path / "reference/types/Clue.md"
+        elif result is None:
+            assert outcome is None
+        else:
+            assert isinstance(outcome, tuple) and outcome[0] == result
 
 
 class TestValidateWikilink:
