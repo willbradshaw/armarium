@@ -11,6 +11,7 @@ from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
     Diagnostic,
+    Findings,
     Result,
     VaultNotFoundError,
     check_vault,
@@ -18,6 +19,7 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    parse_wikilink,
 )
 from armarium.parse import Note
 from armarium.schemas import Schema, select_schema
@@ -203,6 +205,7 @@ def validate_markdown(
     diagnostics.extend(validate_filename(note, index))
     diagnostics.extend(validate_campaigns(note, index))
     diagnostics.extend(validate_identity_links(note, index))
+    diagnostics.extend(validate_appearances(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -343,6 +346,193 @@ def validate_vault(root: Path) -> list[Diagnostic]:
         if definition.lower() not in schema_names:
             report("schema.missing", f"no vault-local schema for {definition}")
     return diagnostics
+
+
+def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Reconcile a Content record's Appearances list with its campaign blocks.
+
+    Args:
+        note: Selected record; only Content records carry Appearances.
+        index: Whole-vault index used to resolve the linked Sessions.
+
+    Returns:
+        list[Diagnostic]: Entries that are not ``- [[Session]]: text`` or that
+            cannot be checked; appearances out of chronological order, repeated
+            or outside the record's own campaign; campaigns with appearances but
+            no campaign_N mapping; and first_session/last_session fields that
+            do not name the earliest and latest recorded appearance.
+    """
+    if note.frontmatter.type != "Content":
+        return []
+    findings = Findings(note.path.relative_to(index.root).as_posix())
+    history = _read_appearances(note, index, findings)
+    # Non-mapping campaign_N fields are reported by validate_campaigns.
+    blocks = note.frontmatter.campaigns
+    for name in sorted(history.keys() | blocks.keys()):
+        _check_campaign_history(
+            note, index, name, history.get(name, []), blocks.get(name), findings
+        )
+    return findings.diagnostics
+
+
+def _read_appearances(
+    note: Note, index: VaultIndex, findings: Findings
+) -> dict[str, list[tuple[int, Path]]]:
+    """Collect the appearances recorded under a Content record's Appearances.
+
+    Args:
+        note: Content record whose body is read.
+        index: Whole-vault index used to resolve and parse the linked Sessions.
+        findings: Collector for malformed or uncheckable entries.
+
+    Returns:
+        dict[str, list[tuple[int, Path]]]: Per campaign, each entry's Session
+            ordinal and path in list order. Entries that are malformed, do not
+            link a numbered placed Session, or sit in a record of another
+            campaign are reported; unusable ones are omitted.
+    """
+    history: dict[str, list[tuple[int, Path]]] = {}
+    found = [s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"]
+    if findings.diagnose(
+        not found,
+        "history.format",
+        "cannot check appearances: no ## Appearances heading",
+    ):
+        return history
+    section, *repeated = found
+    for extra in repeated:
+        findings.add(
+            "history.format", "more than one ## Appearances heading", line=extra.line
+        )
+    for child in section.children:
+        findings.add(
+            "history.format",
+            "Appearances must not be split into subheadings",
+            line=child.line,
+        )
+    scope = find_campaign(note.path, index.root)
+    placeholder = 0
+    for block in section.blocks:
+        if findings.diagnose(
+            block.kind != "list",
+            "history.format",
+            "use - [[Session]]: description under Appearances",
+            line=block.line,
+        ):
+            continue
+        for item in block.children:
+            if item.text == "N/A":
+                placeholder = item.line
+                continue
+            match = re.fullmatch(r"(\[\[[^\[\]|#]+\]\]): \S.*", item.text)
+            if match is None:
+                findings.add(
+                    "history.format",
+                    "use - [[Session]]: description under Appearances",
+                    line=item.line,
+                )
+                continue
+            target = parse_wikilink(match[1])
+            problem = validate_wikilink(target, note, index, Target("Session"))
+            if problem is not None:
+                findings.add(
+                    "history.entry",
+                    f"cannot check appearance: {problem[1]}",
+                    line=item.line,
+                )
+                continue
+            resolved, _ = index.resolve(target, note.path)
+            assert resolved is not None  # validate_wikilink resolved it
+            session, _ = index.parse(resolved)
+            assert session is not None  # and parsed it as a placed Session
+            campaign = find_campaign(resolved, index.root)
+            assert campaign is not None  # placement keeps Sessions inside campaigns
+            ordinal = session.frontmatter.get("session_number")
+            if type(ordinal) is not int:
+                findings.add(
+                    "history.entry",
+                    f"cannot order appearance: {resolved.stem} has no integer "
+                    "session_number",
+                    line=item.line,
+                )
+                continue
+            findings.diagnose(
+                scope is not None and campaign != scope,
+                "history.campaign",
+                f"appearance in {campaign} recorded in a {scope} record",
+                line=item.line,
+            )
+            history.setdefault(campaign, []).append((ordinal, resolved))
+    findings.diagnose(
+        bool(placeholder and history),
+        "history.format",
+        "- N/A must be the only entry when appearances are recorded",
+        line=placeholder,
+    )
+    return history
+
+
+def _check_campaign_history(
+    note: Note,
+    index: VaultIndex,
+    name: str,
+    entries: list[tuple[int, Path]],
+    block: dict[str, object] | None,
+    findings: Findings,
+) -> None:
+    """Check one campaign's recorded appearances against its campaign_N block.
+
+    Args:
+        note: Content record being checked.
+        index: Whole-vault index used to resolve the block's Session links.
+        name: Campaign directory name, campaign_N.
+        entries: That campaign's appearances as (ordinal, Session path), in
+            list order; empty when none are recorded.
+        block: The record's campaign_N mapping, or None when absent.
+        findings: Collector for the campaign's problems.
+    """
+    ordinals = [ordinal for ordinal, _ in entries]
+    findings.diagnose(
+        ordinals != sorted(ordinals),
+        "history.order",
+        f"{name} appearances are not chronological",
+    )
+    sessions = [session for _, session in entries]
+    findings.diagnose(
+        len(sessions) != len(set(sessions)),
+        "history.duplicate",
+        f"{name} records the same Session more than once",
+    )
+    if block is None:
+        findings.add(
+            "history.block", f"appearances in {name} require a {name} mapping", name
+        )
+        return
+    ordered = sorted(entries)
+    bounds = {
+        "first_session": ("earliest", ordered[0][1] if ordered else None),
+        "last_session": ("latest", ordered[-1][1] if ordered else None),
+    }
+    for field, (which, expected) in bounds.items():
+        location = f"{name}.{field}"
+        if expected is None:
+            findings.diagnose(
+                block.get(field) is not None,
+                "history.range",
+                f"{location} must be empty without recorded appearances",
+                location,
+            )
+            continue
+        resolved, error = index.resolve_field(note, location)
+        if error is not None:
+            findings.add("history.range", f"cannot check {location}: {error}", location)
+        elif resolved != expected:
+            findings.add(
+                "history.range",
+                f"{location} must be [[{expected.stem}]], the {which} recorded "
+                "appearance",
+                location,
+            )
 
 
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
