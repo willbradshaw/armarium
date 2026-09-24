@@ -3,7 +3,7 @@
 import math
 import re
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from functools import cached_property
 from pathlib import Path
@@ -282,9 +282,6 @@ class Section:
             yield from child.walk()
 
 
-_BLOCK_ID = re.compile(r"^(.*?)\s*\^([A-Za-z0-9-]+)$", re.S)
-
-
 @dataclass(frozen=True, init=False)
 class Body(Section):
     """A note's Markdown after the frontmatter: its text, links and structure.
@@ -302,6 +299,15 @@ class Body(Section):
     # must itself declare a default.
     text: str = ""
 
+    _BLOCK_ID = re.compile(r"^(.*?)\s*\^([A-Za-z0-9-]+)$", re.S)
+    _LEAF_KINDS = {
+        "fence": "code",
+        "code_block": "code",
+        "hr": "rule",
+        "html_block": "html",
+    }
+    _PARSER = MarkdownIt("commonmark").enable("table")
+
     def __init__(self, text: str, start_line: int = 1) -> None:
         """Parse the body's structure.
 
@@ -312,8 +318,128 @@ class Body(Section):
                 delimiter.
         """
         object.__setattr__(self, "text", text)
-        blocks, children = _parse_body(text, start_line)
-        super().__init__("", 0, start_line, blocks, children)
+        tokens = self._PARSER.parse(text)
+        # Flatten the top level: blocks before the first heading belong to the
+        # body itself; from the first heading on, headings and blocks are
+        # nested by level below.
+        blocks: list[Block] = []
+        entries: list[Section | Block] = []
+        position = 0
+        while position < len(tokens):
+            token = tokens[position]
+            end = self._close(tokens, position)
+            if token.type == "heading_open":
+                title = tokens[position + 1].content
+                line = start_line + self._offset(token)
+                entries.append(Section(title, int(token.tag[1]), line))
+            elif entries:
+                entries.append(self._block(tokens, position, end, start_line))
+            else:
+                blocks.append(self._block(tokens, position, end, start_line))
+            position = end + 1
+        children, _ = self._nest(entries, 0, 0)
+        super().__init__("", 0, start_line, tuple(blocks), children)
+
+    @classmethod
+    def _nest(
+        cls, entries: list[Section | Block], position: int, level: int
+    ) -> tuple[tuple[Section, ...], int]:
+        """Build the sections deeper than level from entries at position.
+
+        Args:
+            entries: Flattened headings (as childless Sections) and blocks.
+            position: Index of the first entry to consider; a heading.
+            level: The enclosing section's level; sections stop at a heading
+                of this level or shallower.
+
+        Returns:
+            tuple[tuple[Section, ...], int]: The sections built, each with its
+                blocks and nested children, and the index of the first entry
+                not consumed.
+        """
+        sections: list[Section] = []
+        while position < len(entries):
+            entry = entries[position]
+            assert isinstance(entry, Section)  # blocks are consumed below
+            if entry.level <= level:
+                break
+            position += 1
+            blocks: list[Block] = []
+            while position < len(entries):
+                following = entries[position]
+                if not isinstance(following, Block):
+                    break
+                blocks.append(following)
+                position += 1
+            children, position = cls._nest(entries, position, entry.level)
+            sections.append(replace(entry, blocks=tuple(blocks), children=children))
+        return tuple(sections), position
+
+    @classmethod
+    def _blocks(
+        cls, tokens: list[Token], start: int, end: int, start_line: int
+    ) -> tuple[Block, ...]:
+        """Build the blocks for the tokens in [start, end)."""
+        blocks: list[Block] = []
+        position = start
+        while position < end:
+            close = cls._close(tokens, position)
+            blocks.append(cls._block(tokens, position, close, start_line))
+            position = close + 1
+        return tuple(blocks)
+
+    @classmethod
+    def _block(
+        cls, tokens: list[Token], start: int, end: int, start_line: int
+    ) -> Block:
+        """Build one block from its opening token at start and closing at end."""
+        token = tokens[start]
+        line = start_line + cls._offset(token)
+        kind = token.type.removesuffix("_open")
+        if kind == "paragraph":
+            text, block_id = cls._split_block_id(tokens[start + 1].content)
+            return Block("paragraph", line, text, block_id=block_id)
+        if kind == "heading":
+            return Block("heading", line, tokens[start + 1].content)
+        if kind in {"bullet_list", "ordered_list", "blockquote"}:
+            name = {"bullet_list": "list", "blockquote": "quote"}.get(kind, kind)
+            children = cls._blocks(tokens, start + 1, end, start_line)
+            return Block(name, line, children=children)
+        if kind == "list_item":
+            children = cls._blocks(tokens, start + 1, end, start_line)
+            if children and children[0].kind == "paragraph":
+                first, children = children[0], children[1:]
+                return Block("item", line, first.text, children, first.block_id)
+            return Block("item", line, children=children)
+        if kind == "table":
+            return Block("table", line)
+        if kind in {"fence", "code_block"}:
+            return Block("code", line, token.content)
+        return Block(cls._LEAF_KINDS.get(kind, "other"), line)
+
+    @staticmethod
+    def _close(tokens: list[Token], position: int) -> int:
+        """Return the index closing the token at position; itself when self-closing."""
+        depth = 0
+        for index in range(position, len(tokens)):
+            depth += tokens[index].nesting
+            if depth == 0:
+                return index
+        raise ValueError("unbalanced Markdown token stream")
+
+    @staticmethod
+    def _offset(token: Token) -> int:
+        """Return the zero-based body line on which a block token starts."""
+        return token.map[0] if token.map else 0
+
+    @classmethod
+    def _split_block_id(cls, text: str) -> tuple[str, str | None]:
+        """Separate a trailing Obsidian ^block-id from paragraph text."""
+        text = text.replace("\n", " ")
+        match = cls._BLOCK_ID.fullmatch(text)
+        if match is None:
+            return text, None
+        return match[1], match[2]
 
     @cached_property
     def links(self) -> tuple[Link, ...]:
@@ -333,123 +459,6 @@ class Body(Section):
                 else:
                     links.append(Link(target, "", line))
         return tuple(links)
-
-
-def _parse_body(
-    text: str, start_line: int
-) -> tuple[tuple[Block, ...], tuple[Section, ...]]:
-    """Parse Markdown into the root's blocks and its headed sections.
-
-    Args:
-        text: Markdown body.
-        start_line: Source line of the first body line, for block lines.
-
-    Returns:
-        tuple[tuple[Block, ...], tuple[Section, ...]]: Blocks before the first
-            heading, and the top-level sections nested by heading level.
-    """
-    tokens = MarkdownIt("commonmark").enable("table").parse(text)
-    root: dict[str, Any] = {"level": 0, "blocks": [], "children": []}
-    stack = [root]  # mutable section builders; the root is never popped
-    position = 0
-    while position < len(tokens):
-        token = tokens[position]
-        end = _matching_close(tokens, position)
-        if token.type == "heading_open":
-            level = int(token.tag[1])
-            section: dict[str, Any] = {
-                "title": tokens[position + 1].content,
-                "level": level,
-                "line": _line(token, start_line),
-                "blocks": [],
-                "children": [],
-            }
-            while stack[-1]["level"] >= level:
-                stack.pop()
-            stack[-1]["children"].append(section)
-            stack.append(section)
-        else:
-            stack[-1]["blocks"].append(_block(tokens, position, end, start_line))
-        position = end + 1
-    return tuple(root["blocks"]), tuple(_freeze(child) for child in root["children"])
-
-
-def _line(token: Token, start_line: int) -> int:
-    """Return the source line on which a block token starts."""
-    return (token.map[0] if token.map else 0) + start_line
-
-
-def _blocks(
-    tokens: list[Token], start: int, end: int, start_line: int
-) -> tuple[Block, ...]:
-    """Build the blocks for the tokens in [start, end)."""
-    blocks: list[Block] = []
-    position = start
-    while position < end:
-        close = _matching_close(tokens, position)
-        blocks.append(_block(tokens, position, close, start_line))
-        position = close + 1
-    return tuple(blocks)
-
-
-def _block(tokens: list[Token], start: int, end: int, start_line: int) -> Block:
-    """Build one block from its opening token at start and closing at end."""
-    token = tokens[start]
-    line = _line(token, start_line)
-    kind = token.type.removesuffix("_open")
-    if kind == "paragraph":
-        text, block_id = _split_block_id(tokens[start + 1].content)
-        return Block("paragraph", line, text, block_id=block_id)
-    if kind == "heading":
-        return Block("heading", line, tokens[start + 1].content)
-    if kind in {"bullet_list", "ordered_list"}:
-        name = "list" if kind == "bullet_list" else "ordered_list"
-        return Block(name, line, children=_blocks(tokens, start + 1, end, start_line))
-    if kind == "list_item":
-        children = _blocks(tokens, start + 1, end, start_line)
-        if children and children[0].kind == "paragraph":
-            first, children = children[0], children[1:]
-            return Block("item", line, first.text, children, first.block_id)
-        return Block("item", line, children=children)
-    if kind == "blockquote":
-        return Block(
-            "quote", line, children=_blocks(tokens, start + 1, end, start_line)
-        )
-    if kind == "table":
-        return Block("table", line)
-    if kind in {"fence", "code_block"}:
-        return Block("code", line, token.content)
-    return Block({"hr": "rule", "html_block": "html"}.get(kind, "other"), line)
-
-
-def _matching_close(tokens: list[Token], position: int) -> int:
-    """Return the index closing the token at position; itself when self-closing."""
-    depth = 0
-    for index in range(position, len(tokens)):
-        depth += tokens[index].nesting
-        if depth == 0:
-            return index
-    raise ValueError("unbalanced Markdown token stream")
-
-
-def _split_block_id(text: str) -> tuple[str, str | None]:
-    """Separate a trailing Obsidian ^block-id from paragraph text."""
-    text = text.replace("\n", " ")
-    match = _BLOCK_ID.fullmatch(text)
-    if match is None:
-        return text, None
-    return match[1], match[2]
-
-
-def _freeze(section: dict[str, Any]) -> Section:
-    """Convert a section builder and its children into frozen Sections."""
-    return Section(
-        section["title"],
-        section["level"],
-        section["line"],
-        tuple(section["blocks"]),
-        tuple(_freeze(child) for child in section["children"]),
-    )
 
 
 @dataclass(frozen=True)
