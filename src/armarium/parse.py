@@ -254,11 +254,14 @@ class Block:
 class Section:
     """A heading, the blocks beneath it and its subsections.
 
+    A Body is the level-0 Section of a note: its blocks precede the first
+    heading and its children are the top-level headed sections.
+
     Attributes:
-        title: Heading text as written.
-        level: Heading level, 1 to 6.
-        line: One-based source line of the heading.
-        blocks: Top-level blocks between this heading and the next.
+        title: Heading text as written; empty for a body.
+        level: Heading level, 1 to 6, or 0 for a body.
+        line: One-based source line of the heading, or where a body starts.
+        blocks: Blocks between this heading and the next.
         children: Subsections, nested by heading level.
     """
 
@@ -268,23 +271,49 @@ class Section:
     blocks: tuple[Block, ...] = ()
     children: tuple["Section", ...] = ()
 
+    def walk(self) -> Iterator["Section"]:
+        """Yield this section and every descendant in document order.
+
+        Yields:
+            Section: This section, then each child's walk in turn.
+        """
+        yield self
+        for child in self.children:
+            yield from child.walk()
+
 
 _BLOCK_ID = re.compile(r"^(.*?)\s*\^([A-Za-z0-9-]+)$", re.S)
 
 
-@dataclass(frozen=True)
-class Body:
-    """A note's Markdown after the frontmatter, with its links and structure.
+@dataclass(frozen=True, init=False)
+class Body(Section):
+    """A note's Markdown after the frontmatter: its text, links and structure.
+
+    The body is the level-0 Section of the note, parsed as CommonMark plus
+    tables when constructed. Headings inside fenced code do not count; setext
+    headings do. Its ``line`` is the source line at which the text begins.
 
     Attributes:
         text: Markdown after the closing frontmatter delimiter, or the entire
             file when frontmatter is absent.
-        start_line: One-based source-file line at which text begins; 1 without
-            frontmatter, otherwise the line after the closing delimiter.
     """
 
-    text: str
-    start_line: int
+    # Set in __init__; a dataclass field after Section's defaulted fields
+    # must itself declare a default.
+    text: str = ""
+
+    def __init__(self, text: str, start_line: int = 1) -> None:
+        """Parse the body's structure.
+
+        Args:
+            text: Markdown after the frontmatter.
+            start_line: One-based source-file line at which text begins; 1
+                without frontmatter, otherwise the line after the closing
+                delimiter.
+        """
+        object.__setattr__(self, "text", text)
+        blocks, children = _parse_body(text, start_line)
+        super().__init__("", 0, start_line, blocks, children)
 
     @cached_property
     def links(self) -> tuple[Link, ...]:
@@ -297,7 +326,7 @@ class Body:
                 malformed link text is included with its error.
         """
         links: list[Link] = []
-        for line, text in enumerate(self.text.splitlines(), self.start_line):
+        for line, text in enumerate(self.text.splitlines(), self.line):
             for target in iter_wikilinks(text):
                 if isinstance(target, ValueError):
                     links.append(Link("", "", line, str(target)))
@@ -305,94 +334,92 @@ class Body:
                     links.append(Link(target, "", line))
         return tuple(links)
 
-    @cached_property
-    def sections(self) -> tuple[Section, ...]:
-        """Return the body's heading tree, parsed as CommonMark plus tables.
 
-        Returns:
-            tuple[Section, ...]: Top-level sections in document order, each
-                holding its blocks and nested subsections. Headings inside
-                fenced code do not count; setext headings do.
-        """
-        return self._structure[1]
+def _parse_body(
+    text: str, start_line: int
+) -> tuple[tuple[Block, ...], tuple[Section, ...]]:
+    """Parse Markdown into the root's blocks and its headed sections.
 
-    @cached_property
-    def preamble(self) -> tuple[Block, ...]:
-        """Return the blocks before the first heading.
+    Args:
+        text: Markdown body.
+        start_line: Source line of the first body line, for block lines.
 
-        Returns:
-            tuple[Block, ...]: Top-level blocks preceding any heading.
-        """
-        return self._structure[0]
+    Returns:
+        tuple[tuple[Block, ...], tuple[Section, ...]]: Blocks before the first
+            heading, and the top-level sections nested by heading level.
+    """
+    tokens = MarkdownIt("commonmark").enable("table").parse(text)
+    root: dict[str, Any] = {"level": 0, "blocks": [], "children": []}
+    stack = [root]  # mutable section builders; the root is never popped
+    position = 0
+    while position < len(tokens):
+        token = tokens[position]
+        end = _matching_close(tokens, position)
+        if token.type == "heading_open":
+            level = int(token.tag[1])
+            section: dict[str, Any] = {
+                "title": tokens[position + 1].content,
+                "level": level,
+                "line": _line(token, start_line),
+                "blocks": [],
+                "children": [],
+            }
+            while stack[-1]["level"] >= level:
+                stack.pop()
+            stack[-1]["children"].append(section)
+            stack.append(section)
+        else:
+            stack[-1]["blocks"].append(_block(tokens, position, end, start_line))
+        position = end + 1
+    return tuple(root["blocks"]), tuple(_freeze(child) for child in root["children"])
 
-    @cached_property
-    def _structure(self) -> tuple[tuple[Block, ...], tuple[Section, ...]]:
-        tokens = MarkdownIt("commonmark").enable("table").parse(self.text)
-        preamble: list[Block] = []
-        roots: list[dict[str, Any]] = []  # mutable section builders
-        stack: list[dict[str, Any]] = []
-        position = 0
-        while position < len(tokens):
-            token = tokens[position]
-            end = _matching_close(tokens, position)
-            if token.type == "heading_open":
-                level = int(token.tag[1])
-                section = {
-                    "title": tokens[position + 1].content,
-                    "level": level,
-                    "line": self._line(token),
-                    "blocks": [],
-                    "children": [],
-                }
-                while stack and stack[-1]["level"] >= level:
-                    stack.pop()
-                (stack[-1]["children"] if stack else roots).append(section)
-                stack.append(section)
-            else:
-                block = self._block(tokens, position, end)
-                (stack[-1]["blocks"] if stack else preamble).append(block)
-            position = end + 1
-        return tuple(preamble), tuple(_freeze(section) for section in roots)
 
-    def _line(self, token: Token) -> int:
-        return (token.map[0] if token.map else 0) + self.start_line
+def _line(token: Token, start_line: int) -> int:
+    """Return the source line on which a block token starts."""
+    return (token.map[0] if token.map else 0) + start_line
 
-    def _blocks(self, tokens: list[Token], start: int, end: int) -> tuple[Block, ...]:
-        """Build the blocks for the tokens in [start, end)."""
-        blocks: list[Block] = []
-        position = start
-        while position < end:
-            close = _matching_close(tokens, position)
-            blocks.append(self._block(tokens, position, close))
-            position = close + 1
-        return tuple(blocks)
 
-    def _block(self, tokens: list[Token], start: int, end: int) -> Block:
-        """Build one block from its opening token at start and closing at end."""
-        token = tokens[start]
-        line = self._line(token)
-        kind = token.type.removesuffix("_open")
-        if kind == "paragraph":
-            text, block_id = _split_block_id(tokens[start + 1].content)
-            return Block("paragraph", line, text, block_id=block_id)
-        if kind == "heading":
-            return Block("heading", line, tokens[start + 1].content)
-        if kind in {"bullet_list", "ordered_list"}:
-            name = "list" if kind == "bullet_list" else "ordered_list"
-            return Block(name, line, children=self._blocks(tokens, start + 1, end))
-        if kind == "list_item":
-            children = self._blocks(tokens, start + 1, end)
-            if children and children[0].kind == "paragraph":
-                first, children = children[0], children[1:]
-                return Block("item", line, first.text, children, first.block_id)
-            return Block("item", line, children=children)
-        if kind == "blockquote":
-            return Block("quote", line, children=self._blocks(tokens, start + 1, end))
-        if kind == "table":
-            return Block("table", line)
-        if kind in {"fence", "code_block"}:
-            return Block("code", line, token.content)
-        return Block({"hr": "rule", "html_block": "html"}.get(kind, "other"), line)
+def _blocks(
+    tokens: list[Token], start: int, end: int, start_line: int
+) -> tuple[Block, ...]:
+    """Build the blocks for the tokens in [start, end)."""
+    blocks: list[Block] = []
+    position = start
+    while position < end:
+        close = _matching_close(tokens, position)
+        blocks.append(_block(tokens, position, close, start_line))
+        position = close + 1
+    return tuple(blocks)
+
+
+def _block(tokens: list[Token], start: int, end: int, start_line: int) -> Block:
+    """Build one block from its opening token at start and closing at end."""
+    token = tokens[start]
+    line = _line(token, start_line)
+    kind = token.type.removesuffix("_open")
+    if kind == "paragraph":
+        text, block_id = _split_block_id(tokens[start + 1].content)
+        return Block("paragraph", line, text, block_id=block_id)
+    if kind == "heading":
+        return Block("heading", line, tokens[start + 1].content)
+    if kind in {"bullet_list", "ordered_list"}:
+        name = "list" if kind == "bullet_list" else "ordered_list"
+        return Block(name, line, children=_blocks(tokens, start + 1, end, start_line))
+    if kind == "list_item":
+        children = _blocks(tokens, start + 1, end, start_line)
+        if children and children[0].kind == "paragraph":
+            first, children = children[0], children[1:]
+            return Block("item", line, first.text, children, first.block_id)
+        return Block("item", line, children=children)
+    if kind == "blockquote":
+        return Block(
+            "quote", line, children=_blocks(tokens, start + 1, end, start_line)
+        )
+    if kind == "table":
+        return Block("table", line)
+    if kind in {"fence", "code_block"}:
+        return Block("code", line, token.content)
+    return Block({"hr": "rule", "html_block": "html"}.get(kind, "other"), line)
 
 
 def _matching_close(tokens: list[Token], position: int) -> int:

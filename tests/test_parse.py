@@ -361,7 +361,7 @@ class TestBodyLinks:
         assert body.links is body.links
 
 
-class TestBodySections:
+class TestBody:
     def test_tree_and_blocks(self) -> None:
         text = (
             "Preamble paragraph.\n\n"
@@ -383,8 +383,9 @@ class TestBodySections:
             "[[S-1-004]]: not a reference definition\n"
         )
         body = Body(text, 3)  # source lines are body lines + 2
-        assert body.preamble == (Block("paragraph", 3, "Preamble paragraph."),)
-        assert body.sections == (
+        assert (body.title, body.level, body.line, body.text) == ("", 0, 3, text)
+        assert body.blocks == (Block("paragraph", 3, "Preamble paragraph."),)
+        assert body.children == (
             Section(
                 "Title",
                 1,
@@ -486,7 +487,7 @@ class TestBodySections:
                 ),
             ),
         )
-        assert body.sections is body.sections
+        assert isinstance(body, Section)
 
     @pytest.mark.parametrize(
         ("text", "expected"),
@@ -543,15 +544,32 @@ class TestBodySections:
         ],
     )
     def test_edges(self, text: str, expected: tuple[Section, ...]) -> None:
-        assert Body(text, 1).sections == expected
+        assert Body(text, 1).children == expected
 
-    def test_preamble_only(self) -> None:
-        body = Body("Just text\n\n- item\n", 1)
-        assert body.preamble == (
+    def test_body_without_headings(self) -> None:
+        body = Body("Just text\n\n- item\n")
+        assert body.line == 1 and body.children == ()
+        assert body.blocks == (
             Block("paragraph", 1, "Just text"),
             Block("list", 3, children=(Block("item", 3, "item"),)),
         )
-        assert body.sections == ()
+
+    def test_equality_and_freezing(self) -> None:
+        assert Body("## A\n", 4) == Body("## A\n", 4)
+        assert Body("## A\n", 4) != Body("## A\n", 5)
+        with pytest.raises(FrozenInstanceError):
+            setattr(Body("x"), "text", "y")
+
+    def test_walk(self) -> None:
+        body = Body("# A\n## B\n### C\n## D\n# E\n")
+        assert [(s.title, s.level) for s in body.walk()] == [
+            ("", 0),
+            ("A", 1),
+            ("B", 2),
+            ("C", 3),
+            ("D", 2),
+            ("E", 1),
+        ]
 
 
 class TestNoteParse:
