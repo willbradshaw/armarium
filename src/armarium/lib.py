@@ -13,7 +13,8 @@ from armarium.logging import logger
 # Wikilink parsing
 # -----------------------------------------------------------------------------
 
-_WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
+# One complete wikilink; the group is its contents (target, alias, anchor).
+WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
 
 
 def parse_wikilink(value: object, *, canonical: bool = False) -> str:
@@ -37,7 +38,7 @@ def parse_wikilink(value: object, *, canonical: bool = False) -> str:
     """
     if not isinstance(value, str):
         raise ValueError("wikilink must be a string")
-    match = _WIKILINK.fullmatch(value)
+    match = WIKILINK.fullmatch(value)
     if match is None:
         raise ValueError("use [[target]] with balanced double brackets on one line")
     contents = match[1].replace("\\|", "|")
@@ -150,6 +151,50 @@ class Diagnostic:
         )
 
 
+class Findings:
+    """Diagnostics collected for one file, all attributed to the same path."""
+
+    def __init__(self, path: str) -> None:
+        """Start an empty collection for one file.
+
+        Args:
+            path: The file's path relative to its vault, as reported.
+        """
+        self.path = path
+        self.diagnostics: list[Diagnostic] = []
+
+    def add(self, rule: str, message: str, field: str = "", line: int = 0) -> None:
+        """Record one diagnostic against the file.
+
+        Args:
+            rule: Stable rule identifier such as ``history.order``.
+            message: Human-readable explanation.
+            field: Frontmatter location, if any.
+            line: One-based source line, or 0 when none applies.
+        """
+        self.diagnostics.append(Diagnostic(self.path, rule, message, field, line))
+
+    def diagnose(
+        self, check: bool, rule: str, message: str, field: str = "", line: int = 0
+    ) -> bool:
+        """Record a diagnostic when a check fails.
+
+        Args:
+            check: Whether the problem is present.
+            rule: Stable rule identifier such as ``history.order``.
+            message: Human-readable explanation.
+            field: Frontmatter location, if any.
+            line: One-based source line, or 0 when none applies.
+
+        Returns:
+            bool: The check, so callers can stop when it held.
+        """
+        if check:
+            self.add(rule, message, field, line)
+        return check
+
+
+@dataclass
 @dataclass
 class Result:
     """Accumulate findings and coverage counts for one validation run.

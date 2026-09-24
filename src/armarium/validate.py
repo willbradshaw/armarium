@@ -4,13 +4,16 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import overload
 
 from jsonschema.exceptions import SchemaError
 
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
+    WIKILINK,
     Diagnostic,
+    Findings,
     Result,
     VaultNotFoundError,
     check_vault,
@@ -18,6 +21,7 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    parse_wikilink,
 )
 from armarium.parse import Note
 from armarium.schemas import Schema, select_schema
@@ -76,6 +80,9 @@ CAMPAIGN_DIRECTORIES = (
     "sessions/transcripts",
 )
 CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
+
+# An Appearances entry: a wikilink, a colon and a description.
+ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
 
 # Top-level frontmatter fields whose links must target a record of a given type:
 # on every record, then by the record's (type, subtype), where entries under
@@ -203,6 +210,7 @@ def validate_markdown(
     diagnostics.extend(validate_filename(note, index))
     diagnostics.extend(validate_campaigns(note, index))
     diagnostics.extend(validate_identity_links(note, index))
+    diagnostics.extend(validate_appearances(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -345,6 +353,194 @@ def validate_vault(root: Path) -> list[Diagnostic]:
     return diagnostics
 
 
+def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Reconcile a Content record's Appearances list with its campaign blocks.
+
+    Args:
+        note: Selected record; only Content records carry Appearances.
+        index: Vault index used to resolve the linked Sessions.
+
+    Returns:
+        list[Diagnostic]: Problems with the Appearances section or its entries,
+            with the order of campaigns and of each campaign's appearances, and
+            with the campaign_N blocks' first_session and last_session.
+    """
+    if note.frontmatter.type != "Content":
+        return []
+    findings = Findings(note.path.relative_to(index.root).as_posix())
+    # 1. Read the recorded appearances
+    appearances = _read_appearances(note, index, findings)
+    # 2. Validate the sequence of campaigns
+    order = [int(campaign.removeprefix("campaign_")) for campaign, _, _ in appearances]
+    findings.diagnose(order != sorted(order), "history.order", "campaigns out of order")
+    # 3. Check each campaign with appearances or a block
+    campaigns = {campaign for campaign, _, _ in appearances}
+    for campaign in sorted(campaigns | note.frontmatter.campaigns.keys()):
+        history = [(ordinal, path) for c, ordinal, path in appearances if c == campaign]
+        _check_campaign_history(note, index, campaign, history, findings)
+    return findings.diagnostics
+
+
+def _read_appearances(
+    note: Note, index: VaultIndex, findings: Findings
+) -> list[tuple[str, int, Path]]:
+    """Collect the appearances recorded under a Content record's Appearances.
+
+    Args:
+        note: Content record to read.
+        index: Vault index used to resolve and parse linked Sessions.
+        findings: Collector for the problems found.
+
+    Returns:
+        list[tuple[str, int, Path]]: Campaign, session number and path of each
+            Session linked under Appearances, in list order. A malformed
+            section ends the read; a malformed or unusable entry is omitted.
+    """
+    # 1. Find and validate the Appearances section.
+    history: list[tuple[str, int, Path]] = []
+    sections = [
+        s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"
+    ]
+    if findings.diagnose(not sections, "history.format", "no Appearances heading"):
+        return history
+    section = sections[0]
+    problems = (
+        (len(sections) > 1, "repeated Appearances heading"),
+        (bool(section.children), "subheadings under Appearances"),
+        (
+            len(section.blocks) != 1 or section.blocks[0].kind != "list",
+            "Appearances must be a single list",
+        ),
+    )
+    for check, message in problems:
+        if findings.diagnose(check, "history.format", message, line=section.line):
+            return history
+    # 2. An N/A placeholder stands alone.
+    appearances = section.blocks[0].children
+    placeholders = [item.line for item in appearances if item.text == "N/A"]
+    if placeholders:
+        findings.diagnose(
+            len(appearances) > 1,
+            "history.format",
+            "N/A listed with appearances",
+            line=placeholders[0],
+        )
+        return history
+    # 3. Collect the linked Sessions.
+    linked: list[tuple[int, Note]] = []
+    for appearance in appearances:
+        match = ENTRY.fullmatch(appearance.text)
+        if match is None:
+            findings.add(
+                "history.format", "invalid appearance format", line=appearance.line
+            )
+            continue
+        try:
+            target = parse_wikilink(match[1], canonical=True)
+        except ValueError as exc:
+            findings.add("history.format", f"entry link: {exc}", line=appearance.line)
+            continue
+        session = linked_note(target, note, index, Target("Session"))
+        if isinstance(session, tuple):
+            findings.add(
+                "history.entry",
+                f"cannot check appearance: {session[1]}",
+                line=appearance.line,
+            )
+            continue
+        linked.append((appearance.line, session))
+    # 4. Validate the linked Sessions.
+    scope = find_campaign(note.path, index.root)
+    for line, session in linked:
+        stem = session.path.stem
+        ordinal = session.frontmatter.get("session_number")
+        campaign = find_campaign(session.path, index.root)
+        if isinstance(ordinal, bool) or not isinstance(ordinal, int):
+            findings.add(
+                "history.entry",
+                f"invalid session number in {stem}: {ordinal!r}",
+                line=line,
+            )
+            continue
+        if campaign is None:
+            findings.add("history.entry", f"no campaign for {stem}", line=line)
+            continue
+        if findings.diagnose(
+            scope is not None and campaign != scope,
+            "history.campaign",
+            f"appearance in {campaign} recorded in a {scope} record",
+            line=line,
+        ):
+            continue
+        history.append((campaign, ordinal, session.path))
+    return history
+
+
+def _check_campaign_history(
+    note: Note,
+    index: VaultIndex,
+    campaign: str,
+    history: list[tuple[int, Path]],
+    findings: Findings,
+) -> None:
+    """Check one campaign's recorded appearances against its campaign_N block.
+
+    Args:
+        note: Content record being checked.
+        index: Vault index used to resolve the block's Session links.
+        campaign: Campaign directory name, campaign_N.
+        history: That campaign's appearances as (ordinal, Session path), in
+            list order; empty when none are recorded.
+        findings: Collector for the problems found.
+    """
+    # 1. Validate the sequence of appearances
+    ordinals = [ordinal for ordinal, _ in history]
+    sessions = [session for _, session in history]
+    findings.diagnose(
+        ordinals != sorted(ordinals),
+        "history.order",
+        f"{campaign} appearances out of order",
+    )
+    findings.diagnose(
+        len(sessions) != len(set(sessions)),
+        "history.duplicate",
+        f"{campaign} repeats a Session",
+    )
+    # 2. Find the campaign block
+    block = note.frontmatter.campaigns.get(campaign)
+    if block is None:
+        findings.add(
+            "history.block", f"no {campaign} block for its appearances", campaign
+        )
+        return
+    # 3. Compare the block's range with the earliest and latest appearances
+    ordered = sorted(history)
+    bounds = (
+        ("first_session", ordered[0][1] if ordered else None),
+        ("last_session", ordered[-1][1] if ordered else None),
+    )
+    for field, expected in bounds:
+        location = f"{campaign}.{field}"
+        if expected is None:
+            findings.diagnose(
+                block.get(field) is not None,
+                "history.range",
+                f"{location} set without appearances",
+                location,
+            )
+            continue
+        resolved, error = index.resolve_field(note, location)
+        if error is not None:
+            findings.add("history.range", f"cannot check {location}: {error}", location)
+            continue
+        findings.diagnose(
+            resolved != expected,
+            "history.range",
+            f"{location} must be [[{expected.stem}]]",
+            location,
+        )
+
+
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
     """Check every link the note contains against the vault.
 
@@ -425,11 +621,44 @@ def validate_wikilink(
         expected: Requirements on the target record, or None for any file.
 
     Returns:
-        tuple[str, str] | None: Rule and message for a missing, ambiguous or
-            unparseable target; one that is not a correctly placed record of
-            the expected type and subtype; one outside the expected campaign;
-            or one failing its type's own check. None when the target is
-            usable. Only a linked Markdown note is parsed.
+        tuple[str, str] | None: The problem found by linked_note, or None when
+            the target is usable.
+    """
+    result = linked_note(target, note, index, expected)
+    return result if isinstance(result, tuple) else None
+
+
+@overload
+def linked_note(
+    target: str, note: Note, index: VaultIndex, expected: Target
+) -> Note | tuple[str, str]: ...
+
+
+@overload
+def linked_note(
+    target: str, note: Note, index: VaultIndex, expected: None = None
+) -> Note | tuple[str, str] | None: ...
+
+
+def linked_note(
+    target: str, note: Note, index: VaultIndex, expected: Target | None = None
+) -> Note | tuple[str, str] | None:
+    """Resolve one wikilink target and check it, returning the note it names.
+
+    Args:
+        target: Parsed wikilink target, without alias, heading or block suffix.
+        note: Note containing the link; its path breaks resolution ties and its
+            declared type takes part in target-specific checks.
+        index: Whole-vault file index and lazy note cache for this run.
+        expected: Requirements on the target record, or None for any file.
+
+    Returns:
+        Note | tuple[str, str] | None: The linked note when it parses and meets
+            expected; None when no record type is expected and the target is a
+            usable non-note file or self-anchor; otherwise the rule and message
+            for a missing, ambiguous or unparseable target, one that is not a
+            correctly placed record of the expected type and subtype, one
+            outside the expected campaign, or one failing its type's own check.
     """
     resolved, rule = index.resolve(target, note.path)
     if rule:
@@ -441,7 +670,7 @@ def validate_wikilink(
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
     if expected is None:
-        return None
+        return linked
     kind = expected.record_type
     if (
         linked is None
@@ -464,7 +693,8 @@ def validate_wikilink(
         allowed = required + (" or shared content" if kind == "Content" else "")
         return "campaign.mismatch", f"[[{target}]] must belong to {allowed}"
     check = _TARGET_CHECKS.get(kind)
-    return check(linked, note, index) if check else None
+    problem = check(linked, note, index) if check else None
+    return problem if problem is not None else linked
 
 
 def _validate_wikilink_status(

@@ -12,7 +12,7 @@ import pytest
 import yaml
 
 from armarium.index import VaultIndex
-from armarium.lib import Result, check_vault, find_files, find_vault
+from armarium.lib import Findings, Result, check_vault, find_files, find_vault
 from armarium.parse import Body, Frontmatter, Note
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
@@ -23,9 +23,13 @@ from armarium.validate import (
     VAULT_TEMPLATES,
     VAULT_TYPES,
     Target,
+    _check_campaign_history,
     _link_targets,
+    _read_appearances,
     _validate_wikilink_status,
+    linked_note,
     validate,
+    validate_appearances,
     validate_campaigns,
     validate_directory,
     validate_filename,
@@ -842,6 +846,41 @@ class TestTarget:
         assert [(d.rule, d.field) for d in result] == expected
 
 
+class TestLinkedNote:
+    @pytest.mark.parametrize(
+        "target, expected, result",
+        [
+            ("Clue", None, "note"),
+            ("Clue", Target("Type"), "note"),
+            ("image.png", None, None),
+            ("", None, "self"),
+            ("image.png", Target("Type"), "link.type"),
+            ("Clue", Target("Status"), "link.type"),
+            ("missing", None, "link.missing"),
+            ("missing", Target("Type"), "link.missing"),
+        ],
+    )
+    def test_result(
+        self, tmp_path: Path, target: str, expected: Target | None, result: str | None
+    ) -> None:
+        write_records(tmp_path, {})
+        (tmp_path / "image.png").write_text("asset")
+        note = Note(
+            tmp_path / "reference/types/Clue.md",
+            Frontmatter({"type": "[[Type]]"}),
+            Body(""),
+        )
+        index = VaultIndex(tmp_path)
+        outcome = linked_note(target, note, index, expected)
+        if result in {"note", "self"}:
+            assert isinstance(outcome, Note)
+            assert outcome.path == tmp_path / "reference/types/Clue.md"
+        elif result is None:
+            assert outcome is None
+        else:
+            assert isinstance(outcome, tuple) and outcome[0] == result
+
+
 class TestValidateWikilink:
     @pytest.mark.parametrize(
         "target, record_type, rule",
@@ -1636,3 +1675,426 @@ class TestValidateVault:
     def test_shipped_vaults(self, name: str) -> None:
         root = Path(__file__).resolve().parents[1] / "vaults" / name
         assert validate_vault(root) == []
+
+
+class TestValidateAppearances:
+    BODY = "## Notes\n- N/A\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+
+    def sessions(self, tmp_path: Path) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/sessions/S-42-001.md": 'type: "[[Session]]"\nsession_number: 1',
+                "campaigns/campaign_42/sessions/S-42-002.md": 'type: "[[Session]]"\nsession_number: 2',
+                "campaigns/campaign_7/sessions/S-7-001.md": 'type: "[[Session]]"\nsession_number: 1',
+                "campaigns/campaign_7/sessions/S-7-009.md": 'type: "[[Session]]"\nsession_number: nine',
+                "campaigns/campaign_42/content/Thing.md": 'type: "[[Content]]"\nsubtype: Lore',
+            },
+        )
+
+    @pytest.mark.parametrize(
+        "relative, blocks, entries, expected",
+        [
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-002]]",
+                    }
+                },
+                ["- [[S-42-001]]: Met.", "- [[S-42-002]]: Left."],
+                [],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    },
+                    "campaign_7": {
+                        "first_session": "[[S-7-001]]",
+                        "last_session": "[[S-7-001]]",
+                    },
+                },
+                ["- [[S-7-001]]: Elsewhere.", "- [[S-42-001]]: Met."],
+                [],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    },
+                    "campaign_7": {
+                        "first_session": "[[S-7-001]]",
+                        "last_session": "[[S-7-001]]",
+                    },
+                },
+                ["- [[S-42-001]]: Met.", "- [[S-7-001]]: Elsewhere."],
+                [("history.order", "", 0)],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    },
+                    "campaign_7": {
+                        "first_session": "[[S-7-001]]",
+                        "last_session": "[[S-7-001]]",
+                    },
+                },
+                [
+                    "- [[S-7-001]]: Away.",
+                    "- [[S-42-001]]: Met.",
+                    "- [[S-7-001]]: Back.",
+                ],
+                [("history.order", "", 0), ("history.duplicate", "", 0)],
+            ),
+            (
+                "content/N.md",
+                {"campaign_42": {"first_session": None, "last_session": None}},
+                ["- N/A"],
+                [],
+            ),
+            ("content/N.md", {}, [], [("history.format", "", 5)]),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    }
+                },
+                ["- N/A", "- [[S-42-001]]: Met."],
+                [
+                    ("history.format", "", 6),
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
+            ),
+            (
+                "content/N.md",
+                {"campaign_42": {"first_session": None, "last_session": None}},
+                ["Met them.", "- [[S-42-001]]: Met."],
+                [("history.format", "", 5)],
+            ),
+            (
+                "content/N.md",
+                {"campaign_42": {"first_session": None, "last_session": None}},
+                ["- [[S-42-001|alias]]: Met.", "- [[S-42-001]]", "- Met [[S-42-001]]."],
+                [
+                    ("history.format", "", 6),
+                    ("history.format", "", 7),
+                    ("history.format", "", 8),
+                ],
+            ),
+            (
+                "content/N.md",
+                {},
+                ["- [[missing]]: Met.", "- [[Thing]]: Met."],
+                [("history.entry", "", 6), ("history.entry", "", 7)],
+            ),
+            (
+                "content/N.md",
+                {"campaign_7": {"first_session": None, "last_session": None}},
+                ["- [[S-7-009]]: Met."],
+                [("history.entry", "", 6)],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-002]]",
+                    }
+                },
+                ["- [[S-42-002]]: Left.", "- [[S-42-001]]: Met."],
+                [("history.order", "", 0)],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    }
+                },
+                ["- [[S-42-001]]: Met.", "- [[S-42-001]]: Met again."],
+                [("history.duplicate", "", 0)],
+            ),
+            (
+                "campaigns/campaign_7/content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    }
+                },
+                ["- [[S-42-001]]: Met."],
+                [
+                    ("history.campaign", "", 6),
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
+            ),
+            (
+                "content/N.md",
+                {},
+                ["- [[S-42-001]]: Met."],
+                [("history.block", "campaign_42", 0)],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-002]]",
+                        "last_session": "[[S-42-001]]",
+                    }
+                },
+                ["- [[S-42-001]]: Met.", "- [[S-42-002]]: Left."],
+                [
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[S-42-001]]",
+                        "last_session": "[[S-42-001]]",
+                    }
+                },
+                [],
+                [
+                    ("history.format", "", 5),
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
+            ),
+            (
+                "content/N.md",
+                {
+                    "campaign_42": {
+                        "first_session": "[[missing]]",
+                        "last_session": ["[[S-42-001]]"],
+                    }
+                },
+                ["- [[S-42-001]]: Met."],
+                [
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
+            ),
+        ],
+    )
+    def test_history(
+        self,
+        tmp_path: Path,
+        relative: str,
+        blocks: dict[str, object],
+        entries: list[str],
+        expected: list[tuple[str, str, int]],
+    ) -> None:
+        self.sessions(tmp_path)
+        metadata = {"type": "[[Content]]", "subtype": "Lore", **blocks}
+        note = Note(
+            tmp_path / relative,
+            Frontmatter(metadata),
+            Body(self.BODY + "\n".join(entries), 1),
+        )
+        result = validate_appearances(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.field, d.line) for d in result] == expected
+
+    def test_messages(self, tmp_path: Path) -> None:
+        self.sessions(tmp_path)
+        note = Note(
+            tmp_path / "content/N.md",
+            Frontmatter(
+                {
+                    "type": "[[Content]]",
+                    "campaign_42": {
+                        "first_session": "[[S-42-002]]",
+                        "last_session": None,
+                    },
+                }
+            ),
+            Body(self.BODY + "- [[S-42-001]]: Met.\n- [[nope]]: Gone.", 1),
+        )
+        assert [
+            d.message for d in validate_appearances(note, VaultIndex(tmp_path))
+        ] == [
+            "cannot check appearance: cannot uniquely resolve [[nope]]; use a "
+            "vault-relative path",
+            "campaign_42.first_session must be [[S-42-001]]",
+            "cannot check campaign_42.last_session: campaign_42.last_session must "
+            "hold exactly one wikilink",
+        ]
+
+    @pytest.mark.parametrize(
+        "body, expected",
+        [
+            ("## Notes\n- [[S-42-001]]: not appearances\n", [("history.format", 0)]),
+            ("## Appearances\n- [[S-42-001]]: Met.\n## Later\n- junk\n", []),
+            ("## Appearances\n\n  \n- [[S-42-001]]: Met.\n", []),
+            ("## Appearances\n\n- [[S-42-001]]: Met the\n  crew at\n  the quay.\n", []),
+            ("## Appearances\n* [[S-42-001]]: Met.\n", []),
+            ("## Appearances\n- [[S-42-001]]: Met.\n  - nested note\n", []),
+            (
+                "## Appearances\n- [[S-42-001]]: Met.\n### campaign_42\n- [[S-42-002]]: Sub.\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "## Appearances\n- [[S-42-001]]: Met.\n## Appearances\n- [[S-42-002]]: Again.\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "## Appearances\n> - [[S-42-001]]: quoted\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "## Appearances\n- [[S-42-001]]: Met.\n\nStray.\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "## Appearances\n- [[S-42-001]]: Met.\n* [[S-42-001]]: Again.\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "```\n## Appearances\n- [[S-42-001]]: Met.\n```\n",
+                [("history.format", 0)],
+            ),
+        ],
+    )
+    def test_sections(
+        self, tmp_path: Path, body: str, expected: list[tuple[str, int]]
+    ) -> None:
+        self.sessions(tmp_path)
+        metadata = {
+            "type": "[[Content]]",
+            "campaign_42": {
+                "first_session": "[[S-42-001]]",
+                "last_session": "[[S-42-001]]",
+            },
+        }
+        note = Note(tmp_path / "content/N.md", Frontmatter(metadata), Body(body, 3))
+        result = validate_appearances(note, VaultIndex(tmp_path))
+        assert [(d.rule, d.line) for d in result] == (
+            expected
+            if body.startswith("## Appearances")
+            else expected
+            + [
+                ("history.range", 0),
+                ("history.range", 0),
+            ]
+        )
+
+    def test_lines_follow_body_start(self, tmp_path: Path) -> None:
+        self.sessions(tmp_path)
+        note = Note(
+            tmp_path / "content/N.md",
+            Frontmatter({"type": "[[Content]]"}),
+            Body("## Appearances\n- bad\n", 9),
+        )
+        assert [d.line for d in validate_appearances(note, VaultIndex(tmp_path))] == [
+            10
+        ]
+
+    @pytest.mark.parametrize("kind", ["Clue", "Session", "Player"])
+    def test_other_types(self, tmp_path: Path, kind: str) -> None:
+        note = Note(
+            tmp_path / "x.md",
+            Frontmatter({"type": f"[[{kind}]]"}),
+            Body("## Appearances\n- bad\n", 1),
+        )
+        assert validate_appearances(note, VaultIndex(tmp_path)) == []
+
+
+class TestReadAppearances:
+    def test_history_and_reports(self, tmp_path: Path) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/sessions/S-42-001.md": 'type: "[[Session]]"\nsession_number: 1',
+                "campaigns/campaign_7/sessions/S-7-003.md": 'type: "[[Session]]"\nsession_number: 3',
+            },
+        )
+        body = "## Appearances\n- [[S-7-003]]: Away.\n- bad\n- [[S-42-001]]: Met.\n"
+        note = Note(
+            tmp_path / "campaigns/campaign_42/content/N.md",
+            Frontmatter({"type": "[[Content]]"}),
+            Body(body, 1),
+        )
+        index = VaultIndex(tmp_path)
+        findings = Findings(note.path.relative_to(index.root).as_posix())
+        assert _read_appearances(note, index, findings) == [
+            ("campaign_42", 1, tmp_path / "campaigns/campaign_42/sessions/S-42-001.md")
+        ]
+        assert [(d.rule, d.line) for d in findings.diagnostics] == [
+            ("history.format", 3),
+            ("history.campaign", 2),
+        ]
+
+
+class TestCheckCampaignHistory:
+    @pytest.mark.parametrize(
+        "entries, block, expected",
+        [
+            (
+                [(1, "S-42-001"), (2, "S-42-002")],
+                {"first_session": "[[S-42-001]]", "last_session": "[[S-42-002]]"},
+                [],
+            ),
+            ([], {"first_session": None, "last_session": None}, []),
+            (
+                [(2, "S-42-002"), (1, "S-42-001")],
+                {"first_session": "[[S-42-001]]", "last_session": "[[S-42-002]]"},
+                ["history.order"],
+            ),
+            (
+                [(1, "S-42-001"), (1, "S-42-001")],
+                {"first_session": "[[S-42-001]]", "last_session": "[[S-42-001]]"},
+                ["history.duplicate"],
+            ),
+            ([(1, "S-42-001")], None, ["history.block"]),
+            (
+                [(1, "S-42-001")],
+                {"first_session": "[[S-42-002]]", "last_session": "[[S-42-001]]"},
+                ["history.range"],
+            ),
+            (
+                [],
+                {"first_session": "[[S-42-001]]", "last_session": None},
+                ["history.range"],
+            ),
+        ],
+    )
+    def test_campaign(
+        self,
+        tmp_path: Path,
+        entries: list[tuple[int, str]],
+        block: dict[str, object] | None,
+        expected: list[str],
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/sessions/S-42-001.md": 'type: "[[Session]]"\nsession_number: 1',
+                "campaigns/campaign_42/sessions/S-42-002.md": 'type: "[[Session]]"\nsession_number: 2',
+            },
+        )
+        metadata = {"type": "[[Content]]", "campaign_42": block}
+        note = Note(tmp_path / "content/N.md", Frontmatter(metadata), Body("", 1))
+        index = VaultIndex(tmp_path)
+        findings = Findings(note.path.relative_to(index.root).as_posix())
+        history = [
+            (ordinal, tmp_path / f"campaigns/campaign_42/sessions/{stem}.md")
+            for ordinal, stem in entries
+        ]
+        _check_campaign_history(note, index, "campaign_42", history, findings)
+        assert [d.rule for d in findings.diagnostics] == expected

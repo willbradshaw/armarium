@@ -8,6 +8,7 @@ import pytest
 
 from armarium.lib import (
     Diagnostic,
+    Findings,
     Result,
     ValidationError,
     VaultNotFoundError,
@@ -322,6 +323,21 @@ class TestDiagnosticReport:
         assert caplog.record_tuples == [
             ("armarium", level, f"{location}: record.type: A finding"),
         ]
+
+
+class TestFindings:
+    def test_add(self) -> None:
+        findings = Findings("content/N.md")
+        findings.add("x.y", "message", "field", 3)
+        assert findings.diagnostics == [
+            Diagnostic("content/N.md", "x.y", "message", "field", 3)
+        ]
+
+    @pytest.mark.parametrize("check", [False, True])
+    def test_diagnose(self, check: bool) -> None:
+        findings = Findings("N.md")
+        assert findings.diagnose(check, "x.y", "message") is check
+        assert [d.rule for d in findings.diagnostics] == (["x.y"] if check else [])
 
 
 class TestResultReport:
