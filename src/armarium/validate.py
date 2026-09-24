@@ -370,7 +370,9 @@ def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
     if note.frontmatter.type != "Content":
         return []
     findings = Findings(note.path.relative_to(index.root).as_posix())
-    history = _read_appearances(note, index, findings)
+    history: dict[str, list[tuple[int, Path]]] = {}
+    for campaign, ordinal, session in _read_appearances(note, index, findings):
+        history.setdefault(campaign, []).append((ordinal, session))
     # Non-mapping campaign_N fields are reported by validate_campaigns.
     blocks = note.frontmatter.campaigns
     for name in sorted(history.keys() | blocks.keys()):
@@ -382,97 +384,96 @@ def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
 def _read_appearances(
     note: Note, index: VaultIndex, findings: Findings
-) -> dict[str, list[tuple[int, Path]]]:
+) -> list[tuple[str, int, Path]]:
     """Collect the appearances recorded under a Content record's Appearances.
 
     Args:
-        note: Content record whose body is read.
-        index: Whole-vault index used to resolve and parse the linked Sessions.
-        findings: Collector for malformed or uncheckable entries.
+        note: Content record to read.
+        index: Vault index used to resolve and parse linked Sessions.
+        findings: Collector for the problems found.
 
     Returns:
-        dict[str, list[tuple[int, Path]]]: Per campaign, each entry's Session
-            ordinal and path in list order. Entries that are malformed, do not
-            link a numbered placed Session, or sit in a record of another
-            campaign are reported; unusable ones are omitted.
+        list[tuple[str, int, Path]]: Campaign, session number and path of each
+            Session linked under Appearances, in list order. A malformed
+            section ends the read; a malformed or unusable entry is omitted.
     """
-    history: dict[str, list[tuple[int, Path]]] = {}
-    found = [s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"]
-    if findings.diagnose(not found, "history.format", "no ## Appearances heading"):
+    # 1. Find and validate the Appearances section.
+    history: list[tuple[str, int, Path]] = []
+    sections = [
+        s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"
+    ]
+    if findings.diagnose(not sections, "history.format", "no Appearances heading"):
         return history
-    section, *repeated = found
-    line = repeated[0].line if repeated else 0
-    findings.diagnose(
-        bool(repeated), "history.format", "repeated ## Appearances heading", line=line
+    section = sections[0]
+    problems = (
+        (len(sections) > 1, "repeated Appearances heading"),
+        (bool(section.children), "subheadings under Appearances"),
+        (
+            len(section.blocks) != 1 or section.blocks[0].kind != "list",
+            "Appearances must be a single list",
+        ),
     )
-    line = section.children[0].line if section.children else 0
-    findings.diagnose(
-        bool(section.children),
-        "history.format",
-        "subheadings under Appearances",
-        line=line,
-    )
-    scope = find_campaign(note.path, index.root)
-    placeholder = 0
-    for block in section.blocks:
-        if findings.diagnose(
-            block.kind != "list",
+    for check, message in problems:
+        if findings.diagnose(check, "history.format", message, line=section.line):
+            return history
+    # 2. An N/A placeholder stands alone.
+    appearances = section.blocks[0].children
+    placeholders = [item.line for item in appearances if item.text == "N/A"]
+    if placeholders:
+        findings.diagnose(
+            len(appearances) > 1,
             "history.format",
-            "entry must be - [[Session]]: text",
-            line=block.line,
+            "N/A listed with appearances",
+            line=placeholders[0],
+        )
+        return history
+    # 3. Collect the linked Sessions.
+    linked: list[tuple[int, Note]] = []
+    for appearance in appearances:
+        match = ENTRY.fullmatch(appearance.text)
+        if match is None:
+            findings.add(
+                "history.format", "invalid appearance format", line=appearance.line
+            )
+            continue
+        try:
+            target = parse_wikilink(match[1], canonical=True)
+        except ValueError as exc:
+            findings.add("history.format", f"entry link: {exc}", line=appearance.line)
+            continue
+        session = linked_note(target, note, index, Target("Session"))
+        if isinstance(session, tuple):
+            findings.add(
+                "history.entry",
+                f"cannot check appearance: {session[1]}",
+                line=appearance.line,
+            )
+            continue
+        linked.append((appearance.line, session))
+    # 4. Validate the linked Sessions.
+    scope = find_campaign(note.path, index.root)
+    for line, session in linked:
+        stem = session.path.stem
+        ordinal = session.frontmatter.get("session_number")
+        campaign = find_campaign(session.path, index.root)
+        if isinstance(ordinal, bool) or not isinstance(ordinal, int):
+            findings.add(
+                "history.entry",
+                f"invalid session number in {stem}: {ordinal!r}",
+                line=line,
+            )
+            continue
+        if campaign is None:
+            findings.add("history.entry", f"no campaign for {stem}", line=line)
+            continue
+        if findings.diagnose(
+            scope is not None and campaign != scope,
+            "history.campaign",
+            f"appearance in {campaign} recorded in a {scope} record",
+            line=line,
         ):
             continue
-        for item in block.children:
-            if item.text == "N/A":
-                placeholder = item.line
-                continue
-            match = ENTRY.fullmatch(item.text)
-            if match is None:
-                findings.add(
-                    "history.format",
-                    "entry must be - [[Session]]: text",
-                    line=item.line,
-                )
-                continue
-            try:
-                target = parse_wikilink(match[1], canonical=True)
-            except ValueError as exc:
-                findings.add("history.format", f"entry link: {exc}", line=item.line)
-                continue
-            session = linked_note(target, note, index, Target("Session"))
-            if isinstance(session, tuple):
-                findings.add(
-                    "history.entry",
-                    f"cannot check appearance: {session[1]}",
-                    line=item.line,
-                )
-                continue
-            ordinal = session.frontmatter.get("session_number")
-            campaign = find_campaign(session.path, index.root)
-            if (
-                isinstance(ordinal, bool)
-                or not isinstance(ordinal, int)
-                or campaign is None
-            ):
-                findings.add(
-                    "history.entry",
-                    f"cannot order appearance: {session.path.stem} has no session_number",
-                    line=item.line,
-                )
-                continue
-            findings.diagnose(
-                scope is not None and campaign != scope,
-                "history.campaign",
-                f"appearance in {campaign} recorded in a {scope} record",
-                line=item.line,
-            )
-            history.setdefault(campaign, []).append((ordinal, session.path))
-    findings.diagnose(
-        bool(placeholder and history),
-        "history.format",
-        "N/A listed with appearances",
-        line=placeholder,
-    )
+        history.append((campaign, ordinal, session.path))
     return history
 
 

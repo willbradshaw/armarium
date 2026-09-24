@@ -1727,7 +1727,7 @@ class TestValidateAppearances:
                 ["- N/A"],
                 [],
             ),
-            ("content/N.md", {}, [], []),
+            ("content/N.md", {}, [], [("history.format", "", 5)]),
             (
                 "content/N.md",
                 {
@@ -1737,12 +1737,22 @@ class TestValidateAppearances:
                     }
                 },
                 ["- N/A", "- [[S-42-001]]: Met."],
-                [("history.format", "", 6)],
+                [
+                    ("history.format", "", 6),
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
             ),
             (
                 "content/N.md",
                 {"campaign_42": {"first_session": None, "last_session": None}},
-                ["Met them.", "- [[S-42-001|alias]]: Met.", "- [[S-42-001]]"],
+                ["Met them.", "- [[S-42-001]]: Met."],
+                [("history.format", "", 5)],
+            ),
+            (
+                "content/N.md",
+                {"campaign_42": {"first_session": None, "last_session": None}},
+                ["- [[S-42-001|alias]]: Met.", "- [[S-42-001]]", "- Met [[S-42-001]]."],
                 [
                     ("history.format", "", 6),
                     ("history.format", "", 7),
@@ -1792,7 +1802,11 @@ class TestValidateAppearances:
                     }
                 },
                 ["- [[S-42-001]]: Met."],
-                [("history.campaign", "", 6)],
+                [
+                    ("history.campaign", "", 6),
+                    ("history.range", "campaign_42.first_session", 0),
+                    ("history.range", "campaign_42.last_session", 0),
+                ],
             ),
             (
                 "content/N.md",
@@ -1824,6 +1838,7 @@ class TestValidateAppearances:
                 },
                 [],
                 [
+                    ("history.format", "", 5),
                     ("history.range", "campaign_42.first_session", 0),
                     ("history.range", "campaign_42.last_session", 0),
                 ],
@@ -1899,15 +1914,23 @@ class TestValidateAppearances:
             ("## Appearances\n- [[S-42-001]]: Met.\n  - nested note\n", []),
             (
                 "## Appearances\n- [[S-42-001]]: Met.\n### campaign_42\n- [[S-42-002]]: Sub.\n",
-                [("history.format", 5)],
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
             ),
             (
                 "## Appearances\n- [[S-42-001]]: Met.\n## Appearances\n- [[S-42-002]]: Again.\n",
-                [("history.format", 5)],
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
             ),
             (
                 "## Appearances\n> - [[S-42-001]]: quoted\n",
-                [("history.format", 4), ("history.range", 0), ("history.range", 0)],
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "## Appearances\n- [[S-42-001]]: Met.\n\nStray.\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
+            ),
+            (
+                "## Appearances\n- [[S-42-001]]: Met.\n* [[S-42-001]]: Again.\n",
+                [("history.format", 3), ("history.range", 0), ("history.range", 0)],
             ),
             (
                 "```\n## Appearances\n- [[S-42-001]]: Met.\n```\n",
@@ -1976,15 +1999,12 @@ class TestReadAppearances:
         )
         index = VaultIndex(tmp_path)
         findings = Findings(note.path.relative_to(index.root).as_posix())
-        assert _read_appearances(note, index, findings) == {
-            "campaign_7": [(3, tmp_path / "campaigns/campaign_7/sessions/S-7-003.md")],
-            "campaign_42": [
-                (1, tmp_path / "campaigns/campaign_42/sessions/S-42-001.md")
-            ],
-        }
+        assert _read_appearances(note, index, findings) == [
+            ("campaign_42", 1, tmp_path / "campaigns/campaign_42/sessions/S-42-001.md")
+        ]
         assert [(d.rule, d.line) for d in findings.diagnostics] == [
-            ("history.campaign", 2),
             ("history.format", 3),
+            ("history.campaign", 2),
         ]
 
 
