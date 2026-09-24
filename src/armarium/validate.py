@@ -358,27 +358,23 @@ def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
     Args:
         note: Selected record; only Content records carry Appearances.
-        index: Whole-vault index used to resolve the linked Sessions.
+        index: Vault index used to resolve the linked Sessions.
 
     Returns:
-        list[Diagnostic]: Entries that are not ``- [[Session]]: text`` or that
-            cannot be checked; appearances out of chronological order, repeated
-            or outside the record's own campaign; campaigns with appearances but
-            no campaign_N mapping; and first_session/last_session fields that
-            do not name the earliest and latest recorded appearance.
+        list[Diagnostic]: Problems with the Appearances section or its entries,
+            with each campaign's sequence of appearances, and with the
+            campaign_N blocks' first_session and last_session.
     """
     if note.frontmatter.type != "Content":
         return []
     findings = Findings(note.path.relative_to(index.root).as_posix())
-    history: dict[str, list[tuple[int, Path]]] = {}
-    for campaign, ordinal, session in _read_appearances(note, index, findings):
-        history.setdefault(campaign, []).append((ordinal, session))
-    # Non-mapping campaign_N fields are reported by validate_campaigns.
-    blocks = note.frontmatter.campaigns
-    for name in sorted(history.keys() | blocks.keys()):
-        _check_campaign_history(
-            note, index, name, history.get(name, []), blocks.get(name), findings
-        )
+    # 1. Read the recorded appearances
+    appearances = _read_appearances(note, index, findings)
+    # 2. Check each campaign with appearances or a block
+    campaigns = {campaign for campaign, _, _ in appearances}
+    for campaign in sorted(campaigns | note.frontmatter.campaigns.keys()):
+        history = [(ordinal, path) for c, ordinal, path in appearances if c == campaign]
+        _check_campaign_history(note, index, campaign, history, findings)
     return findings.diagnostics
 
 
@@ -480,64 +476,66 @@ def _read_appearances(
 def _check_campaign_history(
     note: Note,
     index: VaultIndex,
-    name: str,
-    entries: list[tuple[int, Path]],
-    block: dict[str, object] | None,
+    campaign: str,
+    history: list[tuple[int, Path]],
     findings: Findings,
 ) -> None:
     """Check one campaign's recorded appearances against its campaign_N block.
 
     Args:
         note: Content record being checked.
-        index: Whole-vault index used to resolve the block's Session links.
-        name: Campaign directory name, campaign_N.
-        entries: That campaign's appearances as (ordinal, Session path), in
+        index: Vault index used to resolve the block's Session links.
+        campaign: Campaign directory name, campaign_N.
+        history: That campaign's appearances as (ordinal, Session path), in
             list order; empty when none are recorded.
-        block: The record's campaign_N mapping, or None when absent.
-        findings: Collector for the campaign's problems.
+        findings: Collector for the problems found.
     """
-    ordinals = [ordinal for ordinal, _ in entries]
+    # 1. Validate the sequence of appearances
+    ordinals = [ordinal for ordinal, _ in history]
+    sessions = [session for _, session in history]
     findings.diagnose(
         ordinals != sorted(ordinals),
         "history.order",
-        f"{name} appearances are not chronological",
+        f"{campaign} appearances out of order",
     )
-    sessions = [session for _, session in entries]
     findings.diagnose(
         len(sessions) != len(set(sessions)),
         "history.duplicate",
-        f"{name} records the same Session more than once",
+        f"{campaign} repeats a Session",
     )
+    # 2. Find the campaign block
+    block = note.frontmatter.campaigns.get(campaign)
     if block is None:
         findings.add(
-            "history.block", f"appearances in {name} require a {name} mapping", name
+            "history.block", f"no {campaign} block for its appearances", campaign
         )
         return
-    ordered = sorted(entries)
-    bounds = {
-        "first_session": ("earliest", ordered[0][1] if ordered else None),
-        "last_session": ("latest", ordered[-1][1] if ordered else None),
-    }
-    for field, (which, expected) in bounds.items():
-        location = f"{name}.{field}"
+    # 3. Compare the block's range with the earliest and latest appearances
+    ordered = sorted(history)
+    bounds = (
+        ("first_session", ordered[0][1] if ordered else None),
+        ("last_session", ordered[-1][1] if ordered else None),
+    )
+    for field, expected in bounds:
+        location = f"{campaign}.{field}"
         if expected is None:
             findings.diagnose(
                 block.get(field) is not None,
                 "history.range",
-                f"{location} must be empty without recorded appearances",
+                f"{location} set without appearances",
                 location,
             )
             continue
         resolved, error = index.resolve_field(note, location)
         if error is not None:
             findings.add("history.range", f"cannot check {location}: {error}", location)
-        elif resolved != expected:
-            findings.add(
-                "history.range",
-                f"{location} must be [[{expected.stem}]], the {which} recorded "
-                "appearance",
-                location,
-            )
+            continue
+        findings.diagnose(
+            resolved != expected,
+            "history.range",
+            f"{location} must be [[{expected.stem}]]",
+            location,
+        )
 
 
 def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:

@@ -1897,8 +1897,7 @@ class TestValidateAppearances:
         ] == [
             "cannot check appearance: cannot uniquely resolve [[nope]]; use a "
             "vault-relative path",
-            "campaign_42.first_session must be [[S-42-001]], the earliest recorded "
-            "appearance",
+            "campaign_42.first_session must be [[S-42-001]]",
             "cannot check campaign_42.last_session: campaign_42.last_session must "
             "hold exactly one wikilink",
         ]
@@ -2063,5 +2062,5 @@ class TestCheckCampaignHistory:
             (ordinal, tmp_path / f"campaigns/campaign_42/sessions/{stem}.md")
             for ordinal, stem in entries
         ]
-        _check_campaign_history(note, index, "campaign_42", history, block, findings)
+        _check_campaign_history(note, index, "campaign_42", history, findings)
         assert [d.rule for d in findings.diagnostics] == expected
