@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from armarium.index import VaultIndex
-from armarium.parse import Note
+from armarium.parse import Body, Frontmatter, Note
 
 
 class TestVaultIndex:
@@ -91,7 +91,9 @@ class TestVaultIndexResolveField:
             path = tmp_path / name
             path.parent.mkdir(exist_ok=True)
             path.write_text("")
-        note = Note(tmp_path / "selected.md", {"field": value}, "", 1)
+        note = Note(
+            tmp_path / "selected.md", Frontmatter({"field": value}), Body("", 1)
+        )
         assert VaultIndex(tmp_path).resolve_field(note, "field") == (
             tmp_path / resolved if resolved else None,
             error,

@@ -11,6 +11,7 @@ requires-python = ">=3.14"
 dependencies = [
   "PyYAML>=6,<7",
   "jsonschema[format]>=4.23,<5",
+  "markdown-it-py>=3,<4",
   "referencing>=0.35,<1",
 ]
 
