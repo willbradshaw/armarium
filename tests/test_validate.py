@@ -2115,6 +2115,7 @@ class TestValidateClue:
                 "campaigns/campaign_42/sessions/S-42-009.md": 'type: "[[Session]]"\nsession_number: nine',
             },
         )
+        (tmp_path / "image.png").write_text("asset")
 
     def clue(self, tmp_path: Path, **fields: object) -> Note:
         metadata = {
@@ -2139,6 +2140,11 @@ class TestValidateClue:
             ("plain", [], []),
             ("plain", None, []),
             ("[[A]]", None, [("subjects", "missing [[A]]")]),
+            (
+                "[[image.png]]",
+                ["[[A]]"],
+                [("text", "cannot check subjects: not a note")],
+            ),
             ("[[A]] and [[B]]", ["[[A]]"], [("subjects", "missing [[B]]")]),
             ("[[A]]", ["[[A]]", "[[B]]"], [("subjects", "extra [[B]]")]),
             ("plain", ["[[B]]", "[[A]]"], [("subjects", "extra [[A]], [[B]]")]),

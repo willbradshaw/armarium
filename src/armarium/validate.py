@@ -548,38 +548,34 @@ def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
     Args:
         note: Selected record; only Clues carry text, subjects and Session range.
-        index: Whole-vault index used to resolve the links.
+        index: Vault index used to resolve the links.
 
     Returns:
         list[Diagnostic]: subjects that are not exactly the records linked in
-            text, or a text or subjects link that cannot be resolved for the
-            comparison (clue.subjects); a last_session without first_session
-            (history.range); a last_session earlier than first_session, or a
-            Session whose ordinal cannot be read (history.order). Link targets
-            are type-checked by validate_wikilinks.
+            text, or a link that cannot be resolved for that comparison
+            (clue.subjects); a last_session without first_session
+            (history.range); a last_session before first_session, or a Session
+            that cannot be ordered (history.order).
     """
     if note.frontmatter.type != "Clue":
         return []
     findings = Findings(note.path.relative_to(index.root).as_posix())
-
-    # Every link in text and subjects must resolve before the sets are compared.
+    # 1. Resolve every link in text and subjects
     linked: dict[str, set[Path]] = {"text": set(), "subjects": set()}
     comparable = True
     for link in note.links:
         if link.field not in linked:
             continue
-        problem: str | None = link.error
-        resolved: Path | None = None
-        if problem is None:
-            resolved, rule = index.resolve(link.target, note.path)
-            problem = f"cannot uniquely resolve [[{link.target}]]" if rule else None
-        if problem is not None:
-            comparable = False
+        result = None if link.error else linked_note(link.target, note, index)
+        if not isinstance(result, Note):
+            reason = link.error or (result[1] if result else "not a note")
             findings.add(
-                "clue.subjects", f"cannot check subjects: {problem}", link.location
+                "clue.subjects", f"cannot check subjects: {reason}", link.location
             )
-        elif resolved is not None:
-            linked[link.field].add(resolved)
+            comparable = False
+            continue
+        linked[link.field].add(result.path)
+    # 2. Compare the two sets
     if comparable and linked["text"] != linked["subjects"]:
         missing = sorted(p.stem for p in linked["text"] - linked["subjects"])
         extra = sorted(p.stem for p in linked["subjects"] - linked["text"])
@@ -589,37 +585,39 @@ def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
             if stems
         )
         findings.add(
-            "clue.subjects",
-            f"subjects must list exactly the Content linked in text: {detail}",
-            "subjects",
+            "clue.subjects", f"subjects do not match text: {detail}", "subjects"
         )
-
+    # 3. Read the Session ordinals
     ordinals: dict[str, int | None] = {}
     for field in ("first_session", "last_session"):
         if note.frontmatter.get(field) is None:
             ordinals[field] = None
             continue
         resolved, error = index.resolve_field(note, field)
-        session = index.parse(resolved)[0] if resolved is not None else None
+        session = (
+            index.parse(resolved)[0] if resolved and resolved.suffix == ".md" else None
+        )
         ordinal = session.frontmatter.get("session_number") if session else None
-        if error is not None or type(ordinal) is not int:
+        if error or isinstance(ordinal, bool) or not isinstance(ordinal, int):
             reason = error or f"{field} does not link a numbered Session"
             findings.add("history.order", f"cannot order {field}: {reason}", field)
-            return findings.diagnostics
+            continue
         ordinals[field] = ordinal
-    first, last = ordinals["first_session"], ordinals["last_session"]
-    findings.diagnose(
-        last is not None and first is None,
-        "history.range",
-        "last_session requires first_session",
-        "last_session",
-    )
-    findings.diagnose(
-        last is not None and first is not None and last < first,
-        "history.order",
-        "last_session precedes first_session",
-        "last_session",
-    )
+    # 4. Validate the range
+    first, last = ordinals.get("first_session"), ordinals.get("last_session")
+    if "first_session" in ordinals and "last_session" in ordinals:
+        findings.diagnose(
+            last is not None and first is None,
+            "history.range",
+            "last_session requires first_session",
+            "last_session",
+        )
+        findings.diagnose(
+            last is not None and first is not None and last < first,
+            "history.order",
+            "last_session precedes first_session",
+            "last_session",
+        )
     return findings.diagnostics
 
 
