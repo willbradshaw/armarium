@@ -32,22 +32,20 @@ reference/                    shared Reference notes
 ```
 
 Every entry shown is required, as a real directory or file rather than a
-symlink. Beyond the skeleton, further Type and Status notes may be added beside
-the built-in ones, and further folders may be added anywhere; every Markdown
-file in the vault is a note and must follow the [note rules](notes.md), while
-files of other kinds are only link targets.
+symlink, and nothing else belongs at the top level. Further Type and Status
+notes may be added beside the built-in ones. Subfolders may be added inside
+`assets/`, `content/`, `reference/` and their campaign counterparts. Every
+Markdown file in the vault is a note and must follow the [note rules](notes.md).
+Files that are not Markdown belong in `assets/`; the only exceptions are the
+views in `reference/views/` and the schemas in `reference/schemas/`.
 
 `reference/types/` and `reference/schemas/` correspond one to one: `Clue.md`
 has `clue.schema.json`, and so on, the schema named after the lowercased type.
-`reference/schemas/` holds nothing else.
 
 ## Where notes live
 
-A note's type decides its directory. The reserved directories admit only their
-own type; subfolders inside them are allowed (`content/factions/Guild.md`).
-Reference notes and notes of custom types live outside the reserved
-directories: under `reference/` or `campaigns/campaign_N/reference/`, or in
-further folders of your own.
+A note's type decides its directory. Each directory admits only its own type;
+subfolders inside a directory are allowed (`content/factions/Guild.md`).
 
 | Type | Directory | Filename |
 | --- | --- | --- |
@@ -58,7 +56,8 @@ further folders of your own.
 | Player | `campaigns/campaign_N/reference/players/` | free |
 | Type | `reference/types/` | the type's name |
 | Status | `reference/statuses/` | the status's name |
-| Reference, custom types | outside the reserved directories, as above | free |
+| Reference | `reference/` (shared) or `campaigns/campaign_N/reference/`, outside the subdirectories above | free |
+| custom types | a subfolder of `reference/` or `campaigns/campaign_N/reference/` of your own, such as `reference/calendar/` | free |
 
 No filename may have leading, trailing, doubled or non-space whitespace. Each
 file path must be unique when compared case-insensitively.
@@ -66,7 +65,6 @@ file path must be unique when compared case-insensitively.
 ## Other entries
 
 Hidden entries (`.obsidian/`, `.scratch/`, anything starting with `.`) and
-symlinks are not part of the vault. Files that are not Markdown, such as
-`assets/harbor-pass.txt` or `reference/views/clue-index.base`, are not notes
-but can be linked and embedded: `[[harbor-pass.txt]]`,
-`![[reference/views/clue-index.base#Active]]`.
+symlinks are not part of the vault. Files that are not notes can still be
+linked and embedded: `[[harbor-pass.txt]]` for `assets/harbor-pass.txt`,
+`![[reference/views/clue-index.base#Active]]` for a view.
