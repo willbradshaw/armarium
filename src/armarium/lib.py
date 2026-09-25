@@ -2,12 +2,16 @@
 
 import logging
 import re
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from armarium.logging import logger
+
+if TYPE_CHECKING:  # Avoid an import cycle: index and parse import this module.
+    from armarium.index import VaultIndex
+    from armarium.parse import Note
 
 # -----------------------------------------------------------------------------
 # Wikilink parsing
@@ -169,16 +173,51 @@ class Diagnostic:
 
 
 class Findings:
-    """Diagnostics collected for one file, all attributed to the same path."""
+    """Diagnostics collected for one file, all attributed to the same path.
 
-    def __init__(self, path: str) -> None:
-        """Start an empty collection for one file.
+    Collections for the same path combine with ``+``, so a check can return
+    its own findings and the caller sums them.
+    """
+
+    def __init__(self, path: str, diagnostics: Iterable[Diagnostic] = ()) -> None:
+        """Start a collection for one file.
 
         Args:
             path: The file's path relative to its vault, as reported.
+            diagnostics: Diagnostics already attributed to that path.
         """
         self.path = path
-        self.diagnostics: list[Diagnostic] = []
+        self.diagnostics = list(diagnostics)
+
+    @classmethod
+    def from_note(cls, note: "Note", index: "VaultIndex") -> "Findings":
+        """Start an empty collection for a note, attributed to its vault path.
+
+        Args:
+            note: Parsed note inside the indexed vault.
+            index: Index supplying the vault root the path is relative to.
+        """
+        return cls(note.path.relative_to(index.root).as_posix())
+
+    def __add__(self, other: "Findings") -> "Findings":
+        """Combine two collections for the same file, in order.
+
+        Raises:
+            ValueError: The collections are attributed to different paths.
+        """
+        if other.path != self.path:
+            raise ValueError(
+                f"cannot combine findings for {self.path} and {other.path}"
+            )
+        return Findings(self.path, self.diagnostics + other.diagnostics)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Findings):
+            return NotImplemented
+        return (self.path, self.diagnostics) == (other.path, other.diagnostics)
+
+    def __repr__(self) -> str:
+        return f"Findings({self.path!r}, {self.diagnostics!r})"
 
     def add(self, rule: str, message: str, field: str = "", line: int = 0) -> None:
         """Record one diagnostic against the file.

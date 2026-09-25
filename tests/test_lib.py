@@ -6,6 +6,7 @@ from typing import Literal
 
 import pytest
 
+from armarium.index import VaultIndex
 from armarium.lib import (
     Diagnostic,
     Findings,
@@ -22,6 +23,7 @@ from armarium.lib import (
     parse_wikilink,
     split_wikilink,
 )
+from armarium.parse import Body, Frontmatter, Note
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
 
@@ -355,6 +357,46 @@ class TestFindings:
         assert findings.diagnostics == [
             Diagnostic("content/N.md", "x.y", "message", "field", 3)
         ]
+
+    def test_initial_diagnostics_are_copied(self) -> None:
+        initial = [Diagnostic("N.md", "x.y", "message")]
+        findings = Findings("N.md", initial)
+        findings.add("x.z", "other")
+        assert initial == [Diagnostic("N.md", "x.y", "message")]
+        assert findings == Findings(
+            "N.md", [*initial, Diagnostic("N.md", "x.z", "other")]
+        )
+
+    def test_equality_and_repr(self) -> None:
+        assert Findings("N.md") == Findings("N.md", [])
+        assert Findings("N.md") != Findings("M.md")
+        assert Findings("N.md") != "N.md"
+        assert repr(Findings("N.md")) == "Findings('N.md', [])"
+
+
+class TestFindingsFromNote:
+    def test_vault_relative_path(self, tmp_path: Path) -> None:
+        note = Note(tmp_path / "content/N.md", Frontmatter(), Body("", 1))
+        findings = Findings.from_note(note, VaultIndex(tmp_path))
+        assert findings == Findings("content/N.md")
+
+
+class TestFindingsAdd:
+    def test_same_path_concatenates(self) -> None:
+        first = Findings("N.md", [Diagnostic("N.md", "a.b", "first")])
+        second = Findings("N.md", [Diagnostic("N.md", "c.d", "second")])
+        combined = first + second
+        assert [d.rule for d in combined.diagnostics] == ["a.b", "c.d"]
+        assert combined.path == "N.md"
+        assert len(first.diagnostics) == 1 and len(second.diagnostics) == 1
+
+    def test_sum(self) -> None:
+        parts = [Findings("N.md", [Diagnostic("N.md", rule, "m")]) for rule in "xyz"]
+        assert [d.rule for d in sum(parts, Findings("N.md")).diagnostics] == list("xyz")
+
+    def test_different_paths_raise(self) -> None:
+        with pytest.raises(ValueError, match="N.md and M.md"):
+            Findings("N.md") + Findings("M.md")
 
     @pytest.mark.parametrize("check", [False, True])
     def test_diagnose(self, check: bool) -> None:
