@@ -1,6 +1,6 @@
 # Vault layout
 
-An Armarium vault is a folder of [Markdown notes](notes.md) inside a fixed
+An Armarium vault is a folder of [Markdown notes](note.md) inside a fixed
 skeleton. A folder is a vault when it contains `reference/types/` and
 `campaigns/`; [`armarium validate`](cli.md) checks the whole skeleton below.
 
@@ -35,7 +35,7 @@ Every entry shown is required, as a real directory or file rather than a
 symlink, and nothing else belongs at the top level. Further Type and Status
 notes may be added beside the built-in ones. Subfolders may be added inside
 `assets/`, `content/`, `reference/` and their campaign counterparts. Every
-Markdown file in the vault is a note and must follow the [note rules](notes.md).
+Markdown file in the vault is a note and must follow the [note rules](note.md).
 Files that are not Markdown belong in `assets/`; the only exceptions are the
 views in `reference/views/` and the schemas in `reference/schemas/`.
 
@@ -57,7 +57,6 @@ subfolders inside a directory are allowed (`content/factions/Guild.md`).
 | Type | `reference/types/` | the type's name |
 | Status | `reference/statuses/` | the status's name |
 | Reference | `reference/` (shared) or `campaigns/campaign_N/reference/`, outside the subdirectories above | free |
-| custom types | a subfolder of `reference/` or `campaigns/campaign_N/reference/` of your own, such as `reference/calendar/` | free |
 
 No filename may have leading, trailing, doubled or non-space whitespace. Each
 file path must be unique when compared case-insensitively.
