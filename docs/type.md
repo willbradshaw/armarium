@@ -1,19 +1,21 @@
 # Types
 
 Each [record](record.md) has a type, declared in its `type` field, that
-determines [where it lives](vault.md#where-records-live), which frontmatter
-fields it has and what its body contains. A type is defined by a Type record
-in `reference/types/` and its schema in `reference/schemas/`. The built-in
-types follow, in alphabetical order. Throughout, "in this campaign" means
-under the same `campaigns/campaign_N/` as the record, and Content may also be
-shared under `content/`.
+determines where it lives, which frontmatter fields it has and what its body
+contains. A type is defined by a Type record in `reference/types/` and its
+schema in `reference/schemas/`. The built-in types follow, in alphabetical
+order.
 
 ## Clue
 
 ### Description
 
-A GM-known candidate fact tracked through a lifecycle; campaign-specific,
-named `C-N-NNNN.md` with the campaign number and a four-digit ordinal.
+A GM-known candidate fact tracked through a lifecycle.
+
+### Location
+
+`campaigns/campaign_N/clues/`, named `C-N-NNNN.md` with the
+[campaign](campaign.md) number and a four-digit ordinal.
 
 ### Frontmatter
 
@@ -21,11 +23,11 @@ named `C-N-NNNN.md` with the campaign number and a four-digit ordinal.
 | --- | --- |
 | `type` | `[[types/Clue]]` |
 | `status` | a link to a Status that applies to Clues: `[[Pending]]`, `[[Hinted]]`, `[[Revealed]]`, `[[Abandoned]]`, `[[Dormant]]` or `[[Superseded]]` |
-| `text` | non-blank text; its links must be Content in this campaign or shared |
+| `text` | non-blank text; its links must be Content in the same campaign or shared |
 | `subjects` | null (unidentified), `[]` (none) or exactly the records linked in `text`, as a list of links |
-| `first_session` | null or a link to the Session in this campaign the Clue was first prepared or used in |
-| `last_session` | null or a link to the Session in this campaign of its latest introduction or development; requires `first_session` and may not precede it |
-| `superseded_by` | a link to the replacing Clue in this campaign, required when `status` is `[[Superseded]]` and forbidden otherwise; following it from Clue to Clue must never return to the starting Clue |
+| `first_session` | null or a link to the Session in the same campaign the Clue was first prepared or used in |
+| `last_session` | null or a link to the Session in the same campaign of its latest introduction or development; requires `first_session` and may not precede it |
+| `superseded_by` | a link to the replacing Clue in the same campaign, required when `status` is `[[Superseded]]` and forbidden otherwise; following it from Clue to Clue must never return to the starting Clue |
 
 ### Body
 
@@ -35,9 +37,13 @@ Exactly `## Sessions` followed by one `.base` embed; nothing else.
 
 ### Description
 
-A character, place, group, object or piece of setting lore, shared or
-campaign-specific. `subtype` is one of `NPC`, `PC`, `Location`, `Faction`,
-`Object`, `Lore`.
+A character, place, group, object or piece of setting lore. `subtype` is one
+of `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`.
+
+### Location
+
+`content/` when shared by every [campaign](campaign.md), or
+`campaigns/campaign_N/content/` when specific to one.
 
 ### Frontmatter
 
@@ -48,9 +54,9 @@ campaign-specific. `subtype` is one of `NPC`, `PC`, `Location`, `Faction`,
 | `summary` | short text describing stable identity, or null for a stub |
 | `aliases` | list of non-empty strings, `[]`, null or omitted |
 | `stats` (NPC) | null, a link to a record, or an `http(s)://` URL |
-| `player` (PC) | a link to a Player in this campaign; not null |
-| `parent_location` (Location) | null or a link to Location Content, in this campaign or shared; following it from Location to Location must never return to the starting record |
-| `members` (Faction) | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content, in this campaign or shared |
+| `player` (PC) | a link to a Player in the same campaign; not null |
+| `parent_location` (Location) | null or a link to Location Content, in the same campaign or shared; following it from Location to Location must never return to the starting record |
+| `members` (Faction) | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content, in the same campaign or shared |
 | `campaign_N` | one block per campaign the record has state in |
 
 A `campaign_N` block is a mapping with `first_session` and `last_session`:
@@ -78,7 +84,11 @@ campaign's earliest and latest entries.
 ### Description
 
 A freeform document: working notes, design notes, session prep, ideas.
-Shared or campaign-specific.
+
+### Location
+
+`notes/` when shared by every [campaign](campaign.md), or
+`campaigns/campaign_N/notes/` when specific to one.
 
 ### Frontmatter
 
@@ -94,14 +104,18 @@ Free Markdown.
 
 ### Description
 
-A person at the table; campaign-specific.
+A person at the table.
+
+### Location
+
+`campaigns/campaign_N/reference/players/`.
 
 ### Frontmatter
 
 | Field | Value |
 | --- | --- |
 | `type` | `[[types/Player]]` |
-| `plays` | list of links to PC Content in this campaign; `[]` when unassigned; null and a single link are invalid |
+| `plays` | list of links to PC Content in the same [campaign](campaign.md); `[]` when unassigned; null and a single link are invalid |
 
 ### Body
 
@@ -112,7 +126,13 @@ Free Markdown, possibly empty.
 ### Description
 
 A structural, taxonomic or index record, such as a campaign overview or the
-clue index; shared or campaign-specific.
+clue index.
+
+### Location
+
+`reference/` when shared by every [campaign](campaign.md), or
+`campaigns/campaign_N/reference/` when specific to one; outside the typed
+subdirectories of either.
 
 ### Frontmatter
 
@@ -128,8 +148,12 @@ Free Markdown, possibly empty.
 
 ### Description
 
-One play session; campaign-specific, named `S-N-NNN.md` with the campaign
-number and a three-digit ordinal.
+One play session.
+
+### Location
+
+`campaigns/campaign_N/sessions/`, named `S-N-NNN.md` with the
+[campaign](campaign.md) number and a three-digit ordinal.
 
 ### Frontmatter
 
@@ -140,9 +164,9 @@ number and a three-digit ordinal.
 | `campaign` | a link to the containing campaign's `reference/Campaign.md` |
 | `session_number` | positive integer equal to the ordinal in the filename |
 | `aliases` | list of non-blank strings, `[]`, null or omitted |
-| `players_absent` | null or a list of links to Players in this campaign |
+| `players_absent` | null or a list of links to Players in the same campaign |
 | `in_game_start_date`, `in_game_end_date` | non-blank text or null |
-| `prepared_clues`, `prepared_locations`, `prepared_npcs` | ordered lists of links to Clues in this campaign, and to Location and NPC Content in this campaign or shared; `[]` or omitted selects nothing |
+| `prepared_clues`, `prepared_locations`, `prepared_npcs` | ordered lists of links to Clues in the same campaign, and to Location and NPC Content in the same campaign or shared; `[]` or omitted selects nothing |
 
 ### Body
 
@@ -158,8 +182,11 @@ optional.
 
 ### Description
 
-A lifecycle state for one type; named for the status. The six shipped
-statuses apply to Clues.
+A lifecycle state for one type. The six shipped statuses apply to Clues.
+
+### Location
+
+`reference/statuses/`, named for the status.
 
 ### Frontmatter
 
@@ -176,15 +203,19 @@ Free Markdown describing the status.
 
 ### Description
 
-Cleaned, attributed speech from one Session; campaign-specific, named after
-its Session: `S-N-NNN Transcript.md`.
+Cleaned, attributed speech from one Session.
+
+### Location
+
+`campaigns/campaign_N/sessions/transcripts/`, named after its Session:
+`S-N-NNN Transcript.md`.
 
 ### Frontmatter
 
 | Field | Value |
 | --- | --- |
 | `type` | `[[types/Transcript]]` |
-| `session` | a link to the Session in this campaign the transcript records, which the filename must match |
+| `session` | a link to the Session in the same [campaign](campaign.md) the transcript records, which the filename must match |
 
 ### Body
 
@@ -200,8 +231,12 @@ utterance may wrap onto further lines of its item.
 
 ### Description
 
-The definition of a record type; named for the type. `Type.md` and
-`Status.md` are themselves Type records.
+The definition of a record type. `Type.md` and `Status.md` are themselves
+Type records.
+
+### Location
+
+`reference/types/`, named for the type.
 
 ### Frontmatter
 
