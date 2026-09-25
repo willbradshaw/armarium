@@ -47,6 +47,8 @@ from armarium.validate import (
     validate_wikilinks,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.fixture
 def vault(tmp_path: Path) -> Path:
@@ -369,10 +371,10 @@ class TestValidateMarkdown:
         self, tmp_path: Path, kind: str, source: str
     ) -> None:
         root = tmp_path / "copied vault"
-        shutil.copytree(Path("vaults") / source, root)
-        fixture = json.loads(Path(f"tests/schemas/fixtures/{kind}.json").read_text())[
-            "base"
-        ]
+        shutil.copytree(ROOT / "vaults" / source, root)
+        fixture = json.loads(
+            (ROOT / f"tests/schemas/fixtures/{kind}.json").read_text()
+        )["base"]
         path = root / "selected.md"
         path.write_text(
             "---\n" + yaml.safe_dump(fixture["frontmatter"]) + "---\n" + fixture["body"]
@@ -392,7 +394,7 @@ class TestValidateMarkdown:
         self, tmp_path: Path, source: str, folder: str
     ) -> None:
         root = tmp_path / "copied vault"
-        shutil.copytree(Path("vaults") / source, root)
+        shutil.copytree(ROOT / "vaults" / source, root)
         paths = sorted((root / "reference" / folder).glob("*.md"))
         assert paths
         for path in paths:
@@ -405,7 +407,7 @@ class TestValidateMarkdown:
     @pytest.mark.parametrize("declared_type", ["Type", "Status"])
     def test_definition_schema_errors(self, tmp_path: Path, declared_type: str) -> None:
         root = tmp_path / "copied vault"
-        shutil.copytree(Path("vaults/starter"), root)
+        shutil.copytree(ROOT / "vaults/starter", root)
         folder = "types" if declared_type == "Type" else "statuses"
         path = root / "reference" / folder / "Invalid.md"
         # Both are canonical links, but violate the declared type's schema:
@@ -622,7 +624,7 @@ class TestValidateDirectory:
 
     @pytest.mark.parametrize("name", ["starter", "example"])
     def test_shipped_vault_copy(self, tmp_path: Path, name: str) -> None:
-        source = Path(__file__).resolve().parents[1] / "vaults" / name
+        source = ROOT / "vaults" / name
         root = tmp_path / "copied vault"
         shutil.copytree(source, root)
         before = {p: p.read_bytes() for p in find_files(root)}
@@ -1903,7 +1905,7 @@ class TestValidateVault:
 
     @pytest.mark.parametrize("name", ["example", "starter"])
     def test_shipped_vaults(self, name: str) -> None:
-        root = Path(__file__).resolve().parents[1] / "vaults" / name
+        root = ROOT / "vaults" / name
         assert validate_vault(root).diagnostics == []
 
 

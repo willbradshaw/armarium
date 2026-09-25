@@ -12,6 +12,8 @@ from referencing.exceptions import NoSuchResource
 from armarium.parse import Body, Frontmatter, Note
 from armarium.schemas import Schema, select_schema
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.fixture
 def root(tmp_path: Path) -> Path:
@@ -435,10 +437,10 @@ class TestSelectSchema:
         ],
     )
     def test_shipped_schema_contract(self, vault: str, kind: str) -> None:
-        fixture = json.loads(Path(f"tests/schemas/fixtures/{kind}.json").read_text())[
-            "base"
-        ]
-        root = Path(f"vaults/{vault}")
+        fixture = json.loads(
+            (ROOT / f"tests/schemas/fixtures/{kind}.json").read_text()
+        )["base"]
+        root = ROOT / f"vaults/{vault}"
         note = Note(
             root / "record.md",
             Frontmatter(fixture["frontmatter"]),
@@ -462,11 +464,11 @@ class TestSelectSchema:
     def test_shipped_clue_replacement(
         self, vault: str, status: str, replacement: object, valid: bool
     ) -> None:
-        fixture = json.loads(Path("tests/schemas/fixtures/clue.json").read_text())
+        fixture = json.loads((ROOT / "tests/schemas/fixtures/clue.json").read_text())
         metadata = dict(fixture["base"]["frontmatter"], status=f"[[{status}]]")
         if replacement is not ...:
             metadata["superseded_by"] = replacement
-        root = Path(f"vaults/{vault}")
+        root = ROOT / f"vaults/{vault}"
         note = Note(
             root / "record.md", Frontmatter(metadata), Body(fixture["base"]["body"], 1)
         )
