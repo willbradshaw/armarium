@@ -8,9 +8,9 @@ campaign_1:
 ---
 ## Notes
 
-A vessel's captain or authorized crew representative can claim a hearing by ringing the quay bell while presenting a vessel's name and a witness. The hearing must finish before the vessel can be sold. The compact protects a hearing, not immunity from debts or criminal charges.
+A vessel's captain or authorized crew representative can claim a hearing by ringing the quay bell while presenting a vessel's name and a witness. The hearing must finish before the vessel can be sold. The compact protects a hearing, not immunity from debts or criminal charges. ^hearing
 
-The [[Free Pilots Assembly]] supplies a witness when countinghouse officers dispute a petition.
+The [[Free Pilots Assembly]] supplies a witness when countinghouse officers dispute a petition. The crew's certification is recorded under [[S-1-002#Events]].
 
 ## Active Clues
 

@@ -23,7 +23,7 @@ from armarium.lib import (
     find_vault,
     parse_wikilink,
 )
-from armarium.parse import Note
+from armarium.parse import Note, Section
 from armarium.schemas import Schema, select_schema
 
 
@@ -645,7 +645,7 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
             problem = validate_wikilink(
-                link.target, note, index, targets.get(link.field)
+                link.target, note, index, targets.get(link.field), link.anchor
             )
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
@@ -689,56 +689,73 @@ def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
 
 
 def validate_wikilink(
-    target: str, note: Note, index: VaultIndex, expected: Target | None = None
+    target: str,
+    note: Note,
+    index: VaultIndex,
+    expected: Target | None = None,
+    anchor: str = "",
 ) -> tuple[str, str] | None:
     """Check that one wikilink target resolves to a usable vault file.
 
     Args:
-        target: Parsed wikilink target, without alias, heading or block suffix.
+        target: Parsed wikilink target, without alias or anchor.
         note: Note containing the link; its path breaks resolution ties and its
             declared type takes part in target-specific checks.
         index: Whole-vault file index and lazy note cache for this run.
         expected: Requirements on the target record, or None for any file.
+        anchor: Heading path or ``^block-id`` the link names, if any.
 
     Returns:
         tuple[str, str] | None: The problem found by linked_note, or None when
             the target is usable.
     """
-    result = linked_note(target, note, index, expected)
+    result = linked_note(target, note, index, expected, anchor)
     return result if isinstance(result, tuple) else None
 
 
 @overload
 def linked_note(
-    target: str, note: Note, index: VaultIndex, expected: Target
+    target: str, note: Note, index: VaultIndex, expected: Target, anchor: str = ""
 ) -> Note | tuple[str, str]: ...
 
 
 @overload
 def linked_note(
-    target: str, note: Note, index: VaultIndex, expected: None = None
+    target: str,
+    note: Note,
+    index: VaultIndex,
+    expected: None = None,
+    anchor: str = "",
 ) -> Note | tuple[str, str] | None: ...
 
 
 def linked_note(
-    target: str, note: Note, index: VaultIndex, expected: Target | None = None
+    target: str,
+    note: Note,
+    index: VaultIndex,
+    expected: Target | None = None,
+    anchor: str = "",
 ) -> Note | tuple[str, str] | None:
     """Resolve one wikilink target and check it, returning the note it names.
 
     Args:
-        target: Parsed wikilink target, without alias, heading or block suffix.
+        target: Parsed wikilink target, without alias or anchor.
         note: Note containing the link; its path breaks resolution ties and its
             declared type takes part in target-specific checks.
         index: Whole-vault file index and lazy note cache for this run.
         expected: Requirements on the target record, or None for any file.
+        anchor: Heading path or ``^block-id`` the link names, if any. Checked
+            against a linked note's structure; non-note targets such as
+            assets and Bases views have no headings or blocks to check.
 
     Returns:
         Note | tuple[str, str] | None: The linked note when it parses and meets
             expected; None when no record type is expected and the target is a
             usable non-note file or self-anchor; otherwise the rule and message
-            for a missing, ambiguous or unparseable target, one that is not a
-            correctly placed record of the expected type and subtype, one
-            outside the expected campaign, or one failing its type's own check.
+            for a missing, ambiguous or unparseable target, an anchor the note
+            lacks, one that is not a correctly placed record of the expected
+            type and subtype, one outside the expected campaign, or one failing
+            its type's own check.
     """
     resolved, rule = index.resolve(target, note.path)
     if rule:
@@ -749,6 +766,10 @@ def linked_note(
         if failures:
             relative = resolved.relative_to(index.root)
             return "link.malformed", f"referenced note {relative} cannot be parsed"
+    if anchor and linked is not None:
+        problem = _check_anchor(linked, anchor)
+        if problem is not None:
+            return problem
     if expected is None:
         return linked
     kind = expected.record_type
@@ -775,6 +796,49 @@ def linked_note(
     check = _TARGET_CHECKS.get(kind)
     problem = check(linked, note, index) if check else None
     return problem if problem is not None else linked
+
+
+def _check_anchor(note: Note, anchor: str) -> tuple[str, str] | None:
+    """Check that a note contains the heading path or block id an anchor names.
+
+    Headings match Obsidian's link rules: case-insensitively, ignoring the
+    characters ``# | [ ] ^`` and runs of whitespace, on the heading text as
+    written. ``A#B`` names heading B beneath heading A. A block id matches any
+    paragraph or item ending in ``^id`` anywhere in the note.
+
+    Args:
+        note: Parsed note the link resolved to.
+        anchor: Heading path or ``^block-id`` after the link's ``#``.
+
+    Returns:
+        tuple[str, str] | None: A link.anchor problem, or None when found.
+    """
+    stem = note.path.stem
+    if anchor.startswith("^"):
+        wanted = anchor[1:].casefold()
+        blocks = (b for s in note.body.walk() for top in s.blocks for b in top.walk())
+        if any(
+            b.block_id is not None and b.block_id.casefold() == wanted for b in blocks
+        ):
+            return None
+        return "link.anchor", f"[[{stem}#{anchor}]]: no block {anchor}"
+    within: list[Section] = [note.body]
+    for segment in anchor.split("#"):
+        wanted = _heading_key(segment)
+        within = [
+            s
+            for c in within
+            for s in c.walk()
+            if s is not c and _heading_key(s.title) == wanted
+        ]
+        if not within:
+            return "link.anchor", f"[[{stem}#{anchor}]]: no heading {segment}"
+    return None
+
+
+def _heading_key(text: str) -> str:
+    """Normalise heading text the way Obsidian matches heading links."""
+    return " ".join(re.sub(r"[#|\[\]^]", "", text).split()).casefold()
 
 
 def _validate_wikilink_status(
