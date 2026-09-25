@@ -351,12 +351,18 @@ class TestDiagnosticReport:
 
 
 class TestFindings:
-    def test_add(self) -> None:
+    @pytest.mark.parametrize("severity", ["error", "warning", "info"])
+    def test_add(self, severity: Literal["error", "warning", "info"]) -> None:
         findings = Findings("content/N.md")
-        findings.add("x.y", "message", "field", 3)
+        findings.add("x.y", "message", "field", 3, severity=severity)
         assert findings.diagnostics == [
-            Diagnostic("content/N.md", "x.y", "message", "field", 3)
+            Diagnostic("content/N.md", "x.y", "message", "field", 3, severity)
         ]
+
+    def test_add_defaults_to_error(self) -> None:
+        findings = Findings("content/N.md")
+        findings.add("x.y", "message")
+        assert findings.diagnostics == [Diagnostic("content/N.md", "x.y", "message")]
 
     def test_initial_diagnostics_are_copied(self) -> None:
         initial = [Diagnostic("N.md", "x.y", "message")]
