@@ -215,11 +215,11 @@ def validate_markdown(
         index = VaultIndex(root)
         index.notes[path] = (note, [])
     diagnostics.extend(validate_wikilinks(note, index))
-    diagnostics.extend(validate_placement(note, index))
-    diagnostics.extend(validate_filename(note, index))
-    diagnostics.extend(validate_campaigns(note, index))
-    diagnostics.extend(validate_identity_links(note, index))
-    diagnostics.extend(validate_chains(note, index))
+    diagnostics.extend(validate_placement(note, index).diagnostics)
+    diagnostics.extend(validate_filename(note, index).diagnostics)
+    diagnostics.extend(validate_campaigns(note, index).diagnostics)
+    diagnostics.extend(validate_identity_links(note, index).diagnostics)
+    diagnostics.extend(validate_chains(note, index).diagnostics)
     diagnostics.extend(validate_appearances(note, index))
     diagnostics.extend(validate_clue(note, index))
     diagnostics.extend(validate_transcript(note, index))
@@ -900,7 +900,7 @@ def linked_note(
     if (
         linked is None
         or linked.frontmatter.type != kind
-        or validate_placement(linked, index)
+        or validate_placement(linked, index).diagnostics
     ):
         return "link.type", f"[[{target}]] must link to a placed {kind} record"
     subtype = linked.frontmatter.get("subtype")
@@ -1001,7 +1001,7 @@ _TARGET_CHECKS: dict[
 ] = {"Status": _validate_wikilink_status}
 
 
-def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_placement(note: Note, index: VaultIndex) -> Findings:
     """Check the record's directory against its declared type.
 
     Args:
@@ -1009,9 +1009,10 @@ def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Index supplying the selected vault boundary.
 
     Returns:
-        list[Diagnostic]: A placement error for a misplaced built-in type.
-            Unknown custom types and Reference records have no placement rule.
+        Findings: A placement error for a misplaced built-in type. Unknown
+            custom types and Reference records have no placement rule.
     """
+    findings = Findings.from_note(note, index)
     kind = note.frontmatter.type
     directories = {
         "Content": "content",
@@ -1023,7 +1024,7 @@ def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
         "Status": "reference/statuses",
     }
     if kind not in directories:
-        return []
+        return findings
     scope = find_campaign(note.path, index.root)
     prefix = index.root
     if scope and kind not in {"Type", "Status"}:
@@ -1035,23 +1036,20 @@ def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
     # The Transcript subtree is reserved for transcripts, not Session records.
     if kind == "Session" and note.path.is_relative_to(expected / "transcripts"):
         valid = False
-    if valid:
-        return []
-    return [
-        Diagnostic(
-            note.path.relative_to(index.root).as_posix(),
-            "record.placement",
-            f"{kind} belongs under {expected.relative_to(index.root)}"
-            + (
-                " inside a numeric campaign"
-                if scope is None and kind not in {"Content", "Type", "Status"}
-                else ""
-            ),
-        )
-    ]
+    findings.diagnose(
+        not valid,
+        "record.placement",
+        f"{kind} belongs under {expected.relative_to(index.root)}"
+        + (
+            " inside a numeric campaign"
+            if scope is None and kind not in {"Content", "Type", "Status"}
+            else ""
+        ),
+    )
+    return findings
 
 
-def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_filename(note: Note, index: VaultIndex) -> Findings:
     """Check the record's filename and the Session ordinal it encodes.
 
     Args:
@@ -1059,55 +1057,55 @@ def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Index supplying the selected vault boundary.
 
     Returns:
-        list[Diagnostic]: A filename with leading, trailing, doubled or
-            non-space whitespace; a Session, Clue or Transcript outside every
-            campaign, one whose filename does not match its campaign's pattern,
-            or a Session whose session_number differs from its filename. Other
+        Findings: A filename with leading, trailing, doubled or non-space
+            whitespace; a Session, Clue or Transcript outside every campaign,
+            one whose filename does not match its campaign's pattern, or a
+            Session whose session_number differs from its filename. Other
             types have no further filename rule.
     """
-    path = note.path.relative_to(index.root).as_posix()
+    findings = Findings.from_note(note, index)
+    # 1. Check the whitespace of every filename
     stem = note.path.stem
-    if stem != " ".join(stem.split()):
-        message = "filename has leading, trailing or doubled whitespace"
-        return [Diagnostic(path, "record.identity", message)]
+    if findings.diagnose(
+        stem != " ".join(stem.split()),
+        "record.identity",
+        "filename has leading, trailing or doubled whitespace",
+    ):
+        return findings
+    # 2. Check the campaign pattern of numbered records
     scope = find_campaign(note.path, index.root)
     kind = note.frontmatter.type
     if kind not in {"Session", "Clue", "Transcript"}:
-        return []
+        return findings
     if scope is None:
-        return [
-            Diagnostic(
-                path,
-                "record.identity",
-                f"cannot check {kind} filename: record is outside every campaign",
-            )
-        ]
+        findings.add(
+            "record.identity",
+            f"cannot check {kind} filename: record is outside every campaign",
+        )
+        return findings
     number = scope.removeprefix("campaign_")
     pattern = {
         "Clue": rf"C-{number}-[0-9]{{4}}",
         "Session": rf"S-{number}-([0-9]{{3}})",
         "Transcript": rf"S-{number}-[0-9]{{3}} Transcript",
     }[kind]
-    match = re.fullmatch(pattern, note.path.stem)
+    match = re.fullmatch(pattern, stem)
     if match is None:
-        return [
-            Diagnostic(path, "record.identity", f"{kind} filename must match {pattern}")
-        ]
+        findings.add("record.identity", f"{kind} filename must match {pattern}")
+        return findings
+    # 3. Compare a Session's ordinal with its filename
     ordinal = note.frontmatter.get("session_number")
     # bool is an int subclass, so compare the exact type.
-    if kind == "Session" and (type(ordinal) is not int or ordinal != int(match[1])):
-        return [
-            Diagnostic(
-                path,
-                "record.identity",
-                "session_number must match filename ordinal",
-                "session_number",
-            )
-        ]
-    return []
+    findings.diagnose(
+        kind == "Session" and (type(ordinal) is not int or ordinal != int(match[1])),
+        "record.identity",
+        "session_number must match filename ordinal",
+        "session_number",
+    )
+    return findings
 
 
-def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_campaigns(note: Note, index: VaultIndex) -> Findings:
     """Check the record's campaign directory and any campaign_N blocks.
 
     Args:
@@ -1115,56 +1113,47 @@ def validate_campaigns(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Index supplying the vault boundary.
 
     Returns:
-        list[Diagnostic]: A record under campaigns/ that is not inside a
-            campaign_N directory; a Content record's campaign_N field that is
-            not a mapping; or one whose directory does not exist or differs
-            from the campaign containing the record.
+        Findings: A record under campaigns/ that is not inside a campaign_N
+            directory; a Content record's campaign_N field that is not a
+            mapping; or one whose directory does not exist or differs from
+            the campaign containing the record.
     """
-    relative = note.path.relative_to(index.root)
-    parts = relative.parts
-    diagnostics: list[Diagnostic] = []
-    if parts[0] == "campaigns" and not CAMPAIGN_NAME.fullmatch(parts[1]):
-        diagnostics.append(
-            Diagnostic(
-                relative.as_posix(),
-                "campaign.name",
-                "records under campaigns/ belong inside a campaign_N directory",
-            )
-        )
+    findings = Findings.from_note(note, index)
+    # 1. Check the record's directory
+    parts = note.path.relative_to(index.root).parts
+    findings.diagnose(
+        parts[0] == "campaigns" and not CAMPAIGN_NAME.fullmatch(parts[1]),
+        "campaign.name",
+        "records under campaigns/ belong inside a campaign_N directory",
+    )
     if note.frontmatter.type != "Content":
-        return diagnostics
+        return findings
+    # 2. Check each campaign_N block
     scope = find_campaign(note.path, index.root)
     for field, block in note.frontmatter.items():
         if not CAMPAIGN_NAME.fullmatch(field):
             continue
         directory = index.root / "campaigns" / field
-        if not isinstance(block, dict):
-            diagnostics.append(
-                Diagnostic(
-                    relative.as_posix(),
-                    "campaign.block",
-                    "campaign block must be a mapping of campaign state",
-                    field,
-                )
-            )
-        elif (
+        if findings.diagnose(
+            not isinstance(block, dict),
+            "campaign.block",
+            "campaign block must be a mapping of campaign state",
+            field,
+        ):
+            continue
+        findings.diagnose(
             not directory.is_dir()
             or directory.is_symlink()
-            or (scope is not None and scope != field)
-        ):
-            diagnostics.append(
-                Diagnostic(
-                    relative.as_posix(),
-                    "campaign.mismatch",
-                    "campaign block must name an existing campaign compatible "
-                    "with the record's location",
-                    field,
-                )
-            )
-    return diagnostics
+            or (scope is not None and scope != field),
+            "campaign.mismatch",
+            "campaign block must name an existing campaign compatible "
+            "with the record's location",
+            field,
+        )
+    return findings
 
 
-def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_identity_links(note: Note, index: VaultIndex) -> Findings:
     """Check the link that names a campaign Session's or Transcript's identity.
 
     Args:
@@ -1172,17 +1161,17 @@ def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Whole-vault index used to resolve the link.
 
     Returns:
-        list[Diagnostic]: A Session or Transcript outside every campaign, one
-            whose identity link cannot be resolved, a Session whose campaign is
-            not the containing campaign's overview, or a Transcript not named
+        Findings: A Session or Transcript outside every campaign, one whose
+            identity link cannot be resolved, a Session whose campaign is not
+            the containing campaign's overview, or a Transcript not named
             after its linked Session plus " Transcript". Other types have no
             identity link.
     """
+    findings = Findings.from_note(note, index)
     scope = find_campaign(note.path, index.root)
     kind = note.frontmatter.type
     if kind not in {"Session", "Transcript"}:
-        return []
-    path = note.path.relative_to(index.root).as_posix()
+        return findings
     field = "campaign" if kind == "Session" else "session"
     resolved, error = index.resolve_field(note, field)
     if scope is None:
@@ -1191,17 +1180,18 @@ def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
         message = f"cannot check {kind} identity: {error}"
     elif kind == "Session":
         if resolved == index.root / f"campaigns/{scope}/reference/Campaign.md":
-            return []
+            return findings
         message = "campaign must link to the containing campaign overview"
     elif resolved is not None and note.path.stem == f"{resolved.stem} Transcript":
-        return []
+        return findings
     else:
         message = "Transcript filename must match its linked Session plus ' Transcript'"
     rule = "campaign.mismatch" if kind == "Session" else "record.identity"
-    return [Diagnostic(path, rule, message, field)]
+    findings.add(rule, message, field)
+    return findings
 
 
-def validate_chains(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_chains(note: Note, index: VaultIndex) -> Findings:
     """Check that the record's chain field never leads back to the record.
 
     Args:
@@ -1209,21 +1199,21 @@ def validate_chains(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Whole-vault index used to follow the chain.
 
     Returns:
-        list[Diagnostic]: A link.cycle when following the field from record to
-            record returns to this record, or enters a loop elsewhere. A chain
-            ending at a null, absent, unresolvable or unparseable link is not a
+        Findings: A link.cycle when following the field from record to record
+            returns to this record, or enters a loop elsewhere. A chain ending
+            at a null, absent, unresolvable or unparseable link is not a
             cycle; such links are reported by the link checks.
     """
+    findings = Findings.from_note(note, index)
     field = CHAIN_FIELDS.get(note.frontmatter.type or "")
     if field is None or note.frontmatter.get(field) is None:
-        return []
-    path = note.path.relative_to(index.root).as_posix()
+        return findings
     chain: list[Path] = []
     current = note
     while True:
         resolved, error = index.resolve_field(current, field)
         if error or resolved is None or resolved.suffix.lower() != ".md":
-            return []
+            return findings
         via = ", ".join(f"[[{p.stem}]]" for p in chain)
         if resolved == note.path:
             message = (
@@ -1231,12 +1221,15 @@ def validate_chains(note: Note, index: VaultIndex) -> list[Diagnostic]:
                 if via
                 else f"{field} links to this record"
             )
-            return [Diagnostic(path, "link.cycle", message, field)]
+            findings.add("link.cycle", message, field)
+            return findings
         if resolved in chain:
-            message = f"{field} chain loops at [[{resolved.stem}]]"
-            return [Diagnostic(path, "link.cycle", message, field)]
+            findings.add(
+                "link.cycle", f"{field} chain loops at [[{resolved.stem}]]", field
+            )
+            return findings
         linked, _ = index.parse(resolved)
         if linked is None or linked.frontmatter.get(field) is None:
-            return []
+            return findings
         chain.append(resolved)
         current = linked
