@@ -1,8 +1,10 @@
 # Vault layout
 
 An Armarium vault is a folder of Markdown [records](record.md) inside a fixed
-skeleton. A folder is a vault when it contains `reference/types/` and
-`campaigns/`; [`armarium validate`](cli.md) checks the whole skeleton below.
+skeleton. To Obsidian any folder is a vault, and it keeps its own settings in
+`.obsidian/`; the starter ships one with the settings the records rely on. To
+[`armarium validate`](cli.md) a folder is a vault when it contains
+`reference/types/` and `campaigns/`, and the whole skeleton below is checked.
 
 `vaults/starter/` in this repository is the smallest vault that passes; copy it
 to start a new one. `vaults/example/` is a populated vault with two campaigns.
@@ -53,17 +55,17 @@ in a subfolder of it, and a directory admits only the types that declare it.
 Where one declared directory lies inside another (`sessions/transcripts/`
 inside `sessions/`), the longer declaration claims its subtree.
 
-| Type | `directories` | Filename |
-| --- | --- | --- |
-| Content | `{ shared: content, campaign: content }` | free |
-| Note | `{ shared: notes, campaign: notes }` | free |
-| Reference | `{ shared: reference, campaign: reference }` | free |
-| Clue | `{ campaign: clues }` | `C-`, the campaign number, `-`, a four-digit ordinal: `C-1-0001.md` |
-| Session | `{ campaign: sessions }` | `S-`, the campaign number, `-`, a three-digit ordinal that matches `session_number`: `S-1-001.md` |
-| Transcript | `{ campaign: sessions/transcripts }` | its Session's filename plus ` Transcript`: `S-1-001 Transcript.md` |
-| Player | `{ campaign: reference/players }` | free |
-| Type | `{ shared: reference/types }` | the type's name |
-| Status | `{ shared: reference/statuses }` | the status's name |
+| Type | `directories` | Filename | Example |
+| --- | --- | --- | --- |
+| Content | `{ shared: content, campaign: content }` | free | `content/Port Briselle.md`, `campaigns/campaign_1/content/Quay Nine.md` |
+| Note | `{ shared: notes, campaign: notes }` | free | `notes/Coast design notes.md`, `campaigns/campaign_1/notes/Prep for the hearing.md` |
+| Reference | `{ shared: reference, campaign: reference }` | free | `campaigns/campaign_1/reference/Campaign.md` |
+| Clue | `{ campaign: clues }` | `C-`, the campaign number, `-`, a four-digit ordinal | `campaigns/campaign_1/clues/C-1-0001.md` |
+| Session | `{ campaign: sessions }` | `S-`, the campaign number, `-`, a three-digit ordinal that matches `session_number` | `campaigns/campaign_1/sessions/S-1-001.md` |
+| Transcript | `{ campaign: sessions/transcripts }` | its Session's filename plus ` Transcript` | `campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md` |
+| Player | `{ campaign: reference/players }` | free | `campaigns/campaign_1/reference/players/Ellis.md` |
+| Type | `{ shared: reference/types }` | the type's name | `reference/types/Clue.md` |
+| Status | `{ shared: reference/statuses }` | the status's name | `reference/statuses/Pending.md` |
 
 A vault may add a type of its own: a Type record in `reference/types/` with a
 `directories` declaration and a matching schema in `reference/schemas/`. Its
