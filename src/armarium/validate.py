@@ -220,8 +220,8 @@ def validate_markdown(
     diagnostics.extend(validate_campaigns(note, index).diagnostics)
     diagnostics.extend(validate_identity_links(note, index).diagnostics)
     diagnostics.extend(validate_chains(note, index).diagnostics)
-    diagnostics.extend(validate_appearances(note, index))
-    diagnostics.extend(validate_clue(note, index))
+    diagnostics.extend(validate_appearances(note, index).diagnostics)
+    diagnostics.extend(validate_clue(note, index).diagnostics)
     diagnostics.extend(validate_transcript(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
@@ -365,7 +365,7 @@ def validate_vault(root: Path) -> list[Diagnostic]:
     return diagnostics
 
 
-def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_appearances(note: Note, index: VaultIndex) -> Findings:
     """Reconcile a Content record's Appearances list with its campaign blocks.
 
     Args:
@@ -373,48 +373,54 @@ def validate_appearances(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Vault index used to resolve the linked Sessions.
 
     Returns:
-        list[Diagnostic]: Problems with the Appearances section or its entries,
-            with the order of campaigns and of each campaign's appearances, and
+        Findings: Problems with the Appearances section or its entries, with
+            the order of campaigns and of each campaign's appearances, and
             with the campaign_N blocks' first_session and last_session.
     """
     if note.frontmatter.type != "Content":
-        return []
-    findings = Findings(note.path.relative_to(index.root).as_posix())
+        return Findings.from_note(note, index)
     # 1. Read the recorded appearances
-    appearances = _read_appearances(note, index, findings)
+    appearances, findings = _read_appearances(note, index)
     # 2. Validate the sequence of campaigns
     order = [int(campaign.removeprefix("campaign_")) for campaign, _, _ in appearances]
     findings.diagnose(order != sorted(order), "history.order", "campaigns out of order")
     # 3. Check each campaign with appearances or a block
     campaigns = {campaign for campaign, _, _ in appearances}
-    for campaign in sorted(campaigns | note.frontmatter.campaigns.keys()):
-        history = [(ordinal, path) for c, ordinal, path in appearances if c == campaign]
-        _check_campaign_history(note, index, campaign, history, findings)
-    return findings.diagnostics
+    checks = (
+        _check_campaign_history(
+            note,
+            index,
+            campaign,
+            [(ordinal, path) for c, ordinal, path in appearances if c == campaign],
+        )
+        for campaign in sorted(campaigns | note.frontmatter.campaigns.keys())
+    )
+    return sum(checks, findings)
 
 
 def _read_appearances(
-    note: Note, index: VaultIndex, findings: Findings
-) -> list[tuple[str, int, Path]]:
+    note: Note, index: VaultIndex
+) -> tuple[list[tuple[str, int, Path]], Findings]:
     """Collect the appearances recorded under a Content record's Appearances.
 
     Args:
         note: Content record to read.
         index: Vault index used to resolve and parse linked Sessions.
-        findings: Collector for the problems found.
 
     Returns:
-        list[tuple[str, int, Path]]: Campaign, session number and path of each
-            Session linked under Appearances, in list order. A malformed
-            section ends the read; a malformed or unusable entry is omitted.
+        tuple[list[tuple[str, int, Path]], Findings]: Campaign, session number
+            and path of each Session linked under Appearances, in list order,
+            and the problems found. A malformed section ends the read; a
+            malformed or unusable entry is omitted.
     """
+    findings = Findings.from_note(note, index)
     # 1. Find and validate the Appearances section.
     history: list[tuple[str, int, Path]] = []
     sections = [
         s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"
     ]
     if findings.diagnose(not sections, "history.format", "no Appearances heading"):
-        return history
+        return history, findings
     section = sections[0]
     problems = (
         (len(sections) > 1, "repeated Appearances heading"),
@@ -426,7 +432,7 @@ def _read_appearances(
     )
     for check, message in problems:
         if findings.diagnose(check, "history.format", message, line=section.line):
-            return history
+            return history, findings
     # 2. An N/A placeholder stands alone.
     appearances = section.blocks[0].children
     placeholders = [item.line for item in appearances if item.text == "N/A"]
@@ -437,7 +443,7 @@ def _read_appearances(
             "N/A listed with appearances",
             line=placeholders[0],
         )
-        return history
+        return history, findings
     # 3. Collect the linked Sessions.
     linked: list[tuple[int, Note]] = []
     for appearance in appearances:
@@ -485,16 +491,12 @@ def _read_appearances(
         ):
             continue
         history.append((campaign, ordinal, session.path))
-    return history
+    return history, findings
 
 
 def _check_campaign_history(
-    note: Note,
-    index: VaultIndex,
-    campaign: str,
-    history: list[tuple[int, Path]],
-    findings: Findings,
-) -> None:
+    note: Note, index: VaultIndex, campaign: str, history: list[tuple[int, Path]]
+) -> Findings:
     """Check one campaign's recorded appearances against its campaign_N block.
 
     Args:
@@ -503,8 +505,12 @@ def _check_campaign_history(
         campaign: Campaign directory name, campaign_N.
         history: That campaign's appearances as (ordinal, Session path), in
             list order; empty when none are recorded.
-        findings: Collector for the problems found.
+
+    Returns:
+        Findings: Appearances out of order or repeated, a missing campaign_N
+            block, and a block range that disagrees with the appearances.
     """
+    findings = Findings.from_note(note, index)
     # 1. Validate the sequence of appearances
     ordinals = [ordinal for ordinal, _ in history]
     sessions = [session for _, session in history]
@@ -524,7 +530,7 @@ def _check_campaign_history(
         findings.add(
             "history.block", f"no {campaign} block for its appearances", campaign
         )
-        return
+        return findings
     # 3. Compare the block's range with the earliest and latest appearances
     ordered = sorted(history)
     bounds = (
@@ -551,9 +557,10 @@ def _check_campaign_history(
             f"{location} must be [[{expected.stem}]]",
             location,
         )
+    return findings
 
 
-def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_clue(note: Note, index: VaultIndex) -> Findings:
     """Check a Clue's subjects against its text and the order of its Sessions.
 
     Args:
@@ -561,15 +568,15 @@ def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Vault index used to resolve the links.
 
     Returns:
-        list[Diagnostic]: subjects that are not exactly the records linked in
-            text, or a link that cannot be resolved for that comparison
+        Findings: subjects that are not exactly the records linked in text, or
+            a link that cannot be resolved for that comparison
             (clue.subjects); a last_session without first_session
             (history.range); a last_session before first_session, or a Session
             that cannot be ordered (history.order).
     """
+    findings = Findings.from_note(note, index)
     if note.frontmatter.type != "Clue":
-        return []
-    findings = Findings(note.path.relative_to(index.root).as_posix())
+        return findings
     # 1. Resolve every link in text and subjects
     linked: dict[str, set[Path]] = {"text": set(), "subjects": set()}
     comparable = True
@@ -628,7 +635,7 @@ def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
             "last_session precedes first_session",
             "last_session",
         )
-    return findings.diagnostics
+    return findings
 
 
 def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
