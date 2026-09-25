@@ -17,9 +17,7 @@ DOCS = Path(__file__).resolve().parents[1] / "docs"
 
 
 class TestVaultDocument:
-    @pytest.fixture(scope="class")
-    def text(self) -> str:
-        return (DOCS / "vault.md").read_text()
+    TEXT = (DOCS / "vault.md").read_text()
 
     @pytest.mark.parametrize(
         "entry",
@@ -32,5 +30,5 @@ class TestVaultDocument:
             *VAULT_TEMPLATES,
         ],
     )
-    def test_names_every_required_entry(self, text: str, entry: str) -> None:
-        assert entry.rsplit("/", 1)[-1] in text
+    def test_names_every_required_entry(self, entry: str) -> None:
+        assert entry.rsplit("/", 1)[-1] in self.TEXT
