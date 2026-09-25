@@ -39,8 +39,7 @@ Exactly `## Sessions` followed by one `.base` embed; nothing else.
 
 ### Description
 
-A character, place, group, object or piece of setting lore. `subtype` is one
-of `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`.
+A character, place, group, object or piece of setting lore.
 
 ### Location
 
@@ -52,7 +51,7 @@ of `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`.
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[types/Content]]` |
-| `subtype` | required | one of the six subtypes |
+| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object` or `Lore` |
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
@@ -101,7 +100,7 @@ A freeform document: working notes, design notes, session prep, ideas.
 
 ### Body
 
-Free Markdown.
+Free Markdown, possibly empty.
 
 ## Player
 
@@ -134,8 +133,9 @@ clue index.
 ### Location
 
 `reference/` when shared by every [campaign](campaign.md), or
-`campaigns/campaign_N/reference/` when specific to one; outside the typed
-subdirectories of either.
+`campaigns/campaign_N/reference/` when specific to one, including subfolders
+such as `indexes/` but not those that belong to another type (`types/`,
+`statuses/`, `players/`).
 
 ### Frontmatter
 
