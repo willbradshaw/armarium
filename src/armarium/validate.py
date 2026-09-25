@@ -49,7 +49,8 @@ class Target:
     local: bool = False
 
 
-# Infrastructure every vault must contain. Extra folders and files are allowed.
+# Infrastructure every vault must contain. Together with the directories Type
+# records declare, these bound where every entry in the vault may live.
 VAULT_DIRECTORIES = (
     "assets",
     "campaigns",
@@ -84,6 +85,9 @@ CAMPAIGN_DIRECTORIES = (
     "sessions/transcripts",
 )
 CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
+
+# Where non-Markdown files may live outside assets/, by extension.
+ASSET_EXCEPTIONS = {".base": "reference/views", ".schema.json": "reference/schemas"}
 
 # An Appearances entry: a wikilink, a colon and a description.
 ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
@@ -276,17 +280,22 @@ def validate_vault(root: Path) -> Findings:
     Returns:
         Findings: Problems attributed to the vault itself (an empty path,
             which directory validation rebases onto the vault), each naming
-            the affected entry. Extra folders and files are allowed; record
-            contents are validated separately.
+            the affected entry. Every entry must lie inside a required
+            directory, fixed or declared by a Type record; record contents
+            are validated separately.
     """
     findings = Findings("")
-    required: set[str] = set()
+    required: dict[str, bool] = {}
+    # Directories a required directory lies beneath; they exist by implication.
+    ancestors: set[Path] = set()
 
     def require(relative: str, directory: bool) -> None:
         # Fixed and declared directories overlap; report each entry once.
         if relative in required:
             return
-        required.add(relative)
+        required[relative] = directory
+        if directory:
+            ancestors.update(Path(relative).parents)
         path = root / relative
         present = path.is_dir() if directory else path.is_file()
         kind = "directory" if directory else "file"
@@ -334,6 +343,7 @@ def validate_vault(root: Path) -> Findings:
     if not types.is_dir() or types.is_symlink():
         for rule, subject in (
             ("vault.type", "declared directories"),
+            ("vault.entry", "vault entries"),
             ("schema.missing", "schema coverage"),
         ):
             findings.add(rule, f"cannot check {subject}: reference/types is missing")
@@ -359,7 +369,44 @@ def validate_vault(root: Path) -> Findings:
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
-    # 4. Match schemas and Type definitions by name: Clue.md <-> clue.schema.json.
+    # 4. Report entries outside the vault skeleton
+    named = {Path(relative) for relative, directory in required.items() if directory}
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        parent = directory.relative_to(root)
+        # An ancestor of a required directory is closed to other entries.
+        closed = parent in ancestors
+        for child in find_children(directory):
+            entry = child.relative_to(root)
+            location = entry.as_posix()
+            if entry == Path("campaigns"):
+                # Phase 2 reports its entries; check the campaigns it found.
+                pending += [child / name for name in found]
+            elif child.is_dir():
+                # A reported directory is not descended into.
+                if not closed or entry in named | ancestors:
+                    pending.append(child)
+                else:
+                    findings.add(
+                        "vault.entry", f"{location} is not in the vault skeleton"
+                    )
+            elif closed and parent not in named:
+                # A closed directory holds files only if it is itself required.
+                findings.add("vault.entry", f"{location} is not in the vault skeleton")
+            elif child.suffix.lower() != ".md" and entry.parts[0] != "assets":
+                # Non-Markdown files belong in assets/, except views and schemas.
+                findings.diagnose(
+                    not any(
+                        child.name.lower().endswith(suffix)
+                        and entry.is_relative_to(home)
+                        for suffix, home in ASSET_EXCEPTIONS.items()
+                    ),
+                    "vault.entry",
+                    f"{location} is not Markdown and belongs in assets/",
+                )
+
+    # 5. Match schemas and Type definitions by name: Clue.md <-> clue.schema.json.
     schemas = root / "reference/schemas"
     if not schemas.is_dir() or schemas.is_symlink():
         findings.add(

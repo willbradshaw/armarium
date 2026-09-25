@@ -1879,9 +1879,164 @@ class TestValidateIdentityLinks:
 class TestValidateVault:
     def test_minimal_vault_passes(self, tmp_path: Path) -> None:
         make_vault(tmp_path)
-        (tmp_path / "records/extra").mkdir(parents=True)
-        (tmp_path / "campaigns/campaign_1/extra.md").write_text("")
+        (tmp_path / "content/nested/extra").mkdir(parents=True)
+        (tmp_path / "campaigns/campaign_1/notes/extra.md").write_text("")
         (tmp_path / "reference/schemas/README.md").write_text("")
+        (tmp_path / "reference/Setting.md").write_text("")
+        assert validate_vault(tmp_path).diagnostics == []
+
+    @pytest.mark.parametrize(
+        "relative, directory, message",
+        [
+            ("records", True, "records is not in the vault skeleton"),
+            ("README.md", False, "README.md is not in the vault skeleton"),
+            ("Makefile", False, "Makefile is not in the vault skeleton"),
+            (
+                "campaigns/campaign_1/records",
+                True,
+                "campaigns/campaign_1/records is not in the vault skeleton",
+            ),
+            (
+                "campaigns/campaign_1/extra.md",
+                False,
+                "campaigns/campaign_1/extra.md is not in the vault skeleton",
+            ),
+            (
+                "reference/records",
+                True,
+                "reference/records is not in the vault skeleton",
+            ),
+            (
+                "campaigns/campaign_1/reference/records",
+                True,
+                "campaigns/campaign_1/reference/records is not in the vault skeleton",
+            ),
+            (
+                "content/map.png",
+                False,
+                "content/map.png is not Markdown and belongs in assets/",
+            ),
+            (
+                "reference/types/settings.json",
+                False,
+                "reference/types/settings.json is not Markdown and belongs in assets/",
+            ),
+            (
+                "reference/types/widget.schema.json",
+                False,
+                "reference/types/widget.schema.json is not Markdown and belongs in assets/",
+            ),
+            (
+                "reference/clues.base",
+                False,
+                "reference/clues.base is not Markdown and belongs in assets/",
+            ),
+            (
+                "campaigns/campaign_1/sessions/notes.txt",
+                False,
+                "campaigns/campaign_1/sessions/notes.txt is not Markdown and belongs in assets/",
+            ),
+            ("reference/Setting.md", False, None),
+            ("campaigns/campaign_1/reference/Notes.md", False, None),
+            ("reference/views/clues.base", False, None),
+            ("reference/views/nested/clues.BASE", False, None),
+            ("reference/schemas/nested/widget.schema.json", False, None),
+            ("assets/map.png", False, None),
+            ("assets/maps/map.png", False, None),
+            ("assets/records", True, None),
+            (
+                "campaigns/campaign_1/sessions/nested",
+                True,
+                "campaigns/campaign_1/sessions/nested is not in the vault skeleton",
+            ),
+            ("campaigns/campaign_1/sessions/S-1-001.md", False, None),
+            ("content/nested", True, None),
+            ("reference/templates/nested", True, None),
+            ("campaigns/campaign_1/sessions/transcripts/nested", True, None),
+        ],
+    )
+    def test_entries(
+        self, tmp_path: Path, relative: str, directory: bool, message: str | None
+    ) -> None:
+        make_vault(tmp_path)
+        path = tmp_path / relative
+        if directory:
+            path.mkdir(parents=True)
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("true")
+        result = [
+            (d.rule, d.message)
+            for d in validate_vault(tmp_path).diagnostics
+            if d.rule == "vault.entry"
+        ]
+        assert result == ([("vault.entry", message)] if message else [])
+
+    def test_reported_directory_is_not_descended(self, tmp_path: Path) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "records/nested").mkdir(parents=True)
+        (tmp_path / "records/nested/map.png").write_text("")
+        (tmp_path / "records/Thing.md").write_text("")
+        assert [(d.rule, d.message) for d in validate_vault(tmp_path).diagnostics] == [
+            ("vault.entry", "records is not in the vault skeleton")
+        ]
+
+    @pytest.mark.parametrize(
+        "declaration, clean, reported",
+        [
+            ({"shared": "lore"}, ["lore/Thing.md", "lore/nested/Thing.md"], []),
+            ({"campaign": "lore"}, ["campaigns/campaign_1/lore/Thing.md"], []),
+            ({"shared": "reference/lore"}, ["reference/lore/Thing.md"], []),
+            (
+                {"shared": "lore/deep/things"},
+                ["lore/deep/things/Thing.md"],
+                ["lore/Thing.md", "lore/deep/other"],
+            ),
+        ],
+    )
+    def test_declared_directory_admits_entries(
+        self,
+        tmp_path: Path,
+        declaration: dict[str, str],
+        clean: list[str],
+        reported: list[str],
+    ) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "reference/types/Lore.md").write_text(
+            f"---\n{type_record('Lore', **declaration)}\n---\n"
+        )
+        (tmp_path / "reference/schemas/lore.schema.json").write_text("true")
+        for relative in clean:
+            (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
+            (tmp_path / relative).write_text("")
+        assert validate_vault(tmp_path).diagnostics == []
+        # The declared path's ancestors exist but are closed and hold no files.
+        for relative in reported:
+            path = tmp_path / relative
+            path.write_text("") if path.suffix else path.mkdir()
+        assert sorted(d.message for d in validate_vault(tmp_path).diagnostics) == [
+            f"{relative} is not in the vault skeleton" for relative in reported
+        ]
+
+    def test_campaign_entries_reported_once(self, tmp_path: Path) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "campaigns/seven/Thing.md").parent.mkdir()
+        (tmp_path / "campaigns/seven/Thing.md").write_text("")
+        (tmp_path / "campaigns/records.md").write_text("")
+        result = validate_vault(tmp_path).diagnostics
+        assert [d.rule for d in result] == ["vault.campaign", "vault.campaign"]
+
+    @pytest.mark.parametrize(
+        "relative", ["records", "campaigns/campaign_1/records", "reference/records"]
+    )
+    def test_hidden_and_symlinked_entries_are_ignored(
+        self, tmp_path: Path, relative: str
+    ) -> None:
+        make_vault(tmp_path)
+        (tmp_path / relative).symlink_to(tmp_path / "content")
+        (tmp_path / relative).with_name(".hidden").mkdir()
+        (tmp_path / "content/link.png").symlink_to(tmp_path / "reference/types")
+        (tmp_path / "content/.map.png").write_text("")
         assert validate_vault(tmp_path).diagnostics == []
 
     @pytest.mark.parametrize(
@@ -1927,6 +2082,7 @@ class TestValidateVault:
                 "reference/types",
                 [
                     "cannot check declared directories: reference/types is missing",
+                    "cannot check vault entries: reference/types is missing",
                     "cannot check schema coverage: reference/types is missing",
                 ],
             ),
@@ -2114,9 +2270,13 @@ class TestValidateVault:
                 {"reference/schemas/settings.json": "{}"},
                 [
                     (
+                        "vault.entry",
+                        "reference/schemas/settings.json is not Markdown and belongs in assets/",
+                    ),
+                    (
                         "schema.unused",
                         "reference/schemas/settings.json is not named <type>.schema.json",
-                    )
+                    ),
                 ],
             ),
             (
