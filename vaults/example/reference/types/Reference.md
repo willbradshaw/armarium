@@ -1,5 +1,6 @@
 ---
 type: "[[Type]]"
+directories: { shared: reference, campaign: reference }
 ---
 Records with `type: "[[Reference]]"` are structural, taxonomic, or index records, such as campaign overviews and language catalogues.
 

@@ -12,17 +12,39 @@
     "frontmatter": {
       "type": "object",
       "required": [
-        "type"
+        "type",
+        "directories"
       ],
       "properties": {
         "type": {
           "const": "[[Type]]"
+        },
+        "directories": {
+          "type": "object",
+          "description": "Where records of this type live: shared paths are relative to the vault root, campaign paths to each campaigns/campaign_N. Declare one or both.",
+          "minProperties": 1,
+          "properties": {
+            "shared": {
+              "$ref": "#/$defs/directory"
+            },
+            "campaign": {
+              "$ref": "#/$defs/directory"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": true
     },
     "body": {
       "type": "string"
+    }
+  },
+  "$defs": {
+    "directory": {
+      "type": "string",
+      "pattern": "^(?!\\.\\.?(?:/|$))[^/]+(?:/(?!\\.\\.?(?:/|$))[^/]+)*$",
+      "description": "Relative path without a leading /, empty segments, or . and .. segments."
     }
   }
 }

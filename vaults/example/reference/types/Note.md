@@ -1,5 +1,6 @@
 ---
 type: "[[Type]]"
+directories: { shared: notes, campaign: notes }
 ---
 Records with `type: "[[types/Note]]"` are freeform documents that do not fit
 the rest of the type hierarchy, such as GM working notes, design notes, session

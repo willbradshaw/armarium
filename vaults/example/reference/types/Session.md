@@ -1,5 +1,6 @@
 ---
 type: "[[Type]]"
+directories: { campaign: sessions }
 ---
 Records with `type: "[[types/Session]]"` are play-session records containing preparation and actual play notes, including events, interactions, and rewards.
 

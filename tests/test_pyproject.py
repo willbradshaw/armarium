@@ -89,8 +89,12 @@ class TestPyproject:
         (root / "reference/schemas").mkdir()
         (root / "campaigns").mkdir()
         (root / "reference/schemas/widget.schema.json").write_text("true")
-        (root / "reference/types/Widget.md").write_text('---\ntype: "[[Type]]"\n---\n')
-        path = root / "record.md"
+        (root / "content").mkdir()
+        for name, directory in (("Widget", "content"), ("Type", "reference/types")):
+            (root / f"reference/types/{name}.md").write_text(
+                f'---\ntype: "[[Type]]"\ndirectories: {{shared: {directory}}}\n---\n'
+            )
+        path = root / "content/record.md"
         text = (
             "untyped"
             if scenario == "invalid"

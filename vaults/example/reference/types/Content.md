@@ -1,5 +1,6 @@
 ---
 type: "[[Type]]"
+directories: { shared: content, campaign: content }
 ---
 # Content
 
