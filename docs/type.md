@@ -4,7 +4,9 @@ Each [record](record.md) has a type, declared in its `type` field, that
 determines where it lives, which frontmatter fields it has and what its body
 contains. A type is defined by a Type record in `reference/types/` and its
 schema in `reference/schemas/`. The built-in types follow, in alphabetical
-order.
+order. In the frontmatter tables, a *required* field must be present and an
+*optional* one may be omitted; a field may hold null only where null is
+listed among its values.
 
 ## Clue
 
@@ -19,15 +21,15 @@ A GM-known candidate fact tracked through a lifecycle.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[types/Clue]]` |
-| `status` | a link to a [Status](#status) that applies to Clues: `[[Pending]]`, `[[Hinted]]`, `[[Revealed]]`, `[[Abandoned]]`, `[[Dormant]]` or `[[Superseded]]` |
-| `text` | non-blank text; its links must be [Content](#content) in the same campaign or shared |
-| `subjects` | null (unidentified), `[]` (none) or exactly the records linked in `text`, as a list of links |
-| `first_session` | null or a link to the [Session](#session) in which the Clue was first prepared or used |
-| `last_session` | null or a link to the Session of its latest introduction or development; requires `first_session` and may not precede it |
-| `superseded_by` | a link to the replacing Clue, required when `status` is `[[Superseded]]` and forbidden otherwise; following it from Clue to Clue must never return to the starting Clue |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[types/Clue]]` |
+| `status` | required | a link to a [Status](#status) that applies to Clues: `[[Pending]]`, `[[Hinted]]`, `[[Revealed]]`, `[[Abandoned]]`, `[[Dormant]]` or `[[Superseded]]` |
+| `text` | required | non-blank text; its links must be [Content](#content) in the same campaign or shared |
+| `subjects` | required | null (unidentified), `[]` (none) or exactly the records linked in `text`, as a list of links |
+| `first_session` | required | null, or a link to the [Session](#session) in which the Clue was first prepared or used |
+| `last_session` | required | null, or a link to the Session of its latest introduction or development; requires `first_session` and may not precede it |
+| `superseded_by` | required when `status` is `[[Superseded]]`, forbidden otherwise | a link to the replacing Clue; following it from Clue to Clue must never return to the starting Clue |
 
 ### Body
 
@@ -47,26 +49,27 @@ of `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[types/Content]]` |
-| `subtype` | one of the six subtypes |
-| `summary` | short text describing stable identity, or null for a stub |
-| `aliases` | list of non-empty strings, `[]`, null or omitted |
-| `stats` (NPC) | null, a link to a record, or an `http(s)://` URL |
-| `player` (PC) | a link to a [Player](#player) in the same campaign; not null |
-| `parent_location` (Location) | null or a link to Location Content, in the same campaign or shared; following it from Location to Location must never return to the starting record |
-| `members` (Faction) | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content, in the same campaign or shared |
-| `campaign_N` | one block per campaign the record has state in |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[types/Content]]` |
+| `subtype` | required | one of the six subtypes |
+| `summary` | required | null for a stub, or short text describing stable identity |
+| `aliases` | optional | null, `[]` or a list of non-empty strings |
+| `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
+| `player` | required for PC | a link to a [Player](#player) in the same campaign |
+| `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
+| `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
+| `campaign_N` | optional, one per campaign the record has state in | a mapping, described below |
 
-A `campaign_N` block is a mapping with `first_session` and `last_session`:
-both null before any appearance, otherwise links to the earliest and latest
-[Session](#session) of campaign N in the record's Appearances. `N` must be an existing
-campaign, and a record under `campaigns/campaign_N/` may only carry that
-campaign's block. An Object's block also requires `held_by`: null before
-entering play, then a holder, a list of holders (split possession) or `GONE`
-(out of play), with `GONE` also allowed inside a list; a holder is a link to
-PC, NPC or Faction Content, in campaign N or shared.
+A `campaign_N` block requires `first_session` and `last_session`: both null
+before any appearance, otherwise both links, to the earliest and latest
+[Session](#session) of campaign N in the record's Appearances. `N` must be an
+existing campaign, and a record under `campaigns/campaign_N/` may only carry
+that campaign's block. An Object's block also requires `held_by`: null only
+before entering play (while `first_session` is null), then a holder, a
+non-empty list of holders (split possession) or `GONE` (out of play), with
+`GONE` also allowed inside a list; a holder is a link to PC, NPC or Faction
+Content in campaign N or shared.
 
 ### Body
 
@@ -92,9 +95,9 @@ A freeform document: working notes, design notes, session prep, ideas.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[types/Note]]` |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[types/Note]]` |
 
 ### Body
 
@@ -112,10 +115,10 @@ A person at the table.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[types/Player]]` |
-| `plays` | list of links to PC [Content](#content) in the same [campaign](campaign.md); `[]` when unassigned; null and a single link are invalid |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[types/Player]]` |
+| `plays` | required | a list of links to PC [Content](#content) in the same [campaign](campaign.md), `[]` when unassigned |
 
 ### Body
 
@@ -136,9 +139,9 @@ subdirectories of either.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[Reference]]` |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[Reference]]` |
 
 ### Body
 
@@ -157,16 +160,16 @@ One play session.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[types/Session]]` |
-| `date` | `YYYY-MM-DD` or null |
-| `campaign` | a link to the containing campaign's `reference/Campaign.md` |
-| `session_number` | positive integer equal to the ordinal in the filename |
-| `aliases` | list of non-blank strings, `[]`, null or omitted |
-| `players_absent` | null or a list of links to [Players](#player) in the same campaign |
-| `in_game_start_date`, `in_game_end_date` | non-blank text or null |
-| `prepared_clues`, `prepared_locations`, `prepared_npcs` | ordered lists of links to [Clues](#clue) in the same campaign, and to Location and NPC [Content](#content) in the same campaign or shared; `[]` or omitted selects nothing |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[types/Session]]` |
+| `date` | required | null, or `YYYY-MM-DD` |
+| `campaign` | required | a link to the containing campaign's `reference/Campaign.md` |
+| `session_number` | required | a positive integer equal to the ordinal in the filename |
+| `aliases` | optional | null, `[]` or a list of non-blank strings |
+| `players_absent` | required | null, or a list of links to [Players](#player) in the same campaign |
+| `in_game_start_date`, `in_game_end_date` | required | null, or non-blank text |
+| `prepared_clues`, `prepared_locations`, `prepared_npcs` | optional | ordered lists of links to [Clues](#clue) in the same campaign, and to Location and NPC [Content](#content) in the same campaign or shared; `[]` or omitted selects nothing |
 
 ### Body
 
@@ -182,7 +185,8 @@ optional.
 
 ### Description
 
-A lifecycle state for one type. The six shipped statuses apply to [Clues](#clue).
+A lifecycle state for one type. The six shipped statuses apply to
+[Clues](#clue).
 
 ### Location
 
@@ -190,10 +194,10 @@ A lifecycle state for one type. The six shipped statuses apply to [Clues](#clue)
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[Status]]` |
-| `applies_to` | a link to the [Type](#type) record the status applies to |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[Status]]` |
+| `applies_to` | required | a link to the [Type](#type) record the status applies to |
 
 ### Body
 
@@ -212,10 +216,10 @@ Cleaned, attributed speech from one [Session](#session).
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[types/Transcript]]` |
-| `session` | a link to the Session in the same [campaign](campaign.md) the transcript records, which the filename must match |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[types/Transcript]]` |
+| `session` | required | a link to the Session in the same [campaign](campaign.md) the transcript records, which the filename must match |
 
 ### Body
 
@@ -240,10 +244,10 @@ Type records.
 
 ### Frontmatter
 
-| Field | Value |
-| --- | --- |
-| `type` | `[[Type]]` |
-| `directories` | mapping of `shared` and/or `campaign` to a relative path without `..` or a leading `/`; every declared directory must exist |
+| Field | Presence | Value |
+| --- | --- | --- |
+| `type` | required | `[[Type]]` |
+| `directories` | required | a mapping of `shared` and/or `campaign` to a relative path without `..` or a leading `/`; every declared directory must exist |
 
 ### Body
 
