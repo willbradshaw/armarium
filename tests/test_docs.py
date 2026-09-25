@@ -109,6 +109,14 @@ class TestVaultDocument:
         assert f"| {kind} | `{{ {inner} }}` |" in self.TEXT
 
 
+class TestCampaignDocument:
+    TEXT = (DOCS / "campaign.md").read_text()
+
+    @pytest.mark.parametrize("entry", [*CAMPAIGN_DIRECTORIES, *CAMPAIGN_FILES])
+    def test_names_every_campaign_entry(self, entry: str) -> None:
+        assert entry.rsplit("/", 1)[-1] in self.TEXT
+
+
 class TestRecordDocument:
     TEXT = (DOCS / "record.md").read_text()
 
