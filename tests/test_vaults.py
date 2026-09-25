@@ -5,7 +5,7 @@ from pathlib import Path
 VAULTS = Path(__file__).resolve().parents[1] / "vaults"
 STARTER = VAULTS / "starter"
 EXAMPLE = VAULTS / "example"
-CONTENT_DIRECTORIES = frozenset({"content", "campaigns", "assets"})
+CONTENT_DIRECTORIES = frozenset({"content", "notes", "campaigns", "assets"})
 
 
 def shared_files(vault: Path) -> dict[Path, Path]:
@@ -21,7 +21,7 @@ def shared_files(vault: Path) -> dict[Path, Path]:
 
 class TestSharedFiles:
     def test_excludes_content_directories(self, tmp_path: Path) -> None:
-        for name in ("content", "campaigns", "assets", "reference"):
+        for name in ("content", "notes", "campaigns", "assets", "reference"):
             (tmp_path / name / "sub").mkdir(parents=True)
             (tmp_path / name / "sub" / "a.md").write_text("a")
         (tmp_path / ".gitignore").write_text("x")
