@@ -43,8 +43,10 @@ The starter is preconfigured for a single campaign. The example includes two
 campaigns sharing setting Content, with independent campaign state and combined
 Clue and appearance lists.
 
-`.scratch/` is ignored working space; `.gitkeep` files preserve empty directories
-in Git. The copied vault can be its own Git repository.
+`.obsidian/` holds the settings the records rely on and is part of the vault;
+only Obsidian's workspace files are ignored. `.scratch/` is ignored working
+space; `.gitkeep` files preserve empty directories in Git. The copied vault can
+be its own Git repository.
 
 For schema integration and testing, see [Schema development](docs/schemas.md).
 

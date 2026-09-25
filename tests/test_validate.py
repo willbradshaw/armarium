@@ -20,6 +20,7 @@ from armarium.validate import (
     LINK_TARGETS,
     RECORD_CHECKS,
     VAULT_DIRECTORIES,
+    VAULT_FILES,
     VAULT_STATUSES,
     VAULT_TEMPLATES,
     VAULT_TYPES,
@@ -117,6 +118,7 @@ def make_vault(root: Path) -> None:
     ):
         (root / relative).mkdir(parents=True, exist_ok=True)
     for relative in (
+        *VAULT_FILES,
         *(f"reference/statuses/{name}.md" for name in VAULT_STATUSES),
         *(f"reference/templates/{name}.md" for name in VAULT_TEMPLATES),
         *(f"campaigns/campaign_1/{name}" for name in CAMPAIGN_FILES),
@@ -2042,6 +2044,11 @@ class TestValidateVault:
     @pytest.mark.parametrize(
         "relative, kind",
         [
+            (".obsidian", "directory"),
+            (".obsidian/snippets", "directory"),
+            (".obsidian/app.json", "file"),
+            (".obsidian/appearance.json", "file"),
+            (".obsidian/snippets/armarium-prose.css", "file"),
             ("assets", "directory"),
             ("notes", "directory"),
             ("reference/views", "directory"),
@@ -2064,7 +2071,7 @@ class TestValidateVault:
         path = tmp_path / relative
         directory = path.is_dir()
         if directory:
-            path.rmdir()
+            shutil.rmtree(path)
         else:
             path.unlink()
         if symlink:
