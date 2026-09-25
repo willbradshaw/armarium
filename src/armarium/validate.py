@@ -12,7 +12,6 @@ from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
     WIKILINK,
-    Diagnostic,
     Findings,
     Result,
     VaultNotFoundError,
@@ -184,49 +183,36 @@ def validate_markdown(
     )
     if note is None:
         return Result(diagnostics=diagnostics, checked=1)
+    # 1. Skip templates and untyped files
+    findings = Findings(relative)
     if path.is_relative_to(root / "reference/templates"):
-        return Result(
-            diagnostics=[
-                Diagnostic(
-                    relative,
-                    "record.template",
-                    "template parsed; completed-record validation skipped",
-                    severity="info",
-                )
-            ],
-            skipped=1,
+        findings.add(
+            "record.template",
+            "template parsed; completed-record validation skipped",
+            severity="info",
         )
+        return Result(diagnostics=findings.diagnostics, skipped=1)
     if note.frontmatter.type is None:
-        return Result(
-            diagnostics=[
-                Diagnostic(
-                    relative,
-                    "record.type",
-                    "type is required and must be a canonical wikilink",
-                    field="type",
-                )
-            ],
-            checked=1,
+        findings.add(
+            "record.type", "type is required and must be a canonical wikilink", "type"
         )
+        return Result(diagnostics=findings.diagnostics, checked=1)
+    # 2. Validate against the vault-local schema
     schema, diagnostics = select_schema(note, root)
     if schema is not None:
         diagnostics.extend(schema.validate(note))
+    # 3. Run the record checks against the whole vault
     if index is None:
         index = VaultIndex(root)
         index.notes[path] = (note, [])
-    diagnostics.extend(validate_wikilinks(note, index).diagnostics)
-    diagnostics.extend(validate_placement(note, index).diagnostics)
-    diagnostics.extend(validate_filename(note, index).diagnostics)
-    diagnostics.extend(validate_campaigns(note, index).diagnostics)
-    diagnostics.extend(validate_identity_links(note, index).diagnostics)
-    diagnostics.extend(validate_chains(note, index).diagnostics)
-    diagnostics.extend(validate_appearances(note, index).diagnostics)
-    diagnostics.extend(validate_clue(note, index).diagnostics)
-    diagnostics.extend(validate_transcript(note, index))
+    findings += Findings(relative, diagnostics)
+    findings = sum((check(note, index) for check in RECORD_CHECKS), findings)
     return Result(
-        diagnostics=sorted(diagnostics),
+        diagnostics=sorted(findings.diagnostics),
         checked=1,
-        unsupported=int(any(d.rule == "schema.unsupported" for d in diagnostics)),
+        unsupported=int(
+            any(d.rule == "schema.unsupported" for d in findings.diagnostics)
+        ),
     )
 
 
@@ -650,7 +636,7 @@ def validate_clue(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_transcript(note: Note, index: VaultIndex) -> Findings:
     """Check that a Transcript body follows the transcript grammar.
 
     After the frontmatter, the body is a run of titled level-two sections.
@@ -665,7 +651,7 @@ def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Vault index used to name the record.
 
     Returns:
-        list[Diagnostic]: A finding at each offending line: a block before the
+        Findings: A finding at each offending line: a block before the
             first heading or a heading that is not a titled level two
             (transcript.heading); a section without a list, a block that is
             not a bullet list, or a second list (transcript.section); an item
@@ -673,9 +659,9 @@ def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
             without a speaker tag, or with brackets after it outside wikilinks
             (transcript.speaker).
     """
+    findings = Findings.from_note(note, index)
     if note.frontmatter.type != "Transcript":
-        return []
-    findings = Findings(note.path.relative_to(index.root).as_posix())
+        return findings
     # 1. Nothing precedes the first heading; every heading is a titled level two
     for block in note.body.blocks:
         findings.add(
@@ -734,7 +720,7 @@ def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
                     "square brackets after the speaker tag",
                     line=item.line,
                 )
-    return findings.diagnostics
+    return findings
 
 
 def validate_wikilinks(note: Note, index: VaultIndex) -> Findings:
@@ -1255,3 +1241,17 @@ def validate_chains(note: Note, index: VaultIndex) -> Findings:
             return findings
         chain.append(resolved)
         current = linked
+
+
+# Checks every typed record receives, in the order validate_markdown runs them.
+RECORD_CHECKS: tuple[Callable[[Note, VaultIndex], Findings], ...] = (
+    validate_wikilinks,
+    validate_placement,
+    validate_filename,
+    validate_campaigns,
+    validate_identity_links,
+    validate_chains,
+    validate_appearances,
+    validate_clue,
+    validate_transcript,
+)
