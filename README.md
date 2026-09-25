@@ -31,13 +31,9 @@ enabled.
 | `reference/` | Templates, type descriptions, schemas, statuses, and shared reference material. |
 | `assets/` | Maps, images, and handouts. |
 
-Copy a file from `reference/templates/` to create a record. See the corresponding
-reference for its fields and conventions:
-[Content](vaults/starter/reference/types/Content.md),
-[Clue](vaults/starter/reference/types/Clue.md),
-[Session](vaults/starter/reference/types/Session.md),
-[Player](vaults/starter/reference/types/Player.md), or
-[Transcript](vaults/starter/reference/types/Transcript.md).
+Copy a file from `reference/templates/` to create a record. [Records](docs/record.md)
+describes what every record shares and [Types](docs/type.md) the fields, body
+and rules of each type.
 
 The starter is preconfigured for a single campaign. The example includes two
 campaigns sharing setting Content, with independent campaign state and combined
