@@ -369,32 +369,33 @@ def validate_vault(root: Path) -> Findings:
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
-    # 4. Report entries outside the vault skeleton. An ancestor of a required
-    # directory is closed: its subdirectories must be required or ancestors
-    # too, and it holds files only if it is itself required. Every other
-    # directory reached is open. Non-Markdown files belong in assets/,
-    # except views and schemas. A reported directory is not descended into;
-    # phase 2 reports the entries of campaigns/.
+    # 4. Report entries outside the vault skeleton
     named = {Path(relative) for relative, directory in required.items() if directory}
     pending = [root]
     while pending:
         directory = pending.pop()
         parent = directory.relative_to(root)
+        # An ancestor of a required directory is closed to other entries.
+        closed = parent in ancestors
         for child in find_children(directory):
             entry = child.relative_to(root)
             location = entry.as_posix()
             if entry == Path("campaigns"):
+                # Phase 2 reports its entries; check the campaigns it found.
                 pending += [child / name for name in found]
             elif child.is_dir():
-                if parent not in ancestors or entry in named | ancestors:
+                # A reported directory is not descended into.
+                if not closed or entry in named | ancestors:
                     pending.append(child)
                 else:
                     findings.add(
                         "vault.entry", f"{location} is not in the vault skeleton"
                     )
-            elif parent in ancestors and parent not in named:
+            elif closed and parent not in named:
+                # A closed directory holds files only if it is itself required.
                 findings.add("vault.entry", f"{location} is not in the vault skeleton")
             elif child.suffix.lower() != ".md" and entry.parts[0] != "assets":
+                # Non-Markdown files belong in assets/, except views and schemas.
                 findings.diagnose(
                     not any(
                         child.name.lower().endswith(suffix)
