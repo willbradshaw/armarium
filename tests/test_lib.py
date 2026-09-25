@@ -321,10 +321,10 @@ class TestDiagnosticReport:
     @pytest.mark.parametrize(
         ("severity", "level", "line", "field", "location"),
         [
-            ("error", logging.ERROR, 0, "", "record.md"),
-            ("warning", logging.WARNING, 3, "", "record.md:3"),
-            ("info", logging.INFO, 0, "type", "record.md [type]"),
-            ("error", logging.ERROR, 3, "type", "record.md:3 [type]"),
+            ("error", logging.ERROR, 0, "", "record.md::"),
+            ("warning", logging.WARNING, 3, "", "record.md::3"),
+            ("info", logging.INFO, 0, "type", "record.md:type:"),
+            ("error", logging.ERROR, 3, "type", "record.md:type:3"),
         ],
     )
     def test_finding(
@@ -347,7 +347,7 @@ class TestDiagnosticReport:
         with caplog.at_level(logging.INFO, logger="armarium"):
             diagnostic.report()
         assert caplog.record_tuples == [
-            ("armarium", level, f"{location}: record.type: A finding"),
+            ("armarium", level, f"{location} - record.type - A finding"),
         ]
 
 
@@ -430,8 +430,8 @@ class TestResultReport:
             result.report()
         expected = (
             [
-                ("armarium", logging.WARNING, "first.md: first: First"),
-                ("armarium", logging.ERROR, "second.md: second: Second"),
+                ("armarium", logging.WARNING, "first.md:: - first - First"),
+                ("armarium", logging.ERROR, "second.md:: - second - Second"),
             ]
             if with_findings
             else []

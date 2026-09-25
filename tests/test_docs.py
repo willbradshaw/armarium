@@ -109,6 +109,22 @@ class TestVaultDocument:
         assert f"| {kind} | `{{ {inner} }}` |" in self.TEXT
 
 
+class TestValidationDocument:
+    TEXT = (DOCS / "validate.md").read_text()
+    RULES = sorted(
+        {
+            rule
+            for path in (ROOT / "src/armarium").glob("*.py")
+            for rule in re.findall(r'"([a-z]+\.[a-z.]+)"', path.read_text())
+        }
+    )
+
+    @pytest.mark.parametrize("rule", RULES)
+    def test_lists_every_rule_family(self, rule: str) -> None:
+        family = rule.split(".", 1)[0]
+        assert f"| `{family}.` |" in self.TEXT
+
+
 class TestCampaignDocument:
     TEXT = (DOCS / "campaign.md").read_text()
 

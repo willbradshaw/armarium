@@ -176,11 +176,12 @@ def validate_markdown(
             After parsing, only files under reference/templates are skipped,
             with an explicit informational diagnostic. Type/status definitions
             are records too and require declared types and schema validation.
-            Typed files receive their vault-local schema checks;
-            absent schemas produce errors. Invalid schemas
-            fail validation without being counted as missing coverage.
-            Links are checked against the whole vault; only linked Markdown
-            dependencies are parsed. No source files are modified.
+            Typed files receive their vault-local schema checks; absent
+            schemas produce errors, and invalid schemas fail validation
+            without being counted as missing coverage. A record that fails
+            its schema stage gets no further checks. Links are checked
+            against the whole vault; only linked Markdown dependencies are
+            parsed. No source files are modified.
 
     Raises:
         ValueError: The target is not a regular Markdown file, is a symlink,
@@ -213,22 +214,23 @@ def validate_markdown(
             "record.type", "type is required and must be a canonical wikilink", "type"
         )
         return Result(diagnostics=findings.diagnostics, checked=1)
-    # 2. Validate against the vault-local schema
+    # 2. Validate against the vault-local schema; a failure ends the checks
     schema, diagnostics = select_schema(record, root)
     if schema is not None:
         diagnostics.extend(schema.validate(record))
+    findings += Findings(relative, diagnostics)
+    unsupported = int(any(d.rule == "schema.unsupported" for d in diagnostics))
+    if any(d.severity == "error" for d in diagnostics):
+        return Result(
+            diagnostics=sorted(findings.diagnostics), checked=1, unsupported=unsupported
+        )
     # 3. Run the record checks against the whole vault
     if index is None:
         index = VaultIndex(root)
         index.records[path] = (record, [])
-    findings += Findings(relative, diagnostics)
     findings = sum((check(record, index) for check in RECORD_CHECKS), findings)
     return Result(
-        diagnostics=sorted(findings.diagnostics),
-        checked=1,
-        unsupported=int(
-            any(d.rule == "schema.unsupported" for d in findings.diagnostics)
-        ),
+        diagnostics=sorted(findings.diagnostics), checked=1, unsupported=unsupported
     )
 
 

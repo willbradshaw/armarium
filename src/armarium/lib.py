@@ -156,19 +156,18 @@ class Diagnostic:
     severity: Literal["error", "warning", "info"] = "error"
 
     def report(self) -> None:
-        """Log this finding with its severity and available source location."""
+        """Log this finding as ``PATH:FIELD:LINE - ID - MESSAGE`` at its severity.
+
+        The field and line slots are blank when the finding has none.
+        """
         levels = {
             "error": logging.ERROR,
             "warning": logging.WARNING,
             "info": logging.INFO,
         }
-        location = self.path
-        if self.line:
-            location += f":{self.line}"
-        if self.field:
-            location += f" [{self.field}]"
+        location = f"{self.path}:{self.field}:{self.line or ''}"
         logger.log(
-            levels[self.severity], "%s: %s: %s", location, self.rule, self.message
+            levels[self.severity], "%s - %s - %s", location, self.rule, self.message
         )
 
 
