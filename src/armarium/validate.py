@@ -640,15 +640,17 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
         list[Diagnostic]: Findings attributed to the selected note, with metadata
             locations or body source lines: links that are malformed, cannot be
             resolved, name a missing anchor or fail their field's requirements,
-            and links that an unescaped ``|`` splits across table cells.
-            Unrelated notes are not parsed. Query execution and ordinary URLs
-            are excluded.
+            a list entry in a type-bound field that names the same file as an
+            earlier entry (link.duplicate), and links that an unescaped ``|``
+            splits across table cells. Unrelated notes are not parsed. Query
+            execution and ordinary URLs are excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
     targets = _link_targets(note, index)
     diagnostics: list[Diagnostic] = []
-    # 1. Check each link as written
+    seen: dict[str, set[Path]] = {}
     for link in note.links:
+        # 1. Check the link as written
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
@@ -657,7 +659,18 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             )
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
-    # 2. Links that a table cell boundary cuts in two: the row reads as a
+        # 2. A list entry in a type-bound field repeating an earlier entry
+        if link.error is None and link.field in targets and link.location != link.field:
+            resolved, _ = index.resolve(link.target, note.path)
+            if resolved is None:
+                continue
+            if resolved in seen.setdefault(link.field, set()):
+                message = f"[[{link.target}]] repeats an earlier {link.field} entry"
+                diagnostics.append(
+                    Diagnostic(path, "link.duplicate", message, link.location)
+                )
+            seen[link.field].add(resolved)
+    # 3. Links that a table cell boundary cuts in two: the row reads as a
     # whole, but Obsidian splits its cells at every unescaped pipe.
     lines = note.body.text.splitlines()
     for row in (block for block in note.body.iter_blocks() if block.kind == "row"):
