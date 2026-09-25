@@ -23,7 +23,7 @@ from armarium.lib import (
     parse_wikilink,
     split_wikilink,
 )
-from armarium.parse import Body, Frontmatter, Note
+from armarium.parse import Body, Frontmatter, Record
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
 
@@ -35,7 +35,7 @@ class TestParseWikilink:
             ("[[types/Content.md]]", True, "types/Content.md"),
             ("[[Café|Display]]", False, "Café"),
             (r"[[Café\|Display]]", False, "Café"),
-            ("[[Note#Heading|Display]]", False, "Note"),
+            ("[[Record#Heading|Display]]", False, "Record"),
             ("[[#^block]]", False, ""),
             (
                 "[[campaign_2/reference/Campaign]]",
@@ -55,13 +55,13 @@ class TestParseWikilink:
     @pytest.mark.parametrize(
         ("value", "canonical", "message"),
         [
-            ("[[Note|Display]]", True, "canonical wikilinks"),
-            ("[[Note#Heading]]", True, "canonical wikilinks"),
+            ("[[Record|Display]]", True, "canonical wikilinks"),
+            ("[[Record#Heading]]", True, "canonical wikilinks"),
             ("[[#Heading]]", True, "canonical wikilinks"),
             ("[[ ]]", False, "target must not be empty"),
             ("[[]]", False, "balanced double brackets"),
-            ("[[Note\ncontinued]]", False, "one line"),
-            ("text [[Note]]", False, "balanced double brackets"),
+            ("[[Record\ncontinued]]", False, "one line"),
+            ("text [[Record]]", False, "balanced double brackets"),
             ("[[Unclosed", False, "balanced double brackets"),
             ("[[Outer [[Inner]]", False, "balanced double brackets"),
             (None, True, "must be a string"),
@@ -93,12 +93,12 @@ class TestSplitWikilink:
     @pytest.mark.parametrize(
         ("value", "expected"),
         [
-            ("[[Note]]", ("Note", "")),
-            ("[[Note#Heading|Display]]", ("Note", "Heading")),
-            ("[[Note#A#B]]", ("Note", "A#B")),
-            ("[[Note# Heading ]]", ("Note", "Heading")),
+            ("[[Record]]", ("Record", "")),
+            ("[[Record#Heading|Display]]", ("Record", "Heading")),
+            ("[[Record#A#B]]", ("Record", "A#B")),
+            ("[[Record# Heading ]]", ("Record", "Heading")),
             ("[[#^block]]", ("", "^block")),
-            ("[[Note#]]", ("Note", "")),
+            ("[[Record#]]", ("Record", "")),
         ],
     )
     def test_target_and_anchor(self, value: str, expected: tuple[str, str]) -> None:
@@ -106,7 +106,7 @@ class TestSplitWikilink:
 
     def test_canonical_rejects_anchor(self) -> None:
         with pytest.raises(ValueError, match="canonical"):
-            split_wikilink("[[Note#Heading]]", canonical=True)
+            split_wikilink("[[Record#Heading]]", canonical=True)
 
 
 class TestIterWikilinks:
@@ -116,8 +116,8 @@ class TestIterWikilinks:
             ("", []),
             ("ordinary [text]", []),
             (
-                r"[[Café\|Display]] [[Note#Heading|Label]] [[#^block]] [[Café]]",
-                [("Café", ""), ("Note", "Heading"), ("", "^block"), ("Café", "")],
+                r"[[Café\|Display]] [[Record#Heading|Label]] [[#^block]] [[Café]]",
+                [("Café", ""), ("Record", "Heading"), ("", "^block"), ("Café", "")],
             ),
             (
                 "[[first\nsecond]]",
@@ -181,7 +181,7 @@ class TestIterWikilinks:
 
 class TestFindVault:
     @pytest.mark.parametrize(
-        "target", [".", "content", "content/note.md", "content/new.md"]
+        "target", [".", "content", "content/record.md", "content/new.md"]
     )
     @pytest.mark.parametrize("relative", [False, True])
     def test_inferred_root(
@@ -195,7 +195,7 @@ class TestFindVault:
         (root / "reference/types").mkdir(parents=True)
         (root / "campaigns").mkdir()
         (root / "content").mkdir()
-        (root / "content/note.md").write_text("note")
+        (root / "content/record.md").write_text("record")
         monkeypatch.chdir(tmp_path)
         path = root / target
         assert (
@@ -208,13 +208,13 @@ class TestFindVault:
         for root in (tmp_path / "outer", nested):
             (root / "reference/types").mkdir(parents=True)
             (root / "campaigns").mkdir()
-        assert find_vault(nested / "note.md") == nested.resolve()
+        assert find_vault(nested / "record.md") == nested.resolve()
 
     @pytest.mark.parametrize("marker", [".git", "reference/types", "campaigns"])
     def test_incomplete_structure(self, tmp_path: Path, marker: str) -> None:
         (tmp_path / marker).mkdir(parents=True)
         with pytest.raises(ValueError, match="cannot infer vault"):
-            find_vault(tmp_path / "note.md")
+            find_vault(tmp_path / "record.md")
 
     def test_inferred_symlink_cannot_select_destination_vault(
         self, tmp_path: Path
@@ -223,9 +223,9 @@ class TestFindVault:
         for root in (first, second):
             (root / "reference/types").mkdir(parents=True)
             (root / "campaigns").mkdir()
-        (second / "note.md").write_text("outside")
-        link = first / "note.md"
-        link.symlink_to(second / "note.md")
+        (second / "record.md").write_text("outside")
+        link = first / "record.md"
+        link.symlink_to(second / "record.md")
         with pytest.raises(ValueError, match="escapes the inferred vault"):
             find_vault(link)
 
@@ -246,7 +246,7 @@ class TestCheckVault:
     )
     def test_invalid_explicit_boundary(self, tmp_path: Path, problem: str) -> None:
         root = tmp_path / "vault"
-        target = root / "note.md"
+        target = root / "record.md"
         if problem == "file-root":
             root.write_text("file")
         elif problem != "missing-root":
@@ -320,10 +320,10 @@ class TestDiagnosticReport:
     @pytest.mark.parametrize(
         ("severity", "level", "line", "field", "location"),
         [
-            ("error", logging.ERROR, 0, "", "note.md"),
-            ("warning", logging.WARNING, 3, "", "note.md:3"),
-            ("info", logging.INFO, 0, "type", "note.md [type]"),
-            ("error", logging.ERROR, 3, "type", "note.md:3 [type]"),
+            ("error", logging.ERROR, 0, "", "record.md"),
+            ("warning", logging.WARNING, 3, "", "record.md:3"),
+            ("info", logging.INFO, 0, "type", "record.md [type]"),
+            ("error", logging.ERROR, 3, "type", "record.md:3 [type]"),
         ],
     )
     def test_finding(
@@ -336,7 +336,7 @@ class TestDiagnosticReport:
         location: str,
     ) -> None:
         diagnostic = Diagnostic(
-            "note.md",
+            "record.md",
             "record.type",
             "A finding",
             line=line,
@@ -380,10 +380,10 @@ class TestFindings:
         assert repr(Findings("N.md")) == "Findings('N.md', [])"
 
 
-class TestFindingsFromNote:
+class TestFindingsFromRecord:
     def test_vault_relative_path(self, tmp_path: Path) -> None:
-        note = Note(tmp_path / "content/N.md", Frontmatter(), Body("", 1))
-        findings = Findings.from_note(note, VaultIndex(tmp_path))
+        record = Record(tmp_path / "content/N.md", Frontmatter(), Body("", 1))
+        findings = Findings.from_record(record, VaultIndex(tmp_path))
         assert findings == Findings("content/N.md")
 
 
@@ -539,7 +539,9 @@ class TestResultAddContext:
         findings = (
             []
             if empty
-            else [Diagnostic("nested/note.md", "rule", "Finding", field="type", line=3)]
+            else [
+                Diagnostic("nested/record.md", "rule", "Finding", field="type", line=3)
+            ]
         )
         original = Result(findings, checked=2, skipped=1, unsupported=1)
         prefixed = original.add_context(context)
@@ -551,48 +553,50 @@ class TestResultAddContext:
         if not empty:
             assert prefixed.diagnostics == [
                 Diagnostic(
-                    (Path(context) / "nested/note.md").as_posix(),
+                    (Path(context) / "nested/record.md").as_posix(),
                     "rule",
                     "Finding",
                     field="type",
                     line=3,
                 )
             ]
-            assert original.diagnostics[0].path == "nested/note.md"
+            assert original.diagnostics[0].path == "nested/record.md"
         else:
             assert prefixed.diagnostics == []
 
     def test_nested_contexts_keep_failed_files_distinct(self) -> None:
-        result = Result([Diagnostic("note.md", "rule", "Finding")], checked=1)
+        result = Result([Diagnostic("record.md", "rule", "Finding")], checked=1)
         combined = result.add_context("a") + result.add_context("b")
         assert combined.add_context("vaults").failed_files == 2
         assert [d.path for d in combined.add_context("vaults").diagnostics] == [
-            "vaults/a/note.md",
-            "vaults/b/note.md",
+            "vaults/a/record.md",
+            "vaults/b/record.md",
         ]
 
     @pytest.mark.parametrize(
         ("base", "expected"),
         [
-            (".", "vault/nested/note.md"),
-            ("vault", "nested/note.md"),
-            ("vault/nested", "note.md"),
+            (".", "vault/nested/record.md"),
+            ("vault", "nested/record.md"),
+            ("vault/nested", "record.md"),
         ],
     )
     @pytest.mark.parametrize("absolute", [False, True])
     def test_rebases_paths(
         self, tmp_path: Path, base: str, expected: str, absolute: bool
     ) -> None:
-        original = Result([Diagnostic("nested/note.md", "rule", "Finding")], checked=1)
+        original = Result(
+            [Diagnostic("nested/record.md", "rule", "Finding")], checked=1
+        )
         context = tmp_path / "vault" if absolute else Path("vault")
         relative_to = tmp_path / base if absolute else Path(base)
         rebased = original.add_context(context, relative_to=relative_to)
         assert rebased.diagnostics[0].path == expected
         assert rebased.checked == 1
-        assert original.diagnostics[0].path == "nested/note.md"
+        assert original.diagnostics[0].path == "nested/record.md"
 
     def test_rejects_unrelated_base(self) -> None:
-        result = Result([Diagnostic("note.md", "rule", "Finding")])
+        result = Result([Diagnostic("record.md", "rule", "Finding")])
         with pytest.raises(ValueError):
             result.add_context("vault", relative_to="elsewhere")
 
@@ -601,11 +605,11 @@ class TestFindCampaign:
     @pytest.mark.parametrize(
         "path, expected",
         [
-            ("campaigns/campaign_42/content/note.md", "campaign_42"),
-            ("campaigns/campaign_1/content/nested/note.md", "campaign_1"),
-            ("content/note.md", None),
-            ("campaigns/campaign_other/note.md", None),
-            ("other/campaigns/campaign_1/note.md", None),
+            ("campaigns/campaign_42/content/record.md", "campaign_42"),
+            ("campaigns/campaign_1/content/nested/record.md", "campaign_1"),
+            ("content/record.md", None),
+            ("campaigns/campaign_other/record.md", None),
+            ("other/campaigns/campaign_1/record.md", None),
         ],
     )
     def test_scope(self, tmp_path: Path, path: str, expected: str | None) -> None:

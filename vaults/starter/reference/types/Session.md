@@ -1,9 +1,9 @@
 ---
 type: "[[Type]]"
 ---
-Pages with `type: "[[types/Session]]"` are play-session records containing preparation and actual play notes, including events, interactions, and rewards.
+Records with `type: "[[types/Session]]"` are play-session records containing preparation and actual play notes, including events, interactions, and rewards.
 
-Use [[templates/Session]] for the page structure.
+Use [[templates/Session]] for the record structure.
 
 Store records under `campaigns/campaign_1/sessions/`, named `S-1-001.md`,
 `S-1-002.md`, etc. Set `session_number` and the campaign link. For another campaign,
@@ -27,7 +27,7 @@ link to the intended campaign when creating each Session.
 
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,
 `players_absent`, `in_game_start_date` and `in_game_end_date`. The campaign
-links to its Reference note, and the session number is a positive integer. Date
+links to its Reference record, and the session number is a positive integer. Date
 is `YYYY-MM-DD` or null when unscheduled. In-game dates are nonblank strings in
 the campaign's calendar, or null when unrecorded.
 

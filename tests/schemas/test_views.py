@@ -11,7 +11,7 @@ SELECTIONS = {"clues": "Clue", "locations": "Location", "npcs": "NPC"}
 
 
 def frontmatter(path: Path) -> dict:
-    """Read trusted repository fixtures, including untyped supporting notes."""
+    """Read trusted repository fixtures, including untyped supporting records."""
     text = path.read_text()
     if not text.startswith("---\n"):
         return {}

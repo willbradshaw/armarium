@@ -9,7 +9,7 @@ import pytest
 from jsonschema.exceptions import SchemaError
 from referencing.exceptions import NoSuchResource
 
-from armarium.parse import Body, Frontmatter, Note
+from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema, select_schema
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,8 +34,8 @@ def write_schema(root: Path) -> Callable[..., Path]:
 
 
 @pytest.fixture
-def note(root: Path) -> Note:
-    return Note(
+def record(root: Path) -> Record:
+    return Record(
         root / "content/Example.md",
         Frontmatter({"type": "[[types/Widget]]", "name": "Example"}),
         Body("## Notes\n", 5),
@@ -44,16 +44,16 @@ def note(root: Path) -> Note:
 
 class TestSchema:
     def test_represents_one_schema(
-        self, root: Path, write_schema: Callable[..., Path], note: Note
+        self, root: Path, write_schema: Callable[..., Path], record: Record
     ) -> None:
         path = write_schema(True)
         schema = Schema.load(path, root)
         assert schema.path == path
         assert schema.root == root
         assert schema.contents is True
-        # Loading fixes the selected schema's contents for reuse across notes.
+        # Loading fixes the selected schema's contents for reuse across records.
         path.write_text("false")
-        assert schema.validate(note) == []
+        assert schema.validate(record) == []
 
 
 class TestSchemaLoad:
@@ -174,23 +174,31 @@ class TestSchemaValidate:
         ],
     )
     def test_reference_failures(
-        self, root: Path, write_schema: Callable[..., Path], note: Note, reference: str
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        record: Record,
+        reference: str,
     ) -> None:
         schema = Schema.load(write_schema({"$ref": reference}), root)
-        diagnostics = schema.validate(note)
+        diagnostics = schema.validate(record)
         assert len(diagnostics) == 1
         assert diagnostics[0].rule == "schema.invalid" and diagnostics[0].message
 
     def test_escaping_reference(
-        self, root: Path, write_schema: Callable[..., Path], note: Note, tmp_path: Path
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        record: Record,
+        tmp_path: Path,
     ) -> None:
         outside = tmp_path / "outside.json"
         outside.write_text("{}")
         schema = Schema.load(write_schema({"$ref": outside.as_uri()}), root)
-        assert schema.validate(note)[0].rule == "schema.invalid"
+        assert schema.validate(record)[0].rule == "schema.invalid"
 
     @pytest.mark.parametrize("outside", [False, True])
-    def test_note_scope(
+    def test_record_scope(
         self,
         root: Path,
         write_schema: Callable[..., Path],
@@ -198,37 +206,37 @@ class TestSchemaValidate:
         outside: bool,
     ) -> None:
         schema = Schema.load(write_schema(True), root)
-        note = Note(
-            (tmp_path if outside else root) / "note.md", Frontmatter({}), Body("", 1)
+        record = Record(
+            (tmp_path if outside else root) / "record.md", Frontmatter({}), Body("", 1)
         )
         if outside:
             with pytest.raises(ValueError):
-                schema.validate(note)
+                schema.validate(record)
         else:
             # Explicit validation does not require a type for schema selection.
-            assert schema.validate(note) == []
+            assert schema.validate(record) == []
 
     @pytest.mark.parametrize(
         "schema", [True, {}, {"required": ["frontmatter", "body"]}]
     )
-    def test_valid_note(
+    def test_valid_record(
         self,
         root: Path,
         write_schema: Callable[..., Path],
-        note: Note,
+        record: Record,
         schema: Any,
     ) -> None:
         path = write_schema(schema)
         before = path.read_bytes()
         assert (
             Schema.load(root / "reference/schemas/widget.schema.json", root).validate(
-                note
+                record
             )
             == []
         )
         assert path.read_bytes() == before
-        assert note.frontmatter == {"type": "[[types/Widget]]", "name": "Example"}
-        assert note.body.text == "## Notes\n"
+        assert record.frontmatter == {"type": "[[types/Widget]]", "name": "Example"}
+        assert record.body.text == "## Notes\n"
 
     @pytest.mark.parametrize(
         ("schema", "field"),
@@ -258,14 +266,14 @@ class TestSchemaValidate:
         self,
         root: Path,
         write_schema: Callable[..., Path],
-        note: Note,
+        record: Record,
         schema: Any,
         field: str,
     ) -> None:
         write_schema(schema)
         diagnostics = Schema.load(
             root / "reference/schemas/widget.schema.json", root
-        ).validate(note)
+        ).validate(record)
         assert len(diagnostics) == 1
         error = diagnostics[0]
         assert (error.path, error.rule, error.field, error.severity) == (
@@ -277,7 +285,7 @@ class TestSchemaValidate:
         assert error.message
 
     def test_deterministic_field_order(
-        self, root: Path, write_schema: Callable[..., Path], note: Note
+        self, root: Path, write_schema: Callable[..., Path], record: Record
     ) -> None:
         write_schema(
             {
@@ -291,7 +299,7 @@ class TestSchemaValidate:
             d.field
             for d in Schema.load(
                 root / "reference/schemas/widget.schema.json", root
-            ).validate(note)
+            ).validate(record)
         ] == ["body", "frontmatter"]
 
     @pytest.mark.parametrize("external", [False, True], ids=["fragment", "file"])
@@ -300,12 +308,12 @@ class TestSchemaValidate:
         self,
         root: Path,
         write_schema: Callable[..., Path],
-        note: Note,
+        record: Record,
         external: bool,
         valid: bool,
     ) -> None:
         target = {
-            "properties": {"body": {"const": note.body.text if valid else "Other"}}
+            "properties": {"body": {"const": record.body.text if valid else "Other"}}
         }
         if external:
             write_schema(target, "nested dir/helper.json")
@@ -315,18 +323,18 @@ class TestSchemaValidate:
         write_schema(schema)
         diagnostics = Schema.load(
             root / "reference/schemas/widget.schema.json", root
-        ).validate(note)
+        ).validate(record)
         assert [d.rule for d in diagnostics] == ([] if valid else ["schema.instance"])
 
     def test_relative_reference_chain(
-        self, root: Path, write_schema: Callable[..., Path], note: Note
+        self, root: Path, write_schema: Callable[..., Path], record: Record
     ) -> None:
         write_schema({"$ref": "nested/first.json"})
         write_schema({"$ref": "second.json"}, "nested/first.json")
         write_schema({"required": ["body"]}, "nested/second.json")
         assert (
             Schema.load(root / "reference/schemas/widget.schema.json", root).validate(
-                note
+                record
             )
             == []
         )
@@ -338,29 +346,29 @@ class TestSelectSchema:
         self,
         root: Path,
         write_schema: Callable[..., Path],
-        note: Note,
+        record: Record,
         monkeypatch: pytest.MonkeyPatch,
         relative: bool,
     ) -> None:
         path = write_schema(False)
         monkeypatch.chdir(root.parent)
         selected_root = Path(root.name) if relative else root
-        selected_note = (
-            Note(
-                note.path.relative_to(root.parent),
-                note.frontmatter,
-                Body(note.body.text, 1),
+        selected_record = (
+            Record(
+                record.path.relative_to(root.parent),
+                record.frontmatter,
+                Body(record.body.text, 1),
             )
             if relative
-            else note
+            else record
         )
-        schema, diagnostics = select_schema(selected_note, selected_root)
+        schema, diagnostics = select_schema(selected_record, selected_root)
         assert diagnostics == [] and schema is not None
         assert schema.path == path
         assert schema.contents is False
 
-    def test_missing_schema_is_error(self, root: Path, note: Note) -> None:
-        schema, diagnostics = select_schema(note, root)
+    def test_missing_schema_is_error(self, root: Path, record: Record) -> None:
+        schema, diagnostics = select_schema(record, root)
         assert schema is None and len(diagnostics) == 1
         error = diagnostics[0]
         assert (error.path, error.rule, error.severity) == (
@@ -379,46 +387,52 @@ class TestSelectSchema:
             b'{"$schema": "http://json-schema.org/draft-07/schema#"}',
         ],
     )
-    def test_invalid_schema(self, root: Path, note: Note, contents: bytes) -> None:
+    def test_invalid_schema(self, root: Path, record: Record, contents: bytes) -> None:
         (root / "reference/schemas/widget.schema.json").write_bytes(contents)
-        schema, diagnostics = select_schema(note, root)
+        schema, diagnostics = select_schema(record, root)
         assert schema is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "schema.invalid"
         assert diagnostics[0].severity == "error"
         assert diagnostics[0].message
 
-    def test_escaping_schema(self, root: Path, note: Note, tmp_path: Path) -> None:
+    def test_escaping_schema(self, root: Path, record: Record, tmp_path: Path) -> None:
         outside = tmp_path / "outside.json"
         outside.write_text("{}")
         (root / "reference/schemas/widget.schema.json").symlink_to(outside)
-        schema, diagnostics = select_schema(note, root)
+        schema, diagnostics = select_schema(record, root)
         assert schema is None and diagnostics[0].rule == "schema.invalid"
 
     @pytest.mark.parametrize("problem", ["missing-type", "outside-vault"])
     def test_caller_errors(
-        self, root: Path, note: Note, tmp_path: Path, problem: str
+        self, root: Path, record: Record, tmp_path: Path, problem: str
     ) -> None:
-        invalid = Note(
-            tmp_path / "outside.md" if problem == "outside-vault" else note.path,
-            Frontmatter({}) if problem == "missing-type" else note.frontmatter,
-            Body(note.body.text, 1),
+        invalid = Record(
+            tmp_path / "outside.md" if problem == "outside-vault" else record.path,
+            Frontmatter({}) if problem == "missing-type" else record.frontmatter,
+            Body(record.body.text, 1),
         )
         with pytest.raises(ValueError):
             select_schema(invalid, root)
 
     def test_uses_only_selected_vault(
-        self, root: Path, write_schema: Callable[..., Path], note: Note, tmp_path: Path
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        record: Record,
+        tmp_path: Path,
     ) -> None:
         write_schema(False)
         other = tmp_path / "other"
         (other / "reference/schemas").mkdir(parents=True)
         (other / "reference/schemas/widget.schema.json").write_text("true")
-        other_note = Note(other / "note.md", note.frontmatter, Body(note.body.text, 1))
-        for selected_note, selected_root, expected in [
-            (note, root, False),
-            (other_note, other, True),
+        other_record = Record(
+            other / "record.md", record.frontmatter, Body(record.body.text, 1)
+        )
+        for selected_record, selected_root, expected in [
+            (record, root, False),
+            (other_record, other, True),
         ]:
-            schema, diagnostics = select_schema(selected_note, selected_root)
+            schema, diagnostics = select_schema(selected_record, selected_root)
             assert diagnostics == [] and schema is not None
             assert schema.contents is expected
 
@@ -441,14 +455,14 @@ class TestSelectSchema:
             (ROOT / f"tests/schemas/fixtures/{kind}.json").read_text()
         )["base"]
         root = ROOT / f"vaults/{vault}"
-        note = Note(
+        record = Record(
             root / "record.md",
             Frontmatter(fixture["frontmatter"]),
             Body(fixture["body"], 1),
         )
-        schema, diagnostics = select_schema(note, root)
+        schema, diagnostics = select_schema(record, root)
         assert diagnostics == [] and schema is not None
-        assert schema.validate(note) == []
+        assert schema.validate(record) == []
 
     @pytest.mark.parametrize("vault", ["starter", "example"])
     @pytest.mark.parametrize(
@@ -469,9 +483,9 @@ class TestSelectSchema:
         if replacement is not ...:
             metadata["superseded_by"] = replacement
         root = ROOT / f"vaults/{vault}"
-        note = Note(
+        record = Record(
             root / "record.md", Frontmatter(metadata), Body(fixture["base"]["body"], 1)
         )
-        schema, diagnostics = select_schema(note, root)
+        schema, diagnostics = select_schema(record, root)
         assert diagnostics == [] and schema is not None
-        assert (schema.validate(note) == []) is valid
+        assert (schema.validate(record) == []) is valid

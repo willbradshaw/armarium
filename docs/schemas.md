@@ -1,7 +1,7 @@
 # Schema development
 
 For contributors changing and testing schemas. Record authoring rules
-live in the vault's `reference/types/` pages.
+live in the vault's `reference/types/` Type records.
 
 ## Input and schema selection
 

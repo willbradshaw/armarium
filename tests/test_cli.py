@@ -40,30 +40,30 @@ class TestMain:
         [
             (
                 '---\ntype: "[[Widget]]"\n---\n',
-                "note.md",
+                "record.md",
                 0,
                 "",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
                 '---\ntype: "[[Unknown]]"\n---\n',
-                "note.md",
+                "record.md",
                 1,
-                "ERROR: note.md: schema.unsupported",
+                "ERROR: record.md: schema.unsupported",
                 "1 checked, 0 skipped, 1 unsupported",
             ),
             (
                 "plain Markdown",
-                "note.md",
+                "record.md",
                 1,
-                "ERROR: note.md [type]: record.type",
+                "ERROR: record.md [type]: record.type",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
                 "---\nx: first\nx: second\n---\n",
-                "note.md",
+                "record.md",
                 1,
-                "ERROR: note.md:3: parse.invalid",
+                "ERROR: record.md:3: parse.invalid",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
@@ -118,7 +118,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        path = tmp_path / "note.md"
+        path = tmp_path / "record.md"
         path.write_text('---\ntype: "[[Unknown]]"\n---\n')
         monkeypatch.setattr(
             sys, "argv", ["armarium", "validate", str(path), "--vault", str(tmp_path)]
@@ -139,7 +139,7 @@ class TestMain:
         from unittest.mock import Mock
 
         monkeypatch.setattr("armarium.cli.validate", Mock(side_effect=error))
-        monkeypatch.setattr(sys, "argv", ["armarium", "validate", "note.md"])
+        monkeypatch.setattr(sys, "argv", ["armarium", "validate", "record.md"])
         with pytest.raises(type(error)) as exc:
             main()
         assert exc.value is error
@@ -161,7 +161,7 @@ class TestMain:
             "armarium.cli.validate",
             Mock(return_value=Result(findings, checked=files + 1)),
         )
-        monkeypatch.setattr(sys, "argv", ["armarium", "validate", "note.md"])
+        monkeypatch.setattr(sys, "argv", ["armarium", "validate", "record.md"])
         noun = "file" if files == 1 else "files"
         with pytest.raises(
             ValidationError, match=f"^{files} {noun} failed validation$"
@@ -216,10 +216,12 @@ class TestMain:
         capsys: pytest.CaptureFixture[str],
         directory: bool,
     ) -> None:
-        note = tmp_path / "README.md"
-        note.write_text("Repository documentation")
+        record = tmp_path / "README.md"
+        record.write_text("Repository documentation")
         monkeypatch.setattr(
-            sys, "argv", ["armarium", "validate", str(tmp_path if directory else note)]
+            sys,
+            "argv",
+            ["armarium", "validate", str(tmp_path if directory else record)],
         )
         if directory:
             assert main() is None
@@ -232,7 +234,7 @@ class TestMain:
     def test_module_entry_point(
         self, vault: Path, tmp_path: Path, scenario: str
     ) -> None:
-        path = vault / "note.md"
+        path = vault / "record.md"
         if scenario != "missing":
             path.write_text(
                 '---\ntype: "[[Widget]]"\n---\n' if scenario == "valid" else "untyped"
@@ -265,9 +267,9 @@ class TestMain:
 class TestParseArgs:
     @pytest.mark.parametrize("explicit", [False, True])
     def test_paths(self, explicit: bool) -> None:
-        argv = ["validate", "note.md"] + (["--vault", "vault"] if explicit else [])
+        argv = ["validate", "record.md"] + (["--vault", "vault"] if explicit else [])
         args = parse_args(argv)
-        assert args.command == "validate" and args.path == Path("note.md")
+        assert args.command == "validate" and args.path == Path("record.md")
         assert args.vault == (Path("vault") if explicit else None)
 
     @pytest.mark.parametrize(

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Armarium Clue note",
+  "title": "Armarium Clue record",
   "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body.",
   "type": "object",
   "required": [

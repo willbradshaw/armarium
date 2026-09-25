@@ -23,7 +23,7 @@ from armarium.lib import (
     iter_wikilinks,
     parse_wikilink,
 )
-from armarium.parse import Note, Section
+from armarium.parse import Record, Section
 from armarium.schemas import Schema, select_schema
 
 
@@ -178,10 +178,10 @@ def validate_markdown(
     relative = path.relative_to(root).as_posix()
     if index is not None and index.root != root:
         raise ValueError("index must belong to the selected vault")
-    note, diagnostics = (
-        index.parse(path) if index is not None else Note.parse(path, root)
+    record, diagnostics = (
+        index.parse(path) if index is not None else Record.parse(path, root)
     )
-    if note is None:
+    if record is None:
         return Result(diagnostics=diagnostics, checked=1)
     # 1. Skip templates and untyped files
     findings = Findings(relative)
@@ -192,21 +192,21 @@ def validate_markdown(
             severity="info",
         )
         return Result(diagnostics=findings.diagnostics, skipped=1)
-    if note.frontmatter.type is None:
+    if record.frontmatter.type is None:
         findings.add(
             "record.type", "type is required and must be a canonical wikilink", "type"
         )
         return Result(diagnostics=findings.diagnostics, checked=1)
     # 2. Validate against the vault-local schema
-    schema, diagnostics = select_schema(note, root)
+    schema, diagnostics = select_schema(record, root)
     if schema is not None:
-        diagnostics.extend(schema.validate(note))
+        diagnostics.extend(schema.validate(record))
     # 3. Run the record checks against the whole vault
     if index is None:
         index = VaultIndex(root)
-        index.notes[path] = (note, [])
+        index.records[path] = (record, [])
     findings += Findings(relative, diagnostics)
-    findings = sum((check(note, index) for check in RECORD_CHECKS), findings)
+    findings = sum((check(record, index) for check in RECORD_CHECKS), findings)
     return Result(
         diagnostics=sorted(findings.diagnostics),
         checked=1,
@@ -363,11 +363,11 @@ def validate_vault(root: Path) -> Findings:
     return findings
 
 
-def validate_appearances(note: Note, index: VaultIndex) -> Findings:
+def validate_appearances(record: Record, index: VaultIndex) -> Findings:
     """Reconcile a Content record's Appearances list with its campaign blocks.
 
     Args:
-        note: Selected record; only Content records carry Appearances.
+        record: Selected record; only Content records carry Appearances.
         index: Vault index used to resolve the linked Sessions.
 
     Returns:
@@ -375,10 +375,10 @@ def validate_appearances(note: Note, index: VaultIndex) -> Findings:
             the order of campaigns and of each campaign's appearances, and
             with the campaign_N blocks' first_session and last_session.
     """
-    if note.frontmatter.type != "Content":
-        return Findings.from_note(note, index)
+    if record.frontmatter.type != "Content":
+        return Findings.from_record(record, index)
     # 1. Read the recorded appearances
-    appearances, findings = _read_appearances(note, index)
+    appearances, findings = _read_appearances(record, index)
     # 2. Validate the sequence of campaigns
     order = [int(campaign.removeprefix("campaign_")) for campaign, _, _ in appearances]
     findings.diagnose(order != sorted(order), "history.order", "campaigns out of order")
@@ -386,23 +386,23 @@ def validate_appearances(note: Note, index: VaultIndex) -> Findings:
     campaigns = {campaign for campaign, _, _ in appearances}
     checks = (
         _check_campaign_history(
-            note,
+            record,
             index,
             campaign,
             [(ordinal, path) for c, ordinal, path in appearances if c == campaign],
         )
-        for campaign in sorted(campaigns | note.frontmatter.campaigns.keys())
+        for campaign in sorted(campaigns | record.frontmatter.campaigns.keys())
     )
     return sum(checks, findings)
 
 
 def _read_appearances(
-    note: Note, index: VaultIndex
+    record: Record, index: VaultIndex
 ) -> tuple[list[tuple[str, int, Path]], Findings]:
     """Collect the appearances recorded under a Content record's Appearances.
 
     Args:
-        note: Content record to read.
+        record: Content record to read.
         index: Vault index used to resolve and parse linked Sessions.
 
     Returns:
@@ -411,11 +411,11 @@ def _read_appearances(
             and the problems found. A malformed section ends the read; a
             malformed or unusable entry is omitted.
     """
-    findings = Findings.from_note(note, index)
+    findings = Findings.from_record(record, index)
     # 1. Find and validate the Appearances section.
     history: list[tuple[str, int, Path]] = []
     sections = [
-        s for s in note.body.walk() if s.level == 2 and s.title == "Appearances"
+        s for s in record.body.walk() if s.level == 2 and s.title == "Appearances"
     ]
     if findings.diagnose(not sections, "history.format", "no Appearances heading"):
         return history, findings
@@ -443,7 +443,7 @@ def _read_appearances(
         )
         return history, findings
     # 3. Collect the linked Sessions.
-    linked: list[tuple[int, Note]] = []
+    linked: list[tuple[int, Record]] = []
     for appearance in appearances:
         match = ENTRY.fullmatch(appearance.text)
         if match is None:
@@ -456,7 +456,7 @@ def _read_appearances(
         except ValueError as exc:
             findings.add("history.format", f"entry link: {exc}", line=appearance.line)
             continue
-        session = linked_note(target, note, index, Target("Session"))
+        session = linked_record(target, record, index, Target("Session"))
         if isinstance(session, tuple):
             findings.add(
                 "history.entry",
@@ -466,7 +466,7 @@ def _read_appearances(
             continue
         linked.append((appearance.line, session))
     # 4. Validate the linked Sessions.
-    scope = find_campaign(note.path, index.root)
+    scope = find_campaign(record.path, index.root)
     for line, session in linked:
         stem = session.path.stem
         ordinal = session.frontmatter.get("session_number")
@@ -493,12 +493,12 @@ def _read_appearances(
 
 
 def _check_campaign_history(
-    note: Note, index: VaultIndex, campaign: str, history: list[tuple[int, Path]]
+    record: Record, index: VaultIndex, campaign: str, history: list[tuple[int, Path]]
 ) -> Findings:
     """Check one campaign's recorded appearances against its campaign_N block.
 
     Args:
-        note: Content record being checked.
+        record: Content record being checked.
         index: Vault index used to resolve the block's Session links.
         campaign: Campaign directory name, campaign_N.
         history: That campaign's appearances as (ordinal, Session path), in
@@ -508,7 +508,7 @@ def _check_campaign_history(
         Findings: Appearances out of order or repeated, a missing campaign_N
             block, and a block range that disagrees with the appearances.
     """
-    findings = Findings.from_note(note, index)
+    findings = Findings.from_record(record, index)
     # 1. Validate the sequence of appearances
     ordinals = [ordinal for ordinal, _ in history]
     sessions = [session for _, session in history]
@@ -523,7 +523,7 @@ def _check_campaign_history(
         f"{campaign} repeats a Session",
     )
     # 2. Find the campaign block
-    block = note.frontmatter.campaigns.get(campaign)
+    block = record.frontmatter.campaigns.get(campaign)
     if block is None:
         findings.add(
             "history.block", f"no {campaign} block for its appearances", campaign
@@ -545,7 +545,7 @@ def _check_campaign_history(
                 location,
             )
             continue
-        resolved, error = index.resolve_field(note, location)
+        resolved, error = index.resolve_field(record, location)
         if error is not None:
             findings.add("history.range", f"cannot check {location}: {error}", location)
             continue
@@ -558,11 +558,11 @@ def _check_campaign_history(
     return findings
 
 
-def validate_clue(note: Note, index: VaultIndex) -> Findings:
+def validate_clue(record: Record, index: VaultIndex) -> Findings:
     """Check a Clue's subjects against its text and the order of its Sessions.
 
     Args:
-        note: Selected record; only Clues carry text, subjects and Session range.
+        record: Selected record; only Clues carry text, subjects and Session range.
         index: Vault index used to resolve the links.
 
     Returns:
@@ -572,18 +572,18 @@ def validate_clue(note: Note, index: VaultIndex) -> Findings:
             (history.range); a last_session before first_session, or a Session
             that cannot be ordered (history.order).
     """
-    findings = Findings.from_note(note, index)
-    if note.frontmatter.type != "Clue":
+    findings = Findings.from_record(record, index)
+    if record.frontmatter.type != "Clue":
         return findings
     # 1. Resolve every link in text and subjects
     linked: dict[str, set[Path]] = {"text": set(), "subjects": set()}
     comparable = True
-    for link in note.links:
+    for link in record.links:
         if link.field not in linked:
             continue
-        result = None if link.error else linked_note(link.target, note, index)
-        if not isinstance(result, Note):
-            reason = link.error or (result[1] if result else "not a note")
+        result = None if link.error else linked_record(link.target, record, index)
+        if not isinstance(result, Record):
+            reason = link.error or (result[1] if result else "not a record")
             findings.add(
                 "clue.subjects", f"cannot check subjects: {reason}", link.location
             )
@@ -605,10 +605,10 @@ def validate_clue(note: Note, index: VaultIndex) -> Findings:
     # 3. Read the Session ordinals
     ordinals: dict[str, int | None] = {}
     for field in ("first_session", "last_session"):
-        if note.frontmatter.get(field) is None:
+        if record.frontmatter.get(field) is None:
             ordinals[field] = None
             continue
-        resolved, error = index.resolve_field(note, field)
+        resolved, error = index.resolve_field(record, field)
         session = (
             index.parse(resolved)[0] if resolved and resolved.suffix == ".md" else None
         )
@@ -636,7 +636,7 @@ def validate_clue(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_transcript(note: Note, index: VaultIndex) -> Findings:
+def validate_transcript(record: Record, index: VaultIndex) -> Findings:
     """Check that a Transcript body follows the transcript grammar.
 
     After the frontmatter, the body is a run of titled level-two sections.
@@ -647,7 +647,7 @@ def validate_transcript(note: Note, index: VaultIndex) -> Findings:
     item, is still reported.
 
     Args:
-        note: Selected record; only Transcripts carry speech.
+        record: Selected record; only Transcripts carry speech.
         index: Vault index used to name the record.
 
     Returns:
@@ -659,15 +659,15 @@ def validate_transcript(note: Note, index: VaultIndex) -> Findings:
             without a speaker tag, or with brackets after it outside wikilinks
             (transcript.speaker).
     """
-    findings = Findings.from_note(note, index)
-    if note.frontmatter.type != "Transcript":
+    findings = Findings.from_record(record, index)
+    if record.frontmatter.type != "Transcript":
         return findings
     # 1. Nothing precedes the first heading; every heading is a titled level two
-    for block in note.body.blocks:
+    for block in record.body.blocks:
         findings.add(
             "transcript.heading", "content before the first heading", line=block.line
         )
-    sections = [s for s in note.body.walk() if s is not note.body]
+    sections = [s for s in record.body.walk() if s is not record.body]
     for section in sections:
         findings.diagnose(
             section.level != 2 or not section.title.strip(),
@@ -723,41 +723,41 @@ def validate_transcript(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_wikilinks(note: Note, index: VaultIndex) -> Findings:
-    """Check every link the note contains against the vault.
+def validate_wikilinks(record: Record, index: VaultIndex) -> Findings:
+    """Check every link the record contains against the vault.
 
     Links within a type-bound field must target a correctly placed record
     meeting that field's Target requirements; see _link_targets.
 
     Args:
-        note: Selected note inside the indexed vault.
-        index: Whole-vault file index and lazy note cache for this run.
+        record: Selected record inside the indexed vault.
+        index: Whole-vault file index and lazy record cache for this run.
 
     Returns:
-        Findings: Problems attributed to the selected note, with metadata
+        Findings: Problems attributed to the selected record, with metadata
             locations or body source lines: links that are malformed, cannot be
             resolved, name a missing anchor or fail their field's requirements,
             a list entry in a type-bound field that names the same file as an
             earlier entry (link.duplicate), and links that an unescaped ``|``
-            splits across table cells. Unrelated notes are not parsed. Query
+            splits across table cells. Unrelated records are not parsed. Query
             execution and ordinary URLs are excluded.
     """
-    findings = Findings.from_note(note, index)
-    targets = _link_targets(note)
+    findings = Findings.from_record(record, index)
+    targets = _link_targets(record)
     seen: dict[str, set[Path]] = {}
-    for link in note.links:
+    for link in record.links:
         # 1. Check the link as written
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
         else:
             problem = validate_wikilink(
-                link.target, note, index, targets.get(link.field), link.anchor
+                link.target, record, index, targets.get(link.field), link.anchor
             )
         if problem is not None:
             findings.add(*problem, link.location, link.line)
         # 2. A list entry in a type-bound field repeating an earlier entry
         if link.error is None and link.field in targets and link.location != link.field:
-            resolved, _ = index.resolve(link.target, note.path)
+            resolved, _ = index.resolve(link.target, record.path)
             if resolved is None:
                 continue
             findings.diagnose(
@@ -769,8 +769,8 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> Findings:
             seen[link.field].add(resolved)
     # 3. Links that a table cell boundary cuts in two: the row reads as a
     # whole, but Obsidian splits its cells at every unescaped pipe.
-    lines = note.body.text.splitlines()
-    for row in (block for block in note.body.iter_blocks() if block.kind == "row"):
+    lines = record.body.text.splitlines()
+    for row in (block for block in record.body.iter_blocks() if block.kind == "row"):
         broken = (
             isinstance(p, ValueError)
             for c in row.children
@@ -778,7 +778,7 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> Findings:
         )
         whole = (
             isinstance(p, ValueError)
-            for p in iter_wikilinks(lines[row.line - note.body.line])
+            for p in iter_wikilinks(lines[row.line - record.body.line])
         )
         findings.diagnose(
             any(broken) and not any(whole),
@@ -789,11 +789,11 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def _link_targets(note: Note) -> dict[str, Target]:
-    """Collect the Target requirements for a note's type-bound fields.
+def _link_targets(record: Record) -> dict[str, Target]:
+    """Collect the Target requirements for a record's type-bound fields.
 
     Args:
-        note: Selected record whose type, subtype and campaign blocks select
+        record: Selected record whose type, subtype and campaign blocks select
             the requirements.
 
     Returns:
@@ -803,13 +803,13 @@ def _link_targets(note: Note) -> dict[str, Target]:
             interpreted by name. A Clue's superseded_by is bound regardless of
             status; the Clue schema forbids it outside Superseded.
     """
-    kind = note.frontmatter.type or ""
-    subtype = note.frontmatter.get("subtype")
+    kind = record.frontmatter.type or ""
+    subtype = record.frontmatter.get("subtype")
     targets = LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
     if isinstance(subtype, str):
         targets |= RECORD_LINK_TARGETS.get((kind, subtype), {})
     if kind == "Content":
-        for field in note.frontmatter.campaigns:
+        for field in record.frontmatter.campaigns:
             # Block fields are bound to that block's campaign, not the record's.
             targets[f"{field}.first_session"] = Target("Session", campaign=field)
             targets[f"{field}.last_session"] = Target("Session", campaign=field)
@@ -822,7 +822,7 @@ def _link_targets(note: Note) -> dict[str, Target]:
 
 def validate_wikilink(
     target: str,
-    note: Note,
+    record: Record,
     index: VaultIndex,
     expected: Target | None = None,
     anchor: str = "",
@@ -831,65 +831,65 @@ def validate_wikilink(
 
     Args:
         target: Parsed wikilink target, without alias or anchor.
-        note: Note containing the link; its path breaks resolution ties and its
+        record: Record containing the link; its path breaks resolution ties and its
             declared type takes part in target-specific checks.
-        index: Whole-vault file index and lazy note cache for this run.
+        index: Whole-vault file index and lazy record cache for this run.
         expected: Requirements on the target record, or None for any file.
         anchor: Heading path or ``^block-id`` the link names, if any.
 
     Returns:
-        tuple[str, str] | None: The problem found by linked_note, or None when
+        tuple[str, str] | None: The problem found by linked_record, or None when
             the target is usable.
     """
-    result = linked_note(target, note, index, expected, anchor)
+    result = linked_record(target, record, index, expected, anchor)
     return result if isinstance(result, tuple) else None
 
 
 @overload
-def linked_note(
-    target: str, note: Note, index: VaultIndex, expected: Target, anchor: str = ""
-) -> Note | tuple[str, str]: ...
+def linked_record(
+    target: str, record: Record, index: VaultIndex, expected: Target, anchor: str = ""
+) -> Record | tuple[str, str]: ...
 
 
 @overload
-def linked_note(
+def linked_record(
     target: str,
-    note: Note,
+    record: Record,
     index: VaultIndex,
     expected: None = None,
     anchor: str = "",
-) -> Note | tuple[str, str] | None: ...
+) -> Record | tuple[str, str] | None: ...
 
 
-def linked_note(
+def linked_record(
     target: str,
-    note: Note,
+    record: Record,
     index: VaultIndex,
     expected: Target | None = None,
     anchor: str = "",
-) -> Note | tuple[str, str] | None:
-    """Resolve one wikilink target and check it, returning the note it names.
+) -> Record | tuple[str, str] | None:
+    """Resolve one wikilink target and check it, returning the record it names.
 
     Args:
         target: Parsed wikilink target, without alias or anchor.
-        note: Note containing the link; its path breaks resolution ties and its
+        record: Record containing the link; its path breaks resolution ties and its
             declared type takes part in target-specific checks.
-        index: Whole-vault file index and lazy note cache for this run.
+        index: Whole-vault file index and lazy record cache for this run.
         expected: Requirements on the target record, or None for any file.
         anchor: Heading path or ``^block-id`` the link names, if any. Checked
-            against a linked note's structure; non-note targets such as
+            against a linked record's structure; non-record targets such as
             assets and Bases views have no headings or blocks to check.
 
     Returns:
-        Note | tuple[str, str] | None: The linked note when it parses and meets
+        Record | tuple[str, str] | None: The linked record when it parses and meets
             expected; None when no record type is expected and the target is a
-            usable non-note file or self-anchor; otherwise the rule and message
-            for a missing, ambiguous or unparseable target, an anchor the note
+            usable non-record file or self-anchor; otherwise the rule and message
+            for a missing, ambiguous or unparseable target, an anchor the record
             lacks, one that is not a correctly placed record of the expected
             type and subtype, one outside the expected campaign, or one failing
             its type's own check.
     """
-    resolved, rule = index.resolve(target, note.path)
+    resolved, rule = index.resolve(target, record.path)
     if rule:
         return rule, f"cannot uniquely resolve [[{target}]]; use a vault-relative path"
     linked = None
@@ -897,7 +897,7 @@ def linked_note(
         linked, failures = index.parse(resolved)
         if failures:
             relative = resolved.relative_to(index.root)
-            return "link.malformed", f"referenced note {relative} cannot be parsed"
+            return "link.malformed", f"referenced record {relative} cannot be parsed"
     if anchor and linked is not None:
         problem = _check_anchor(linked, anchor)
         if problem is not None:
@@ -919,42 +919,42 @@ def linked_note(
         return "link.type", f"[[{target}]] must link to a {kind} with subtype {allowed}"
     required = expected.campaign
     if expected.local:
-        required = find_campaign(note.path, index.root)
+        required = find_campaign(record.path, index.root)
     scope = find_campaign(linked.path, index.root)
     shared = kind == "Content" and scope is None
     if required is not None and scope != required and not shared:
         allowed = required + (" or shared content" if kind == "Content" else "")
         return "campaign.mismatch", f"[[{target}]] must belong to {allowed}"
     check = _TARGET_CHECKS.get(kind)
-    problem = check(linked, note, index) if check else None
+    problem = check(linked, record, index) if check else None
     return problem if problem is not None else linked
 
 
-def _check_anchor(note: Note, anchor: str) -> tuple[str, str] | None:
-    """Check that a note contains the heading path or block id an anchor names.
+def _check_anchor(record: Record, anchor: str) -> tuple[str, str] | None:
+    """Check that a record contains the heading path or block id an anchor names.
 
     Headings match Obsidian's link rules: case-insensitively, ignoring the
     characters ``# | [ ] ^`` and runs of whitespace, on the heading text as
     written. ``A#B`` names heading B beneath heading A. A block id matches any
-    paragraph or item ending in ``^id`` anywhere in the note.
+    paragraph or item ending in ``^id`` anywhere in the record.
 
     Args:
-        note: Parsed note the link resolved to.
+        record: Parsed record the link resolved to.
         anchor: Heading path or ``^block-id`` after the link's ``#``.
 
     Returns:
         tuple[str, str] | None: A link.anchor problem, or None when found.
     """
-    stem = note.path.stem
+    stem = record.path.stem
     if anchor.startswith("^"):
         wanted = anchor[1:].casefold()
-        blocks = note.body.iter_blocks()
+        blocks = record.body.iter_blocks()
         if any(
             b.block_id is not None and b.block_id.casefold() == wanted for b in blocks
         ):
             return None
         return "link.anchor", f"[[{stem}#{anchor}]]: no block {anchor}"
-    within: list[Section] = [note.body]
+    within: list[Section] = [record.body]
     for segment in anchor.split("#"):
         wanted = _heading_key(segment)
         within = [
@@ -974,13 +974,13 @@ def _heading_key(text: str) -> str:
 
 
 def _validate_wikilink_status(
-    status: Note, note: Note, index: VaultIndex
+    status: Record, record: Record, index: VaultIndex
 ) -> tuple[str, str] | None:
     """Check that a linked Status applies to the linking record's type.
 
     Args:
         status: Correctly placed Status definition the link resolved to.
-        note: Record containing the link.
+        record: Record containing the link.
         index: Whole-vault index used to resolve applies_to and the record type.
 
     Returns:
@@ -992,36 +992,36 @@ def _validate_wikilink_status(
     if error is not None:
         relative = status.path.relative_to(index.root)
         return "status.applicability", f"status {relative}: {error}"
-    record_type, error = index.resolve_field(note, "type")
+    record_type, error = index.resolve_field(record, "type")
     if error is not None:
         return "status.applicability", f"cannot check applicability: {error}"
     if applies_to == record_type:
         return None
     return (
         "status.applicability",
-        f"status does not apply to {note.frontmatter.type} records",
+        f"status does not apply to {record.frontmatter.type} records",
     )
 
 
 # Extra checks on a typed link target, keyed by the target's declared type.
 _TARGET_CHECKS: dict[
-    str, Callable[[Note, Note, VaultIndex], tuple[str, str] | None]
+    str, Callable[[Record, Record, VaultIndex], tuple[str, str] | None]
 ] = {"Status": _validate_wikilink_status}
 
 
-def validate_placement(note: Note, index: VaultIndex) -> Findings:
+def validate_placement(record: Record, index: VaultIndex) -> Findings:
     """Check the record's directory against its declared type.
 
     Args:
-        note: Selected record; templates are excluded by the caller.
+        record: Selected record; templates are excluded by the caller.
         index: Index supplying the selected vault boundary.
 
     Returns:
         Findings: A placement error for a misplaced built-in type. Unknown
             custom types and Reference records have no placement rule.
     """
-    findings = Findings.from_note(note, index)
-    kind = note.frontmatter.type
+    findings = Findings.from_record(record, index)
+    kind = record.frontmatter.type
     directories = {
         "Content": "content",
         "Session": "sessions",
@@ -1033,16 +1033,16 @@ def validate_placement(note: Note, index: VaultIndex) -> Findings:
     }
     if kind not in directories:
         return findings
-    scope = find_campaign(note.path, index.root)
+    scope = find_campaign(record.path, index.root)
     prefix = index.root
     if scope and kind not in {"Type", "Status"}:
         prefix /= f"campaigns/{scope}"
     expected = prefix / directories[kind]
-    valid = note.path.is_relative_to(expected)
+    valid = record.path.is_relative_to(expected)
     if kind in {"Session", "Clue", "Transcript", "Player"} and not scope:
         valid = False
     # The Transcript subtree is reserved for transcripts, not Session records.
-    if kind == "Session" and note.path.is_relative_to(expected / "transcripts"):
+    if kind == "Session" and record.path.is_relative_to(expected / "transcripts"):
         valid = False
     findings.diagnose(
         not valid,
@@ -1057,11 +1057,11 @@ def validate_placement(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_filename(note: Note, index: VaultIndex) -> Findings:
+def validate_filename(record: Record, index: VaultIndex) -> Findings:
     """Check the record's filename and the Session ordinal it encodes.
 
     Args:
-        note: Selected record; templates are excluded by the caller.
+        record: Selected record; templates are excluded by the caller.
         index: Index supplying the selected vault boundary.
 
     Returns:
@@ -1071,9 +1071,9 @@ def validate_filename(note: Note, index: VaultIndex) -> Findings:
             Session whose session_number differs from its filename. Other
             types have no further filename rule.
     """
-    findings = Findings.from_note(note, index)
+    findings = Findings.from_record(record, index)
     # 1. Check the whitespace of every filename
-    stem = note.path.stem
+    stem = record.path.stem
     if findings.diagnose(
         stem != " ".join(stem.split()),
         "record.identity",
@@ -1081,8 +1081,8 @@ def validate_filename(note: Note, index: VaultIndex) -> Findings:
     ):
         return findings
     # 2. Check the campaign pattern of numbered records
-    scope = find_campaign(note.path, index.root)
-    kind = note.frontmatter.type
+    scope = find_campaign(record.path, index.root)
+    kind = record.frontmatter.type
     if kind not in {"Session", "Clue", "Transcript"}:
         return findings
     if scope is None:
@@ -1102,7 +1102,7 @@ def validate_filename(note: Note, index: VaultIndex) -> Findings:
         findings.add("record.identity", f"{kind} filename must match {pattern}")
         return findings
     # 3. Compare a Session's ordinal with its filename
-    ordinal = note.frontmatter.get("session_number")
+    ordinal = record.frontmatter.get("session_number")
     # bool is an int subclass, so compare the exact type.
     findings.diagnose(
         kind == "Session" and (type(ordinal) is not int or ordinal != int(match[1])),
@@ -1113,11 +1113,11 @@ def validate_filename(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_campaigns(note: Note, index: VaultIndex) -> Findings:
+def validate_campaigns(record: Record, index: VaultIndex) -> Findings:
     """Check the record's campaign directory and any campaign_N blocks.
 
     Args:
-        note: Selected record; only Content records carry campaign_N blocks.
+        record: Selected record; only Content records carry campaign_N blocks.
         index: Index supplying the vault boundary.
 
     Returns:
@@ -1126,19 +1126,19 @@ def validate_campaigns(note: Note, index: VaultIndex) -> Findings:
             mapping; or one whose directory does not exist or differs from
             the campaign containing the record.
     """
-    findings = Findings.from_note(note, index)
+    findings = Findings.from_record(record, index)
     # 1. Check the record's directory
-    parts = note.path.relative_to(index.root).parts
+    parts = record.path.relative_to(index.root).parts
     findings.diagnose(
         parts[0] == "campaigns" and not CAMPAIGN_NAME.fullmatch(parts[1]),
         "campaign.name",
         "records under campaigns/ belong inside a campaign_N directory",
     )
-    if note.frontmatter.type != "Content":
+    if record.frontmatter.type != "Content":
         return findings
     # 2. Check each campaign_N block
-    scope = find_campaign(note.path, index.root)
-    for field, block in note.frontmatter.items():
+    scope = find_campaign(record.path, index.root)
+    for field, block in record.frontmatter.items():
         if not CAMPAIGN_NAME.fullmatch(field):
             continue
         directory = index.root / "campaigns" / field
@@ -1161,11 +1161,11 @@ def validate_campaigns(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_identity_links(note: Note, index: VaultIndex) -> Findings:
+def validate_identity_links(record: Record, index: VaultIndex) -> Findings:
     """Check the link that names a campaign Session's or Transcript's identity.
 
     Args:
-        note: Selected record; templates are excluded by the caller.
+        record: Selected record; templates are excluded by the caller.
         index: Whole-vault index used to resolve the link.
 
     Returns:
@@ -1175,13 +1175,13 @@ def validate_identity_links(note: Note, index: VaultIndex) -> Findings:
             after its linked Session plus " Transcript". Other types have no
             identity link.
     """
-    findings = Findings.from_note(note, index)
-    scope = find_campaign(note.path, index.root)
-    kind = note.frontmatter.type
+    findings = Findings.from_record(record, index)
+    scope = find_campaign(record.path, index.root)
+    kind = record.frontmatter.type
     if kind not in {"Session", "Transcript"}:
         return findings
     field = "campaign" if kind == "Session" else "session"
-    resolved, error = index.resolve_field(note, field)
+    resolved, error = index.resolve_field(record, field)
     if scope is None:
         message = f"cannot check {kind} identity: record is outside every campaign"
     elif error is not None:
@@ -1190,7 +1190,7 @@ def validate_identity_links(note: Note, index: VaultIndex) -> Findings:
         if resolved == index.root / f"campaigns/{scope}/reference/Campaign.md":
             return findings
         message = "campaign must link to the containing campaign overview"
-    elif resolved is not None and note.path.stem == f"{resolved.stem} Transcript":
+    elif resolved is not None and record.path.stem == f"{resolved.stem} Transcript":
         return findings
     else:
         message = "Transcript filename must match its linked Session plus ' Transcript'"
@@ -1199,11 +1199,11 @@ def validate_identity_links(note: Note, index: VaultIndex) -> Findings:
     return findings
 
 
-def validate_chains(note: Note, index: VaultIndex) -> Findings:
+def validate_chains(record: Record, index: VaultIndex) -> Findings:
     """Check that the record's chain field never leads back to the record.
 
     Args:
-        note: Selected record; only the types in CHAIN_FIELDS carry a chain.
+        record: Selected record; only the types in CHAIN_FIELDS carry a chain.
         index: Whole-vault index used to follow the chain.
 
     Returns:
@@ -1212,18 +1212,18 @@ def validate_chains(note: Note, index: VaultIndex) -> Findings:
             at a null, absent, unresolvable or unparseable link is not a
             cycle; such links are reported by the link checks.
     """
-    findings = Findings.from_note(note, index)
-    field = CHAIN_FIELDS.get(note.frontmatter.type or "")
-    if field is None or note.frontmatter.get(field) is None:
+    findings = Findings.from_record(record, index)
+    field = CHAIN_FIELDS.get(record.frontmatter.type or "")
+    if field is None or record.frontmatter.get(field) is None:
         return findings
     chain: list[Path] = []
-    current = note
+    current = record
     while True:
         resolved, error = index.resolve_field(current, field)
         if error or resolved is None or resolved.suffix.lower() != ".md":
             return findings
         via = ", ".join(f"[[{p.stem}]]" for p in chain)
-        if resolved == note.path:
+        if resolved == record.path:
             message = (
                 f"{field} returns to this record via {via}"
                 if via
@@ -1244,7 +1244,7 @@ def validate_chains(note: Note, index: VaultIndex) -> Findings:
 
 
 # Checks every typed record receives, in the order validate_markdown runs them.
-RECORD_CHECKS: tuple[Callable[[Note, VaultIndex], Findings], ...] = (
+RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_wikilinks,
     validate_placement,
     validate_filename,

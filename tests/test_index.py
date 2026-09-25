@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from armarium.index import VaultIndex, _key
-from armarium.parse import Body, Frontmatter, Note
+from armarium.parse import Body, Frontmatter, Record
 
 # A case-only pair cannot coexist on case-insensitive filesystems such as
 # macOS, so tests patch find_files to index one without creating it.
@@ -15,19 +15,19 @@ CASE_PAIR = ("Quay Nine.md", "quay nine.md")
 
 class TestVaultIndex:
     def test_construction(self, tmp_path: Path) -> None:
-        (tmp_path / "notes").mkdir()
-        (tmp_path / "notes/Café.MD").write_text("---\nx: [\n")
+        (tmp_path / "records").mkdir()
+        (tmp_path / "records/Café.MD").write_text("---\nx: [\n")
         (tmp_path / "image.png").write_bytes(b"image")
         (tmp_path / ".hidden.md").write_text("hidden")
-        (tmp_path / "link.md").symlink_to(tmp_path / "notes/Café.MD")
-        with patch.object(Note, "parse") as parse:
+        (tmp_path / "link.md").symlink_to(tmp_path / "records/Café.MD")
+        with patch.object(Record, "parse") as parse:
             index = VaultIndex(tmp_path)
         assert not parse.called
-        assert index.notes == {}
+        assert index.records == {}
         assert set(index.targets) == {
-            "notes/café.md",
+            "records/café.md",
             "café.md",
-            "notes/café",
+            "records/café",
             "café",
             "image.png",
         }
@@ -44,13 +44,13 @@ class TestVaultIndexResolve:
     @pytest.mark.parametrize(
         "target, expected, rule",
         [
-            ("notes/Café", "notes/Café.md", None),
-            ("Café.md", "notes/Café.md", None),
-            ("Cafe\u0301", "notes/Café.md", None),
-            ("/notes/Café.md", "notes/Café.md", None),
-            ("café", "notes/Café.md", None),
-            ("CAFÉ", "notes/Café.md", None),
-            ("NOTES/CAFÉ.MD", "notes/Café.md", None),
+            ("records/Café", "records/Café.md", None),
+            ("Café.md", "records/Café.md", None),
+            ("Cafe\u0301", "records/Café.md", None),
+            ("/records/Café.md", "records/Café.md", None),
+            ("café", "records/Café.md", None),
+            ("CAFÉ", "records/Café.md", None),
+            ("RECORDS/CAFÉ.MD", "records/Café.md", None),
             ("Straße", "Straße.md", None),
             ("STRASSE", "Straße.md", None),
             ("strasse", "Straße.md", None),
@@ -65,7 +65,7 @@ class TestVaultIndexResolve:
     def test_resolution(
         self, tmp_path: Path, target: str, expected: str | None, rule: str | None
     ) -> None:
-        names = ("notes/Café.md", "Straße.md", "a/same.md", "b/same.md", "image.png")
+        names = ("records/Café.md", "Straße.md", "a/same.md", "b/same.md", "image.png")
         for name in names:
             path = tmp_path / name
             path.parent.mkdir(exist_ok=True)
@@ -117,10 +117,10 @@ class TestVaultIndexResolveField:
             path = tmp_path / name
             path.parent.mkdir(exist_ok=True)
             path.write_text("")
-        note = Note(
+        record = Record(
             tmp_path / "selected.md", Frontmatter({"field": value}), Body("", 1)
         )
-        assert VaultIndex(tmp_path).resolve_field(note, "field") == (
+        assert VaultIndex(tmp_path).resolve_field(record, "field") == (
             tmp_path / resolved if resolved else None,
             error,
         )
@@ -128,13 +128,13 @@ class TestVaultIndexResolveField:
 
 class TestVaultIndexParse:
     @pytest.mark.parametrize(
-        "text, failed", [("plain note", False), ("---\nx: [\n---\n", True)]
+        "text, failed", [("plain record", False), ("---\nx: [\n---\n", True)]
     )
     def test_cache(self, tmp_path: Path, text: str, failed: bool) -> None:
-        path = tmp_path / "note.md"
+        path = tmp_path / "record.md"
         path.write_text(text)
         index = VaultIndex(tmp_path)
-        with patch.object(Note, "parse", wraps=Note.parse) as parse:
+        with patch.object(Record, "parse", wraps=Record.parse) as parse:
             first = index.parse(path)
             assert index.parse(path) is first
             parse.assert_called_once_with(path, tmp_path)
@@ -144,7 +144,7 @@ class TestVaultIndexParse:
 
     @pytest.mark.parametrize("outside, suffix", [(True, ".md"), (False, ".png")])
     def test_invalid_target(self, tmp_path: Path, outside: bool, suffix: str) -> None:
-        path = (tmp_path.parent if outside else tmp_path) / f"note{suffix}"
+        path = (tmp_path.parent if outside else tmp_path) / f"record{suffix}"
         with pytest.raises(ValueError, match="Markdown inside"):
             VaultIndex(tmp_path).parse(path)
 
@@ -156,7 +156,7 @@ class TestKey:
             ("Cafe\u0301", "café"),
             ("CAFÉ", "café"),
             ("Straße", "strasse"),
-            ("notes/Quay Nine.MD", "notes/quay nine.md"),
+            ("records/Quay Nine.MD", "records/quay nine.md"),
             ("image.png", "image.png"),
         ],
     )
