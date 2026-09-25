@@ -11,7 +11,6 @@ from armarium.lib import (
     Diagnostic,
     Findings,
     Result,
-    ValidationError,
     VaultNotFoundError,
     _find_wikilink_candidates,
     check_vault,
@@ -465,13 +464,6 @@ class TestResultFailedFiles:
             ]
         )
         assert result.failed_files == expected
-
-
-class TestValidationError:
-    def test_preserves_message(self) -> None:
-        error = ValidationError("2 files failed validation")
-        assert isinstance(error, Exception)
-        assert str(error) == "2 files failed validation"
 
 
 class TestResultAdd:

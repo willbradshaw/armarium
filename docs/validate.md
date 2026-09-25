@@ -63,8 +63,8 @@ counts records: `N checked, N skipped, N unsupported` — validated, skipped
 templates, and records whose type has no schema.
 
 Only `ERROR` findings fail the run. The command exits with `0` when nothing
-failed, `1` after reporting when any record has an error (`N files failed
-validation`), and `2` for a usage error.
+failed, `1` after reporting when any record has an error, ending with an
+`ERROR: N files failed validation` line, and `2` for a usage error.
 
 Rule identifiers group into families:
 
