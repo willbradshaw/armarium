@@ -286,12 +286,16 @@ def validate_vault(root: Path) -> Findings:
     """
     findings = Findings("")
     required: dict[str, bool] = {}
+    # Directories a required directory lies beneath; they exist by implication.
+    ancestors: set[Path] = set()
 
     def require(relative: str, directory: bool) -> None:
         # Fixed and declared directories overlap; report each entry once.
         if relative in required:
             return
         required[relative] = directory
+        if directory:
+            ancestors.update(Path(relative).parents)
         path = root / relative
         present = path.is_dir() if directory else path.is_file()
         kind = "directory" if directory else "file"
@@ -365,30 +369,30 @@ def validate_vault(root: Path) -> Findings:
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
-    # 4. Report entries outside the vault skeleton. A directory with required
-    # descendants is closed: its subdirectories lead to them, and it holds
-    # files only if it is itself required. Every other directory reached is
-    # open. Non-Markdown files belong in assets/, except views and schemas.
-    # A reported directory is not descended into; phase 2 reports campaigns/.
-    skeleton = [Path(relative) for relative, directory in required.items() if directory]
+    # 4. Report entries outside the vault skeleton. An ancestor of a required
+    # directory is closed: its subdirectories must be required or ancestors
+    # too, and it holds files only if it is itself required. Every other
+    # directory reached is open. Non-Markdown files belong in assets/,
+    # except views and schemas. A reported directory is not descended into;
+    # phase 2 reports the entries of campaigns/.
+    named = {Path(relative) for relative, directory in required.items() if directory}
     pending = [root]
     while pending:
         directory = pending.pop()
         parent = directory.relative_to(root)
-        nested = [d for d in skeleton if d != parent and d.is_relative_to(parent)]
         for child in find_children(directory):
             entry = child.relative_to(root)
             location = entry.as_posix()
             if entry == Path("campaigns"):
                 pending += [child / name for name in found]
             elif child.is_dir():
-                if not nested or any(d.is_relative_to(entry) for d in nested):
+                if parent not in ancestors or entry in named | ancestors:
                     pending.append(child)
                 else:
                     findings.add(
                         "vault.entry", f"{location} is not in the vault skeleton"
                     )
-            elif nested and parent not in skeleton:
+            elif parent in ancestors and parent not in named:
                 findings.add("vault.entry", f"{location} is not in the vault skeleton")
             elif child.suffix.lower() != ".md" and entry.parts[0] != "assets":
                 findings.diagnose(

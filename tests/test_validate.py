@@ -1982,15 +1982,24 @@ class TestValidateVault:
         ]
 
     @pytest.mark.parametrize(
-        "declaration, clean",
+        "declaration, clean, reported",
         [
-            ({"shared": "lore"}, ["lore/Thing.md", "lore/nested/Thing.md"]),
-            ({"campaign": "lore"}, ["campaigns/campaign_1/lore/Thing.md"]),
-            ({"shared": "reference/lore"}, ["reference/lore/Thing.md"]),
+            ({"shared": "lore"}, ["lore/Thing.md", "lore/nested/Thing.md"], []),
+            ({"campaign": "lore"}, ["campaigns/campaign_1/lore/Thing.md"], []),
+            ({"shared": "reference/lore"}, ["reference/lore/Thing.md"], []),
+            (
+                {"shared": "lore/deep/things"},
+                ["lore/deep/things/Thing.md"],
+                ["lore/Thing.md", "lore/deep/other"],
+            ),
         ],
     )
     def test_declared_directory_admits_entries(
-        self, tmp_path: Path, declaration: dict[str, str], clean: list[str]
+        self,
+        tmp_path: Path,
+        declaration: dict[str, str],
+        clean: list[str],
+        reported: list[str],
     ) -> None:
         make_vault(tmp_path)
         (tmp_path / "reference/types/Lore.md").write_text(
@@ -2001,6 +2010,13 @@ class TestValidateVault:
             (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
             (tmp_path / relative).write_text("")
         assert validate_vault(tmp_path).diagnostics == []
+        # The declared path's ancestors exist but are closed and hold no files.
+        for relative in reported:
+            path = tmp_path / relative
+            path.write_text("") if path.suffix else path.mkdir()
+        assert sorted(d.message for d in validate_vault(tmp_path).diagnostics) == [
+            f"{relative} is not in the vault skeleton" for relative in reported
+        ]
 
     def test_campaign_entries_reported_once(self, tmp_path: Path) -> None:
         make_vault(tmp_path)
