@@ -26,7 +26,7 @@ Some checks are run for every record of every type:
 - The record must have a valid type and validate against that type's schema
 - The record must be placed correctly in the filetree given its type
 - The record must have a valid filename for its type
-- Every wikilink in the record must resolve uniquely
+- Every wikilink in the record must resolve uniquely, and any heading or block anchor it names must exist
 
 Beyond this, some types of record undergo additional checks to ensure they obey the rules defined in their [Type documentation](type.md). For example, some frontmatter fields must link to valid records of a particular type.
 
