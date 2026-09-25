@@ -108,6 +108,7 @@ RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
         "subjects": Target("Content", local=True),
         "first_session": Target("Session", local=True),
         "last_session": Target("Session", local=True),
+        "superseded_by": Target("Clue", local=True),
     },
     ("Session", None): {
         "campaign": Target("Reference", local=True),
@@ -646,7 +647,7 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             execution and ordinary URLs are excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
-    targets = _link_targets(note, index)
+    targets = _link_targets(note)
     diagnostics: list[Diagnostic] = []
     seen: dict[str, set[Path]] = {}
     for link in note.links:
@@ -689,30 +690,25 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
     return diagnostics
 
 
-def _link_targets(note: Note, index: VaultIndex) -> dict[str, Target]:
+def _link_targets(note: Note) -> dict[str, Target]:
     """Collect the Target requirements for a note's type-bound fields.
 
     Args:
-        note: Selected record whose type, subtype, status and campaign blocks
-            select the requirements.
-        index: Whole-vault index used to resolve the record's status.
+        note: Selected record whose type, subtype and campaign blocks select
+            the requirements.
 
     Returns:
         dict[str, Target]: Requirements keyed by frontmatter location: the
-            universal fields, those for the record's (type, subtype),
-            superseded_by for a Superseded Clue, and campaign_N block fields
-            bound to campaign_N. Custom fields are not interpreted by name.
+            universal fields, those for the record's (type, subtype), and
+            campaign_N block fields bound to campaign_N. Custom fields are not
+            interpreted by name. A Clue's superseded_by is bound regardless of
+            status; the Clue schema forbids it outside Superseded.
     """
     kind = note.frontmatter.type or ""
     subtype = note.frontmatter.get("subtype")
     targets = LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
     if isinstance(subtype, str):
         targets |= RECORD_LINK_TARGETS.get((kind, subtype), {})
-    if kind == "Clue":
-        # Replacement metadata outside Superseded status remains deferred to #36.
-        status, _ = index.resolve_field(note, "status")
-        if status is not None and status.stem == "Superseded":
-            targets["superseded_by"] = Target("Clue", local=True)
     if kind == "Content":
         for field in note.frontmatter.campaigns:
             # Block fields are bound to that block's campaign, not the record's.

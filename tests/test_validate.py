@@ -1348,27 +1348,25 @@ class TestLinkTargets:
             ({"type": "[[Content]]", "subtype": "Lore"}, {}),
             ({"type": "[[Custom]]", "plays": "[[X]]"}, {}),
             ({}, {}),
-            (
-                {"type": "[[Clue]]"},
-                {
-                    "text": Target("Content", local=True),
-                    "subjects": Target("Content", local=True),
-                    "first_session": Target("Session", local=True),
-                    "last_session": Target("Session", local=True),
-                },
-            ),
+            *[
+                (
+                    {"type": "[[Clue]]", **status},
+                    {
+                        "text": Target("Content", local=True),
+                        "subjects": Target("Content", local=True),
+                        "first_session": Target("Session", local=True),
+                        "last_session": Target("Session", local=True),
+                        "superseded_by": Target("Clue", local=True),
+                    },
+                )
+                for status in (
+                    {},
+                    {"status": "[[Revealed]]"},
+                    {"status": "[[Superseded]]"},
+                )
+            ],
             ({"type": "[[Status]]"}, {"applies_to": Target("Type")}),
             ({"type": "[[Status]]", "subtype": "Odd"}, {"applies_to": Target("Type")}),
-            (
-                {"type": "[[Clue]]", "status": "[[Superseded]]"},
-                {
-                    "text": Target("Content", local=True),
-                    "subjects": Target("Content", local=True),
-                    "first_session": Target("Session", local=True),
-                    "last_session": Target("Session", local=True),
-                    "superseded_by": Target("Clue", local=True),
-                },
-            ),
             (
                 {
                     "type": "[[Content]]",
@@ -1405,11 +1403,8 @@ class TestLinkTargets:
     def test_targets(
         self, tmp_path: Path, metadata: dict[str, object], expected: dict[str, Target]
     ) -> None:
-        write_records(
-            tmp_path, {"reference/statuses/Superseded.md": 'type: "[[Status]]"'}
-        )
         note = Note(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
-        assert _link_targets(note, VaultIndex(tmp_path)) == LINK_TARGETS | expected
+        assert _link_targets(note) == LINK_TARGETS | expected
 
 
 class TestValidateCampaigns:

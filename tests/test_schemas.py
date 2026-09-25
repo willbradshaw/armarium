@@ -447,3 +447,29 @@ class TestSelectSchema:
         schema, diagnostics = select_schema(note, root)
         assert diagnostics == [] and schema is not None
         assert schema.validate(note) == []
+
+    @pytest.mark.parametrize("vault", ["starter", "example"])
+    @pytest.mark.parametrize(
+        ("status", "replacement", "valid"),
+        [
+            ("Superseded", "[[C-1-0005]]", True),
+            ("Superseded", ..., False),
+            ("Revealed", "[[C-1-0005]]", False),
+            ("Revealed", None, False),
+        ],
+        ids=["present", "absent", "present outside", "null outside"],
+    )
+    def test_shipped_clue_replacement(
+        self, vault: str, status: str, replacement: object, valid: bool
+    ) -> None:
+        fixture = json.loads(Path("tests/schemas/fixtures/clue.json").read_text())
+        metadata = dict(fixture["base"]["frontmatter"], status=f"[[{status}]]")
+        if replacement is not ...:
+            metadata["superseded_by"] = replacement
+        root = Path(f"vaults/{vault}")
+        note = Note(
+            root / "record.md", Frontmatter(metadata), Body(fixture["base"]["body"], 1)
+        )
+        schema, diagnostics = select_schema(note, root)
+        assert diagnostics == [] and schema is not None
+        assert (schema.validate(note) == []) is valid
