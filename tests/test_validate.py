@@ -778,6 +778,23 @@ class TestValidateWikilinks:
                 {"type": "[[Status]]", "applies_to": "[[Pending]]"},
                 [("link.type", "applies_to")],
             ),
+            (
+                {"type": "[[Clue]]", "subjects": ["[[Quay]]", "[[Quay|Alias]]"]},
+                [("link.duplicate", "subjects.1")],
+            ),
+            (
+                {"type": "[[Clue]]", "subjects": ["[[Quay]]", "[[content/Quay.md]]"]},
+                [("link.duplicate", "subjects.1")],
+            ),
+            (
+                {"type": "[[Clue]]", "subjects": ["[[Quay]]", "[[Quay]]", "[[Quay]]"]},
+                [("link.duplicate", "subjects.1"), ("link.duplicate", "subjects.2")],
+            ),
+            (
+                {"type": "[[Clue]]", "subjects": ["[[missing]]", "[[missing]]"]},
+                [("link.missing", "subjects.0"), ("link.missing", "subjects.1")],
+            ),
+            ({"type": "[[Clue]]", "other": ["[[Quay]]", "[[Quay]]"]}, []),
         ],
     )
     def test_typed_fields(
@@ -791,6 +808,7 @@ class TestValidateWikilinks:
             "reference/types/Status.md": 'type: "[[Type]]"',
             "reference/types/Type.md": 'type: "[[Type]]"',
             "reference/statuses/Pending.md": 'type: "[[Status]]"\napplies_to: "[[Clue]]"',
+            "content/Quay.md": 'type: "[[Content]]"',
         }.items():
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
