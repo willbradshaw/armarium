@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from armarium.index import VaultIndex
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
@@ -13,7 +14,9 @@ from armarium.validate import (
     VAULT_TYPES,
 )
 
-DOCS = Path(__file__).resolve().parents[1] / "docs"
+ROOT = Path(__file__).resolve().parents[1]
+DOCS = ROOT / "docs"
+STARTER = ROOT / "vaults/starter"
 
 
 class TestVaultDocument:
@@ -32,3 +35,13 @@ class TestVaultDocument:
     )
     def test_names_every_required_entry(self, entry: str) -> None:
         assert entry.rsplit("/", 1)[-1] in self.TEXT
+
+    @pytest.mark.parametrize(
+        ("kind", "declared"),
+        sorted(VaultIndex(STARTER).declared_directories().items()),
+    )
+    def test_states_every_declaration(
+        self, kind: str, declared: dict[str, str]
+    ) -> None:
+        inner = ", ".join(f"{scope}: {path}" for scope, path in declared.items())
+        assert f"| {kind} | `{{ {inner} }}` |" in self.TEXT
