@@ -58,7 +58,7 @@ A character, place, group, object or piece of setting lore.
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
-| `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#campaign-state-on-content) |
+| `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#state) |
 
 ### Body
 
@@ -68,7 +68,7 @@ list of `- [[S-N-NNN]]: what happened` items, or the single item `- N/A` when
 there are none; no other blocks or subheadings. The list runs through
 campaigns in ascending order and, within a campaign, in ascending session
 order without repeats, and each campaign that appears must have a
-[`campaign_N` block](campaign.md#campaign-state-on-content) whose
+[`campaign_N` block](campaign.md#state) whose
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
 
