@@ -13,7 +13,7 @@ from referencing.exceptions import NoSuchResource, Unresolvable
 from referencing.jsonschema import DRAFT202012
 
 from armarium.lib import Diagnostic
-from armarium.parse import Note
+from armarium.parse import Record
 
 
 @dataclass(frozen=True)
@@ -89,11 +89,11 @@ class Schema:
             referenced.contents, default_specification=DRAFT202012
         )
 
-    def validate(self, note: Note) -> list[Diagnostic]:
-        """Validate a note against this explicitly loaded schema.
+    def validate(self, record: Record) -> list[Diagnostic]:
+        """Validate a record against this explicitly loaded schema.
 
         Args:
-            note: Parsed note inside this vault. Schema selection is independent
+            record: Parsed record inside this vault. Schema selection is independent
                 of validation; this method does not inspect the declared type.
 
         Returns:
@@ -103,9 +103,9 @@ class Schema:
                 branches. The loaded contents and source files are not modified.
 
         Raises:
-            ValueError: The note lies outside the vault.
+            ValueError: The record lies outside the vault.
         """
-        relative = note.path.absolute().relative_to(self.root).as_posix()
+        relative = record.path.absolute().relative_to(self.root).as_posix()
         try:
             resource = Resource.from_contents(
                 self.contents, default_specification=DRAFT202012
@@ -119,7 +119,7 @@ class Schema:
             )
             errors = sorted(
                 validator.iter_errors(
-                    {"frontmatter": dict(note.frontmatter), "body": note.body.text}
+                    {"frontmatter": dict(record.frontmatter), "body": record.body.text}
                 ),
                 key=lambda e: str(list(e.absolute_path)),
             )
@@ -143,26 +143,26 @@ class Schema:
             return [Diagnostic(relative, "schema.invalid", str(exc))]
 
 
-def select_schema(note: Note, root: Path) -> tuple[Schema | None, list[Diagnostic]]:
-    """Load the vault-local schema selected by a note's canonical type.
+def select_schema(record: Record, root: Path) -> tuple[Schema | None, list[Diagnostic]]:
+    """Load the vault-local schema selected by a record's canonical type.
 
     Args:
-        note: Parsed note inside the vault with a canonical declared type.
+        record: Parsed record inside the vault with a canonical declared type.
         root: Vault path, absolute or relative to the working directory.
 
     Returns:
         tuple[Schema | None, list[Diagnostic]]: A loaded schema and no findings,
             or None with a schema.unsupported error for a missing schema or a
             schema.invalid error for an unreadable/invalid schema. This function
-            selects and loads the schema; it does not validate the note.
+            selects and loads the schema; it does not validate the record.
 
     Raises:
-        ValueError: The note has no canonical type or lies outside the vault.
+        ValueError: The record has no canonical type or lies outside the vault.
     """
-    parsed_type = note.frontmatter.type
+    parsed_type = record.frontmatter.type
     if parsed_type is None:
-        raise ValueError("schema selection requires a canonical note type")
-    relative = note.path.absolute().relative_to(root.absolute()).as_posix()
+        raise ValueError("schema selection requires a canonical record type")
+    relative = record.path.absolute().relative_to(root.absolute()).as_posix()
     path = root / "reference/schemas" / f"{parsed_type.lower()}.schema.json"
     if not path.exists():
         return None, [

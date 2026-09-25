@@ -11,7 +11,7 @@ from armarium.logging import logger
 
 if TYPE_CHECKING:  # Avoid an import cycle: index and parse import this module.
     from armarium.index import VaultIndex
-    from armarium.parse import Note
+    from armarium.parse import Record
 
 # -----------------------------------------------------------------------------
 # Wikilink parsing
@@ -28,7 +28,7 @@ def split_wikilink(value: object, *, canonical: bool = False) -> tuple[str, str]
         value: Candidate wikilink, including its double brackets. Non-strings
             and text surrounding a wikilink are not accepted.
         canonical: Require a file target without a display alias or anchor.
-            Use this for identity fields such as a note's declared type.
+            Use this for identity fields such as a record's declared type.
 
     Returns:
         tuple[str, str]: The file target, with surrounding whitespace and any
@@ -190,14 +190,14 @@ class Findings:
         self.diagnostics = list(diagnostics)
 
     @classmethod
-    def from_note(cls, note: "Note", index: "VaultIndex") -> "Findings":
-        """Start an empty collection for a note, attributed to its vault path.
+    def from_record(cls, record: "Record", index: "VaultIndex") -> "Findings":
+        """Start an empty collection for a record, attributed to its vault path.
 
         Args:
-            note: Parsed note inside the indexed vault.
+            record: Parsed record inside the indexed vault.
             index: Index supplying the vault root the path is relative to.
         """
-        return cls(note.path.relative_to(index.root).as_posix())
+        return cls(record.path.relative_to(index.root).as_posix())
 
     def __add__(self, other: "Findings") -> "Findings":
         """Combine two collections for the same file, in order.

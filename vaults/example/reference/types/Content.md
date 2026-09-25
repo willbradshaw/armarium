@@ -3,8 +3,8 @@ type: "[[Type]]"
 ---
 # Content
 
-Content pages describe characters, places, groups, objects, or setting lore.
-Keep each shared entity in one page under `content/`; campaign-specific entries
+Content records describe characters, places, groups, objects, or setting lore.
+Keep each shared entity in one record under `content/`; campaign-specific entries
 live in `campaigns/campaign_1/content/` (or the corresponding campaign folder).
 
 Copy [[templates/Content]], name it for the entity, choose a subtype,
@@ -49,7 +49,7 @@ contributions rather than attendance. Use `N/A` only when there are no appearanc
 Keep acquisition and transfer history in Session records when current possession
 changes.
 
-Active Clues contains exactly one Base embed and no additional text. Its scope follows this note’s location: shared
+Active Clues contains exactly one Base embed and no additional text. Its scope follows this record’s location: shared
 `content/` items include active Clues from all campaigns; items under
 `campaigns/campaign_N/` include only that campaign. Only Pending or Hinted Clues
 whose canonical `subjects` link to this item appear. Do not split Active Clues
@@ -57,7 +57,7 @@ or Appearances into campaign subheadings.
 
 ## Schema
 
-A Content note’s frontmatter requires `type`, `subtype`, `summary` and the
+A Content record’s frontmatter requires `type`, `subtype`, `summary` and the
 subtype fields listed above. Its body contains Notes, Active Clues and
 Appearances headings in that order. Each campaign block includes `first_session`
 and `last_session`; Object campaign blocks also include `held_by`.

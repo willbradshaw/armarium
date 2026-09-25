@@ -13,7 +13,7 @@ import yaml
 
 from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
-from armarium.parse import Body, Frontmatter, Note
+from armarium.parse import Body, Frontmatter, Record
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
@@ -30,7 +30,7 @@ from armarium.validate import (
     _link_targets,
     _read_appearances,
     _validate_wikilink_status,
-    linked_note,
+    linked_record,
     validate,
     validate_appearances,
     validate_campaigns,
@@ -61,7 +61,7 @@ def vault(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def write_note(vault: Path) -> Callable[..., Path]:
+def write_record(vault: Path) -> Callable[..., Path]:
     (vault / "reference/types/Widget.md").write_text('---\ntype: "[[Type]]"\n---\n')
 
     def write(
@@ -119,12 +119,12 @@ class TestValidateMarkdown:
     def test_valid_record(
         self,
         vault: Path,
-        write_note: Callable[..., Path],
+        write_record: Callable[..., Path],
         monkeypatch: pytest.MonkeyPatch,
         explicit: bool,
         relative: bool,
     ) -> None:
-        path = write_note(
+        path = write_record(
             {"type": "[[types/Widget]]", "date": date(2026, 1, 2)},
             name="content/Test.MD",
         )
@@ -163,13 +163,13 @@ class TestValidateMarkdown:
     def test_schema_outcomes(
         self,
         vault: Path,
-        write_note: Callable[..., Path],
+        write_record: Callable[..., Path],
         schema: str | None,
         rule: str,
         unsupported: int,
         failed: bool,
     ) -> None:
-        path = write_note({"type": "[[Widget]]"})
+        path = write_record({"type": "[[Widget]]"})
         if schema is not None:
             (vault / "reference/schemas/widget.schema.json").write_text(schema)
         before = path.read_bytes()
@@ -197,9 +197,9 @@ class TestValidateMarkdown:
         ],
     )
     def test_invalid_type(
-        self, vault: Path, write_note: Callable[..., Path], kind: Any, name: str
+        self, vault: Path, write_record: Callable[..., Path], kind: Any, name: str
     ) -> None:
-        path = write_note({"type": kind}, name=name)
+        path = write_record({"type": kind}, name=name)
         result = validate_markdown(path)
         assert result.failed
         assert (result.checked, result.skipped, result.unsupported) == (1, 0, 0)
@@ -239,9 +239,9 @@ class TestValidateMarkdown:
 
     @pytest.mark.parametrize("directory", ["types", "statuses"])
     def test_typed_definitions_receive_schema_checks(
-        self, vault: Path, write_note: Callable[..., Path], directory: str
+        self, vault: Path, write_record: Callable[..., Path], directory: str
     ) -> None:
-        path = write_note(
+        path = write_record(
             {"type": "[[Widget]]"}, name=f"reference/{directory}/Typed.md"
         )
         (vault / "reference/schemas/widget.schema.json").write_text("false")
@@ -263,12 +263,12 @@ class TestValidateMarkdown:
     def test_explicit_skips(
         self,
         vault: Path,
-        write_note: Callable[..., Path],
+        write_record: Callable[..., Path],
         name: str,
         metadata: dict[str, Any],
         rule: str,
     ) -> None:
-        path = write_note(metadata, name=name)
+        path = write_record(metadata, name=name)
         before = path.read_bytes()
         result = validate_markdown(path)
         assert not result.failed
@@ -297,9 +297,9 @@ class TestValidateMarkdown:
         assert path.read_text() == text
 
     def test_selected_file_only_and_diagnostic_order(
-        self, vault: Path, write_note: Callable[..., Path]
+        self, vault: Path, write_record: Callable[..., Path]
     ) -> None:
-        path = write_note({"type": "[[Widget]]"})
+        path = write_record({"type": "[[Widget]]"})
         (vault / "content/Unrelated.md").write_text("---\nbroken: [\n---\n")
         (vault / "reference/schemas/widget.schema.json").write_text(
             json.dumps(
@@ -328,7 +328,7 @@ class TestValidateMarkdown:
         ],
     )
     def test_invocation_errors(self, vault: Path, tmp_path: Path, problem: str) -> None:
-        path = vault / "content/note.md"
+        path = vault / "content/record.md"
         root: Path | None = vault
         if problem == "directory":
             path.mkdir()
@@ -337,18 +337,18 @@ class TestValidateMarkdown:
             path.write_text("{}")
         elif problem == "symlink":
             target = vault / "content/target.md"
-            target.write_text("note")
+            target.write_text("record")
             path.symlink_to(target)
         elif problem in {"outside-vault", "unknown-vault"}:
             path = tmp_path / "outside.md"
-            path.write_text("note")
+            path.write_text("record")
             if problem == "unknown-vault":
                 root = None
         with pytest.raises(ValueError):
             validate_markdown(path, root)
 
     def test_explicit_incomplete_vault(self, tmp_path: Path) -> None:
-        path = tmp_path / "note.md"
+        path = tmp_path / "record.md"
         path.write_text('---\ntype: "[[Widget]]"\n---\n')
         result = validate_markdown(path, tmp_path)
         assert result.unsupported == 1 and result.failed
@@ -423,8 +423,8 @@ class TestValidateMarkdown:
 
         root = tmp_path / "vault"
         root.mkdir()
-        path = root / "note.md"
-        path.write_text("note")
+        path = root / "record.md"
+        path.write_text("record")
         with pytest.raises(ValueError, match="index must belong"):
             validate_markdown(path, root, index=VaultIndex(tmp_path))
 
@@ -432,7 +432,7 @@ class TestValidateMarkdown:
         from unittest.mock import patch
 
         from armarium.index import VaultIndex
-        from armarium.parse import Note
+        from armarium.parse import Record
 
         (tmp_path / "reference/types").mkdir(parents=True)
         (tmp_path / "reference/schemas").mkdir()
@@ -440,15 +440,15 @@ class TestValidateMarkdown:
         for name in ("a", "b", "Widget"):
             (tmp_path / f"{name}.md").write_text('---\ntype: "[[Widget]]"\n---\n')
         with patch("armarium.validate.VaultIndex", wraps=VaultIndex) as build:
-            with patch.object(Note, "parse", wraps=Note.parse) as parse:
+            with patch.object(Record, "parse", wraps=Record.parse) as parse:
                 validate_directory(tmp_path, tmp_path)
         assert build.call_count == 1
         assert parse.call_count == 3
 
     def test_transcript_grammar(
-        self, vault: Path, write_note: Callable[..., Path]
+        self, vault: Path, write_record: Callable[..., Path]
     ) -> None:
-        path = write_note(
+        path = write_record(
             {"type": "[[Transcript]]", "session": "[[S-1-001]]"},
             body="## Opening\n\n- [GM] Speech that\n[Esme] continues.\n",
             name="campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md",
@@ -467,13 +467,13 @@ class TestRecordChecks:
 
         import armarium.validate as module
 
-        # A record check is a public validate_* function taking exactly a note
+        # A record check is a public validate_* function taking exactly a record
         # and an index; the entry points and validate_wikilink take more.
         record_checks = sorted(
             name
             for name, function in inspect.getmembers(module, inspect.isfunction)
             if name.startswith("validate_")
-            and list(inspect.signature(function).parameters) == ["note", "index"]
+            and list(inspect.signature(function).parameters) == ["record", "index"]
         )
         assert sorted(check.__name__ for check in RECORD_CHECKS) == record_checks
         assert record_checks == [
@@ -746,7 +746,7 @@ class TestValidate:
         if kind == "text":
             target.write_text("Text")
         elif kind == "file-link":
-            original = tmp_path / "note.md"
+            original = tmp_path / "record.md"
             original.write_text("Untyped")
             target.symlink_to(original)
         elif kind == "directory-link":
@@ -785,20 +785,20 @@ class TestValidateWikilinks:
             "image.png": "asset",
         }.items():
             (tmp_path / name).write_text(body)
-        note = Note(tmp_path / "selected.md", Frontmatter({}), Body(text, 5))
-        result = validate_wikilinks(note, VaultIndex(tmp_path)).diagnostics
+        record = Record(tmp_path / "selected.md", Frontmatter({}), Body(text, 5))
+        result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [d.rule for d in result] == ([rule] if rule else [])
         if result:
             assert result[0].path == "selected.md"
             assert result[0].line == 5 + text[: text.index("[[")].count("\n")
 
     def test_metadata_and_recovery(self, tmp_path: Path) -> None:
-        note = Note(
+        record = Record(
             tmp_path / "selected.md",
             Frontmatter({"nested": ["[[missing]]"]}),
             Body("[[broken [[other]]", 8),
         )
-        result = validate_wikilinks(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field, d.line) for d in result] == [
             ("link.missing", "nested.0", 0),
             ("link.syntax", "", 8),
@@ -866,8 +866,8 @@ class TestValidateWikilinks:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
-        result = validate_wikilinks(note, VaultIndex(tmp_path)).diagnostics
+        record = Record(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
+        result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == expected
 
 
@@ -904,7 +904,7 @@ class TestTarget:
                 {
                     "type": "[[Content]]",
                     "custom": {"plays": "[[NPC1]]"},
-                    "notes": "[[Far]]",
+                    "records": "[[Far]]",
                 },
                 [],
             ),
@@ -926,17 +926,17 @@ class TestTarget:
                 "campaigns/campaign_7/content/Far.md": 'type: "[[Content]]"\nsubtype: Lore',
             },
         )
-        note = Note(tmp_path / relative, Frontmatter(metadata), Body("", 1))
-        result = validate_wikilinks(note, VaultIndex(tmp_path)).diagnostics
+        record = Record(tmp_path / relative, Frontmatter(metadata), Body("", 1))
+        result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == expected
 
 
-class TestLinkedNote:
+class TestLinkedRecord:
     @pytest.mark.parametrize(
         "target, expected, result",
         [
-            ("Clue", None, "note"),
-            ("Clue", Target("Type"), "note"),
+            ("Clue", None, "record"),
+            ("Clue", Target("Type"), "record"),
             ("image.png", None, None),
             ("", None, "self"),
             ("image.png", Target("Type"), "link.type"),
@@ -950,15 +950,15 @@ class TestLinkedNote:
     ) -> None:
         write_records(tmp_path, {})
         (tmp_path / "image.png").write_text("asset")
-        note = Note(
+        record = Record(
             tmp_path / "reference/types/Clue.md",
             Frontmatter({"type": "[[Type]]"}),
             Body(""),
         )
         index = VaultIndex(tmp_path)
-        outcome = linked_note(target, note, index, expected)
-        if result in {"note", "self"}:
-            assert isinstance(outcome, Note)
+        outcome = linked_record(target, record, index, expected)
+        if result in {"record", "self"}:
+            assert isinstance(outcome, Record)
             assert outcome.path == tmp_path / "reference/types/Clue.md"
         elif result is None:
             assert outcome is None
@@ -1003,8 +1003,8 @@ class TestCheckAnchor:
         ],
     )
     def test_anchor(self, tmp_path: Path, anchor: str, message: str | None) -> None:
-        note = Note(tmp_path / "N.md", Frontmatter(), Body(self.BODY))
-        problem = _check_anchor(note, anchor)
+        record = Record(tmp_path / "N.md", Frontmatter(), Body(self.BODY))
+        problem = _check_anchor(record, anchor)
         if message is None:
             assert problem is None
         else:
@@ -1051,9 +1051,9 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(body)
-        note = Note(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
+        record = Record(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
         expected = Target(record_type) if record_type else None
-        problem = validate_wikilink(target, note, VaultIndex(tmp_path), expected)
+        problem = validate_wikilink(target, record, VaultIndex(tmp_path), expected)
         assert (problem[0] if problem else None) == rule
 
     @pytest.mark.parametrize(
@@ -1076,9 +1076,9 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
+        record = Record(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
         expected = Target("Content", frozenset(subtypes))
-        problem = validate_wikilink("Target", note, VaultIndex(tmp_path), expected)
+        problem = validate_wikilink("Target", record, VaultIndex(tmp_path), expected)
         assert (problem[0] if problem else None) == rule
 
     @pytest.mark.parametrize(
@@ -1173,9 +1173,9 @@ class TestValidateWikilink:
             path = tmp_path / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"---\n{text}\n---\n")
-        note = Note(tmp_path / source, Frontmatter({}), Body("", 1))
+        record = Record(tmp_path / source, Frontmatter({}), Body("", 1))
         problem = validate_wikilink(
-            Path(relative).stem, note, VaultIndex(tmp_path), expected
+            Path(relative).stem, record, VaultIndex(tmp_path), expected
         )
         assert (problem[0] if problem else None) == rule
 
@@ -1198,7 +1198,7 @@ class TestValidateWikilink:
                     "cannot uniquely resolve [[same]]; use a vault-relative path",
                 ),
             ),
-            ("bad", ("link.malformed", "referenced note bad.md cannot be parsed")),
+            ("bad", ("link.malformed", "referenced record bad.md cannot be parsed")),
         ],
     )
     def test_target(
@@ -1215,20 +1215,20 @@ class TestValidateWikilink:
             path.parent.mkdir(exist_ok=True)
             path.write_text(body)
         index = VaultIndex(tmp_path)
-        note = Note(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
-        assert validate_wikilink(target, note, index) == expected
+        record = Record(tmp_path / "selected.md", Frontmatter({}), Body("", 1))
+        assert validate_wikilink(target, record, index) == expected
         parsed = {"target": "target.md", "bad": "bad.md"}.get(target)
-        assert set(index.notes) == ({tmp_path / parsed} if parsed else set())
+        assert set(index.records) == ({tmp_path / parsed} if parsed else set())
 
 
 class TestValidatePlacement:
     @pytest.mark.parametrize(
         "kind, relative, valid",
         [
-            ("Content", "content/Note.md", True),
-            ("Content", "content/nested/Note.md", True),
-            ("Content", "campaigns/campaign_42/content/nested/Note.md", True),
-            ("Content", "other/Note.md", False),
+            ("Content", "content/Record.md", True),
+            ("Content", "content/nested/Record.md", True),
+            ("Content", "campaigns/campaign_42/content/nested/Record.md", True),
+            ("Content", "other/Record.md", False),
             ("Session", "campaigns/campaign_42/sessions/nested/S-42-001.md", True),
             (
                 "Session",
@@ -1253,10 +1253,10 @@ class TestValidatePlacement:
     def test_placement(
         self, tmp_path: Path, kind: str, relative: str, valid: bool
     ) -> None:
-        note = Note(
+        record = Record(
             tmp_path / relative, Frontmatter({"type": f"[[{kind}]]"}), Body("", 1)
         )
-        result = validate_placement(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_placement(record, VaultIndex(tmp_path)).diagnostics
         assert [d.rule for d in result] == ([] if valid else ["record.placement"])
         if result:
             assert result[0].path == relative
@@ -1298,12 +1298,12 @@ class TestValidateFilename:
         ordinal: object,
         field: str | None,
     ) -> None:
-        note = Note(
+        record = Record(
             tmp_path / relative,
             Frontmatter({"type": f"[[{kind}]]", "session_number": ordinal}),
             Body("", 1),
         )
-        result = validate_filename(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_filename(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == (
             [] if field is None else [("record.identity", field)]
         )
@@ -1374,10 +1374,10 @@ class TestValidateWikilinkStatus:
         index = VaultIndex(tmp_path)
         status, _ = index.parse(tmp_path / "reference/statuses/Pending.md")
         assert status is not None
-        note = Note(
+        record = Record(
             tmp_path / "selected.md", Frontmatter({"type": record_type}), Body("", 1)
         )
-        problem = _validate_wikilink_status(status, note, index)
+        problem = _validate_wikilink_status(status, record, index)
         assert problem == (("status.applicability", message) if message else None)
 
 
@@ -1452,8 +1452,8 @@ class TestLinkTargets:
     def test_targets(
         self, tmp_path: Path, metadata: dict[str, object], expected: dict[str, Target]
     ) -> None:
-        note = Note(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
-        assert _link_targets(note) == LINK_TARGETS | expected
+        record = Record(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
+        assert _link_targets(record) == LINK_TARGETS | expected
 
 
 class TestValidateCampaigns:
@@ -1522,8 +1522,8 @@ class TestValidateCampaigns:
     ) -> None:
         (tmp_path / "campaigns/campaign_42").mkdir(parents=True)
         (tmp_path / "campaigns/campaign_7").mkdir(parents=True)
-        note = Note(tmp_path / relative, Frontmatter(metadata), Body("", 1))
-        result = validate_campaigns(note, VaultIndex(tmp_path)).diagnostics
+        record = Record(tmp_path / relative, Frontmatter(metadata), Body("", 1))
+        result = validate_campaigns(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == expected
 
 
@@ -1599,9 +1599,9 @@ class TestValidateChains:
     ) -> None:
         write_records(tmp_path, records)
         index = VaultIndex(tmp_path)
-        note, _ = index.parse(tmp_path / "content/A.md")
-        assert note is not None
-        result = validate_chains(note, index).diagnostics
+        record, _ = index.parse(tmp_path / "content/A.md")
+        assert record is not None
+        result = validate_chains(record, index).diagnostics
         field = (
             "superseded_by"
             if "superseded_by" in records["content/A.md"]
@@ -1682,12 +1682,12 @@ class TestValidateIdentityLinks:
             },
         )
         field = "campaign" if kind == "Session" else "session"
-        note = Note(
+        record = Record(
             tmp_path / f"campaigns/campaign_42/sessions/{name}.md",
             Frontmatter({"type": f"[[{kind}]]", field: target}),
             Body("", 1),
         )
-        result = validate_identity_links(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_identity_links(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.message, d.field) for d in result] == (
             [(*expected, field)] if expected else []
         )
@@ -1724,10 +1724,10 @@ class TestValidateIdentityLinks:
         relative: str,
         expected: tuple[str, str, str] | None,
     ) -> None:
-        note = Note(
+        record = Record(
             tmp_path / relative, Frontmatter({"type": f"[[{kind}]]"}), Body("", 1)
         )
-        result = validate_identity_links(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_identity_links(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.message, d.field) for d in result] == (
             [expected] if expected else []
         )
@@ -1736,7 +1736,7 @@ class TestValidateIdentityLinks:
 class TestValidateVault:
     def test_minimal_vault_passes(self, tmp_path: Path) -> None:
         make_vault(tmp_path)
-        (tmp_path / "notes/extra").mkdir(parents=True)
+        (tmp_path / "records/extra").mkdir(parents=True)
         (tmp_path / "campaigns/campaign_1/extra.md").write_text("")
         (tmp_path / "reference/schemas/README.md").write_text("")
         assert validate_vault(tmp_path).diagnostics == []
@@ -1804,11 +1804,11 @@ class TestValidateVault:
         [
             ({}, ["campaigns/ has no campaign_N directory"]),
             (
-                {"seven": True, "campaign_x": True, "notes.md": False},
+                {"seven": True, "campaign_x": True, "records.md": False},
                 [
                     "campaigns/ has no campaign_N directory",
                     "campaigns/campaign_x is not a campaign_N directory",
-                    "campaigns/notes.md is not a campaign_N directory",
+                    "campaigns/records.md is not a campaign_N directory",
                     "campaigns/seven is not a campaign_N directory",
                 ],
             ),
@@ -2135,17 +2135,17 @@ class TestValidateAppearances:
     ) -> None:
         self.sessions(tmp_path)
         metadata = {"type": "[[Content]]", "subtype": "Lore", **blocks}
-        note = Note(
+        record = Record(
             tmp_path / relative,
             Frontmatter(metadata),
             Body(self.BODY + "\n".join(entries), 1),
         )
-        result = validate_appearances(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_appearances(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field, d.line) for d in result] == expected
 
     def test_messages(self, tmp_path: Path) -> None:
         self.sessions(tmp_path)
-        note = Note(
+        record = Record(
             tmp_path / "content/N.md",
             Frontmatter(
                 {
@@ -2160,7 +2160,7 @@ class TestValidateAppearances:
         )
         assert [
             d.message
-            for d in validate_appearances(note, VaultIndex(tmp_path)).diagnostics
+            for d in validate_appearances(record, VaultIndex(tmp_path)).diagnostics
         ] == [
             "cannot check appearance: cannot uniquely resolve [[nope]]; use a "
             "vault-relative path",
@@ -2177,7 +2177,7 @@ class TestValidateAppearances:
             ("## Appearances\n\n  \n- [[S-42-001]]: Met.\n", []),
             ("## Appearances\n\n- [[S-42-001]]: Met the\n  crew at\n  the quay.\n", []),
             ("## Appearances\n* [[S-42-001]]: Met.\n", []),
-            ("## Appearances\n- [[S-42-001]]: Met.\n  - nested note\n", []),
+            ("## Appearances\n- [[S-42-001]]: Met.\n  - nested record\n", []),
             (
                 "## Appearances\n- [[S-42-001]]: Met.\n### campaign_42\n- [[S-42-002]]: Sub.\n",
                 [("history.format", 3), ("history.range", 0), ("history.range", 0)],
@@ -2215,8 +2215,8 @@ class TestValidateAppearances:
                 "last_session": "[[S-42-001]]",
             },
         }
-        note = Note(tmp_path / "content/N.md", Frontmatter(metadata), Body(body, 3))
-        result = validate_appearances(note, VaultIndex(tmp_path)).diagnostics
+        record = Record(tmp_path / "content/N.md", Frontmatter(metadata), Body(body, 3))
+        result = validate_appearances(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.line) for d in result] == (
             expected
             if body.startswith("## Appearances")
@@ -2229,23 +2229,24 @@ class TestValidateAppearances:
 
     def test_lines_follow_body_start(self, tmp_path: Path) -> None:
         self.sessions(tmp_path)
-        note = Note(
+        record = Record(
             tmp_path / "content/N.md",
             Frontmatter({"type": "[[Content]]"}),
             Body("## Appearances\n- bad\n", 9),
         )
         assert [
-            d.line for d in validate_appearances(note, VaultIndex(tmp_path)).diagnostics
+            d.line
+            for d in validate_appearances(record, VaultIndex(tmp_path)).diagnostics
         ] == [10]
 
     @pytest.mark.parametrize("kind", ["Clue", "Session", "Player"])
     def test_other_types(self, tmp_path: Path, kind: str) -> None:
-        note = Note(
+        record = Record(
             tmp_path / "x.md",
             Frontmatter({"type": f"[[{kind}]]"}),
             Body("## Appearances\n- bad\n", 1),
         )
-        assert validate_appearances(note, VaultIndex(tmp_path)).diagnostics == []
+        assert validate_appearances(record, VaultIndex(tmp_path)).diagnostics == []
 
 
 class TestReadAppearances:
@@ -2258,12 +2259,12 @@ class TestReadAppearances:
             },
         )
         body = "## Appearances\n- [[S-7-003]]: Away.\n- bad\n- [[S-42-001]]: Met.\n"
-        note = Note(
+        record = Record(
             tmp_path / "campaigns/campaign_42/content/N.md",
             Frontmatter({"type": "[[Content]]"}),
             Body(body, 1),
         )
-        history, findings = _read_appearances(note, VaultIndex(tmp_path))
+        history, findings = _read_appearances(record, VaultIndex(tmp_path))
         assert history == [
             ("campaign_42", 1, tmp_path / "campaigns/campaign_42/sessions/S-42-001.md")
         ]
@@ -2321,13 +2322,13 @@ class TestCheckCampaignHistory:
             },
         )
         metadata = {"type": "[[Content]]", "campaign_42": block}
-        note = Note(tmp_path / "content/N.md", Frontmatter(metadata), Body("", 1))
+        record = Record(tmp_path / "content/N.md", Frontmatter(metadata), Body("", 1))
         history = [
             (ordinal, tmp_path / f"campaigns/campaign_42/sessions/{stem}.md")
             for ordinal, stem in entries
         ]
         findings = _check_campaign_history(
-            note, VaultIndex(tmp_path), "campaign_42", history
+            record, VaultIndex(tmp_path), "campaign_42", history
         )
         assert [d.rule for d in findings.diagnostics] == expected
 
@@ -2346,7 +2347,7 @@ class TestValidateClue:
         )
         (tmp_path / "image.png").write_text("asset")
 
-    def clue(self, tmp_path: Path, **fields: object) -> Note:
+    def clue(self, tmp_path: Path, **fields: object) -> Record:
         metadata = {
             "type": "[[Clue]]",
             "text": "plain",
@@ -2355,7 +2356,7 @@ class TestValidateClue:
             "last_session": None,
             **fields,
         }
-        return Note(
+        return Record(
             tmp_path / "campaigns/campaign_42/clues/C-42-0001.md",
             Frontmatter(metadata),
             Body("", 1),
@@ -2372,7 +2373,7 @@ class TestValidateClue:
             (
                 "[[image.png]]",
                 ["[[A]]"],
-                [("text", "cannot check subjects: not a note")],
+                [("text", "cannot check subjects: not a record")],
             ),
             ("[[A]] and [[B]]", ["[[A]]"], [("subjects", "missing [[B]]")]),
             ("[[A]]", ["[[A]]", "[[B]]"], [("subjects", "extra [[B]]")]),
@@ -2403,8 +2404,8 @@ class TestValidateClue:
         expected: list[tuple[str, str]],
     ) -> None:
         self.records(tmp_path)
-        note = self.clue(tmp_path, text=text, subjects=subjects)
-        result = validate_clue(note, VaultIndex(tmp_path)).diagnostics
+        record = self.clue(tmp_path, text=text, subjects=subjects)
+        result = validate_clue(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == [
             ("clue.subjects", field) for field, _ in expected
         ]
@@ -2434,8 +2435,8 @@ class TestValidateClue:
         expected: list[tuple[str, str]],
     ) -> None:
         self.records(tmp_path)
-        note = self.clue(tmp_path, first_session=first, last_session=last)
-        result = validate_clue(note, VaultIndex(tmp_path)).diagnostics
+        record = self.clue(tmp_path, first_session=first, last_session=last)
+        result = validate_clue(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == expected
         assert all(
             d.message.startswith("cannot order") or d.rule == "history.range"
@@ -2445,12 +2446,12 @@ class TestValidateClue:
 
     @pytest.mark.parametrize("kind", ["Content", "Session", "Player"])
     def test_other_types(self, tmp_path: Path, kind: str) -> None:
-        note = Note(
+        record = Record(
             tmp_path / "x.md",
             Frontmatter({"type": f"[[{kind}]]", "text": "[[A]]"}),
             Body("", 1),
         )
-        assert validate_clue(note, VaultIndex(tmp_path)).diagnostics == []
+        assert validate_clue(record, VaultIndex(tmp_path)).diagnostics == []
 
     def test_text_links_are_typed(self, tmp_path: Path) -> None:
         self.records(tmp_path)
@@ -2461,12 +2462,12 @@ class TestValidateClue:
                 "campaigns/campaign_42/reference/players/P.md": 'type: "[[Player]]"',
             },
         )
-        note = self.clue(
+        record = self.clue(
             tmp_path,
             text="[[A]] told [[P]] about [[Far]] in [[S-42-001]].",
             subjects=["[[A]]", "[[P]]", "[[Far]]", "[[S-42-001]]"],
         )
-        result = validate_wikilinks(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == [
             ("link.type", "text"),
             ("campaign.mismatch", "text"),
@@ -2493,12 +2494,12 @@ class TestValidateTranscript:
         self, tmp_path: Path, body: str, record_type: str = "Transcript"
     ) -> list[tuple[str, str, int]]:
         # The body starts on line 4, after three lines of frontmatter.
-        note = Note(
+        record = Record(
             tmp_path / self.PATH,
             Frontmatter({"type": f"[[{record_type}]]"}),
             Body(body, 4),
         )
-        result = validate_transcript(note, VaultIndex(tmp_path)).diagnostics
+        result = validate_transcript(record, VaultIndex(tmp_path)).diagnostics
         assert all((d.path, d.field) == (self.PATH, "") for d in result)
         return [(d.rule, d.message, d.line) for d in result]
 

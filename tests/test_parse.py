@@ -1,4 +1,4 @@
-"""Dedicated contracts for safe YAML loading, normalization and note parsing."""
+"""Dedicated contracts for safe YAML loading, normalization and record parsing."""
 
 from collections.abc import Iterator
 from dataclasses import FrozenInstanceError
@@ -16,7 +16,7 @@ from armarium.parse import (
     Frontmatter,
     FrontmatterLoader,
     Link,
-    Note,
+    Record,
     Section,
 )
 
@@ -191,26 +191,26 @@ class TestFrontmatterLoaderNormalize:
         assert shared == [date(2026, 1, 2)]
 
 
-class TestNote:
+class TestRecord:
     def test_contents(self) -> None:
-        note = Note(
+        record = Record(
             Path("example.md"), Frontmatter({"name": "Example"}), Body("## Notes\n", 4)
         )
-        assert note.path == Path("example.md")
-        assert note.frontmatter == {"name": "Example"}
-        assert note.body == Body("## Notes\n", 4)
+        assert record.path == Path("example.md")
+        assert record.frontmatter == {"name": "Example"}
+        assert record.body == Body("## Notes\n", 4)
         with pytest.raises(FrozenInstanceError):
-            setattr(note, "body", Body("changed", 1))
+            setattr(record, "body", Body("changed", 1))
 
 
-class TestNoteLinks:
+class TestRecordLinks:
     def test_frontmatter_then_body(self) -> None:
-        note = Note(
+        record = Record(
             Path("example.md"),
             Frontmatter({"nested": ["[[Meta]]"]}),
             Body("[[broken [[Other]]\n", 8),
         )
-        assert note.links == (
+        assert record.links == (
             Link("Meta", "nested.0", 0),
             Link("", "", 8, "use [[target]] with balanced double brackets on one line"),
             Link("Other", "", 8),
@@ -724,7 +724,7 @@ class TestBody:
         ]
 
 
-class TestNoteParse:
+class TestRecordParse:
     @pytest.mark.parametrize(
         ("text", "metadata", "body", "start"),
         [
@@ -758,15 +758,15 @@ class TestNoteParse:
             ),
         ],
     )
-    def test_note(
+    def test_record(
         self, tmp_path: Path, text: str, metadata: dict[str, Any], body: str, start: int
     ) -> None:
         path = tmp_path / "example.md"
         original = text.encode("utf-8")
         path.write_bytes(original)
-        note, diagnostics = Note.parse(path, tmp_path)
+        record, diagnostics = Record.parse(path, tmp_path)
         assert diagnostics == []
-        assert note == Note(path, Frontmatter(metadata), Body(body, start))
+        assert record == Record(path, Frontmatter(metadata), Body(body, start))
         assert path.read_bytes() == original
 
     @pytest.mark.parametrize(
@@ -786,14 +786,14 @@ class TestNoteParse:
             ),
         ],
     )
-    def test_invalid_note(
+    def test_invalid_record(
         self, tmp_path: Path, text: str, message: str, line: int
     ) -> None:
         path = tmp_path / "broken.md"
         original = text.encode("utf-8")
         path.write_bytes(original)
-        note, diagnostics = Note.parse(path, tmp_path)
-        assert note is None and len(diagnostics) == 1
+        record, diagnostics = Record.parse(path, tmp_path)
+        assert record is None and len(diagnostics) == 1
         diagnostic = diagnostics[0]
         assert (
             diagnostic.path,
@@ -810,7 +810,7 @@ class TestNoteParse:
     def test_read_failure(self, tmp_path: Path, failure: str) -> None:
         root = tmp_path / "vault"
         root.mkdir()
-        path = root / "note.md"
+        path = root / "record.md"
         if failure == "directory":
             path.mkdir()
         elif failure == "encoding":
@@ -822,8 +822,8 @@ class TestNoteParse:
                 path.symlink_to(outside)
             else:
                 path = root / ".." / "outside.md"
-        note, diagnostics = Note.parse(path, root)
-        assert note is None and len(diagnostics) == 1
+        record, diagnostics = Record.parse(path, root)
+        assert record is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "parse.invalid"
         assert diagnostics[0].path == path.relative_to(root).as_posix()
         if failure in {"symlink", "parent"}:
@@ -832,11 +832,11 @@ class TestNoteParse:
 
     def test_path_outside_root_is_a_caller_error(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
-            Note.parse(tmp_path / "outside.md", tmp_path / "vault")
+            Record.parse(tmp_path / "outside.md", tmp_path / "vault")
 
     def test_deep_yaml_returns_a_diagnostic(self, tmp_path: Path) -> None:
         path = tmp_path / "deep.md"
         path.write_text("---\nx: " + "[" * 2000 + "0" + "]" * 2000 + "\n---\n")
-        note, diagnostics = Note.parse(path, tmp_path)
-        assert note is None and len(diagnostics) == 1
+        record, diagnostics = Record.parse(path, tmp_path)
+        assert record is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "parse.invalid"

@@ -50,7 +50,7 @@ class FrontmatterLoader(yaml.SafeLoader):
 
         Returns:
             Any: JSON-compatible metadata with ISO date/timestamp strings, or
-                None for an empty document. The note parser checks that the
+                None for an empty document. The record parser checks that the
                 top-level value is a mapping.
 
         Raises:
@@ -104,7 +104,7 @@ class FrontmatterLoader(yaml.SafeLoader):
 
 @dataclass(frozen=True)
 class Link:
-    """One wikilink found in a note, and where it was found.
+    """One wikilink found in a record, and where it was found.
 
     Attributes:
         target: File target inside the brackets, without alias or anchor. Empty
@@ -136,7 +136,7 @@ class Link:
 
 
 class Frontmatter(Mapping[str, Any]):
-    """A note's parsed YAML metadata and what checks derive from it.
+    """A record's parsed YAML metadata and what checks derive from it.
 
     Behaves as a read-only mapping of the JSON-compatible values produced by
     FrontmatterLoader; an absent frontmatter is an empty mapping.
@@ -146,7 +146,7 @@ class Frontmatter(Mapping[str, Any]):
         """Wrap parsed metadata.
 
         Args:
-            data: Top-level mapping of the note's frontmatter, if any.
+            data: Top-level mapping of the record's frontmatter, if any.
         """
         self._data: dict[str, Any] = dict(data or {})
 
@@ -369,7 +369,7 @@ class Block:
 class Section:
     """A heading, the blocks beneath it and its subsections.
 
-    A Body is the level-0 Section of a note: its blocks precede the first
+    A Body is the level-0 Section of a record: its blocks precede the first
     heading and its children are the top-level headed sections.
 
     Attributes:
@@ -450,9 +450,9 @@ class Section:
 
 @dataclass(frozen=True, init=False)
 class Body(Section):
-    """A note's Markdown after the frontmatter: its text, links and structure.
+    """A record's Markdown after the frontmatter: its text, links and structure.
 
-    The body is the level-0 Section of the note, parsed as CommonMark plus
+    The body is the level-0 Section of the record, parsed as CommonMark plus
     tables when constructed. Headings inside fenced code do not count; setext
     headings do. Its ``line`` is the source line at which the text begins.
 
@@ -516,12 +516,12 @@ class Body(Section):
 
 
 @dataclass(frozen=True)
-class Note:
-    """A note's parsed frontmatter and body.
+class Record:
+    """A record's parsed frontmatter and body.
 
     Attributes:
         path: Source Markdown file path.
-        frontmatter: Parsed metadata, empty when the note has none.
+        frontmatter: Parsed metadata, empty when the record has none.
         body: Markdown after the frontmatter, with its source position.
     """
 
@@ -531,7 +531,7 @@ class Note:
 
     @property
     def links(self) -> tuple[Link, ...]:
-        """Return every wikilink in the note.
+        """Return every wikilink in the record.
 
         Returns:
             tuple[Link, ...]: Frontmatter links in metadata order, then body
@@ -540,8 +540,8 @@ class Note:
         return self.frontmatter.links + self.body.links
 
     @classmethod
-    def parse(cls, path: Path, root: Path) -> tuple["Note | None", list[Diagnostic]]:
-        """Read a Markdown note, returning either its contents or an error report.
+    def parse(cls, path: Path, root: Path) -> tuple["Record | None", list[Diagnostic]]:
+        """Read a Markdown record, returning either its contents or an error report.
 
         Args:
             path: Markdown file inside root. Both paths must use the same absolute
@@ -549,8 +549,8 @@ class Note:
             root: Vault directory used to label errors with relative file paths.
 
         Returns:
-            tuple[Note | None, list[Diagnostic]]: A pair of (note, diagnostics).
-                Success returns a Note and an empty list. Read, YAML and normalization
+            tuple[Record | None, list[Diagnostic]]: A pair of (record, diagnostics).
+                Success returns a Record and an empty list. Read, YAML and normalization
                 failures return None and a Diagnostic with rule ``parse.invalid``.
                 A Diagnostic is data describing the failure, not an exception: the
                 caller can report it and keep checking other files. This function
@@ -562,7 +562,7 @@ class Note:
         relative = path.relative_to(root).as_posix()
         try:
             if not path.resolve().is_relative_to(root.resolve()):
-                raise ValueError("note escapes the vault boundary")
+                raise ValueError("record escapes the vault boundary")
             text = path.read_text(encoding="utf-8-sig")
             lines = text.splitlines(keepends=True)
             if not lines or lines[0].strip() != "---":

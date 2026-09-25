@@ -1,14 +1,14 @@
-"""Index vault files and lazily parse referenced Markdown notes."""
+"""Index vault files and lazily parse referenced Markdown records."""
 
 import unicodedata
 from pathlib import Path
 
 from armarium.lib import Diagnostic, find_files
-from armarium.parse import Note
+from armarium.parse import Record
 
 
 class VaultIndex:
-    """Hold one validation run's file targets and parsed notes for a vault."""
+    """Hold one validation run's file targets and parsed records for a vault."""
 
     def __init__(self, root: Path) -> None:
         """Map possible link targets to files without reading their contents.
@@ -22,15 +22,15 @@ class VaultIndex:
         casefolded, as Obsidian resolves links case-insensitively, so files
         whose paths differ only by case collide in the same way.
 
-        Parsed notes are stored separately in self.notes, initially empty.
-        parse() fills that cache only when a note's contents are needed.
+        Parsed records are stored separately in self.records, initially empty.
+        parse() fills that cache only when a record's contents are needed.
 
         Args:
             root: Vault directory; hidden files and symlinks are excluded.
         """
         self.root = root.resolve()
         self.targets: dict[str, set[Path]] = {}
-        self.notes: dict[Path, tuple[Note | None, list[Diagnostic]]] = {}
+        self.records: dict[Path, tuple[Record | None, list[Diagnostic]]] = {}
         for path in find_files(self.root):
             relative = path.relative_to(self.root)
             # Markdown links may include or omit .md; asset extensions matter.
@@ -55,11 +55,11 @@ class VaultIndex:
         Args:
             target: Target text returned by parse_wikilink, without brackets,
                 display alias or heading/block suffix. For [[#Heading]], this
-                is an empty string because the link points within its own note.
-            source: Full filesystem path of the note containing the link, such
+                is an empty string because the link points within its own record.
+            source: Full filesystem path of the record containing the link, such
                 as /vault/content/Harbour.md, rather than content/Harbour.md.
                 An empty target returns this path. Other targets are looked up
-                across the vault, not relative to the source note's directory.
+                across the vault, not relative to the source record's directory.
 
         Returns:
             tuple[Path | None, str | None]: (file_path, None) for exactly one
@@ -81,11 +81,13 @@ class VaultIndex:
             return next(iter(candidates)), None
         return None, "link.ambiguous" if candidates else "link.missing"
 
-    def resolve_field(self, note: Note, field: str) -> tuple[Path | None, str | None]:
+    def resolve_field(
+        self, record: Record, field: str
+    ) -> tuple[Path | None, str | None]:
         """Resolve the single wikilink held by one top-level frontmatter field.
 
         Args:
-            note: Parsed note inside this vault.
+            record: Parsed record inside this vault.
             field: Top-level frontmatter field name, such as "type".
 
         Returns:
@@ -95,34 +97,34 @@ class VaultIndex:
                 link or several, the link text is malformed, or the target is
                 missing or ambiguous.
         """
-        links = [link for link in note.links if link.location == field]
+        links = [link for link in record.links if link.location == field]
         if len(links) != 1:
             return None, f"{field} must hold exactly one wikilink"
         (link,) = links
         if link.error is not None:
             return None, link.error
-        resolved, rule = self.resolve(link.target, note.path)
+        resolved, rule = self.resolve(link.target, record.path)
         if rule:
             return None, f"cannot uniquely resolve [[{link.target}]]"
         return resolved, None
 
-    def parse(self, path: Path) -> tuple[Note | None, list[Diagnostic]]:
-        """Parse a Markdown target once, retaining failures as well as notes.
+    def parse(self, path: Path) -> tuple[Record | None, list[Diagnostic]]:
+        """Parse a Markdown target once, retaining failures as well as records.
 
         Args:
             path: Absolute Markdown path inside the indexed vault.
 
         Returns:
-            tuple[Note | None, list[Diagnostic]]: Cached Note.parse result.
+            tuple[Record | None, list[Diagnostic]]: Cached Record.parse result.
 
         Raises:
             ValueError: The path is outside this vault or is not Markdown.
         """
         if not path.is_relative_to(self.root) or path.suffix.lower() != ".md":
             raise ValueError("target must be Markdown inside the indexed vault")
-        if path not in self.notes:
-            self.notes[path] = Note.parse(path, self.root)
-        return self.notes[path]
+        if path not in self.records:
+            self.records[path] = Record.parse(path, self.root)
+        return self.records[path]
 
 
 def _key(name: str) -> str:
