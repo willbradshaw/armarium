@@ -3,7 +3,7 @@
 import unicodedata
 from pathlib import Path
 
-from armarium.lib import Diagnostic, find_files
+from armarium.lib import Diagnostic, find_files, parse_directories
 from armarium.parse import Record
 
 
@@ -125,6 +125,31 @@ class VaultIndex:
         if path not in self.records:
             self.records[path] = Record.parse(path, self.root)
         return self.records[path]
+
+    def declared_directories(self) -> dict[str, dict[str, str]]:
+        """Read where each Type record declares that its records live.
+
+        Returns:
+            dict[str, dict[str, str]]: Type name (the record's filename stem)
+                to its declared directory per scope, for every reference/types
+                record with a usable declaration; the others are left out.
+        """
+        types = self.root / "reference/types"
+        if types.is_symlink() or not types.is_dir():
+            return {}
+        declarations: dict[str, dict[str, str]] = {}
+        for path in find_files(types):
+            if path.suffix.lower() != ".md":
+                continue
+            record, _ = self.parse(path)
+            if record is None:
+                continue
+            try:
+                value = record.frontmatter.get("directories")
+                declarations[path.stem] = parse_directories(value)
+            except ValueError:
+                continue
+        return declarations
 
 
 def _key(name: str) -> str:

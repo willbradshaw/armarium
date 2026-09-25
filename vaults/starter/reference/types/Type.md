@@ -24,7 +24,6 @@ the longest match. Every declared directory must exist.
 
 `Type.md` is itself a Type record, as is `Status.md`. A Type record does not need
 to duplicate its JSON schema in frontmatter. Schema selection uses the lowercase
-type name, for example `type.schema.json` for Type records. A custom type needs
-only a Type record with `directories` and its `<type>.schema.json`.
+type name, for example `type.schema.json` for Type records.
 
 See the [Type schema](../schemas/type.schema.json).

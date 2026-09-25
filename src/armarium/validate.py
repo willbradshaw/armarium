@@ -21,6 +21,7 @@ from armarium.lib import (
     find_files,
     find_vault,
     iter_wikilinks,
+    parse_directories,
     parse_wikilink,
 )
 from armarium.parse import Record, Section
@@ -83,13 +84,6 @@ CAMPAIGN_DIRECTORIES = (
     "sessions/transcripts",
 )
 CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
-
-# Scopes a Type record declares its directories under: shared paths are
-# relative to the vault root, campaign paths to each campaigns/campaign_N.
-DIRECTORY_SCOPES = ("shared", "campaign")
-
-# A declared directory: a relative path without empty, . or .. segments.
-DIRECTORY = re.compile(r"(?!\.\.?(?:/|$))[^/]+(?:/(?!\.\.?(?:/|$))[^/]+)*")
 
 # An Appearances entry: a wikilink, a colon and a description.
 ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
@@ -282,17 +276,14 @@ def validate_vault(root: Path) -> Findings:
     Returns:
         Findings: Problems attributed to the vault itself (an empty path,
             which directory validation rebases onto the vault), each naming
-            the affected entry: a missing skeleton entry or declared directory
-            (vault.required), the campaign layout (vault.campaign), a Type
-            record whose directories declaration is missing or unusable
-            (vault.type) and schema coverage (schema.*). Extra folders and
-            files are allowed; record contents are validated separately.
+            the affected entry. Extra folders and files are allowed; record
+            contents are validated separately.
     """
     findings = Findings("")
     required: set[str] = set()
 
     def require(relative: str, directory: bool) -> None:
-        # The skeleton and the declarations overlap; report each entry once.
+        # Fixed and declared directories overlap; report each entry once.
         if relative in required:
             return
         required.add(relative)
@@ -357,8 +348,10 @@ def validate_vault(root: Path) -> Findings:
                 f"cannot check {relative} directories: {failures[0].message}",
             )
             continue
-        directories, error = _read_directories(record)
-        if findings.diagnose(error is not None, "vault.type", f"{relative} {error}"):
+        try:
+            directories = parse_directories(record.frontmatter.get("directories"))
+        except ValueError as exc:
+            findings.add("vault.type", f"{relative}: {exc}")
             continue
         for scope, path in directories.items():
             if scope == "shared":
@@ -403,64 +396,6 @@ def validate_vault(root: Path) -> Findings:
             f"no vault-local schema for {definition}",
         )
     return findings
-
-
-def _read_directories(record: Record) -> tuple[dict[str, str], str | None]:
-    """Read a Type record's declaration of where its records live.
-
-    Args:
-        record: Parsed Type record.
-
-    Returns:
-        tuple[dict[str, str], str | None]: Scope (shared or campaign) to the
-            declared relative path, in scope order, and None; or an empty
-            mapping and why the declaration is unusable, phrased to follow
-            the record's name.
-    """
-    value = record.frontmatter.get("directories")
-    if value is None:
-        return {}, "declares no directories"
-    if not isinstance(value, dict) or not value or set(value) - set(DIRECTORY_SCOPES):
-        return {}, "declares directories that are not a mapping of shared or campaign"
-    for scope, path in value.items():
-        if not isinstance(path, str) or DIRECTORY.fullmatch(path) is None:
-            return {}, f"declares directories.{scope} that is not a relative path"
-    return {scope: value[scope] for scope in DIRECTORY_SCOPES if scope in value}, None
-
-
-def declared_directories(index: VaultIndex) -> dict[str, dict[str, str]]:
-    """Read where each Type record declares that its records live.
-
-    Args:
-        index: Whole-vault index, which parses each reference/types record
-            once for the run.
-
-    Returns:
-        dict[str, dict[str, str]]: Type name (the record's filename stem) to
-            its declared directory under each scope, shared and campaign, for
-            every Type record with a usable declaration. A record that cannot
-            be parsed or declares no usable directories is left out; the
-            vault checks report it.
-    """
-    types = index.root / "reference/types"
-    if types.is_symlink() or not types.is_dir():
-        return {}
-    declarations: dict[str, dict[str, str]] = {}
-    for file in find_files(types):
-        if file.suffix.lower() != ".md":
-            continue
-        record, _ = index.parse(file)
-        if record is None:
-            continue
-        directories, error = _read_directories(record)
-        if error is None:
-            declarations[file.stem] = directories
-    return declarations
-
-
-def _describe_directory(scope: str, path: str) -> str:
-    """Name a declared directory as records see it, campaign_N standing in."""
-    return path if scope == "shared" else f"campaigns/campaign_N/{path}"
 
 
 def validate_appearances(record: Record, index: VaultIndex) -> Findings:
@@ -1124,14 +1059,17 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
         index: Index supplying the vault boundary and the Type records.
 
     Returns:
-        Findings: A record.placement error when the record's type declares no
-            usable directories, so placement cannot be checked; when the
-            record lies outside the directories its type declares; or when
-            its directory is claimed by another type's longer declaration.
+        Findings: A record.placement error when the type declares no usable
+            directories, the record lies outside them, or another type's
+            longer declaration claims its directory.
     """
     findings = Findings.from_record(record, index)
     kind = record.frontmatter.type or ""
-    declarations = declared_directories(index)
+    declarations = index.declared_directories()
+
+    def describe(scope: str, path: str) -> str:
+        return path if scope == "shared" else f"campaigns/campaign_N/{path}"
+
     # 1. The type must declare where its records live
     if findings.diagnose(
         kind not in declarations,
@@ -1153,13 +1091,13 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
             if base is None or not record.path.is_relative_to(base / path):
                 continue
             owners.setdefault(base / path, set()).add(name)
-            described.setdefault(base / path, _describe_directory(area, path))
+            described.setdefault(base / path, describe(area, path))
     # 3. The longest containing directory must be one the record's type declares
     longest = max(owners, key=lambda directory: len(directory.parts), default=None)
     if longest is not None and kind in owners[longest]:
         return findings
     declared = " or ".join(
-        _describe_directory(area, path) for area, path in declarations[kind].items()
+        describe(area, path) for area, path in declarations[kind].items()
     )
     message = f"{kind} belongs under {declared}"
     if longest is not None and any(kind in names for names in owners.values()):

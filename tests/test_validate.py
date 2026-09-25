@@ -26,13 +26,10 @@ from armarium.validate import (
     Target,
     _check_anchor,
     _check_campaign_history,
-    _describe_directory,
     _heading_key,
     _link_targets,
     _read_appearances,
-    _read_directories,
     _validate_wikilink_status,
-    declared_directories,
     linked_record,
     validate,
     validate_appearances,
@@ -1950,45 +1947,43 @@ class TestValidateVault:
         # The dependent checks say they cannot run rather than reporting every
         # entry as absent, every declaration as missing or every schema as unused.
         assert not any(m.endswith("is not a campaign_N directory") for m in messages)
-        assert not any("declares no directories" in m for m in messages)
+        assert not any("directories must be declared" in m for m in messages)
         assert not any("matches no Type definition" in m for m in messages)
 
     @pytest.mark.parametrize(
         "text, message",
         [
-            ("", "reference/types/Clue.md declares no directories"),
+            ("", "reference/types/Clue.md: directories must be declared"),
             (
                 '---\ntype: "[[Type]]"\n---\n',
-                "reference/types/Clue.md declares no directories",
+                "reference/types/Clue.md: directories must be declared",
             ),
             (
                 '---\ntype: "[[Type]]"\ndirectories:\n---\n',
-                "reference/types/Clue.md declares no directories",
+                "reference/types/Clue.md: directories must be declared",
             ),
             (
                 '---\ntype: "[[Type]]"\ndirectories: clues\n---\n',
-                "reference/types/Clue.md declares directories that are not a "
-                "mapping of shared or campaign",
+                "reference/types/Clue.md: directories must map shared or campaign "
+                "to relative paths",
             ),
             (
                 '---\ntype: "[[Type]]"\ndirectories: {}\n---\n',
-                "reference/types/Clue.md declares directories that are not a "
-                "mapping of shared or campaign",
+                "reference/types/Clue.md: directories must map shared or campaign "
+                "to relative paths",
             ),
             (
                 '---\ntype: "[[Type]]"\ndirectories: {vault: clues}\n---\n',
-                "reference/types/Clue.md declares directories that are not a "
-                "mapping of shared or campaign",
+                "reference/types/Clue.md: directories must map shared or campaign "
+                "to relative paths",
             ),
             (
                 '---\ntype: "[[Type]]"\ndirectories: {campaign: /clues}\n---\n',
-                "reference/types/Clue.md declares directories.campaign that is "
-                "not a relative path",
+                "reference/types/Clue.md: directories.campaign must be a relative path",
             ),
             (
                 '---\ntype: "[[Type]]"\ndirectories: {shared: 7}\n---\n',
-                "reference/types/Clue.md declares directories.shared that is "
-                "not a relative path",
+                "reference/types/Clue.md: directories.shared must be a relative path",
             ),
             (
                 "---\ndirectories: [\n---\n",
@@ -2086,7 +2081,7 @@ class TestValidateVault:
         make_vault(tmp_path)
         shutil.rmtree(tmp_path / "campaigns/campaign_1/reference")
         # Reference declares campaign reference/; Player's reference/players is
-        # both skeleton and declaration, and is reported once.
+        # both fixed and declared, and is reported once.
         assert sorted(d.message for d in validate_vault(tmp_path).diagnostics) == [
             "required directory campaigns/campaign_1/reference is missing",
             "required directory campaigns/campaign_1/reference/indexes is missing",
@@ -2163,128 +2158,6 @@ class TestValidateVault:
     def test_shipped_vaults(self, name: str) -> None:
         root = ROOT / "vaults" / name
         assert validate_vault(root).diagnostics == []
-
-
-class TestReadDirectories:
-    MAPPING = "declares directories that are not a mapping of shared or campaign"
-
-    @pytest.mark.parametrize(
-        "value, expected",
-        [
-            ({"shared": "content"}, ({"shared": "content"}, None)),
-            ({"campaign": "clues"}, ({"campaign": "clues"}, None)),
-            (
-                {"campaign": "clues", "shared": "content"},
-                ({"shared": "content", "campaign": "clues"}, None),
-            ),
-            (
-                {"campaign": "sessions/transcripts"},
-                ({"campaign": "sessions/transcripts"}, None),
-            ),
-            ({"shared": ".hidden/notes"}, ({"shared": ".hidden/notes"}, None)),
-            ({"shared": "with space"}, ({"shared": "with space"}, None)),
-            (None, ({}, "declares no directories")),
-            ("content", ({}, MAPPING)),
-            (["content"], ({}, MAPPING)),
-            ({}, ({}, MAPPING)),
-            ({"vault": "content"}, ({}, MAPPING)),
-            ({"shared": "content", "extra": "content"}, ({}, MAPPING)),
-            *(
-                (
-                    {scope: path},
-                    ({}, f"declares directories.{scope} that is not a relative path"),
-                )
-                for scope in ("shared", "campaign")
-                for path in (
-                    7,
-                    None,
-                    "",
-                    "/content",
-                    ".",
-                    "..",
-                    "./content",
-                    "../content",
-                    "content/..",
-                    "content/../reference",
-                    "content/",
-                    "content//nested",
-                )
-            ),
-        ],
-    )
-    def test_declaration(
-        self, value: object, expected: tuple[dict[str, str], str | None]
-    ) -> None:
-        metadata = {"type": "[[Type]]"} if value is None else {"directories": value}
-        record = Record(Path("Type.md"), Frontmatter(metadata), Body(""))
-        assert _read_directories(record) == expected
-        assert list(_read_directories(record)[0]) == list(expected[0])
-
-
-class TestDeclaredDirectories:
-    def test_reads_usable_declarations(self, tmp_path: Path) -> None:
-        for name, text in {
-            "Content.md": f"---\n{type_record('Content')}\n---\n",
-            "nested/Widget.md": f"---\n{type_record('Widget', campaign='widgets')}\n---\n",
-            "Bare.md": '---\ntype: "[[Type]]"\n---\n',
-            "Bad.md": '---\ntype: "[[Type]]"\ndirectories: {shared: /x}\n---\n',
-            "Broken.md": "---\nx: [\n---\n",
-            "notes.txt": "directories: {shared: content}",
-        }.items():
-            path = tmp_path / "reference/types" / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text)
-        index = VaultIndex(tmp_path)
-        assert declared_directories(index) == {
-            "Content": {"shared": "content", "campaign": "content"},
-            "Widget": {"campaign": "widgets"},
-        }
-        # Every definition is parsed through the index, once for the run.
-        assert set(index.records) == {
-            tmp_path / "reference/types" / name
-            for name in (
-                "Content.md",
-                "nested/Widget.md",
-                "Bare.md",
-                "Bad.md",
-                "Broken.md",
-            )
-        }
-        from unittest.mock import patch
-
-        with patch.object(Record, "parse", wraps=Record.parse) as parse:
-            assert declared_directories(index) == declared_directories(index)
-        assert parse.call_count == 0
-
-    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
-    def test_unusable_types_directory(self, tmp_path: Path, kind: str) -> None:
-        types = tmp_path / "reference/types"
-        if kind == "file":
-            types.parent.mkdir()
-            types.write_text("")
-        elif kind == "symlink":
-            (tmp_path / "elsewhere").mkdir()
-            types.parent.mkdir()
-            types.symlink_to(tmp_path / "elsewhere", target_is_directory=True)
-        assert declared_directories(VaultIndex(tmp_path)) == {}
-
-
-class TestDescribeDirectory:
-    @pytest.mark.parametrize(
-        "scope, path, expected",
-        [
-            ("shared", "content", "content"),
-            ("shared", "reference/types", "reference/types"),
-            ("campaign", "clues", "campaigns/campaign_N/clues"),
-            (
-                "campaign",
-                "sessions/transcripts",
-                "campaigns/campaign_N/sessions/transcripts",
-            ),
-        ],
-    )
-    def test_names_declared_form(self, scope: str, path: str, expected: str) -> None:
-        assert _describe_directory(scope, path) == expected
 
 
 class TestValidateAppearances:
