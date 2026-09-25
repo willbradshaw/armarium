@@ -787,6 +787,10 @@ class TestValidateWikilinks:
                 [("link.duplicate", "subjects.1")],
             ),
             (
+                {"type": "[[Clue]]", "subjects": ["[[Quay]]", "[[QUAY]]"]},
+                [("link.duplicate", "subjects.1")],
+            ),
+            (
                 {"type": "[[Clue]]", "subjects": ["[[Quay]]", "[[Quay]]", "[[Quay]]"]},
                 [("link.duplicate", "subjects.1"), ("link.duplicate", "subjects.2")],
             ),
