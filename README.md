@@ -41,7 +41,8 @@ reference for its fields and conventions:
 
 The starter is preconfigured for a single campaign. The example includes two
 campaigns sharing setting Content, with independent campaign state and combined
-Clue and appearance lists.
+Clue and appearance lists. [Vault layout](docs/vault.md) states the full required
+skeleton and where each record type lives.
 
 `.obsidian/` holds the settings the records rely on and is part of the vault;
 only Obsidian's workspace files are ignored. `.scratch/` is ignored working
