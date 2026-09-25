@@ -219,7 +219,15 @@ class Findings:
     def __repr__(self) -> str:
         return f"Findings({self.path!r}, {self.diagnostics!r})"
 
-    def add(self, rule: str, message: str, field: str = "", line: int = 0) -> None:
+    def add(
+        self,
+        rule: str,
+        message: str,
+        field: str = "",
+        line: int = 0,
+        *,
+        severity: Literal["error", "warning", "info"] = "error",
+    ) -> None:
         """Record one diagnostic against the file.
 
         Args:
@@ -227,8 +235,11 @@ class Findings:
             message: Human-readable explanation.
             field: Frontmatter location, if any.
             line: One-based source line, or 0 when none applies.
+            severity: Error, warning or info; only errors fail validation.
         """
-        self.diagnostics.append(Diagnostic(self.path, rule, message, field, line))
+        self.diagnostics.append(
+            Diagnostic(self.path, rule, message, field, line, severity)
+        )
 
     def diagnose(
         self, check: bool, rule: str, message: str, field: str = "", line: int = 0
