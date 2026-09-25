@@ -273,34 +273,35 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
     # A vault root, whether named directly or found by recursion, must also
     # carry the shared infrastructure; a directory inside a vault need not.
     if path.resolve() == context:
-        result += Result(diagnostics=validate_vault(context))
+        result += Result(diagnostics=validate_vault(context).diagnostics)
     return result.add_context(context, relative_to=path.resolve())
 
 
-def validate_vault(root: Path) -> list[Diagnostic]:
+def validate_vault(root: Path) -> Findings:
     """Check a vault root's shared infrastructure and campaign layout.
 
     Args:
         root: Resolved vault directory.
 
     Returns:
-        list[Diagnostic]: Findings attributed to the vault itself (an empty
-            path, which directory validation rebases onto the vault), each
-            naming the affected entry. Extra folders and files are allowed;
-            record contents are validated separately.
+        Findings: Problems attributed to the vault itself (an empty path,
+            which directory validation rebases onto the vault), each naming
+            the affected entry. Extra folders and files are allowed; record
+            contents are validated separately.
     """
-    diagnostics: list[Diagnostic] = []
-
-    def report(rule: str, message: str) -> None:
-        diagnostics.append(Diagnostic("", rule, message))
+    findings = Findings("")
 
     def require(relative: str, directory: bool) -> None:
         path = root / relative
         present = path.is_dir() if directory else path.is_file()
-        if path.is_symlink() or not present:
-            kind = "directory" if directory else "file"
-            report("vault.required", f"required {kind} {relative} is missing")
+        kind = "directory" if directory else "file"
+        findings.diagnose(
+            path.is_symlink() or not present,
+            "vault.required",
+            f"required {kind} {relative} is missing",
+        )
 
+    # 1. Require the shared directories and definitions
     for relative in VAULT_DIRECTORIES:
         require(relative, True)
     for name in VAULT_TYPES:
@@ -310,37 +311,39 @@ def validate_vault(root: Path) -> list[Diagnostic]:
     for name in VAULT_TEMPLATES:
         require(f"reference/templates/{name}.md", False)
 
+    # 2. Check the campaign layout
     campaigns = root / "campaigns"
     if not campaigns.is_dir() or campaigns.is_symlink():
-        report("vault.campaign", "cannot check campaigns: campaigns/ is missing")
+        findings.add("vault.campaign", "cannot check campaigns: campaigns/ is missing")
     else:
         found = []
         for child in find_children(campaigns):
             if child.is_dir() and CAMPAIGN_NAME.fullmatch(child.name):
                 found.append(child.name)
             else:
-                report(
+                findings.add(
                     "vault.campaign",
                     f"campaigns/{child.name} is not a campaign_N directory",
                 )
-        if not found:
-            report("vault.campaign", "campaigns/ has no campaign_N directory")
+        findings.diagnose(
+            not found, "vault.campaign", "campaigns/ has no campaign_N directory"
+        )
         for name in found:
             for relative in CAMPAIGN_DIRECTORIES:
                 require(f"campaigns/{name}/{relative}", True)
             for relative in CAMPAIGN_FILES:
                 require(f"campaigns/{name}/{relative}", False)
 
-    # Schemas and Type definitions correspond by name: Clue.md <-> clue.schema.json.
+    # 3. Match schemas and Type definitions by name: Clue.md <-> clue.schema.json.
     types = root / "reference/types"
     schemas = root / "reference/schemas"
     for directory in (types, schemas):
         if not directory.is_dir() or directory.is_symlink():
             relative = directory.relative_to(root).as_posix()
-            report(
+            findings.add(
                 "schema.missing", f"cannot check schema coverage: {relative} is missing"
             )
-            return diagnostics
+            return findings
     definitions = {
         file.stem for file in find_files(types) if file.suffix.lower() == ".md"
     }
@@ -348,21 +351,30 @@ def validate_vault(root: Path) -> list[Diagnostic]:
     for file in find_files(schemas):
         relative = file.relative_to(root).as_posix()
         if not file.name.endswith(".schema.json"):
-            if file.suffix.lower() == ".json":
-                report("schema.unused", f"{relative} is not named <type>.schema.json")
+            findings.diagnose(
+                file.suffix.lower() == ".json",
+                "schema.unused",
+                f"{relative} is not named <type>.schema.json",
+            )
             continue
         try:
             Schema.load(file, root)
         except (OSError, ValueError, SchemaError, RecursionError) as exc:
-            report("schema.invalid", f"{relative}: {exc}")
+            findings.add("schema.invalid", f"{relative}: {exc}")
         name = file.name.removesuffix(".schema.json")
         schema_names.add(name)
-        if name not in {definition.lower() for definition in definitions}:
-            report("schema.unused", f"{relative} matches no Type definition")
+        findings.diagnose(
+            name not in {definition.lower() for definition in definitions},
+            "schema.unused",
+            f"{relative} matches no Type definition",
+        )
     for definition in sorted(definitions):
-        if definition.lower() not in schema_names:
-            report("schema.missing", f"no vault-local schema for {definition}")
-    return diagnostics
+        findings.diagnose(
+            definition.lower() not in schema_names,
+            "schema.missing",
+            f"no vault-local schema for {definition}",
+        )
+    return findings
 
 
 def validate_appearances(note: Note, index: VaultIndex) -> Findings:
