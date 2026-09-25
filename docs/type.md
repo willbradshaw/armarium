@@ -25,9 +25,9 @@ A GM-known candidate fact tracked through a lifecycle.
 | `status` | a link to a Status that applies to Clues: `[[Pending]]`, `[[Hinted]]`, `[[Revealed]]`, `[[Abandoned]]`, `[[Dormant]]` or `[[Superseded]]` |
 | `text` | non-blank text; its links must be Content in the same campaign or shared |
 | `subjects` | null (unidentified), `[]` (none) or exactly the records linked in `text`, as a list of links |
-| `first_session` | null or a link to the Session in the same campaign the Clue was first prepared or used in |
-| `last_session` | null or a link to the Session in the same campaign of its latest introduction or development; requires `first_session` and may not precede it |
-| `superseded_by` | a link to the replacing Clue in the same campaign, required when `status` is `[[Superseded]]` and forbidden otherwise; following it from Clue to Clue must never return to the starting Clue |
+| `first_session` | null or a link to the Session in which the Clue was first prepared or used |
+| `last_session` | null or a link to the Session of its latest introduction or development; requires `first_session` and may not precede it |
+| `superseded_by` | a link to the replacing Clue, required when `status` is `[[Superseded]]` and forbidden otherwise; following it from Clue to Clue must never return to the starting Clue |
 
 ### Body
 
