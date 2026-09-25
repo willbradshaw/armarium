@@ -80,8 +80,7 @@ file path must be unique when compared case-insensitively.
 
 ## Other entries
 
-Other hidden entries (`.scratch/`, anything else starting with `.`) and
-symlinks are not part of the vault. Obsidian's own `workspace.json` and
-`workspace-mobile.json` in `.obsidian/` are per-machine state, not settings. Files that are not records can still be
-linked and embedded: `[[harbor-pass.txt]]` for `assets/harbor-pass.txt`,
-`![[reference/views/clue-index.base#Active]]` for a view.
+Other than the required `.obsidian/` files above, hidden entries and symlinks
+are not part of the skeleton and are ignored during [validation](validation.md).
+This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
+`.obsidian/`, which are per-machine state, not settings.
