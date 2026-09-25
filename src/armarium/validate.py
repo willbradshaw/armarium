@@ -928,23 +928,28 @@ def validate_placement(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
 
 def validate_filename(note: Note, index: VaultIndex) -> list[Diagnostic]:
-    """Check campaign record filenames and the Session ordinal they encode.
+    """Check the record's filename and the Session ordinal it encodes.
 
     Args:
         note: Selected record; templates are excluded by the caller.
         index: Index supplying the selected vault boundary.
 
     Returns:
-        list[Diagnostic]: A Session, Clue or Transcript outside every campaign,
-            one whose filename does not match its campaign's pattern, or a
-            Session whose session_number differs from its filename. Other
-            types have no filename rule.
+        list[Diagnostic]: A filename with leading, trailing, doubled or
+            non-space whitespace; a Session, Clue or Transcript outside every
+            campaign, one whose filename does not match its campaign's pattern,
+            or a Session whose session_number differs from its filename. Other
+            types have no further filename rule.
     """
+    path = note.path.relative_to(index.root).as_posix()
+    stem = note.path.stem
+    if stem != " ".join(stem.split()):
+        message = "filename has leading, trailing or doubled whitespace"
+        return [Diagnostic(path, "record.identity", message)]
     scope = find_campaign(note.path, index.root)
     kind = note.frontmatter.type
     if kind not in {"Session", "Clue", "Transcript"}:
         return []
-    path = note.path.relative_to(index.root).as_posix()
     if scope is None:
         return [
             Diagnostic(
