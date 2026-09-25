@@ -148,13 +148,9 @@ class TestPyproject:
                 r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{2} UTC\] (INFO|WARNING|ERROR): ",
                 process.stderr,
             )
-        assert ("Traceback" in process.stderr) == (
-            scenario in {"invalid", "unsupported", "missing", "broken-link"}
-        )
+        assert ("Traceback" in process.stderr) == (scenario == "missing")
         if scenario in {"invalid", "unsupported", "broken-link"}:
-            assert process.stderr.rstrip().endswith(
-                "ValidationError: 1 file failed validation"
-            )
+            assert process.stderr.rstrip().endswith("ERROR: 1 file failed validation")
         if scenario == "unsupported":
             assert "1 unsupported" in process.stderr
         assert path.read_text() == text

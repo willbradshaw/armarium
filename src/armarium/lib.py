@@ -127,10 +127,6 @@ def iter_wikilinks(text: str) -> Iterator[tuple[str, str] | ValueError]:
 # -----------------------------------------------------------------------------
 
 
-class ValidationError(Exception):
-    """A completed validation run contains errors."""
-
-
 @dataclass(frozen=True, order=True)
 class Diagnostic:
     """Describe one problem or informational finding.

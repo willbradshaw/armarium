@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from armarium.cli import main, parse_args
-from armarium.lib import Diagnostic, Result, ValidationError, VaultNotFoundError
+from armarium.lib import Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
 
 
@@ -100,19 +100,24 @@ class TestMain:
         before = path.read_bytes()
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(path)])
         if status:
-            with pytest.raises(ValidationError, match="^1 file failed validation$"):
+            with pytest.raises(SystemExit) as exit_status:
                 main()
+            assert exit_status.value.code == 1
         else:
             assert main() is None
         output = capsys.readouterr()
         assert output.out == ""
-        assert output.err.endswith("INFO: " + counts + "\n")
+        lines = output.err.splitlines()
+        if status:
+            assert lines[-1].endswith("ERROR: 1 file failed validation")
+            lines.pop()
+        assert lines[-1].endswith("INFO: " + counts)
         headers = re.findall(
             r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{2} UTC\] (INFO|WARNING|ERROR): ",
             output.err,
             re.MULTILINE,
         )
-        assert len(headers) == (2 if diagnostic else 1)
+        assert len(headers) == (2 if diagnostic else 1) + (1 if status else 0)
         assert diagnostic in output.err
         assert path.read_bytes() == before
 
@@ -127,9 +132,12 @@ class TestMain:
         monkeypatch.setattr(
             sys, "argv", ["armarium", "validate", str(path), "--vault", str(tmp_path)]
         )
-        with pytest.raises(ValidationError, match="1 file failed validation"):
+        with pytest.raises(SystemExit) as exit_status:
             main()
-        assert "1 unsupported" in capsys.readouterr().err
+        assert exit_status.value.code == 1
+        err = capsys.readouterr().err
+        assert "1 unsupported" in err
+        assert err.rstrip().endswith("ERROR: 1 file failed validation")
 
     @pytest.mark.parametrize(
         "error", [ValueError("bad target"), OSError("cannot read")]
@@ -152,7 +160,10 @@ class TestMain:
 
     @pytest.mark.parametrize("files", [1, 2])
     def test_failure_counts_distinct_files(
-        self, monkeypatch: pytest.MonkeyPatch, files: int
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        files: int,
     ) -> None:
         from unittest.mock import Mock
 
@@ -167,10 +178,14 @@ class TestMain:
         )
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", "record.md"])
         noun = "file" if files == 1 else "files"
-        with pytest.raises(
-            ValidationError, match=f"^{files} {noun} failed validation$"
-        ):
+        with pytest.raises(SystemExit) as exit_status:
             main()
+        assert exit_status.value.code == 1
+        assert (
+            capsys.readouterr()
+            .err.rstrip()
+            .endswith(f"ERROR: {files} {noun} failed validation")
+        )
 
     @pytest.mark.parametrize("valid", [False, True])
     def test_directory(
@@ -191,8 +206,9 @@ class TestMain:
         if valid:
             assert main() is None
         else:
-            with pytest.raises(ValidationError, match="1 file failed validation"):
+            with pytest.raises(SystemExit) as exit_status:
                 main()
+            assert exit_status.value.code == 1
         assert "1 checked" in capsys.readouterr().err
 
     def test_vault_root_reports_infrastructure(
@@ -205,8 +221,9 @@ class TestMain:
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(vault)])
         # Every record passes, but the minimal fixture lacks required
         # infrastructure, which is reported against the vault root itself.
-        with pytest.raises(ValidationError, match="1 file failed validation"):
+        with pytest.raises(SystemExit) as exit_status:
             main()
+        assert exit_status.value.code == 1
         err = capsys.readouterr().err
         assert "3 checked" in err
         assert ".:: - vault.required - required directory assets is missing" in err
@@ -260,10 +277,8 @@ class TestMain:
         else:
             assert "INFO: 1 checked, 0 skipped, 0 unsupported" in process.stderr
         if scenario == "invalid":
-            assert "Traceback" in process.stderr
-            assert process.stderr.rstrip().endswith(
-                "ValidationError: 1 file failed validation"
-            )
+            assert "Traceback" not in process.stderr
+            assert process.stderr.rstrip().endswith("ERROR: 1 file failed validation")
         assert process.stdout == ""
 
 

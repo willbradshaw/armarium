@@ -1,11 +1,11 @@
 """Command-line adapter for read-only Markdown validation."""
 
 import argparse
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.lib import ValidationError
-from armarium.logging import configure_logging
+from armarium.logging import configure_logging, logger
 from armarium.validate import validate
 
 
@@ -44,9 +44,9 @@ def main() -> None:
     """Run the command from process arguments and log its validation result.
 
     Raises:
-        ValidationError: One or more files failed validation, after reporting
-            all diagnostics and coverage counts.
-        SystemExit: Argument parsing exits with 0 for help or 2 for usage errors.
+        SystemExit: Status 1 when one or more files failed validation, after
+            reporting all diagnostics, the coverage counts and a final error
+            line; argument parsing exits with 0 for help or 2 for usage errors.
     """
     args = parse_args()
     configure_logging()
@@ -55,7 +55,8 @@ def main() -> None:
     if result.failed:
         failed_files = result.failed_files
         noun = "file" if failed_files == 1 else "files"
-        raise ValidationError(f"{failed_files} {noun} failed validation")
+        logger.error("%s %s failed validation", failed_files, noun)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
