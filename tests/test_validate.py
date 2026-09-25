@@ -455,7 +455,7 @@ class TestValidateMarkdown:
             (d.line, d.message)
             for d in result.diagnostics
             if d.rule.startswith("transcript.")
-        ] == [(7, "brackets after the speaker tag")]
+        ] == [(7, "square brackets after the speaker tag")]
 
 
 class TestValidateDirectory:
@@ -2575,19 +2575,19 @@ class TestValidateTranscript:
             ),
             (
                 "## Opening\n\n- [GM] A.\n[Esme] B.\n",
-                [(SPEAKER, "brackets after the speaker tag", 6)],
+                [(SPEAKER, "square brackets after the speaker tag", 6)],
             ),
             (
                 "## Opening\n\n- [GM] A [laughs] B.\n",
-                [(SPEAKER, "brackets after the speaker tag", 6)],
+                [(SPEAKER, "square brackets after the speaker tag", 6)],
             ),
             (
                 "## Opening\n\n- [GM] A [[broken] B.\n",
-                [(SPEAKER, "brackets after the speaker tag", 6)],
+                [(SPEAKER, "square brackets after the speaker tag", 6)],
             ),
             (
                 "## Opening\n\n- [GM] [link](url) B.\n",
-                [(SPEAKER, "brackets after the speaker tag", 6)],
+                [(SPEAKER, "square brackets after the speaker tag", 6)],
             ),
             (
                 "Notes.\n# Two\n\n- [GM] A.\n[Esme] B.\n  - C.\n",
@@ -2595,7 +2595,7 @@ class TestValidateTranscript:
                     (HEADING, "content before the first heading", 4),
                     (HEADING, "heading must be ## with a title", 5),
                     (ITEM, "utterance must be a single paragraph", 7),
-                    (SPEAKER, "brackets after the speaker tag", 7),
+                    (SPEAKER, "square brackets after the speaker tag", 7),
                 ],
             ),
         ],

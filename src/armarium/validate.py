@@ -712,7 +712,7 @@ def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
                 findings.diagnose(
                     "[" in rest or "]" in rest,
                     "transcript.speaker",
-                    "brackets after the speaker tag",
+                    "square brackets after the speaker tag",
                     line=item.line,
                 )
     return findings.diagnostics
