@@ -4,13 +4,13 @@
       "type": "[[types/Transcript]]",
       "session": "[[S-1-001]]"
     },
-    "body": "## Opening\n\n[GM] Welcome.\n"
+    "body": "## Opening\n\n- [GM] Welcome.\n"
   },
   "cases": [
     {
       "name": "uncertain speaker",
       "valid": true,
-      "body": "## Opening\n[?] What?\n"
+      "body": "## Opening\n- [?] What?\n"
     },
     {
       "name": "null session",
@@ -34,7 +34,7 @@
     {
       "name": "missing heading",
       "valid": false,
-      "body": "[GM] Welcome."
+      "body": "- [GM] Welcome."
     },
     {
       "name": "missing speech",
@@ -44,17 +44,22 @@
     {
       "name": "speech before heading",
       "valid": false,
-      "body": "[GM] Welcome.\n## Opening\n"
+      "body": "- [GM] Welcome.\n## Opening\n"
     },
     {
       "name": "blank speech",
       "valid": false,
-      "body": "## Opening\n\n[GM]  \n"
+      "body": "## Opening\n\n- [GM]  \n"
     },
     {
       "name": "empty speaker",
       "valid": false,
-      "body": "## Opening\n\n[] Welcome."
+      "body": "## Opening\n\n- [] Welcome."
+    },
+    {
+      "name": "unlisted speech",
+      "valid": false,
+      "body": "## Opening\n\n[GM] Welcome.\n"
     }
   ]
 }
