@@ -1,11 +1,11 @@
 # Types
 
-The built-in record types, one section each: the frontmatter fields the
-schema requires, what their values may be, the body the schema requires, and
-the rules checked across records. Common rules — the `type` field, links and
-their targets, filenames — are in [Records](record.md); where each type's
-records live is in [Vault layout](vault.md). "Nullable" means the field must
-be present and may be `null` (a bare `field:` in YAML).
+The built-in record types, one section each: the frontmatter fields, what
+their values may be, the required body, and the rules that hold between
+records. What every record shares is in [Records](record.md); where each
+type's records live is in [Vault layout](vault.md). Links must be canonical;
+"in this campaign" means under the same `campaigns/campaign_N/`, and Content
+may also be shared under `content/`.
 
 ## Content
 
@@ -19,19 +19,20 @@ A character, place, group, object or piece of setting lore; shared under
 | `subtype` | one of the six subtypes |
 | `summary` | short text describing stable identity, or null for a stub |
 | `aliases` | list of non-empty strings, `[]`, null or omitted |
-| `stats` (NPC) | null, a canonical link to a statistics record, or an `http(s)://` URL |
-| `player` (PC) | a Player link; not null |
-| `parent_location` (Location) | null or a link to Location Content |
-| `members` (Faction) | null (unknown), `[]` (none recorded) or a list of PC/NPC Content links |
+| `stats` (NPC) | null, a link to a record, or an `http(s)://` URL |
+| `player` (PC) | a link to a Player in this campaign; not null |
+| `parent_location` (Location) | null or a link to Location Content, in this campaign or shared |
+| `members` (Faction) | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content, in this campaign or shared |
 | `campaign_N` | one block per campaign the record has state in; see below |
 
 **Campaign blocks.** `campaign_N` is a mapping with `first_session` and
 `last_session`: both null before any appearance, otherwise links to the
-earliest and latest Session in that campaign's Appearances. `N` must be an
-existing campaign; a record under `campaigns/campaign_N/` may only carry that
-campaign's block. An Object's block also requires `held_by`: null before
-entering play, then a holder link, a list of holder links (split possession)
-or `GONE` (out of play), with `GONE` also allowed inside a list.
+earliest and latest Session of campaign N in the record's Appearances. `N`
+must be an existing campaign; a record under `campaigns/campaign_N/` may only
+carry that campaign's block. An Object's block also requires `held_by`: null
+before entering play, then a holder, a list of holders (split possession) or
+`GONE` (out of play), with `GONE` also allowed inside a list; a holder is a
+link to PC, NPC or Faction Content, in campaign N or shared.
 
 **Body.** `## Notes`, `## Active Clues` and `## Appearances`, in that order.
 Active Clues holds exactly one `.base` embed and nothing else. Appearances is
@@ -47,17 +48,18 @@ return to the starting record.
 
 ## Clue
 
-A GM-known candidate fact tracked through a lifecycle; campaign-specific.
+A GM-known candidate fact tracked through a lifecycle; campaign-specific,
+named `C-N-NNNN.md` with the campaign number and a four-digit ordinal.
 
 | Field | Value |
 | --- | --- |
 | `type` | `[[types/Clue]]` |
-| `status` | one of `[[Pending]]`, `[[Hinted]]`, `[[Revealed]]`, `[[Abandoned]]`, `[[Dormant]]`, `[[Superseded]]` |
+| `status` | a link to a Status that applies to Clues: `[[Pending]]`, `[[Hinted]]`, `[[Revealed]]`, `[[Abandoned]]`, `[[Dormant]]` or `[[Superseded]]` |
 | `text` | non-blank text; its links must be Content in this campaign or shared |
 | `subjects` | null (unidentified), `[]` (none) or exactly the records linked in `text`, as a list of links |
-| `first_session` | null or the Session the Clue was first prepared or used in |
-| `last_session` | null or its latest introduction or development; requires `first_session` and may not precede it |
-| `superseded_by` | a link to the replacing Clue, required when `status` is `[[Superseded]]` and forbidden otherwise |
+| `first_session` | null or a link to the Session in this campaign the Clue was first prepared or used in |
+| `last_session` | null or a link to the Session in this campaign of its latest introduction or development; requires `first_session` and may not precede it |
+| `superseded_by` | a link to the replacing Clue in this campaign, required when `status` is `[[Superseded]]` and forbidden otherwise |
 
 **Body.** Exactly `## Sessions` followed by one `.base` embed; nothing else.
 
@@ -65,18 +67,19 @@ A GM-known candidate fact tracked through a lifecycle; campaign-specific.
 
 ## Session
 
-One play session; campaign-specific, named `S-N-NNN.md`.
+One play session; campaign-specific, named `S-N-NNN.md` with the campaign
+number and a three-digit ordinal.
 
 | Field | Value |
 | --- | --- |
 | `type` | `[[types/Session]]` |
 | `date` | `YYYY-MM-DD` or null |
-| `campaign` | link to the containing campaign's `reference/Campaign.md` |
-| `session_number` | positive integer equal to the filename's ordinal |
+| `campaign` | a link to the containing campaign's `reference/Campaign.md` |
+| `session_number` | positive integer equal to the ordinal in the filename |
 | `aliases` | list of non-blank strings, `[]`, null or omitted |
-| `players_absent` | null or a list of Player links |
+| `players_absent` | null or a list of links to Players in this campaign |
 | `in_game_start_date`, `in_game_end_date` | non-blank text or null |
-| `prepared_clues`, `prepared_locations`, `prepared_npcs` | ordered lists of Clue, Location Content and NPC Content links; `[]` or omitted selects nothing |
+| `prepared_clues`, `prepared_locations`, `prepared_npcs` | ordered lists of links to Clues in this campaign, and to Location and NPC Content in this campaign or shared; `[]` or omitted selects nothing |
 
 **Body.** The template's headings in order: `# Preparation` with
 `## Starting scene`, `## Other scenes`, `## Secrets & Clues`, `## Locations`,
@@ -94,7 +97,7 @@ its Session: `S-N-NNN Transcript.md`.
 | Field | Value |
 | --- | --- |
 | `type` | `[[types/Transcript]]` |
-| `session` | link to the Session the transcript records, which the filename must match |
+| `session` | a link to the Session in this campaign the transcript records; the filename is that Session's plus ` Transcript` |
 
 **Body.** A run of titled `## ` sections and nothing before the first. Each
 section holds exactly one bullet list and nothing else. Each item is one
@@ -111,7 +114,7 @@ A person at the table; campaign-specific, under `reference/players/`.
 | Field | Value |
 | --- | --- |
 | `type` | `[[types/Player]]` |
-| `plays` | list of PC Content links; `[]` when unassigned; null and a single link are invalid |
+| `plays` | list of links to PC Content in this campaign; `[]` when unassigned; null and a single link are invalid |
 
 **Body.** Free Markdown, possibly empty.
 
@@ -157,6 +160,6 @@ for the status.
 | Field | Value |
 | --- | --- |
 | `type` | `[[Status]]` |
-| `applies_to` | canonical link to the Type record the status applies to |
+| `applies_to` | a link to the Type record the status applies to |
 
 **Body.** Free Markdown describing the status.

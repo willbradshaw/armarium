@@ -111,14 +111,8 @@ class TestVaultDocument:
 class TestRecordDocument:
     TEXT = (DOCS / "record.md").read_text()
 
-    @pytest.mark.parametrize(
-        "field",
-        sorted(
-            set(LINK_TARGETS)
-            | {field for targets in RECORD_LINK_TARGETS.values() for field in targets}
-        ),
-    )
-    def test_names_every_typed_field(self, field: str) -> None:
+    @pytest.mark.parametrize("field", sorted(LINK_TARGETS))
+    def test_names_every_universal_field(self, field: str) -> None:
         assert f"`{field}`" in self.TEXT
 
 
@@ -128,6 +122,22 @@ class TestTypeDocument:
     @pytest.mark.parametrize("kind", VAULT_TYPES)
     def test_has_a_section_per_type(self, kind: str) -> None:
         assert f"\n## {kind}\n" in self.TEXT
+
+    @pytest.mark.parametrize(
+        ("kind", "field"),
+        sorted(
+            {
+                (kind, field)
+                for (kind, _), targets in RECORD_LINK_TARGETS.items()
+                for field in targets
+            }
+        ),
+    )
+    def test_names_every_typed_field(self, kind: str, field: str) -> None:
+        start = self.TEXT.index(f"\n## {kind}\n")
+        end = self.TEXT.find("\n## ", start + 1)
+        section = self.TEXT[start : end if end > 0 else None]
+        assert f"`{field}`" in section
 
     @pytest.mark.parametrize(
         ("kind", "field"),
