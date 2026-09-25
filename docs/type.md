@@ -58,17 +58,7 @@ A character, place, group, object or piece of setting lore.
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
-| `campaign_N` | optional, one per campaign the record has state in | a mapping, described below |
-
-A `campaign_N` block requires `first_session` and `last_session`: both null
-before any appearance, otherwise both links, to the earliest and latest
-[Session](#session) of campaign N in the record's Appearances. `N` must be an
-existing campaign, and a record under `campaigns/campaign_N/` may only carry
-that campaign's block. An Object's block also requires `held_by`: null only
-before entering play (while `first_session` is null), then a holder, a
-non-empty list of holders (split possession) or `GONE` (out of play), with
-`GONE` also allowed inside a list; a holder is a link to PC, NPC or Faction
-Content in campaign N or shared.
+| `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#state) |
 
 ### Body
 
@@ -78,8 +68,9 @@ list of `- [[S-N-NNN]]: what happened` items, or the single item `- N/A` when
 there are none; no other blocks or subheadings. The list runs through
 campaigns in ascending order and, within a campaign, in ascending session
 order without repeats, and each campaign that appears must have a
-`campaign_N` block whose `first_session` and `last_session` are that
-campaign's earliest and latest entries.
+[`campaign_N` block](campaign.md#state) whose
+`first_session` and `last_session` are that campaign's earliest and latest
+entries.
 
 ## Note
 
