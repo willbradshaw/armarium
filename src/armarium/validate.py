@@ -214,7 +214,7 @@ def validate_markdown(
     if index is None:
         index = VaultIndex(root)
         index.notes[path] = (note, [])
-    diagnostics.extend(validate_wikilinks(note, index))
+    diagnostics.extend(validate_wikilinks(note, index).diagnostics)
     diagnostics.extend(validate_placement(note, index).diagnostics)
     diagnostics.extend(validate_filename(note, index).diagnostics)
     diagnostics.extend(validate_campaigns(note, index).diagnostics)
@@ -718,7 +718,7 @@ def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
     return findings.diagnostics
 
 
-def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
+def validate_wikilinks(note: Note, index: VaultIndex) -> Findings:
     """Check every link the note contains against the vault.
 
     Links within a type-bound field must target a correctly placed record
@@ -729,7 +729,7 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
         index: Whole-vault file index and lazy note cache for this run.
 
     Returns:
-        list[Diagnostic]: Findings attributed to the selected note, with metadata
+        Findings: Problems attributed to the selected note, with metadata
             locations or body source lines: links that are malformed, cannot be
             resolved, name a missing anchor or fail their field's requirements,
             a list entry in a type-bound field that names the same file as an
@@ -737,9 +737,8 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             splits across table cells. Unrelated notes are not parsed. Query
             execution and ordinary URLs are excluded.
     """
-    path = note.path.relative_to(index.root).as_posix()
+    findings = Findings.from_note(note, index)
     targets = _link_targets(note)
-    diagnostics: list[Diagnostic] = []
     seen: dict[str, set[Path]] = {}
     for link in note.links:
         # 1. Check the link as written
@@ -750,17 +749,18 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
                 link.target, note, index, targets.get(link.field), link.anchor
             )
         if problem is not None:
-            diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
+            findings.add(*problem, link.location, link.line)
         # 2. A list entry in a type-bound field repeating an earlier entry
         if link.error is None and link.field in targets and link.location != link.field:
             resolved, _ = index.resolve(link.target, note.path)
             if resolved is None:
                 continue
-            if resolved in seen.setdefault(link.field, set()):
-                message = f"[[{link.target}]] repeats an earlier {link.field} entry"
-                diagnostics.append(
-                    Diagnostic(path, "link.duplicate", message, link.location)
-                )
+            findings.diagnose(
+                resolved in seen.setdefault(link.field, set()),
+                "link.duplicate",
+                f"[[{link.target}]] repeats an earlier {link.field} entry",
+                link.location,
+            )
             seen[link.field].add(resolved)
     # 3. Links that a table cell boundary cuts in two: the row reads as a
     # whole, but Obsidian splits its cells at every unescaped pipe.
@@ -775,10 +775,13 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             isinstance(p, ValueError)
             for p in iter_wikilinks(lines[row.line - note.body.line])
         )
-        if any(broken) and not any(whole):
-            message = "table cell boundary splits a wikilink; escape | as \\|"
-            diagnostics.append(Diagnostic(path, "link.syntax", message, "", row.line))
-    return diagnostics
+        findings.diagnose(
+            any(broken) and not any(whole),
+            "link.syntax",
+            "table cell boundary splits a wikilink; escape | as \\|",
+            line=row.line,
+        )
+    return findings
 
 
 def _link_targets(note: Note) -> dict[str, Target]:
