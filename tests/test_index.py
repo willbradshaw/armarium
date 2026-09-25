@@ -5,8 +5,12 @@ from unittest.mock import patch
 
 import pytest
 
-from armarium.index import VaultIndex
+from armarium.index import VaultIndex, _key
 from armarium.parse import Body, Frontmatter, Note
+
+# A case-only pair cannot coexist on case-insensitive filesystems such as
+# macOS, so tests patch find_files to index one without creating it.
+CASE_PAIR = ("Quay Nine.md", "quay nine.md")
 
 
 class TestVaultIndex:
@@ -21,13 +25,19 @@ class TestVaultIndex:
         assert not parse.called
         assert index.notes == {}
         assert set(index.targets) == {
-            "notes/Café.MD",
-            "Café.MD",
-            "notes/Café",
-            "Café",
+            "notes/café.md",
+            "café.md",
+            "notes/café",
+            "café",
             "image.png",
         }
         assert index.root == tmp_path.resolve()
+
+    def test_case_only_pair(self, tmp_path: Path) -> None:
+        paths = [tmp_path / name for name in CASE_PAIR]
+        with patch("armarium.index.find_files", return_value=paths):
+            index = VaultIndex(tmp_path)
+        assert index.targets == {"quay nine.md": set(paths), "quay nine": set(paths)}
 
 
 class TestVaultIndexResolve:
@@ -38,7 +48,12 @@ class TestVaultIndexResolve:
             ("Café.md", "notes/Café.md", None),
             ("Cafe\u0301", "notes/Café.md", None),
             ("/notes/Café.md", "notes/Café.md", None),
-            ("café", None, "link.missing"),
+            ("café", "notes/Café.md", None),
+            ("CAFÉ", "notes/Café.md", None),
+            ("NOTES/CAFÉ.MD", "notes/Café.md", None),
+            ("Straße", "Straße.md", None),
+            ("STRASSE", "Straße.md", None),
+            ("strasse", "Straße.md", None),
             ("Nickname", None, "link.missing"),
             ("same", None, "link.ambiguous"),
             ("a/same", "a/same.md", None),
@@ -50,13 +65,24 @@ class TestVaultIndexResolve:
     def test_resolution(
         self, tmp_path: Path, target: str, expected: str | None, rule: str | None
     ) -> None:
-        for name in ("notes/Café.md", "a/same.md", "b/same.md", "image.png"):
+        names = ("notes/Café.md", "Straße.md", "a/same.md", "b/same.md", "image.png")
+        for name in names:
             path = tmp_path / name
             path.parent.mkdir(exist_ok=True)
             path.write_text("---\naliases: [Nickname]\n---\n")
         assert VaultIndex(tmp_path).resolve(target, tmp_path / "source.md") == (
             tmp_path / expected if expected else None,
             rule,
+        )
+
+    @pytest.mark.parametrize("target", ["Quay Nine", "quay nine", "QUAY NINE.md"])
+    def test_case_only_pair(self, tmp_path: Path, target: str) -> None:
+        paths = [tmp_path / name for name in CASE_PAIR]
+        with patch("armarium.index.find_files", return_value=paths):
+            index = VaultIndex(tmp_path)
+        assert index.resolve(target, tmp_path / "source.md") == (
+            None,
+            "link.ambiguous",
         )
 
     def test_outside_source(self, tmp_path: Path) -> None:
@@ -121,3 +147,18 @@ class TestVaultIndexParse:
         path = (tmp_path.parent if outside else tmp_path) / f"note{suffix}"
         with pytest.raises(ValueError, match="Markdown inside"):
             VaultIndex(tmp_path).parse(path)
+
+
+class TestKey:
+    @pytest.mark.parametrize(
+        "name, expected",
+        [
+            ("Cafe\u0301", "café"),
+            ("CAFÉ", "café"),
+            ("Straße", "strasse"),
+            ("notes/Quay Nine.MD", "notes/quay nine.md"),
+            ("image.png", "image.png"),
+        ],
+    )
+    def test_key(self, name: str, expected: str) -> None:
+        assert _key(name) == expected

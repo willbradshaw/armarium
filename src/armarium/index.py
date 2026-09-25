@@ -18,7 +18,9 @@ class VaultIndex:
         types/Content.md and Content.md, plus all three without .md. These keys
         support links such as [[types/Content]] and [[Content]]. Assets keep
         their extensions. Each key maps to a set because multiple files can
-        share a name; resolve() reports such matches as ambiguous.
+        share a name; resolve() reports such matches as ambiguous. Keys are
+        casefolded, as Obsidian resolves links case-insensitively, so files
+        whose paths differ only by case collide in the same way.
 
         Parsed notes are stored separately in self.notes, initially empty.
         parse() fills that cache only when a note's contents are needed.
@@ -39,8 +41,7 @@ class VaultIndex:
                 parts = name.split("/")
                 # Index each trailing path, from the full path to the filename.
                 for offset in range(len(parts)):
-                    # Equivalent Unicode spellings should share the same key.
-                    key = unicodedata.normalize("NFC", "/".join(parts[offset:]))
+                    key = _key("/".join(parts[offset:]))
                     self.targets.setdefault(key, set()).add(path)
 
     def resolve(self, target: str, source: Path) -> tuple[Path | None, str | None]:
@@ -64,8 +65,9 @@ class VaultIndex:
             tuple[Path | None, str | None]: (file_path, None) for exactly one
                 matching file, (None, "link.missing") for no matches, or
                 (None, "link.ambiguous") for multiple matches. Matching is
-                case-sensitive, but equivalent Unicode spellings match.
-                Display aliases and YAML aliases are not lookup keys.
+                case-insensitive, as in Obsidian, and equivalent Unicode
+                spellings match. Display aliases and YAML aliases are not
+                lookup keys.
 
         Raises:
             ValueError: source is not a full path inside this vault.
@@ -74,8 +76,7 @@ class VaultIndex:
             raise ValueError("source must be inside the indexed vault")
         if not target:
             return source, None
-        key = unicodedata.normalize("NFC", target.removeprefix("/"))
-        candidates = self.targets.get(key, set())
+        candidates = self.targets.get(_key(target.removeprefix("/")), set())
         if len(candidates) == 1:
             return next(iter(candidates)), None
         return None, "link.ambiguous" if candidates else "link.missing"
@@ -122,3 +123,16 @@ class VaultIndex:
         if path not in self.notes:
             self.notes[path] = Note.parse(path, self.root)
         return self.notes[path]
+
+
+def _key(name: str) -> str:
+    """Normalise a link target or file path into a case-insensitive index key.
+
+    Args:
+        name: Vault-relative path or link target text.
+
+    Returns:
+        str: NFC-normalised, casefolded key so that equivalent Unicode
+            spellings and case variants share one entry.
+    """
+    return unicodedata.normalize("NFC", name).casefold()
