@@ -9,3 +9,5 @@ on [[The Crownless Coast]]. It opens in [[Port Briselle]], where
 repair advance.
 
 Daring escapes, public promises and divided loyalties shape the campaign.
+
+Working notes: [[Prep for the hearing]] and the shared [[Coast design notes]].

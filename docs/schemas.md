@@ -15,6 +15,7 @@ Each supported `type` has a schema in the vault's `reference/schemas/` directory
 | --- | --- |
 | `[[types/Content]]` | `content.schema.json` |
 | `[[types/Clue]]` | `clue.schema.json` |
+| `[[types/Note]]` | `note.schema.json` |
 | `[[types/Session]]` | `session.schema.json` |
 | `[[types/Player]]` | `player.schema.json` |
 | `[[types/Transcript]]` | `transcript.schema.json` |

@@ -53,6 +53,7 @@ VAULT_DIRECTORIES = (
     "assets",
     "campaigns",
     "content",
+    "notes",
     "reference/schemas",
     "reference/statuses",
     "reference/templates",
@@ -62,6 +63,7 @@ VAULT_DIRECTORIES = (
 VAULT_TYPES = (
     "Clue",
     "Content",
+    "Note",
     "Player",
     "Reference",
     "Session",
@@ -70,10 +72,11 @@ VAULT_TYPES = (
     "Type",
 )
 VAULT_STATUSES = ("Abandoned", "Dormant", "Hinted", "Pending", "Revealed", "Superseded")
-VAULT_TEMPLATES = ("Clue", "Content", "Player", "Session", "Transcript")
+VAULT_TEMPLATES = ("Clue", "Content", "Note", "Player", "Session", "Transcript")
 CAMPAIGN_DIRECTORIES = (
     "clues",
     "content",
+    "notes",
     "reference/indexes",
     "reference/players",
     "sessions",
@@ -1017,13 +1020,16 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
         index: Index supplying the selected vault boundary.
 
     Returns:
-        Findings: A placement error for a misplaced built-in type. Unknown
-            custom types and Reference records have no placement rule.
+        Findings: A placement error for a misplaced built-in type. Content
+            and Note records belong under the vault's or their campaign's
+            directory of that name. Unknown custom types and Reference
+            records have no placement rule.
     """
     findings = Findings.from_record(record, index)
     kind = record.frontmatter.type
     directories = {
         "Content": "content",
+        "Note": "notes",
         "Session": "sessions",
         "Clue": "clues",
         "Transcript": "sessions/transcripts",
@@ -1050,7 +1056,7 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
         f"{kind} belongs under {expected.relative_to(index.root)}"
         + (
             " inside a numeric campaign"
-            if scope is None and kind not in {"Content", "Type", "Status"}
+            if scope is None and kind not in {"Content", "Note", "Type", "Status"}
             else ""
         ),
     )

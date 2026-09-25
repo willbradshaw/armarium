@@ -185,7 +185,7 @@ class TestPyproject:
         assert process.returncode == 0, process.stdout + process.stderr
         assert process.stdout == ""
         if directory:
-            assert process.stderr.endswith("5 skipped, 0 unsupported\n")
+            assert process.stderr.endswith("6 skipped, 0 unsupported\n")
         else:
             assert process.stderr.endswith(
                 "INFO: 1 checked, 0 skipped, 0 unsupported\n"

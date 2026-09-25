@@ -16,6 +16,7 @@ SCHEMAS = ROOT / "vaults/starter/reference/schemas"
 MAPPING = {
     "[[types/Content]]": "content",
     "[[types/Clue]]": "clue",
+    "[[types/Note]]": "note",
     "[[types/Session]]": "session",
     "[[types/Player]]": "player",
     "[[types/Transcript]]": "transcript",

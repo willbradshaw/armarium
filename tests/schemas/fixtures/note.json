@@ -1,0 +1,28 @@
+{
+  "base": {
+    "frontmatter": {
+      "type": "[[types/Note]]"
+    },
+    "body": ""
+  },
+  "cases": [
+    {
+      "name": "custom fields and free body",
+      "valid": true,
+      "frontmatter": {
+        "tags": [
+          "prep"
+        ],
+        "aliases": null
+      },
+      "body": "# Ideas\nFree Markdown without required headings."
+    },
+    {
+      "name": "wrong type spelling",
+      "valid": false,
+      "frontmatter": {
+        "type": "[[Note]]"
+      }
+    }
+  ]
+}

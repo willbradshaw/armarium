@@ -82,6 +82,7 @@ def write_records(root: Path, records: dict[str, str]) -> None:
     for name in (
         "Type",
         "Content",
+        "Note",
         "Player",
         "Session",
         "Clue",
@@ -630,7 +631,7 @@ class TestValidateDirectory:
         before = {p: p.read_bytes() for p in find_files(root)}
         result = validate_directory(root)
         assert not result.failed and result.unsupported == 0
-        assert result.checked > 0 and result.skipped == 5
+        assert result.checked > 0 and result.skipped == len(VAULT_TEMPLATES)
         assert all(p.read_bytes() == data for p, data in before.items())
 
     @pytest.mark.parametrize("explicit", [False, True])
@@ -1229,6 +1230,11 @@ class TestValidatePlacement:
             ("Content", "content/nested/Record.md", True),
             ("Content", "campaigns/campaign_42/content/nested/Record.md", True),
             ("Content", "other/Record.md", False),
+            ("Note", "notes/Record.md", True),
+            ("Note", "notes/nested/Record.md", True),
+            ("Note", "campaigns/campaign_42/notes/Record.md", True),
+            ("Note", "content/Record.md", False),
+            ("Note", "campaigns/campaign_42/content/Record.md", False),
             ("Session", "campaigns/campaign_42/sessions/nested/S-42-001.md", True),
             (
                 "Session",
@@ -1745,10 +1751,14 @@ class TestValidateVault:
         "relative, kind",
         [
             ("assets", "directory"),
+            ("notes", "directory"),
             ("reference/views", "directory"),
+            ("reference/types/Note.md", "file"),
             ("reference/types/Type.md", "file"),
             ("reference/statuses/Superseded.md", "file"),
             ("reference/templates/Clue.md", "file"),
+            ("reference/templates/Note.md", "file"),
+            ("campaigns/campaign_1/notes", "directory"),
             ("campaigns/campaign_1/sessions/transcripts", "directory"),
             ("campaigns/campaign_1/reference/Campaign.md", "file"),
             ("campaigns/campaign_1/reference/indexes/Clues.md", "file"),
