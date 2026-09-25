@@ -1,7 +1,10 @@
 {
   "base": {
     "frontmatter": {
-      "type": "[[Type]]"
+      "type": "[[Type]]",
+      "directories": {
+        "shared": "reference/types"
+      }
     },
     "body": "A definition.\n"
   },
@@ -24,6 +27,155 @@
         "type": "[[Type|Label]]"
       },
       "valid": false
+    },
+    {
+      "name": "campaign directory",
+      "frontmatter": {
+        "directories": {
+          "campaign": "clues"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "both directories",
+      "frontmatter": {
+        "directories": {
+          "shared": "content",
+          "campaign": "content"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "nested directory",
+      "frontmatter": {
+        "directories": {
+          "campaign": "sessions/transcripts"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "null directories",
+      "frontmatter": {
+        "directories": null
+      },
+      "valid": false
+    },
+    {
+      "name": "empty directories",
+      "frontmatter": {
+        "directories": {}
+      },
+      "valid": false
+    },
+    {
+      "name": "string directories",
+      "frontmatter": {
+        "directories": "content"
+      },
+      "valid": false
+    },
+    {
+      "name": "list directories",
+      "frontmatter": {
+        "directories": [
+          "content"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown scope",
+      "frontmatter": {
+        "directories": {
+          "shared": "content",
+          "vault": "content"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "non-string directory",
+      "frontmatter": {
+        "directories": {
+          "shared": 7
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "empty directory",
+      "frontmatter": {
+        "directories": {
+          "shared": ""
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "absolute directory",
+      "frontmatter": {
+        "directories": {
+          "shared": "/content"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "parent segment",
+      "frontmatter": {
+        "directories": {
+          "shared": "../content"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "inner parent segment",
+      "frontmatter": {
+        "directories": {
+          "shared": "content/../reference"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "current segment",
+      "frontmatter": {
+        "directories": {
+          "shared": "./content"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "trailing slash",
+      "frontmatter": {
+        "directories": {
+          "shared": "content/"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "empty segment",
+      "frontmatter": {
+        "directories": {
+          "shared": "content//nested"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "dotted name",
+      "frontmatter": {
+        "directories": {
+          "shared": ".notes/content"
+        }
+      },
+      "valid": true
     }
   ]
 }

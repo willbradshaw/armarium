@@ -21,6 +21,7 @@ from armarium.lib import (
     find_files,
     find_vault,
     iter_wikilinks,
+    parse_directories,
     parse_wikilink,
 )
 from armarium.parse import Record, Section
@@ -279,8 +280,13 @@ def validate_vault(root: Path) -> Findings:
             contents are validated separately.
     """
     findings = Findings("")
+    required: set[str] = set()
 
     def require(relative: str, directory: bool) -> None:
+        # Fixed and declared directories overlap; report each entry once.
+        if relative in required:
+            return
+        required.add(relative)
         path = root / relative
         present = path.is_dir() if directory else path.is_file()
         kind = "directory" if directory else "file"
@@ -302,10 +308,10 @@ def validate_vault(root: Path) -> Findings:
 
     # 2. Check the campaign layout
     campaigns = root / "campaigns"
+    found: list[str] = []
     if not campaigns.is_dir() or campaigns.is_symlink():
         findings.add("vault.campaign", "cannot check campaigns: campaigns/ is missing")
     else:
-        found = []
         for child in find_children(campaigns):
             if child.is_dir() and CAMPAIGN_NAME.fullmatch(child.name):
                 found.append(child.name)
@@ -323,19 +329,45 @@ def validate_vault(root: Path) -> Findings:
             for relative in CAMPAIGN_FILES:
                 require(f"campaigns/{name}/{relative}", False)
 
-    # 3. Match schemas and Type definitions by name: Clue.md <-> clue.schema.json.
+    # 3. Require the directories each Type record declares for its records
     types = root / "reference/types"
-    schemas = root / "reference/schemas"
-    for directory in (types, schemas):
-        if not directory.is_dir() or directory.is_symlink():
-            relative = directory.relative_to(root).as_posix()
+    if not types.is_dir() or types.is_symlink():
+        for rule, subject in (
+            ("vault.type", "declared directories"),
+            ("schema.missing", "schema coverage"),
+        ):
+            findings.add(rule, f"cannot check {subject}: reference/types is missing")
+        return findings
+    definitions = [file for file in find_files(types) if file.suffix.lower() == ".md"]
+    for file in definitions:
+        relative = file.relative_to(root).as_posix()
+        record, failures = Record.parse(file, root)
+        if record is None:
             findings.add(
-                "schema.missing", f"cannot check schema coverage: {relative} is missing"
+                "vault.type",
+                f"cannot check {relative} directories: {failures[0].message}",
             )
-            return findings
-    definitions = {
-        file.stem for file in find_files(types) if file.suffix.lower() == ".md"
-    }
+            continue
+        try:
+            directories = parse_directories(record.frontmatter.get("directories"))
+        except ValueError as exc:
+            findings.add("vault.type", f"{relative}: {exc}")
+            continue
+        for scope, path in directories.items():
+            if scope == "shared":
+                require(path, True)
+            for name in found if scope == "campaign" else ():
+                require(f"campaigns/{name}/{path}", True)
+
+    # 4. Match schemas and Type definitions by name: Clue.md <-> clue.schema.json.
+    schemas = root / "reference/schemas"
+    if not schemas.is_dir() or schemas.is_symlink():
+        findings.add(
+            "schema.missing",
+            "cannot check schema coverage: reference/schemas is missing",
+        )
+        return findings
+    names = {file.stem for file in definitions}
     schema_names: set[str] = set()
     for file in find_files(schemas):
         relative = file.relative_to(root).as_posix()
@@ -353,11 +385,11 @@ def validate_vault(root: Path) -> Findings:
         name = file.name.removesuffix(".schema.json")
         schema_names.add(name)
         findings.diagnose(
-            name not in {definition.lower() for definition in definitions},
+            name not in {definition.lower() for definition in names},
             "schema.unused",
             f"{relative} matches no Type definition",
         )
-    for definition in sorted(definitions):
+    for definition in sorted(names):
         findings.diagnose(
             definition.lower() not in schema_names,
             "schema.missing",
@@ -1013,53 +1045,49 @@ _TARGET_CHECKS: dict[
 
 
 def validate_placement(record: Record, index: VaultIndex) -> Findings:
-    """Check the record's directory against its declared type.
+    """Check the record's directory against the directories its type declares.
+
+    Each Type record declares where its records live: shared paths under the
+    vault root, campaign paths under each campaigns/campaign_N. A record
+    belongs to the longest declared directory containing it, so a directory
+    declared inside another type's (Transcript's sessions/transcripts inside
+    Session's sessions) claims its subtree. Other subfolders inside a
+    declared directory are allowed.
 
     Args:
         record: Selected record; templates are excluded by the caller.
-        index: Index supplying the selected vault boundary.
+        index: Index supplying the vault boundary and the Type records.
 
     Returns:
-        Findings: A placement error for a misplaced built-in type. Content
-            and Note records belong under the vault's or their campaign's
-            directory of that name. Unknown custom types and Reference
-            records have no placement rule.
+        Findings: A record.placement error when the type declares no usable
+            directories, the record lies outside them, or another type's
+            longer declaration claims its directory.
     """
     findings = Findings.from_record(record, index)
-    kind = record.frontmatter.type
-    directories = {
-        "Content": "content",
-        "Note": "notes",
-        "Session": "sessions",
-        "Clue": "clues",
-        "Transcript": "sessions/transcripts",
-        "Player": "reference/players",
-        "Type": "reference/types",
-        "Status": "reference/statuses",
-    }
-    if kind not in directories:
-        return findings
-    scope = find_campaign(record.path, index.root)
-    prefix = index.root
-    if scope and kind not in {"Type", "Status"}:
-        prefix /= f"campaigns/{scope}"
-    expected = prefix / directories[kind]
-    valid = record.path.is_relative_to(expected)
-    if kind in {"Session", "Clue", "Transcript", "Player"} and not scope:
-        valid = False
-    # The Transcript subtree is reserved for transcripts, not Session records.
-    if kind == "Session" and record.path.is_relative_to(expected / "transcripts"):
-        valid = False
-    findings.diagnose(
-        not valid,
+    kind = record.frontmatter.type or ""
+    declarations = index.declared_directories()
+
+    def describe(scope: str, path: str) -> str:
+        return path if scope == "shared" else f"campaigns/campaign_N/{path}"
+
+    # 1. The type must declare where its records live
+    if findings.diagnose(
+        kind not in declarations,
         "record.placement",
-        f"{kind} belongs under {expected.relative_to(index.root)}"
-        + (
-            " inside a numeric campaign"
-            if scope is None and kind not in {"Content", "Note", "Type", "Status"}
-            else ""
-        ),
+        f"cannot check placement: {kind} declares no directories",
+    ):
+        return findings
+    # 2. The deepest declared directory containing the record must be its type's
+    containing = index.containing_directories(record.path)
+    if containing and kind in containing[-1][2]:
+        return findings
+    declared = " or ".join(
+        describe(area, path) for area, path in declarations[kind].items()
     )
+    message = f"{kind} belongs under {declared}"
+    if any(kind in names for _, _, names in containing):
+        message += f", outside {describe(*containing[-1][:2])}"
+    findings.add("record.placement", message)
     return findings
 
 

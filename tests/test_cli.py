@@ -21,8 +21,12 @@ def vault(tmp_path: Path) -> Path:
     (root / "reference/schemas").mkdir()
     (root / "campaigns").mkdir()
     (root / "reference/schemas/widget.schema.json").write_text("true")
-    for name in ("Widget", "Type"):
-        (root / f"reference/types/{name}.md").write_text('---\ntype: "[[Type]]"\n---\n')
+    (root / "content").mkdir()
+    # Widget records live in content/, and Type records declare their own home.
+    for name, directory in (("Widget", "content"), ("Type", "reference/types")):
+        (root / f"reference/types/{name}.md").write_text(
+            f'---\ntype: "[[Type]]"\ndirectories: {{shared: {directory}}}\n---\n'
+        )
     (root / "reference/schemas/type.schema.json").write_text("true")
     return root
 
@@ -40,30 +44,30 @@ class TestMain:
         [
             (
                 '---\ntype: "[[Widget]]"\n---\n',
-                "record.md",
+                "content/record.md",
                 0,
                 "",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
                 '---\ntype: "[[Unknown]]"\n---\n',
-                "record.md",
+                "content/record.md",
                 1,
-                "ERROR: record.md: schema.unsupported",
+                "ERROR: content/record.md: schema.unsupported",
                 "1 checked, 0 skipped, 1 unsupported",
             ),
             (
                 "plain Markdown",
-                "record.md",
+                "content/record.md",
                 1,
-                "ERROR: record.md [type]: record.type",
+                "ERROR: content/record.md [type]: record.type",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
                 "---\nx: first\nx: second\n---\n",
-                "record.md",
+                "content/record.md",
                 1,
-                "ERROR: record.md:3: parse.invalid",
+                "ERROR: content/record.md:3: parse.invalid",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
@@ -88,7 +92,7 @@ class TestMain:
     ) -> None:
         if "Unknown" in text:
             (vault / "reference/types/Unknown.md").write_text(
-                '---\ntype: "[[Type]]"\n---\n'
+                '---\ntype: "[[Type]]"\ndirectories: {shared: content}\n---\n'
             )
         path = vault / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -178,7 +182,6 @@ class TestMain:
     ) -> None:
         # A directory inside the vault gets record checks only; see the
         # vault-root test below for infrastructure checks.
-        (vault / "content").mkdir()
         (vault / "content/record.md").write_text(
             '---\ntype: "[[Widget]]"\n---\n' if valid else "Untyped"
         )
@@ -198,7 +201,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        (vault / "record.md").write_text('---\ntype: "[[Widget]]"\n---\n')
+        (vault / "content/record.md").write_text('---\ntype: "[[Widget]]"\n---\n')
         monkeypatch.setattr(sys, "argv", ["armarium", "validate", str(vault)])
         # Every record passes, but the minimal fixture lacks required
         # infrastructure, which is reported against the vault root itself.
@@ -234,7 +237,7 @@ class TestMain:
     def test_module_entry_point(
         self, vault: Path, tmp_path: Path, scenario: str
     ) -> None:
-        path = vault / "record.md"
+        path = vault / "content/record.md"
         if scenario != "missing":
             path.write_text(
                 '---\ntype: "[[Widget]]"\n---\n' if scenario == "valid" else "untyped"

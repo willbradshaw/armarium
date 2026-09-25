@@ -3,7 +3,7 @@
 import unicodedata
 from pathlib import Path
 
-from armarium.lib import Diagnostic, find_files
+from armarium.lib import Diagnostic, find_campaign, find_files, parse_directories
 from armarium.parse import Record
 
 
@@ -125,6 +125,61 @@ class VaultIndex:
         if path not in self.records:
             self.records[path] = Record.parse(path, self.root)
         return self.records[path]
+
+    def declared_directories(self) -> dict[str, dict[str, str]]:
+        """Read where each Type record declares that its records live.
+
+        Returns:
+            dict[str, dict[str, str]]: Type name (the record's filename stem)
+                to its declared directory per scope, for every reference/types
+                record with a usable declaration; the others are left out.
+        """
+        types = self.root / "reference/types"
+        if types.is_symlink() or not types.is_dir():
+            return {}
+        declarations: dict[str, dict[str, str]] = {}
+        for path in find_files(types):
+            if path.suffix.lower() != ".md":
+                continue
+            record, _ = self.parse(path)
+            if record is None:
+                continue
+            try:
+                value = record.frontmatter.get("directories")
+                declarations[path.stem] = parse_directories(value)
+            except ValueError:
+                continue
+        return declarations
+
+    def containing_directories(self, path: Path) -> list[tuple[str, str, set[str]]]:
+        """Find the declared directories a path lies under, shallowest first.
+
+        Args:
+            path: Absolute path inside the indexed vault.
+
+        Returns:
+            list[tuple[str, str, set[str]]]: Scope, declared path and the
+                names of the types declaring it, for each declared directory
+                containing the path: shared directories under the vault root
+                and, for a path inside campaigns/campaign_N, that campaign's
+                directories. The last entry is the deepest.
+
+        Raises:
+            ValueError: The path is outside this vault.
+        """
+        scope = find_campaign(path, self.root)
+        bases = {
+            "shared": self.root,
+            "campaign": self.root / "campaigns" / scope if scope else None,
+        }
+        found: dict[Path, tuple[str, str, set[str]]] = {}
+        for name, directories in self.declared_directories().items():
+            for area, declared in directories.items():
+                base = bases[area]
+                if base is None or not path.is_relative_to(base / declared):
+                    continue
+                found.setdefault(base / declared, (area, declared, set()))[2].add(name)
+        return [found[key] for key in sorted(found, key=lambda d: len(d.parts))]
 
 
 def _key(name: str) -> str:

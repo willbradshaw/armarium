@@ -485,3 +485,39 @@ def find_campaign(path: Path, root: Path) -> str | None:
     if len(parts) > 2 and parts[0] == "campaigns" and CAMPAIGN_NAME.fullmatch(parts[1]):
         return parts[1]
     return None
+
+
+# -----------------------------------------------------------------------------
+# Type declarations
+# -----------------------------------------------------------------------------
+
+# Scopes a Type record declares its directories under: shared paths are
+# relative to the vault root, campaign paths to each campaigns/campaign_N.
+DIRECTORY_SCOPES = ("shared", "campaign")
+
+# A declared directory: a relative path without empty, . or .. segments.
+DIRECTORY = re.compile(r"(?!\.\.?(?:/|$))[^/]+(?:/(?!\.\.?(?:/|$))[^/]+)*")
+
+
+def parse_directories(value: object) -> dict[str, str]:
+    """Read a Type record's declaration of where its records live.
+
+    Args:
+        value: The record's directories field: a mapping of shared and/or
+            campaign to a relative path.
+
+    Returns:
+        dict[str, str]: Scope to declared path, in scope order.
+
+    Raises:
+        ValueError: The declaration is absent, is not such a mapping, or names
+            a path that is not relative.
+    """
+    if value is None:
+        raise ValueError("directories must be declared")
+    if not isinstance(value, dict) or not value or set(value) - set(DIRECTORY_SCOPES):
+        raise ValueError("directories must map shared or campaign to relative paths")
+    for scope, path in value.items():
+        if not isinstance(path, str) or DIRECTORY.fullmatch(path) is None:
+            raise ValueError(f"directories.{scope} must be a relative path")
+    return {scope: value[scope] for scope in DIRECTORY_SCOPES if scope in value}

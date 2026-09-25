@@ -49,6 +49,25 @@ from armarium.validate import (
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Where each built-in type's records live, as the shipped Type records declare.
+TYPE_DIRECTORIES = {
+    "Content": {"shared": "content", "campaign": "content"},
+    "Note": {"shared": "notes", "campaign": "notes"},
+    "Clue": {"campaign": "clues"},
+    "Session": {"campaign": "sessions"},
+    "Transcript": {"campaign": "sessions/transcripts"},
+    "Player": {"campaign": "reference/players"},
+    "Reference": {"shared": "reference", "campaign": "reference"},
+    "Type": {"shared": "reference/types"},
+    "Status": {"shared": "reference/statuses"},
+}
+
+
+def type_record(name: str, **directories: str) -> str:
+    """Frontmatter of a Type record: the built-in declaration or the given one."""
+    declared = directories or TYPE_DIRECTORIES[name]
+    return f'type: "[[Type]]"\ndirectories: {json.dumps(declared)}'
+
 
 @pytest.fixture
 def vault(tmp_path: Path) -> Path:
@@ -62,7 +81,11 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def write_record(vault: Path) -> Callable[..., Path]:
-    (vault / "reference/types/Widget.md").write_text('---\ntype: "[[Type]]"\n---\n')
+    for name, text in (
+        ("Widget", type_record("Widget", shared="content")),
+        ("Type", type_record("Type")),
+    ):
+        (vault / f"reference/types/{name}.md").write_text(f"---\n{text}\n---\n")
 
     def write(
         metadata: dict[str, Any],
@@ -79,18 +102,8 @@ def write_record(vault: Path) -> Callable[..., Path]:
 
 def write_records(root: Path, records: dict[str, str]) -> None:
     """Write frontmatter-only records plus placed definitions of every built-in type."""
-    for name in (
-        "Type",
-        "Content",
-        "Note",
-        "Player",
-        "Session",
-        "Clue",
-        "Transcript",
-        "Reference",
-        "Status",
-    ):
-        records.setdefault(f"reference/types/{name}.md", 'type: "[[Type]]"')
+    for name in TYPE_DIRECTORIES:
+        records.setdefault(f"reference/types/{name}.md", type_record(name))
     for relative, text in records.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -104,13 +117,14 @@ def make_vault(root: Path) -> None:
     ):
         (root / relative).mkdir(parents=True, exist_ok=True)
     for relative in (
-        *(f"reference/types/{name}.md" for name in VAULT_TYPES),
         *(f"reference/statuses/{name}.md" for name in VAULT_STATUSES),
         *(f"reference/templates/{name}.md" for name in VAULT_TEMPLATES),
         *(f"campaigns/campaign_1/{name}" for name in CAMPAIGN_FILES),
     ):
         (root / relative).write_text("")
     for name in VAULT_TYPES:
+        text = f"---\n{type_record(name)}\n---\n"
+        (root / f"reference/types/{name}.md").write_text(text)
         (root / f"reference/schemas/{name.lower()}.schema.json").write_text("true")
 
 
@@ -248,7 +262,12 @@ class TestValidateMarkdown:
         (vault / "reference/schemas/widget.schema.json").write_text("false")
         result = validate_markdown(path)
         assert result.failed and result.checked == 1 and result.skipped == 0
-        assert result.diagnostics[0].rule == "schema.instance"
+        # The definition folders belong to Type and Status, so the misplaced
+        # Widget is reported alongside its schema failure.
+        assert [d.rule for d in result.diagnostics] == [
+            "record.placement",
+            "schema.instance",
+        ]
 
     @pytest.mark.parametrize(
         ("name", "metadata", "rule"),
@@ -499,8 +518,10 @@ class TestValidateDirectory:
 
         records = {
             "content/good.MD": '---\ntype: "[[types/Widget]]"\n---\n',
-            "reference/types/Widget.md": '---\ntype: "[[Type]]"\n---\n',
-            "reference/types/Type.md": '---\ntype: "[[Type]]"\n---\n',
+            "reference/types/Widget.md": (
+                f"---\n{type_record('Widget', shared='content')}\n---\n"
+            ),
+            "reference/types/Type.md": f"---\n{type_record('Type')}\n---\n",
             "content/nested/bad.md": "---\nx: [\n---\n",
             "content/untyped.md": "No type",
             "content/unknown.md": '---\ntype: "[[Unknown]]"\n---\n',
@@ -641,18 +662,22 @@ class TestValidateDirectory:
         from unittest.mock import Mock
 
         outer = tmp_path / "outer"
-        inner = outer / "nested"
+        # The inner vault sits inside the outer's content/, where its Widget
+        # records are placed once the outer vault claims the whole subtree.
+        inner = outer / "content/nested"
         for root, schema in ((outer, "true"), (inner, "false")):
             (root / "reference/types").mkdir(parents=True)
             (root / "reference/schemas").mkdir()
             (root / "campaigns").mkdir()
             (root / "reference/schemas/widget.schema.json").write_text(schema)
+            (root / "content").mkdir(exist_ok=True)
             for name in ("a.md", "b.md"):
-                (root / name).write_text('---\ntype: "[[Widget]]"\n---\n')
-        for name in ("Widget", "Type"):
-            (outer / f"reference/types/{name}.md").write_text(
-                '---\ntype: "[[Type]]"\n---\n'
-            )
+                (root / "content" / name).write_text('---\ntype: "[[Widget]]"\n---\n')
+        for name, text in (
+            ("Widget", type_record("Widget", shared="content")),
+            ("Type", type_record("Type")),
+        ):
+            (outer / f"reference/types/{name}.md").write_text(f"---\n{text}\n---\n")
         (outer / "reference/schemas/type.schema.json").write_text("true")
         discover = Mock(wraps=find_vault)
         check = Mock(wraps=check_vault)
@@ -858,9 +883,10 @@ class TestValidateWikilinks:
         expected: list[tuple[str, str]],
     ) -> None:
         for name, text in {
-            "reference/types/Clue.md": 'type: "[[Type]]"',
-            "reference/types/Status.md": 'type: "[[Type]]"',
-            "reference/types/Type.md": 'type: "[[Type]]"',
+            "reference/types/Clue.md": type_record("Clue"),
+            "reference/types/Content.md": type_record("Content"),
+            "reference/types/Status.md": type_record("Status"),
+            "reference/types/Type.md": type_record("Type"),
             "reference/statuses/Pending.md": 'type: "[[Status]]"\napplies_to: "[[Clue]]"',
             "content/Quay.md": 'type: "[[Content]]"',
         }.items():
@@ -1044,8 +1070,9 @@ class TestValidateWikilink:
         self, tmp_path: Path, target: str, record_type: str | None, rule: str | None
     ) -> None:
         for name, body in {
-            "reference/types/Clue.md": '---\ntype: "[[Type]]"\n---\n',
-            "elsewhere/Stray.md": '---\ntype: "[[Type]]"\n---\n',
+            "reference/types/Clue.md": f"---\n{type_record('Clue')}\n---\n",
+            "reference/types/Type.md": f"---\n{type_record('Type')}\n---\n",
+            "elsewhere/Stray.md": f"---\n{type_record('Type')}\n---\n",
             "content/Untyped.md": "plain",
             "image.png": "asset",
         }.items():
@@ -1071,7 +1098,7 @@ class TestValidateWikilink:
         self, tmp_path: Path, metadata: str, subtypes: set[str], rule: str | None
     ) -> None:
         for name, text in {
-            "reference/types/Content.md": 'type: "[[Type]]"',
+            "reference/types/Content.md": type_record("Content"),
             "content/Target.md": metadata,
         }.items():
             path = tmp_path / name
@@ -1167,8 +1194,8 @@ class TestValidateWikilink:
         rule: str | None,
     ) -> None:
         for name, text in {
-            "reference/types/Content.md": 'type: "[[Type]]"',
-            "reference/types/Session.md": 'type: "[[Type]]"',
+            "reference/types/Content.md": type_record("Content"),
+            "reference/types/Session.md": type_record("Session"),
             relative: f'type: "[[{kind}]]"\nsession_number: 1',
         }.items():
             path = tmp_path / name
@@ -1223,49 +1250,159 @@ class TestValidateWikilink:
 
 
 class TestValidatePlacement:
+    CONTENT = "Content belongs under content or campaigns/campaign_N/content"
+    REFERENCE = "Reference belongs under reference or campaigns/campaign_N/reference"
+    NOTE = "Note belongs under notes or campaigns/campaign_N/notes"
+    PLAYER = "Player belongs under campaigns/campaign_N/reference/players"
+    WIDGET = "Widget belongs under widgets or campaigns/campaign_N/widgets"
+
     @pytest.mark.parametrize(
-        "kind, relative, valid",
+        "kind, relative, message",
         [
-            ("Content", "content/Record.md", True),
-            ("Content", "content/nested/Record.md", True),
-            ("Content", "campaigns/campaign_42/content/nested/Record.md", True),
-            ("Content", "other/Record.md", False),
-            ("Note", "notes/Record.md", True),
-            ("Note", "notes/nested/Record.md", True),
-            ("Note", "campaigns/campaign_42/notes/Record.md", True),
-            ("Note", "content/Record.md", False),
-            ("Note", "campaigns/campaign_42/content/Record.md", False),
-            ("Session", "campaigns/campaign_42/sessions/nested/S-42-001.md", True),
-            (
-                "Session",
-                "campaigns/campaign_42/sessions/transcripts/S-42-001.md",
-                False,
-            ),
-            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md", True),
+            # Each built-in type in its place, including subfolders
+            ("Content", "content/Record.md", None),
+            ("Content", "content/nested/Record.md", None),
+            ("Content", "campaigns/campaign_42/content/nested/Record.md", None),
+            ("Note", "notes/Record.md", None),
+            ("Note", "notes/nested/Record.md", None),
+            ("Note", "campaigns/campaign_42/notes/Record.md", None),
+            ("Clue", "campaigns/campaign_42/clues/C-42-0001.md", None),
+            ("Session", "campaigns/campaign_42/sessions/S-42-001.md", None),
+            ("Session", "campaigns/campaign_42/sessions/nested/S-42-001.md", None),
             (
                 "Transcript",
                 "campaigns/campaign_42/sessions/transcripts/S-42-001 Transcript.md",
-                True,
+                None,
             ),
-            ("Player", "campaigns/campaign_42/reference/players/Player.md", True),
-            ("Player", "reference/players/Player.md", False),
-            ("Type", "reference/types/Type.md", True),
-            ("Status", "reference/statuses/Pending.md", True),
-            ("Status", "campaigns/campaign_42/reference/statuses/Pending.md", False),
-            ("Reference", "anywhere.md", True),
-            ("Custom", "anywhere.md", True),
+            ("Player", "campaigns/campaign_42/reference/players/P.md", None),
+            ("Reference", "reference/Index.md", None),
+            ("Reference", "reference/indexes/Clues.md", None),
+            ("Reference", "campaigns/campaign_42/reference/Campaign.md", None),
+            ("Reference", "campaigns/campaign_42/reference/indexes/Clues.md", None),
+            ("Type", "reference/types/Type.md", None),
+            ("Type", "reference/types/nested/Widget.md", None),
+            ("Status", "reference/statuses/Pending.md", None),
+            # A custom type with a declaration in its own folders
+            ("Widget", "widgets/W.md", None),
+            ("Widget", "campaigns/campaign_42/widgets/nested/W.md", None),
+            ("Widget", "campaigns/other/widgets/W.md", WIDGET),
+            # A wrong-type record in each declared directory
+            ("Reference", "content/Record.md", REFERENCE),
+            ("Note", "content/Record.md", NOTE),
+            ("Note", "campaigns/campaign_42/content/Record.md", NOTE),
+            ("Content", "notes/Record.md", CONTENT),
+            ("Widget", "content/W.md", WIDGET),
+            ("Content", "campaigns/campaign_42/clues/C.md", CONTENT),
+            (
+                "Clue",
+                "campaigns/campaign_42/sessions/C.md",
+                "Clue belongs under campaigns/campaign_N/clues",
+            ),
+            (
+                "Transcript",
+                "campaigns/campaign_42/sessions/S-42-001 Transcript.md",
+                "Transcript belongs under campaigns/campaign_N/sessions/transcripts",
+            ),
+            ("Content", "campaigns/campaign_42/reference/players/N.md", CONTENT),
+            ("Player", "campaigns/campaign_42/reference/P.md", PLAYER),
+            ("Player", "reference/players/P.md", PLAYER),
+            (
+                "Status",
+                "reference/types/S.md",
+                "Status belongs under reference/statuses",
+            ),
+            ("Type", "reference/statuses/T.md", "Type belongs under reference/types"),
+            ("Content", "widgets/N.md", CONTENT),
+            # Nested declarations: the longest declared prefix wins
+            (
+                "Session",
+                "campaigns/campaign_42/sessions/transcripts/S-42-001.md",
+                "Session belongs under campaigns/campaign_N/sessions, outside "
+                "campaigns/campaign_N/sessions/transcripts",
+            ),
+            (
+                "Reference",
+                "reference/types/R.md",
+                f"{REFERENCE}, outside reference/types",
+            ),
+            (
+                "Reference",
+                "reference/statuses/R.md",
+                f"{REFERENCE}, outside reference/statuses",
+            ),
+            (
+                "Reference",
+                "campaigns/campaign_42/reference/players/R.md",
+                f"{REFERENCE}, outside campaigns/campaign_N/reference/players",
+            ),
+            # Outside every declared directory, or outside a numeric campaign
+            ("Content", "other/Record.md", CONTENT),
+            ("Reference", "anywhere.md", REFERENCE),
+            (
+                "Session",
+                "sessions/S-1-001.md",
+                "Session belongs under campaigns/campaign_N/sessions",
+            ),
+            (
+                "Clue",
+                "campaigns/other/clues/C.md",
+                "Clue belongs under campaigns/campaign_N/clues",
+            ),
+            (
+                "Status",
+                "campaigns/campaign_42/reference/statuses/Pending.md",
+                "Status belongs under reference/statuses",
+            ),
+            (
+                "Type",
+                "campaigns/campaign_42/reference/types/Type.md",
+                "Type belongs under reference/types",
+            ),
+            # A type without a usable declaration cannot be placed
+            (
+                "Bare",
+                "content/B.md",
+                "cannot check placement: Bare declares no directories",
+            ),
+            (
+                "Custom",
+                "anywhere.md",
+                "cannot check placement: Custom declares no directories",
+            ),
         ],
     )
     def test_placement(
-        self, tmp_path: Path, kind: str, relative: str, valid: bool
+        self, tmp_path: Path, kind: str, relative: str, message: str | None
     ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "reference/types/Widget.md": type_record(
+                    "Widget", shared="widgets", campaign="widgets"
+                ),
+                "reference/types/Bare.md": 'type: "[[Type]]"',
+            },
+        )
         record = Record(
             tmp_path / relative, Frontmatter({"type": f"[[{kind}]]"}), Body("", 1)
         )
         result = validate_placement(record, VaultIndex(tmp_path)).diagnostics
-        assert [d.rule for d in result] == ([] if valid else ["record.placement"])
-        if result:
-            assert result[0].path == relative
+        assert [(d.path, d.rule, d.message) for d in result] == (
+            [(relative, "record.placement", message)] if message else []
+        )
+
+    def test_reads_declarations_through_the_index(self, tmp_path: Path) -> None:
+        write_records(tmp_path, {})
+        index = VaultIndex(tmp_path)
+        record = Record(
+            tmp_path / "content/Record.md",
+            Frontmatter({"type": "[[Content]]"}),
+            Body(""),
+        )
+        assert validate_placement(record, index).diagnostics == []
+        assert set(index.records) == {
+            tmp_path / f"reference/types/{name}.md" for name in TYPE_DIRECTORIES
+        }
 
 
 class TestValidateFilename:
@@ -1783,31 +1920,126 @@ class TestValidateVault:
         ]
 
     @pytest.mark.parametrize(
-        "relative, message",
+        "relative, expected",
         [
-            ("campaigns", "cannot check campaigns: campaigns/ is missing"),
+            ("campaigns", ["cannot check campaigns: campaigns/ is missing"]),
             (
                 "reference/types",
-                "cannot check schema coverage: reference/types is missing",
+                [
+                    "cannot check declared directories: reference/types is missing",
+                    "cannot check schema coverage: reference/types is missing",
+                ],
             ),
             (
                 "reference/schemas",
-                "cannot check schema coverage: reference/schemas is missing",
+                ["cannot check schema coverage: reference/schemas is missing"],
             ),
         ],
     )
     def test_missing_directory_stops_dependent_checks(
-        self, tmp_path: Path, relative: str, message: str
+        self, tmp_path: Path, relative: str, expected: list[str]
     ) -> None:
         make_vault(tmp_path)
         shutil.rmtree(tmp_path / relative)
         messages = [d.message for d in validate_vault(tmp_path).diagnostics]
         assert f"required directory {relative} is missing" in messages
-        assert message in messages
+        assert [m for m in messages if m.startswith("cannot check")] == expected
         # The dependent checks say they cannot run rather than reporting every
-        # entry as absent or every schema as unused.
+        # entry as absent, every declaration as missing or every schema as unused.
         assert not any(m.endswith("is not a campaign_N directory") for m in messages)
+        assert not any("directories must be declared" in m for m in messages)
         assert not any("matches no Type definition" in m for m in messages)
+
+    @pytest.mark.parametrize(
+        "text, message",
+        [
+            ("", "reference/types/Clue.md: directories must be declared"),
+            (
+                '---\ntype: "[[Type]]"\n---\n',
+                "reference/types/Clue.md: directories must be declared",
+            ),
+            (
+                '---\ntype: "[[Type]]"\ndirectories:\n---\n',
+                "reference/types/Clue.md: directories must be declared",
+            ),
+            (
+                '---\ntype: "[[Type]]"\ndirectories: clues\n---\n',
+                "reference/types/Clue.md: directories must map shared or campaign "
+                "to relative paths",
+            ),
+            (
+                '---\ntype: "[[Type]]"\ndirectories: {}\n---\n',
+                "reference/types/Clue.md: directories must map shared or campaign "
+                "to relative paths",
+            ),
+            (
+                '---\ntype: "[[Type]]"\ndirectories: {vault: clues}\n---\n',
+                "reference/types/Clue.md: directories must map shared or campaign "
+                "to relative paths",
+            ),
+            (
+                '---\ntype: "[[Type]]"\ndirectories: {campaign: /clues}\n---\n',
+                "reference/types/Clue.md: directories.campaign must be a relative path",
+            ),
+            (
+                '---\ntype: "[[Type]]"\ndirectories: {shared: 7}\n---\n',
+                "reference/types/Clue.md: directories.shared must be a relative path",
+            ),
+            (
+                "---\ndirectories: [\n---\n",
+                "cannot check reference/types/Clue.md directories: ",
+            ),
+        ],
+    )
+    def test_declarations(self, tmp_path: Path, text: str, message: str) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "reference/types/Clue.md").write_text(text)
+        result = validate_vault(tmp_path).diagnostics
+        assert [(d.rule, d.message[: len(message)]) for d in result] == [
+            ("vault.type", message)
+        ]
+
+    @pytest.mark.parametrize(
+        "declaration, campaigns, expected",
+        [
+            ({"shared": "widgets"}, ["campaign_1"], ["widgets"]),
+            (
+                {"campaign": "widgets"},
+                ["campaign_1", "campaign_2"],
+                ["campaigns/campaign_1/widgets", "campaigns/campaign_2/widgets"],
+            ),
+            (
+                {"shared": "reference/widgets", "campaign": "reference/widgets"},
+                ["campaign_1"],
+                ["reference/widgets", "campaigns/campaign_1/reference/widgets"],
+            ),
+            ({"shared": "content", "campaign": "clues"}, ["campaign_1"], []),
+        ],
+    )
+    def test_declared_directories_required(
+        self,
+        tmp_path: Path,
+        declaration: dict[str, str],
+        campaigns: list[str],
+        expected: list[str],
+    ) -> None:
+        make_vault(tmp_path)
+        for name in campaigns[1:]:
+            shutil.copytree(
+                tmp_path / "campaigns/campaign_1", tmp_path / "campaigns" / name
+            )
+        (tmp_path / "reference/types/Widget.md").write_text(
+            f"---\n{type_record('Widget', **declaration)}\n---\n"
+        )
+        (tmp_path / "reference/schemas/widget.schema.json").write_text("true")
+        result = validate_vault(tmp_path).diagnostics
+        assert [(d.rule, d.message) for d in result] == [
+            ("vault.required", f"required directory {relative} is missing")
+            for relative in expected
+        ]
+        for relative in expected:
+            (tmp_path / relative).mkdir(parents=True)
+        assert validate_vault(tmp_path).diagnostics == []
 
     @pytest.mark.parametrize(
         "layout, expected",
@@ -1848,7 +2080,10 @@ class TestValidateVault:
     def test_incomplete_campaign(self, tmp_path: Path) -> None:
         make_vault(tmp_path)
         shutil.rmtree(tmp_path / "campaigns/campaign_1/reference")
+        # Reference declares campaign reference/; Player's reference/players is
+        # both fixed and declared, and is reported once.
         assert sorted(d.message for d in validate_vault(tmp_path).diagnostics) == [
+            "required directory campaigns/campaign_1/reference is missing",
             "required directory campaigns/campaign_1/reference/indexes is missing",
             "required directory campaigns/campaign_1/reference/players is missing",
             "required file campaigns/campaign_1/reference/Campaign.md is missing",
@@ -1885,12 +2120,18 @@ class TestValidateVault:
                 ],
             ),
             (
-                {"reference/types/Widget.md": ""},
+                {
+                    "reference/types/Widget.md": (
+                        f"---\n{type_record('Widget', shared='content')}\n---\n"
+                    )
+                },
                 [("schema.missing", "no vault-local schema for Widget")],
             ),
             (
                 {
-                    "reference/types/nested/Widget.md": "",
+                    "reference/types/nested/Widget.md": (
+                        f"---\n{type_record('Widget', shared='content')}\n---\n"
+                    ),
                     "reference/schemas/widget.schema.json": "true",
                 },
                 [],

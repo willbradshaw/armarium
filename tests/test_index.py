@@ -149,6 +149,100 @@ class TestVaultIndexParse:
             VaultIndex(tmp_path).parse(path)
 
 
+class TestVaultIndexDeclaredDirectories:
+    def test_reads_usable_declarations(self, tmp_path: Path) -> None:
+        for name, text in {
+            "Content.md": "directories: {shared: content, campaign: content}",
+            "nested/Widget.md": "directories: {campaign: widgets}",
+            "Bare.md": 'type: "[[Type]]"',
+            "Bad.md": "directories: {shared: /x}",
+            "Broken.md": "x: [",
+            "notes.txt": "directories: {shared: content}",
+        }.items():
+            path = tmp_path / "reference/types" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\n{text}\n---\n")
+        index = VaultIndex(tmp_path)
+        assert index.declared_directories() == {
+            "Content": {"shared": "content", "campaign": "content"},
+            "Widget": {"campaign": "widgets"},
+        }
+        # Every definition is parsed through the cache, once for the run.
+        assert set(index.records) == {
+            tmp_path / "reference/types" / name
+            for name in (
+                "Content.md",
+                "nested/Widget.md",
+                "Bare.md",
+                "Bad.md",
+                "Broken.md",
+            )
+        }
+        with patch.object(Record, "parse", wraps=Record.parse) as parse:
+            assert index.declared_directories() == index.declared_directories()
+        assert parse.call_count == 0
+
+    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
+    def test_unusable_types_directory(self, tmp_path: Path, kind: str) -> None:
+        types = tmp_path / "reference/types"
+        if kind == "file":
+            types.parent.mkdir()
+            types.write_text("")
+        elif kind == "symlink":
+            (tmp_path / "elsewhere").mkdir()
+            types.parent.mkdir()
+            types.symlink_to(tmp_path / "elsewhere", target_is_directory=True)
+        assert VaultIndex(tmp_path).declared_directories() == {}
+
+
+class TestVaultIndexContainingDirectories:
+    DECLARATIONS = {
+        "Content": "{shared: content, campaign: content}",
+        "Session": "{campaign: sessions}",
+        "Transcript": "{campaign: sessions/transcripts}",
+        "Widget": "{shared: content}",
+    }
+
+    @pytest.mark.parametrize(
+        "relative, expected",
+        [
+            ("content/A.md", [("shared", "content", {"Content", "Widget"})]),
+            ("content/nested/A.md", [("shared", "content", {"Content", "Widget"})]),
+            (
+                "campaigns/campaign_1/content/A.md",
+                [("campaign", "content", {"Content"})],
+            ),
+            (
+                "campaigns/campaign_1/sessions/S.md",
+                [("campaign", "sessions", {"Session"})],
+            ),
+            (
+                "campaigns/campaign_1/sessions/transcripts/S.md",
+                [
+                    ("campaign", "sessions", {"Session"}),
+                    ("campaign", "sessions/transcripts", {"Transcript"}),
+                ],
+            ),
+            ("campaigns/other/content/A.md", []),
+            ("sessions/S.md", []),
+            ("elsewhere.md", []),
+        ],
+    )
+    def test_containing(
+        self, tmp_path: Path, relative: str, expected: list[tuple[str, str, set[str]]]
+    ) -> None:
+        for name, declared in self.DECLARATIONS.items():
+            path = tmp_path / "reference/types" / f"{name}.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\ndirectories: {declared}\n---\n")
+        index = VaultIndex(tmp_path)
+        assert index.containing_directories(tmp_path / relative) == expected
+
+    def test_outside_vault(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError):
+            VaultIndex(tmp_path).containing_directories(tmp_path.parent / "a.md")
+
+
 class TestKey:
     @pytest.mark.parametrize(
         "name, expected",

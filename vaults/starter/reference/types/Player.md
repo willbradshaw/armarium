@@ -1,5 +1,6 @@
 ---
 type: "[[Type]]"
+directories: { campaign: reference/players }
 ---
 Player records represent the people at the table and link to the PCs they play.
 They live under the campaign's `reference/players/` directory.

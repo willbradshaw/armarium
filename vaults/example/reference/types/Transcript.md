@@ -1,5 +1,6 @@
 ---
 type: "[[Type]]"
+directories: { campaign: sessions/transcripts }
 ---
 Transcript records contain cleaned, attributed speech from a session, grouped under
 content headings. They live under the campaign's `sessions/transcripts/` directory

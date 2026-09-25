@@ -20,6 +20,7 @@ from armarium.lib import (
     find_files,
     find_vault,
     iter_wikilinks,
+    parse_directories,
     parse_wikilink,
     split_wikilink,
 )
@@ -618,3 +619,62 @@ class TestFindCampaign:
     def test_outside(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
             find_campaign(tmp_path.parent / "outside.md", tmp_path)
+
+
+class TestParseDirectories:
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ({"shared": "content"}, {"shared": "content"}),
+            ({"campaign": "clues"}, {"campaign": "clues"}),
+            (
+                {"campaign": "clues", "shared": "content"},
+                {"shared": "content", "campaign": "clues"},
+            ),
+            (
+                {"campaign": "sessions/transcripts"},
+                {"campaign": "sessions/transcripts"},
+            ),
+            ({"shared": ".hidden/notes"}, {"shared": ".hidden/notes"}),
+            ({"shared": "with space"}, {"shared": "with space"}),
+        ],
+    )
+    def test_declaration(self, value: object, expected: dict[str, str]) -> None:
+        parsed = parse_directories(value)
+        assert parsed == expected
+        assert list(parsed) == list(expected)
+
+    MAPPING = "directories must map shared or campaign to relative paths"
+
+    @pytest.mark.parametrize(
+        "value, message",
+        [
+            (None, "directories must be declared"),
+            ("content", MAPPING),
+            (["content"], MAPPING),
+            ({}, MAPPING),
+            ({"vault": "content"}, MAPPING),
+            ({"shared": "content", "extra": "content"}, MAPPING),
+            *(
+                ({scope: path}, f"directories.{scope} must be a relative path")
+                for scope in ("shared", "campaign")
+                for path in (
+                    7,
+                    None,
+                    "",
+                    "/content",
+                    ".",
+                    "..",
+                    "./content",
+                    "../content",
+                    "content/..",
+                    "content/../reference",
+                    "content/",
+                    "content//nested",
+                )
+            ),
+        ],
+    )
+    def test_unusable(self, value: object, message: str) -> None:
+        with pytest.raises(ValueError, match=f"^{message}$"):
+            parse_directories(value)
