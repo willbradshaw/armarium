@@ -1,10 +1,9 @@
 # Vault layout
 
 An Armarium vault is a folder of Markdown [records](record.md) inside a fixed
-skeleton. To Obsidian any folder is a vault, and it keeps its own settings in
-`.obsidian/`; the starter ships one with the settings the records rely on. To
-[`armarium validate`](cli.md) a folder is a vault when it contains
-`reference/types/` and `campaigns/`, and the whole skeleton below is checked.
+skeleton, with the Obsidian settings the records rely on. A folder is a vault
+when it contains `reference/types/` and `campaigns/`;
+[`armarium validate`](cli.md) checks the whole skeleton below.
 
 `vaults/starter/` in this repository is the smallest vault that passes; copy it
 to start a new one. `vaults/example/` is a populated vault with two campaigns.
@@ -12,6 +11,11 @@ to start a new one. `vaults/example/` is a populated vault with two campaigns.
 ## Skeleton
 
 ```text
+.obsidian/                    Obsidian settings
+  app.json                    link updating
+  appearance.json             enables the snippet
+  snippets/
+    armarium-prose.css        prose styling
 assets/                       files that are not records: images, handouts
 campaigns/                    only campaign_N directories, at least one
   campaign_N/                 N is a positive integer
@@ -76,7 +80,8 @@ file path must be unique when compared case-insensitively.
 
 ## Other entries
 
-Hidden entries (`.obsidian/`, `.scratch/`, anything starting with `.`) and
-symlinks are not part of the vault. Files that are not records can still be
+Other hidden entries (`.scratch/`, anything else starting with `.`) and
+symlinks are not part of the vault. Obsidian's own `workspace.json` and
+`workspace-mobile.json` in `.obsidian/` are per-machine state, not settings. Files that are not records can still be
 linked and embedded: `[[harbor-pass.txt]]` for `assets/harbor-pass.txt`,
 `![[reference/views/clue-index.base#Active]]` for a view.
