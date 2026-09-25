@@ -376,6 +376,30 @@ class TestBlockWalk:
 
 
 class TestBlockFromTokens:
+    def test_table_rows_and_cells(self) -> None:
+        # markdown-it unescapes \| and drops cells beyond the header's width.
+        text = "| a | b |\n| - | - |\n| [[X\\|Y]] | [[X|Y]] |\n"
+        tokens = Body._PARSER.parse(text)
+        block, end = Block.from_tokens(tokens, 0, 7)
+        assert end == len(tokens)
+        assert block == Block(
+            "table",
+            7,
+            children=(
+                Block(
+                    "row", 7, children=(Block("cell", 7, "a"), Block("cell", 7, "b"))
+                ),
+                Block(
+                    "row",
+                    9,
+                    children=(
+                        Block("cell", 9, "[[X|Y]]"),
+                        Block("cell", 9, "[[X"),
+                    ),
+                ),
+            ),
+        )
+
     @pytest.mark.parametrize(
         ("text", "expected", "after"),
         [
@@ -415,6 +439,29 @@ class TestBlockFromTokens:
         tokens = Body._PARSER.parse("- item\n")[:-1]  # drop the list's close
         with pytest.raises(ValueError, match="unbalanced"):
             Block.from_tokens(tokens, 0, 1)
+
+
+class TestSectionIterBlocks:
+    def test_order(self) -> None:
+        deep = Block("paragraph", 4, "deep")
+        item = Block("item", 3, "item", (deep,))
+        section = Section(
+            "A",
+            1,
+            1,
+            (Block("paragraph", 2, "top"), Block("list", 3, children=(item,))),
+            (Section("B", 2, 5, (Block("rule", 6),)),),
+        )
+        assert [(b.kind, b.line) for b in section.iter_blocks()] == [
+            ("paragraph", 2),
+            ("list", 3),
+            ("item", 3),
+            ("paragraph", 4),
+            ("rule", 6),
+        ]
+
+    def test_empty(self) -> None:
+        assert list(Section("A", 1, 1).iter_blocks()) == []
 
 
 class TestSectionNest:
@@ -559,7 +606,28 @@ class TestBody:
                                     ),
                                 ),
                             ),
-                            Block("table", 34),
+                            Block(
+                                "table",
+                                34,
+                                children=(
+                                    Block(
+                                        "row",
+                                        34,
+                                        children=(
+                                            Block("cell", 34, "a"),
+                                            Block("cell", 34, "b"),
+                                        ),
+                                    ),
+                                    Block(
+                                        "row",
+                                        36,
+                                        children=(
+                                            Block("cell", 36, "1"),
+                                            Block("cell", 36, "2"),
+                                        ),
+                                    ),
+                                ),
+                            ),
                             Block("rule", 38),
                             Block(
                                 "paragraph",

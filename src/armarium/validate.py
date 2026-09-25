@@ -21,6 +21,7 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    iter_wikilinks,
     parse_wikilink,
 )
 from armarium.parse import Note, Section
@@ -637,13 +638,16 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
     Returns:
         list[Diagnostic]: Findings attributed to the selected note, with metadata
-            locations or body source lines. Unrelated notes are not parsed.
-            Heading and block existence, query execution and ordinary URLs are
-            excluded.
+            locations or body source lines: links that are malformed, cannot be
+            resolved, name a missing anchor or fail their field's requirements,
+            and links that an unescaped ``|`` splits across table cells.
+            Unrelated notes are not parsed. Query execution and ordinary URLs
+            are excluded.
     """
     path = note.path.relative_to(index.root).as_posix()
     targets = _link_targets(note, index)
     diagnostics: list[Diagnostic] = []
+    # 1. Check each link as written
     for link in note.links:
         if link.error is not None:
             problem: tuple[str, str] | None = ("link.syntax", link.error)
@@ -653,6 +657,22 @@ def validate_wikilinks(note: Note, index: VaultIndex) -> list[Diagnostic]:
             )
         if problem is not None:
             diagnostics.append(Diagnostic(path, *problem, link.location, link.line))
+    # 2. Links that a table cell boundary cuts in two: the row reads as a
+    # whole, but Obsidian splits its cells at every unescaped pipe.
+    lines = note.body.text.splitlines()
+    for row in (block for block in note.body.iter_blocks() if block.kind == "row"):
+        broken = (
+            isinstance(p, ValueError)
+            for c in row.children
+            for p in iter_wikilinks(c.text)
+        )
+        whole = (
+            isinstance(p, ValueError)
+            for p in iter_wikilinks(lines[row.line - note.body.line])
+        )
+        if any(broken) and not any(whole):
+            message = "table cell boundary splits a wikilink; escape | as \\|"
+            diagnostics.append(Diagnostic(path, "link.syntax", message, "", row.line))
     return diagnostics
 
 
@@ -820,7 +840,7 @@ def _check_anchor(note: Note, anchor: str) -> tuple[str, str] | None:
     stem = note.path.stem
     if anchor.startswith("^"):
         wanted = anchor[1:].casefold()
-        blocks = (b for s in note.body.walk() for top in s.blocks for b in top.walk())
+        blocks = note.body.iter_blocks()
         if any(
             b.block_id is not None and b.block_id.casefold() == wanted for b in blocks
         ):

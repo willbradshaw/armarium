@@ -236,12 +236,13 @@ class Block:
     """One block of Markdown inside a section or another block.
 
     Attributes:
-        kind: paragraph, item, list, ordered_list, quote, code, table, rule,
-            html, heading or other.
+        kind: paragraph, item, list, ordered_list, quote, code, table, row,
+            cell, rule, html, heading or other.
         line: One-based source line on which the block starts.
         text: A paragraph's text with wrapped lines joined; an item's first
-            paragraph; code contents; heading text. Empty otherwise.
-        children: A list's items, an item's further blocks, a quote's blocks.
+            paragraph; code contents; heading or cell text. Empty otherwise.
+        children: A list's items, an item's further blocks, a quote's blocks,
+            a table's rows (header first), a row's cells.
         block_id: An Obsidian ``^id`` ending a paragraph or item, if any.
     """
 
@@ -304,7 +305,8 @@ class Block:
                 return cls("item", line, first.text, children, first.block_id), end + 1
             return cls("item", line, children=children), end + 1
         if kind == "table":
-            return cls("table", line), end + 1
+            rows = cls._rows(tokens, start, end, start_line)
+            return cls("table", line, children=rows), end + 1
         if kind in {"fence", "code_block"}:
             return cls("code", line, token.content), end + 1
         return cls(cls._LEAF_KINDS.get(kind, "other"), line), end + 1
@@ -320,6 +322,28 @@ class Block:
             block, position = cls.from_tokens(tokens, position, start_line)
             blocks.append(block)
         return tuple(blocks)
+
+    @classmethod
+    def _rows(
+        cls, tokens: list[Token], start: int, end: int, start_line: int
+    ) -> tuple["Block", ...]:
+        """Build a row of cells for each table row in the tokens [start, end).
+
+        Cells hold their text as markdown-it splits it: at every unescaped
+        pipe, with ``\\|`` unescaped and cells beyond the header's width dropped.
+        """
+        rows: list[Block] = []
+        cells: list[Block] = []
+        line = start_line
+        for token in tokens[start:end]:
+            if token.type == "tr_open":
+                line = start_line + (token.map[0] if token.map else 0)
+                cells = []
+            elif token.type == "inline":
+                cells.append(cls("cell", line, token.content))
+            elif token.type == "tr_close":
+                rows.append(cls("row", line, children=tuple(cells)))
+        return tuple(rows)
 
     @staticmethod
     def _close(tokens: list[Token], position: int) -> int:
@@ -371,6 +395,17 @@ class Section:
         yield self
         for child in self.children:
             yield from child.walk()
+
+    def iter_blocks(self) -> Iterator[Block]:
+        """Yield every block under this section and its descendants, nested ones included.
+
+        Yields:
+            Block: Each section's top-level blocks in turn, each with its
+                nested blocks in walk order.
+        """
+        for section in self.walk():
+            for block in section.blocks:
+                yield from block.walk()
 
     @classmethod
     def nest(cls, entries: list["Section | Block"]) -> tuple["Section", ...]:
