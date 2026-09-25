@@ -125,17 +125,12 @@ class TestValidationDocument:
         family = rule.split(".", 1)[0]
         assert f"| `{family}.` |" in self.TEXT
 
-
-class TestCommandLineDocument:
-    TEXT = (DOCS / "cli.md").read_text()
-
     def test_names_every_option(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit):
             parse_args(["validate", "--help"])
         usage = capsys.readouterr().out
         options = set(re.findall(r"(--[a-z-]+)", usage))
         assert options and all(option in self.TEXT for option in options)
-        assert "armarium validate" in self.TEXT
 
 
 class TestCampaignDocument:

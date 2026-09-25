@@ -59,5 +59,5 @@ armarium validate path/to/record.md
 armarium validate .
 ```
 
-See [Command line](docs/cli.md) for the command's options and exit codes, and
-[Validation](docs/validate.md) for what is checked and how findings are reported.
+See [Validation](docs/validate.md) for the command's options, what is checked
+and how findings are reported.

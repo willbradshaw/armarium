@@ -3,7 +3,7 @@
 An Armarium vault is a folder of Markdown [records](record.md) inside a fixed
 skeleton, with the Obsidian settings the records rely on. A folder is a vault
 when it contains `reference/types/` and `campaigns/`;
-[`armarium validate`](cli.md) checks the whole skeleton below.
+[`armarium validate`](validate.md) checks the whole skeleton below.
 
 `vaults/starter/` in this repository is the smallest vault that passes; copy it
 to start a new one. `vaults/example/` is a populated vault with two campaigns.

@@ -1,6 +1,27 @@
 # Validation
 
-`armarium validate` is a read-only command which validates one or more paths against the rules defined in these documents, reporting each way they depart from expectations. See [Command line](cli.md) for invocation details.
+`armarium validate` is a read-only command which validates one or more paths against the rules defined in these documents, reporting each way they depart from expectations.
+
+## Usage
+
+```text
+armarium validate [--vault VAULT] PATH
+```
+
+`PATH` is a record, a directory or a vault; [Scope](#scope) says what each
+gets. A vault is recognised by its `reference/types/` and `campaigns/`
+directories, so a vault missing either is not found: a directory run passes
+over it as not a vault and reports nothing checked, and a single record
+inside it is refused. `--vault VAULT` names the vault directory explicitly so
+that such a vault is validated anyway and what it lacks is reported.
+`--help` prints the usage.
+
+```sh
+armarium validate .                                    # the vault in the current directory
+armarium validate campaigns/campaign_1/clues           # every Clue of one campaign
+armarium validate content/Port\ Briselle.md            # one record
+armarium validate . --vault .                          # a vault missing part of its skeleton
+```
 
 ## Scope
 
