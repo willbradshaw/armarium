@@ -447,7 +447,7 @@ class TestValidateMarkdown:
     ) -> None:
         path = write_note(
             {"type": "[[Transcript]]", "session": "[[S-1-001]]"},
-            body="## Opening\n\n[GM] Speech that\nwraps.\n",
+            body="## Opening\n\n- [GM] Speech that\n[Esme] continues.\n",
             name="campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md",
         )
         result = validate_markdown(path)
@@ -455,7 +455,7 @@ class TestValidateMarkdown:
             (d.line, d.message)
             for d in result.diagnostics
             if d.rule.startswith("transcript.")
-        ] == [(8, "line must open with a speaker tag")]
+        ] == [(7, "brackets after the speaker tag")]
 
 
 class TestValidateDirectory:
@@ -2446,12 +2446,14 @@ class TestValidateClue:
 
 class TestValidateTranscript:
     PATH = "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
-    HEADING = ("transcript.heading", "heading must be ## with a title")
-    BLANK = ("transcript.blank", "blank line not beside a heading")
-    SPEAKER = ("transcript.speaker", "line must open with a speaker tag")
+    HEADING = "transcript.heading"
+    SECTION = "transcript.section"
+    ITEM = "transcript.item"
+    SPEAKER = "transcript.speaker"
     CLEAN = (
-        "## The notice\n\n[GM] An officer posts a notice.\n[Esme] We dispute it.\n"
-        "\n## Across the roofs\n\n[Table] Laughter.\n[?] Who is there?\n"
+        "## The notice\n\n- [GM] An officer posts a notice on [[Glass Petrel]].\n"
+        "- [Esme] We dispute it. ^dispute\n\n## Across the roofs\n\n"
+        "- [Table] Laughter.\n- [?] Who is there?\n"
     )
 
     def check(
@@ -2471,51 +2473,138 @@ class TestValidateTranscript:
         "tag", ["[GM]", "[Table]", "[Esme]", "[Darian — Martin]", "[Player?]", "[?]"]
     )
     def test_tags(self, tmp_path: Path, tag: str) -> None:
-        assert self.check(tmp_path, f"## Opening\n\n{tag} Speech.\n") == []
+        assert self.check(tmp_path, f"## Opening\n\n- {tag} Speech.\n") == []
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "",
+            CLEAN,
+            "## Opening\n- [GM] A.\n## Next\n- [GM] B.\n",
+            "## Opening\n\n- [GM] A long\nutterance.\n- [Esme] B.\n",
+            "## Opening\n\n- [GM] A.\n\n- [Esme] B.\n\n\n",
+            "## Opening\n\n- [GM] " + "long " * 200 + "utterance.\n",
+            "## Opening\n\n- [GM] [[Esme]] and [[Esme|she]] and [[content/Esme]].\n",
+            "## Opening\n\n- [GM] A. ^quoted\n",
+        ],
+    )
+    def test_clean(self, tmp_path: Path, body: str) -> None:
+        assert self.check(tmp_path, body) == []
 
     @pytest.mark.parametrize(
         "body, expected",
         [
-            ("", []),
-            (CLEAN, []),
-            ("## Opening\n[GM] A.\n## Next\n[GM] B.\n", []),
-            ("## Opening\n \n[GM] A.\n", []),
-            ("\n## Opening\n\n[GM] A.\n", []),
-            ("## Opening\n\n[GM] " + "long " * 200 + "utterance.\n", []),
-            ("# Opening\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
-            ("### Opening\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
-            ("##Opening\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
-            ("## \n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
-            ("##\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
             (
-                "# Opening\n[GM] A.\n#### Deep\n[GM] B.\n",
-                [(*HEADING, 4), (*HEADING, 6)],
+                "- [GM] A.\n\n## Opening\n\n- [GM] B.\n",
+                [(HEADING, "content before the first heading", 4)],
             ),
-            ("## Opening\n\n\n[GM] A.\n", [(*BLANK, 6)]),
-            ("## Opening\n\n[GM] A.\n\n[GM] B.\n", [(*BLANK, 7)]),
-            ("## Opening\n\n[GM] A.\n\n", [(*BLANK, 7)]),
-            ("\n\n## Opening\n\n[GM] A.\n", [(*BLANK, 4)]),
-            ("## Opening\n\n[GM] A long\nutterance.\n", [(*SPEAKER, 7)]),
-            ("## Opening\n\n[GM]A.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n[GM] \n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n[GM]\tA.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n[] A.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n[[Esme]] A.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n[Esme A.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\nA.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n- [GM] A.\n", [(*SPEAKER, 6)]),
-            ("## Opening\n\n [GM] A.\n", [(*SPEAKER, 6)]),
             (
-                "[GM] A.\n# Two\n\n\nB.\n",
-                [(*HEADING, 5), (*BLANK, 6), (*BLANK, 7), (*SPEAKER, 8)],
+                "Notes.\n\n## Opening\n\n- [GM] B.\n",
+                [(HEADING, "content before the first heading", 4)],
+            ),
+            (
+                "# Opening\n\n- [GM] A.\n",
+                [(HEADING, "heading must be ## with a title", 4)],
+            ),
+            (
+                "### Opening\n\n- [GM] A.\n",
+                [(HEADING, "heading must be ## with a title", 4)],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n\n### Aside\n\n- [GM] B.\n",
+                [(HEADING, "heading must be ## with a title", 8)],
+            ),
+            (
+                "##\n\n- [GM] A.\n",
+                [(HEADING, "heading must be ## with a title", 4)],
+            ),
+            (
+                "## Opening\n\n## Next\n\n- [GM] A.\n",
+                [(SECTION, "section holds no bullet list", 4)],
+            ),
+            (
+                "## Opening\n\n[GM] A.\n",
+                [(SECTION, "only a bullet list may follow a heading", 6)],
+            ),
+            (
+                "## Opening\n\n1. [GM] A.\n",
+                [(SECTION, "only a bullet list may follow a heading", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n\n---\n",
+                [(SECTION, "only a bullet list may follow a heading", 8)],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n\n[Esme] B.\n\n- [GM] C.\n",
+                [
+                    (SECTION, "only a bullet list may follow a heading", 8),
+                    (SECTION, "one bullet list per section", 10),
+                ],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n* [Esme] B.\n",
+                [(SECTION, "one bullet list per section", 7)],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n  - [Esme] B.\n",
+                [(ITEM, "utterance must be a single paragraph", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n\n  More.\n",
+                [(ITEM, "utterance must be a single paragraph", 6)],
+            ),
+            (
+                "## Opening\n\n- A.\n",
+                [(SPEAKER, "utterance must open with a speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM]A.\n",
+                [(SPEAKER, "utterance must open with a speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM]\n",
+                [(SPEAKER, "utterance must open with a speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [] A.\n",
+                [(SPEAKER, "utterance must open with a speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [[Esme]] A.\n",
+                [(SPEAKER, "utterance must open with a speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM] A.\n[Esme] B.\n",
+                [(SPEAKER, "brackets after the speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM] A [laughs] B.\n",
+                [(SPEAKER, "brackets after the speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM] A [[broken] B.\n",
+                [(SPEAKER, "brackets after the speaker tag", 6)],
+            ),
+            (
+                "## Opening\n\n- [GM] [link](url) B.\n",
+                [(SPEAKER, "brackets after the speaker tag", 6)],
+            ),
+            (
+                "Notes.\n# Two\n\n- [GM] A.\n[Esme] B.\n  - C.\n",
+                [
+                    (HEADING, "content before the first heading", 4),
+                    (HEADING, "heading must be ## with a title", 5),
+                    (ITEM, "utterance must be a single paragraph", 7),
+                    (SPEAKER, "brackets after the speaker tag", 7),
+                ],
             ),
         ],
     )
-    def test_lines(
+    def test_rules(
         self, tmp_path: Path, body: str, expected: list[tuple[str, str, int]]
     ) -> None:
         assert self.check(tmp_path, body) == expected
 
     @pytest.mark.parametrize("record_type", ["Content", "Session", "Type"])
     def test_other_types(self, tmp_path: Path, record_type: str) -> None:
-        assert self.check(tmp_path, "# Bad\n\n\nprose\n", record_type) == []
+        assert self.check(tmp_path, "# Bad\n\nprose\n", record_type) == []

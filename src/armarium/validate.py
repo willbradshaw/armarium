@@ -85,9 +85,7 @@ CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
 # An Appearances entry: a wikilink, a colon and a description.
 ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
 
-# Transcript body lines: a level-two heading with a title, or speech opening
-# with a speaker tag, a space and text.
-TRANSCRIPT_HEADING = re.compile(r"## \S")
+# A Transcript utterance opens with a speaker tag, a space and text.
 SPEECH = re.compile(r"\[[^\[\]]+\] \S")
 
 # Fields that link a record to its predecessor, followed record to record.
@@ -634,56 +632,89 @@ def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
 
 
 def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
-    """Check that a Transcript body follows the transcript line grammar.
+    """Check that a Transcript body follows the transcript grammar.
 
-    After the frontmatter, every line is a ``## `` heading with a title, a
-    blank line beside a heading, or one utterance opening with a speaker tag,
-    a space and text. The parsed block tree is not used: CommonMark would merge
-    consecutive speech lines into one paragraph.
+    After the frontmatter, the body is a run of titled level-two sections.
+    Each holds one bullet list whose items are the utterances: single
+    paragraphs opening with a speaker tag, a space and text. After the tag,
+    square brackets may appear only inside wikilinks, so that a tagged line
+    whose leading dash is missing, which CommonMark folds into the previous
+    item, is still reported.
 
     Args:
         note: Selected record; only Transcripts carry speech.
         index: Vault index used to name the record.
 
     Returns:
-        list[Diagnostic]: One finding at each offending line: a heading of
-            another level or without a title (transcript.heading), a blank line
-            not beside a heading (transcript.blank), or a line without a
-            speaker tag, including a hard-wrapped continuation of an utterance
+        list[Diagnostic]: A finding at each offending line: a block before the
+            first heading or a heading that is not a titled level two
+            (transcript.heading); a section without a list, a block that is
+            not a bullet list, or a second list (transcript.section); an item
+            holding more than one paragraph (transcript.item); item text
+            without a speaker tag, or with brackets after it outside wikilinks
             (transcript.speaker).
     """
     if note.frontmatter.type != "Transcript":
         return []
     findings = Findings(note.path.relative_to(index.root).as_posix())
-    # 1. Locate the headings, which the blank lines are checked against
-    lines = note.body.text.splitlines()
-    headings = [TRANSCRIPT_HEADING.match(line) is not None for line in lines]
-    # 2. Check every other line
-    for i, line in enumerate(lines):
-        if headings[i]:
-            continue
-        number = note.body.line + i
-        if not line.strip():
-            beside = (i > 0 and headings[i - 1]) or (
-                i + 1 < len(lines) and headings[i + 1]
-            )
+    # 1. Nothing precedes the first heading; every heading is a titled level two
+    for block in note.body.blocks:
+        findings.add(
+            "transcript.heading", "content before the first heading", line=block.line
+        )
+    sections = [s for s in note.body.walk() if s is not note.body]
+    for section in sections:
+        findings.diagnose(
+            section.level != 2 or not section.title.strip(),
+            "transcript.heading",
+            "heading must be ## with a title",
+            line=section.line,
+        )
+    # 2. Each section holds one bullet list and nothing else
+    for section in sections:
+        findings.diagnose(
+            not section.blocks,
+            "transcript.section",
+            "section holds no bullet list",
+            line=section.line,
+        )
+        for position, block in enumerate(section.blocks):
+            if findings.diagnose(
+                block.kind != "list",
+                "transcript.section",
+                "only a bullet list may follow a heading",
+                line=block.line,
+            ):
+                continue
             findings.diagnose(
-                not beside,
-                "transcript.blank",
-                "blank line not beside a heading",
-                line=number,
+                position > 0,
+                "transcript.section",
+                "one bullet list per section",
+                line=block.line,
             )
-        elif line.startswith("#"):
-            findings.add(
-                "transcript.heading", "heading must be ## with a title", line=number
-            )
-        else:
-            findings.diagnose(
-                SPEECH.match(line) is None,
-                "transcript.speaker",
-                "line must open with a speaker tag",
-                line=number,
-            )
+            # 3. Each item is one paragraph opening with a speaker tag
+            for item in block.children:
+                findings.diagnose(
+                    bool(item.children),
+                    "transcript.item",
+                    "utterance must be a single paragraph",
+                    line=item.line,
+                )
+                match = SPEECH.match(item.text)
+                if match is None:
+                    findings.add(
+                        "transcript.speaker",
+                        "utterance must open with a speaker tag",
+                        line=item.line,
+                    )
+                    continue
+                rest = WIKILINK.sub("", item.text[match.end() - 1 :])
+                findings.diagnose(
+                    "[" in rest or "]" in rest,
+                    "transcript.speaker",
+                    "brackets after the speaker tag",
+                    line=item.line,
+                )
     return findings.diagnostics
 
 

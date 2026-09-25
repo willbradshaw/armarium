@@ -4,4 +4,4 @@ session:
 ---
 ## Opening
 
-[GM] Replace this line with attributed transcript material.
+- [GM] Replace this line with attributed transcript material.

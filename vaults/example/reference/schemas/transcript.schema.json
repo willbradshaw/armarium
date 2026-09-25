@@ -27,8 +27,8 @@
     },
     "body": {
       "type": "string",
-      "pattern": "(?:^|\\n)## [^\\s\\r\\n][^\\r\\n]*(?=\\r?\\n)[\\s\\S]*?\\n\\[[^\\[\\]\\r\\n]+\\][ \\t]+[^\\s\\r\\n]",
-      "description": "At least one level-two content heading followed by an attributed speech line. Does not check every utterance or attribution accuracy; matching code-fence lines can satisfy it."
+      "pattern": "(?:^|\\n)## [^\\s\\r\\n][^\\r\\n]*(?=\\r?\\n)[\\s\\S]*?\\n- \\[[^\\[\\]\\r\\n]+\\][ \\t]+[^\\s\\r\\n]",
+      "description": "At least one level-two content heading followed by a bullet item of attributed speech. Does not check every utterance or attribution accuracy; matching code-fence lines can satisfy it."
     }
   },
   "$defs": {
