@@ -50,8 +50,11 @@ class Target:
 
 
 # Infrastructure every vault must contain. Together with the directories Type
-# records declare, these bound where every entry in the vault may live.
+# records declare, these bound where every entry in the vault may live. The
+# Obsidian settings make the folder open in Obsidian as the records expect.
 VAULT_DIRECTORIES = (
+    ".obsidian",
+    ".obsidian/snippets",
     "assets",
     "campaigns",
     "content",
@@ -72,6 +75,11 @@ VAULT_TYPES = (
     "Status",
     "Transcript",
     "Type",
+)
+VAULT_FILES = (
+    ".obsidian/app.json",
+    ".obsidian/appearance.json",
+    ".obsidian/snippets/armarium-prose.css",
 )
 VAULT_STATUSES = ("Abandoned", "Dormant", "Hinted", "Pending", "Revealed", "Superseded")
 VAULT_TEMPLATES = ("Clue", "Content", "Note", "Player", "Session", "Transcript")
@@ -308,6 +316,8 @@ def validate_vault(root: Path) -> Findings:
     # 1. Require the shared directories and definitions
     for relative in VAULT_DIRECTORIES:
         require(relative, True)
+    for relative in VAULT_FILES:
+        require(relative, False)
     for name in VAULT_TYPES:
         require(f"reference/types/{name}.md", False)
     for name in VAULT_STATUSES:
