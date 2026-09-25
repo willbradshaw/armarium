@@ -2,7 +2,7 @@
 
 Every Markdown file in a [vault](vault.md) is a record: YAML frontmatter that
 declares its type, followed by a Markdown body. What every record shares is
-below; each type's fields, body and rules are in [Types](type.md).
+below; each type's fields, body and rules are documented in [Types](type.md).
 
 ## Anatomy
 
@@ -51,14 +51,11 @@ Records link to each other with Obsidian
   spell enough of the path to tell them apart.
 - A heading or block anchor must exist in the linked record. Anchors on files
   that are not records (`![[reference/views/clue-index.base#Active]]`) are
-  not looked into.
-- In frontmatter a link is **canonical**: quoted, `"[[target]]"`, with no
-  alias or anchor. A frontmatter field may not name the same file twice under
-  different spellings.
-- Where a field must link to a particular kind of record, [Types](type.md)
-  says so; "in this campaign" there means under the same
-  `campaigns/campaign_N/`, and Content may also be shared under `content/`.
-- Inside a Markdown table, a `|` within a link is written `\|`.
+  not validated.
+- In frontmatter a link must be **canonical**: quoted, `"[[target]]"`, with no
+  alias or anchor. A frontmatter field may not name the same file twice.
+- Inside a Markdown table, a `|` within a link is written `\|` to avoid
+  splitting the link between cells.
 
 ## Types, statuses and schemas
 
