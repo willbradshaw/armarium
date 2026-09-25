@@ -84,6 +84,9 @@ CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
 # An Appearances entry: a wikilink, a colon and a description.
 ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
 
+# Fields that link a record to its predecessor, followed record to record.
+CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
+
 # Top-level frontmatter fields whose links must target a record of a given type:
 # on every record, then by the record's (type, subtype), where entries under
 # (type, None) apply to every record of that type.
@@ -211,6 +214,7 @@ def validate_markdown(
     diagnostics.extend(validate_filename(note, index))
     diagnostics.extend(validate_campaigns(note, index))
     diagnostics.extend(validate_identity_links(note, index))
+    diagnostics.extend(validate_chains(note, index))
     diagnostics.extend(validate_appearances(note, index))
     diagnostics.extend(validate_clue(note, index))
     return Result(
@@ -1075,3 +1079,44 @@ def validate_identity_links(note: Note, index: VaultIndex) -> list[Diagnostic]:
         message = "Transcript filename must match its linked Session plus ' Transcript'"
     rule = "campaign.mismatch" if kind == "Session" else "record.identity"
     return [Diagnostic(path, rule, message, field)]
+
+
+def validate_chains(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check that the record's chain field never leads back to the record.
+
+    Args:
+        note: Selected record; only the types in CHAIN_FIELDS carry a chain.
+        index: Whole-vault index used to follow the chain.
+
+    Returns:
+        list[Diagnostic]: A link.cycle when following the field from record to
+            record returns to this record, or enters a loop elsewhere. A chain
+            ending at a null, absent, unresolvable or unparseable link is not a
+            cycle; such links are reported by the link checks.
+    """
+    field = CHAIN_FIELDS.get(note.frontmatter.type or "")
+    if field is None or note.frontmatter.get(field) is None:
+        return []
+    path = note.path.relative_to(index.root).as_posix()
+    chain: list[Path] = []
+    current = note
+    while True:
+        resolved, error = index.resolve_field(current, field)
+        if error or resolved is None or resolved.suffix.lower() != ".md":
+            return []
+        via = ", ".join(f"[[{p.stem}]]" for p in chain)
+        if resolved == note.path:
+            message = (
+                f"{field} returns to this record via {via}"
+                if via
+                else f"{field} links to this record"
+            )
+            return [Diagnostic(path, "link.cycle", message, field)]
+        if resolved in chain:
+            message = f"{field} chain loops at [[{resolved.stem}]]"
+            return [Diagnostic(path, "link.cycle", message, field)]
+        linked, _ = index.parse(resolved)
+        if linked is None or linked.frontmatter.get(field) is None:
+            return []
+        chain.append(resolved)
+        current = linked

@@ -33,6 +33,7 @@ from armarium.validate import (
     validate,
     validate_appearances,
     validate_campaigns,
+    validate_chains,
     validate_clue,
     validate_directory,
     validate_filename,
@@ -1454,6 +1455,90 @@ class TestValidateCampaigns:
         note = Note(tmp_path / relative, Frontmatter(metadata), Body("", 1))
         result = validate_campaigns(note, VaultIndex(tmp_path))
         assert [(d.rule, d.field) for d in result] == expected
+
+
+class TestValidateChains:
+    LOCATION = 'type: "[[Content]]"\nsubtype: Location\nparent_location: {}'
+    CLUE = 'type: "[[Clue]]"\nstatus: "[[Superseded]]"\nsuperseded_by: {}'
+
+    @pytest.mark.parametrize(
+        "records, message",
+        [
+            (
+                {"content/A.md": LOCATION.format('"[[A]]"')},
+                "parent_location links to this record",
+            ),
+            (
+                {
+                    "content/A.md": LOCATION.format('"[[B]]"'),
+                    "content/B.md": LOCATION.format('"[[A]]"'),
+                },
+                "parent_location returns to this record via [[B]]",
+            ),
+            (
+                {
+                    "content/A.md": LOCATION.format('"[[B]]"'),
+                    "content/B.md": LOCATION.format('"[[C]]"'),
+                    "content/C.md": LOCATION.format('"[[A]]"'),
+                },
+                "parent_location returns to this record via [[B]], [[C]]",
+            ),
+            (
+                {
+                    "content/A.md": LOCATION.format('"[[B]]"'),
+                    "content/B.md": LOCATION.format('"[[C]]"'),
+                    "content/C.md": LOCATION.format('"[[B]]"'),
+                },
+                "parent_location chain loops at [[B]]",
+            ),
+            (
+                {
+                    "content/A.md": LOCATION.format('"[[B]]"'),
+                    "content/B.md": LOCATION.format('"[[C]]"'),
+                    "content/C.md": LOCATION.format("null"),
+                },
+                None,
+            ),
+            (
+                {
+                    "content/A.md": LOCATION.format('"[[B]]"'),
+                    "content/B.md": 'type: "[[Content]]"\nsubtype: Lore',
+                },
+                None,
+            ),
+            ({"content/A.md": LOCATION.format('"[[missing]]"')}, None),
+            ({"content/A.md": LOCATION.format('"[[broken"')}, None),
+            ({"content/A.md": LOCATION.format("null")}, None),
+            ({"content/A.md": 'type: "[[Content]]"\nsubtype: Lore'}, None),
+            ({"content/A.md": 'type: "[[Session]]"\nparent_location: "[[A]]"'}, None),
+            (
+                {"content/A.md": CLUE.format('"[[A]]"')},
+                "superseded_by links to this record",
+            ),
+            (
+                {
+                    "content/A.md": CLUE.format('"[[B]]"'),
+                    "content/B.md": CLUE.format('"[[A]]"'),
+                },
+                "superseded_by returns to this record via [[B]]",
+            ),
+        ],
+    )
+    def test_chains(
+        self, tmp_path: Path, records: dict[str, str], message: str | None
+    ) -> None:
+        write_records(tmp_path, records)
+        index = VaultIndex(tmp_path)
+        note, _ = index.parse(tmp_path / "content/A.md")
+        assert note is not None
+        result = validate_chains(note, index)
+        field = (
+            "superseded_by"
+            if "superseded_by" in records["content/A.md"]
+            else "parent_location"
+        )
+        expected = [] if message is None else [("link.cycle", message, field)]
+        assert [(d.rule, d.message, d.field) for d in result] == expected
 
 
 class TestValidateIdentityLinks:
