@@ -17,7 +17,7 @@ counted as skipped.
 
 ## Order
 
-Each record is first parsed, then checked for a valid [type](type.md), then validated against that type's schema, then given further checks. A record that cannot be parsed or has no valid type gets no further checks; schema findings do not stop the later checks. A vault root's layout is checked once, after its records.
+Each record is first parsed, then checked for a valid [type](type.md), then validated against that type's schema, then given further checks. A record that fails at one stage does not go through later stages. A vault root's layout is checked once, after its records.
 
 ## Checks
 
@@ -35,7 +35,7 @@ Beyond this, some types of record undergo additional checks to ensure they obey 
 Each finding is one line on standard error, with a standard format:
 
 ```text
-[TIME] SEVERITY: PATH:LINE [FIELD]: ID: MESSAGE
+[TIME] SEVERITY: PATH:FIELD:LINE - ID - MESSAGE
 ```
 
 where:
@@ -43,19 +43,19 @@ where:
 - `TIME` is the logging time, with format `YYYY-MM-DD HH:MM:SS.SS UTC`
 - `SEVERITY` is `ERROR`, `WARNING` or `INFO`
 - `PATH` is the offending file's path, relative to the directory passed to `armarium validate`, or to the vault root when a single record is passed; `.` for a finding about the vault itself
-- `:LINE` is the offending line number in the file body, present only when the finding lies in the body
-- ` [FIELD]` is the offending frontmatter field, present only when the finding concerns one
+- `FIELD` is the offending frontmatter field, if any, or blank otherwise
+- `LINE` is the offending line number in the file body, if any, or blank otherwise
 - `ID` is the rule identifier causing the finding, such as `link.missing`
 - `MESSAGE` is the human-readable finding message
 
 For example:
 
 ```text
-[2026-09-25 19:25:15.29 UTC] ERROR: .: vault.required: required directory assets is missing
-[2026-09-25 19:25:15.29 UTC] ERROR: campaigns/campaign_1/content/Quay Nine.md [parent_location]: link.missing: cannot uniquely resolve [[Port Brisele]]; use a vault-relative path
-[2026-09-25 19:25:15.29 UTC] ERROR: campaigns/campaign_1/content/Quay Nine.md:11: link.missing: cannot uniquely resolve [[The Bell Acord]]; use a vault-relative path
-[2026-09-25 19:25:15.29 UTC] ERROR: campaigns/campaign_1/sessions/S-1-004.md [type]: record.type: type is required and must be a canonical wikilink
-[2026-09-25 19:25:15.29 UTC] INFO: 66 checked, 6 skipped, 0 unsupported
+[2026-09-25 19:35:32.83 UTC] ERROR: .:: - vault.required - required directory assets is missing
+[2026-09-25 19:35:32.83 UTC] ERROR: campaigns/campaign_1/content/Quay Nine.md:parent_location: - link.missing - cannot uniquely resolve [[Port Brisele]]; use a vault-relative path
+[2026-09-25 19:35:32.83 UTC] ERROR: campaigns/campaign_1/content/Quay Nine.md::11 - link.missing - cannot uniquely resolve [[The Bell Acord]]; use a vault-relative path
+[2026-09-25 19:35:32.83 UTC] ERROR: campaigns/campaign_1/sessions/S-1-004.md:type: - record.type - type is required and must be a canonical wikilink
+[2026-09-25 19:35:32.83 UTC] INFO: 66 checked, 6 skipped, 0 unsupported
 ```
 
 Findings are sorted by path and rule, so runs are comparable. The final line

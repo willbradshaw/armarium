@@ -53,28 +53,28 @@ class TestMain:
                 '---\ntype: "[[Unknown]]"\n---\n',
                 "content/record.md",
                 1,
-                "ERROR: content/record.md: schema.unsupported",
+                "ERROR: content/record.md:: - schema.unsupported",
                 "1 checked, 0 skipped, 1 unsupported",
             ),
             (
                 "plain Markdown",
                 "content/record.md",
                 1,
-                "ERROR: content/record.md [type]: record.type",
+                "ERROR: content/record.md:type: - record.type",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
                 "---\nx: first\nx: second\n---\n",
                 "content/record.md",
                 1,
-                "ERROR: content/record.md:3: parse.invalid",
+                "ERROR: content/record.md::3 - parse.invalid",
                 "1 checked, 0 skipped, 0 unsupported",
             ),
             (
                 '---\ntype: "[[Widget]]"\n---\n',
                 "reference/templates/Widget.md",
                 0,
-                "INFO: reference/templates/Widget.md: record.template",
+                "INFO: reference/templates/Widget.md:: - record.template",
                 "0 checked, 1 skipped, 0 unsupported",
             ),
         ],
@@ -209,7 +209,7 @@ class TestMain:
             main()
         err = capsys.readouterr().err
         assert "3 checked" in err
-        assert ".: vault.required: required directory assets is missing" in err
+        assert ".:: - vault.required - required directory assets is missing" in err
 
     @pytest.mark.parametrize("directory", [False, True])
     def test_loose_markdown_requires_context_only_for_file_targets(

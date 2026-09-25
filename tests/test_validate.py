@@ -264,12 +264,9 @@ class TestValidateMarkdown:
         (vault / "reference/schemas/widget.schema.json").write_text("false")
         result = validate_markdown(path)
         assert result.failed and result.checked == 1 and result.skipped == 0
-        # The definition folders belong to Type and Status, so the misplaced
-        # Widget is reported alongside its schema failure.
-        assert [d.rule for d in result.diagnostics] == [
-            "record.placement",
-            "schema.instance",
-        ]
+        # The schema failure ends the checks, so the misplaced Widget is not
+        # also reported as misplaced.
+        assert [d.rule for d in result.diagnostics] == ["schema.instance"]
 
     @pytest.mark.parametrize(
         ("name", "metadata", "rule"),
@@ -475,6 +472,8 @@ class TestValidateMarkdown:
             body="## Opening\n\n- [GM] Speech that\n[Esme] continues.\n",
             name="campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md",
         )
+        # The schema stage must pass for the grammar check to run.
+        (vault / "reference/schemas/transcript.schema.json").write_text("true")
         result = validate_markdown(path)
         assert [
             (d.line, d.message)
