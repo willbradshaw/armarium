@@ -1,15 +1,13 @@
 ---
 type: "[[Type]]"
 ---
-Records with `type: "[[types/Note]]"` are freeform working documents: GM
-working notes, design notes, session prep, ideas and anything else that fits
-no structured type. Nothing in a Note is established canon; move facts into
-Content records once they are settled in play.
+Records with `type: "[[types/Note]]"` are freeform documents that do not fit
+the rest of the type hierarchy, such as GM working notes, design notes, session
+prep and ideas.
 
 Shared notes live under `notes/`; campaign-specific notes live under
 `campaigns/campaign_1/notes/` (or the corresponding campaign folder). Use
-[[templates/Note]], name the file for its subject, and link the records the
-note discusses so it can be found from them.
+[[templates/Note]].
 
 ## Schema
 
