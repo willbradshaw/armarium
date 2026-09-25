@@ -1,6 +1,7 @@
 """The package documentation names every enumerable fact the code enforces."""
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -122,6 +123,10 @@ class TestTypeDocument:
     @pytest.mark.parametrize("kind", VAULT_TYPES)
     def test_has_a_section_per_type(self, kind: str) -> None:
         assert f"\n## {kind}\n" in self.TEXT
+
+    def test_sections_are_alphabetical(self) -> None:
+        sections = re.findall(r"^## (.+)$", self.TEXT, re.M)
+        assert sections == sorted(sections)
 
     @pytest.mark.parametrize(
         ("kind", "field"),
