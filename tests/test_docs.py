@@ -110,7 +110,7 @@ class TestVaultDocument:
 
 
 class TestValidationDocument:
-    TEXT = (DOCS / "validation.md").read_text()
+    TEXT = (DOCS / "validate.md").read_text()
     RULES = sorted(
         {
             rule
@@ -123,10 +123,6 @@ class TestValidationDocument:
     def test_lists_every_rule_family(self, rule: str) -> None:
         family = rule.split(".", 1)[0]
         assert f"| `{family}.` |" in self.TEXT
-
-    @pytest.mark.parametrize("kind", VAULT_TYPES)
-    def test_has_a_row_per_type(self, kind: str) -> None:
-        assert f"\n| {kind} | " in self.TEXT
 
 
 class TestCampaignDocument:

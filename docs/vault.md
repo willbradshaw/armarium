@@ -81,6 +81,6 @@ file path must be unique when compared case-insensitively.
 ## Other entries
 
 Other than the required `.obsidian/` files above, hidden entries and symlinks
-are not part of the skeleton and are ignored during [validation](validation.md).
+are not part of the skeleton and are ignored during [validation](validate.md).
 This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
 `.obsidian/`, which are per-machine state, not settings.
