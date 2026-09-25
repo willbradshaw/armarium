@@ -722,6 +722,10 @@ class TestValidateWikilinks:
             ("```dataview\n[[missing]]\n```", "link.missing"),
             ("`[[missing]]`", "link.missing"),
             ("`= [[missing]].text`", "link.missing"),
+            ("| a | b |\n| - | - |\n| [[target\\|Alias]] | [[target]] |", None),
+            ("| a | b |\n| - | - |\n| [[target|Alias]] | x |", "link.syntax"),
+            ("| a | b |\n| - | - |\n| [[broken | x |", "link.syntax"),
+            ("| a | b |\n| - | - |\n| x | y |\n\n[[target|Alias]]", None),
         ],
     )
     def test_body(self, tmp_path: Path, text: str, rule: str | None) -> None:
@@ -736,7 +740,7 @@ class TestValidateWikilinks:
         assert [d.rule for d in result] == ([rule] if rule else [])
         if result:
             assert result[0].path == "selected.md"
-            assert result[0].line == (6 if text.startswith("```") else 5)
+            assert result[0].line == 5 + text[: text.index("[[")].count("\n")
 
     def test_metadata_and_recovery(self, tmp_path: Path) -> None:
         note = Note(
