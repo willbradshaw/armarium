@@ -195,6 +195,54 @@ class TestVaultIndexDeclaredDirectories:
         assert VaultIndex(tmp_path).declared_directories() == {}
 
 
+class TestVaultIndexContainingDirectories:
+    DECLARATIONS = {
+        "Content": "{shared: content, campaign: content}",
+        "Session": "{campaign: sessions}",
+        "Transcript": "{campaign: sessions/transcripts}",
+        "Widget": "{shared: content}",
+    }
+
+    @pytest.mark.parametrize(
+        "relative, expected",
+        [
+            ("content/A.md", [("shared", "content", {"Content", "Widget"})]),
+            ("content/nested/A.md", [("shared", "content", {"Content", "Widget"})]),
+            (
+                "campaigns/campaign_1/content/A.md",
+                [("campaign", "content", {"Content"})],
+            ),
+            (
+                "campaigns/campaign_1/sessions/S.md",
+                [("campaign", "sessions", {"Session"})],
+            ),
+            (
+                "campaigns/campaign_1/sessions/transcripts/S.md",
+                [
+                    ("campaign", "sessions", {"Session"}),
+                    ("campaign", "sessions/transcripts", {"Transcript"}),
+                ],
+            ),
+            ("campaigns/other/content/A.md", []),
+            ("sessions/S.md", []),
+            ("elsewhere.md", []),
+        ],
+    )
+    def test_containing(
+        self, tmp_path: Path, relative: str, expected: list[tuple[str, str, set[str]]]
+    ) -> None:
+        for name, declared in self.DECLARATIONS.items():
+            path = tmp_path / "reference/types" / f"{name}.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\ndirectories: {declared}\n---\n")
+        index = VaultIndex(tmp_path)
+        assert index.containing_directories(tmp_path / relative) == expected
+
+    def test_outside_vault(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError):
+            VaultIndex(tmp_path).containing_directories(tmp_path.parent / "a.md")
+
+
 class TestKey:
     @pytest.mark.parametrize(
         "name, expected",

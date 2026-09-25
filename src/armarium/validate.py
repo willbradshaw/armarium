@@ -1077,31 +1077,16 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
         f"cannot check placement: {kind} declares no directories",
     ):
         return findings
-    # 2. Find the declared directories containing the record and their types
-    scope = find_campaign(record.path, index.root)
-    bases = {
-        "shared": index.root,
-        "campaign": index.root / "campaigns" / scope if scope else None,
-    }
-    owners: dict[Path, set[str]] = {}
-    described: dict[Path, str] = {}
-    for name, directories in declarations.items():
-        for area, path in directories.items():
-            base = bases[area]
-            if base is None or not record.path.is_relative_to(base / path):
-                continue
-            owners.setdefault(base / path, set()).add(name)
-            described.setdefault(base / path, describe(area, path))
-    # 3. The longest containing directory must be one the record's type declares
-    longest = max(owners, key=lambda directory: len(directory.parts), default=None)
-    if longest is not None and kind in owners[longest]:
+    # 2. The deepest declared directory containing the record must be its type's
+    containing = index.containing_directories(record.path)
+    if containing and kind in containing[-1][2]:
         return findings
     declared = " or ".join(
         describe(area, path) for area, path in declarations[kind].items()
     )
     message = f"{kind} belongs under {declared}"
-    if longest is not None and any(kind in names for names in owners.values()):
-        message += f", outside {described[longest]}"
+    if any(kind in names for _, _, names in containing):
+        message += f", outside {describe(*containing[-1][:2])}"
     findings.add("record.placement", message)
     return findings
 

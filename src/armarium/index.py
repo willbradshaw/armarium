@@ -3,7 +3,7 @@
 import unicodedata
 from pathlib import Path
 
-from armarium.lib import Diagnostic, find_files, parse_directories
+from armarium.lib import Diagnostic, find_campaign, find_files, parse_directories
 from armarium.parse import Record
 
 
@@ -150,6 +150,36 @@ class VaultIndex:
             except ValueError:
                 continue
         return declarations
+
+    def containing_directories(self, path: Path) -> list[tuple[str, str, set[str]]]:
+        """Find the declared directories a path lies under, shallowest first.
+
+        Args:
+            path: Absolute path inside the indexed vault.
+
+        Returns:
+            list[tuple[str, str, set[str]]]: Scope, declared path and the
+                names of the types declaring it, for each declared directory
+                containing the path: shared directories under the vault root
+                and, for a path inside campaigns/campaign_N, that campaign's
+                directories. The last entry is the deepest.
+
+        Raises:
+            ValueError: The path is outside this vault.
+        """
+        scope = find_campaign(path, self.root)
+        bases = {
+            "shared": self.root,
+            "campaign": self.root / "campaigns" / scope if scope else None,
+        }
+        found: dict[Path, tuple[str, str, set[str]]] = {}
+        for name, directories in self.declared_directories().items():
+            for area, declared in directories.items():
+                base = bases[area]
+                if base is None or not path.is_relative_to(base / declared):
+                    continue
+                found.setdefault(base / declared, (area, declared, set()))[2].add(name)
+        return [found[key] for key in sorted(found, key=lambda d: len(d.parts))]
 
 
 def _key(name: str) -> str:
