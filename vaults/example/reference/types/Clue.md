@@ -23,7 +23,7 @@ unidentified, and `[]` means none recorded.
 used; `last_session` links to its latest introduction or development in play.
 Both may be null. Preparation alone can set first; setting last requires first.
 Superseded Clues also require a replacement Clue link in `superseded_by`;
-otherwise that field is optional and nullable.
+Clues in any other status must not carry that field at all.
 
 The body contains only `## Sessions` followed by one Base embed, as in the
 template. No additional commentary or views belong here.

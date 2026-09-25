@@ -40,9 +40,18 @@
       }
     },
     {
-      "name": "optional replacement null",
-      "valid": true,
+      "name": "replacement outside Superseded",
+      "valid": false,
       "frontmatter": {
+        "status": "[[Revealed]]",
+        "superseded_by": "[[C-1-0005]]"
+      }
+    },
+    {
+      "name": "null replacement outside Superseded",
+      "valid": false,
+      "frontmatter": {
+        "status": "[[Revealed]]",
         "superseded_by": null
       }
     },

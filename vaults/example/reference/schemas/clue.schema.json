@@ -71,14 +71,7 @@
           ]
         },
         "superseded_by": {
-          "anyOf": [
-            {
-              "type": "null"
-            },
-            {
-              "$ref": "#/$defs/wikilink"
-            }
-          ]
+          "$ref": "#/$defs/wikilink"
         }
       },
       "additionalProperties": true,
@@ -101,6 +94,13 @@
             "properties": {
               "superseded_by": {
                 "$ref": "#/$defs/wikilink"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "superseded_by": {
+                "not": {}
               }
             }
           }
