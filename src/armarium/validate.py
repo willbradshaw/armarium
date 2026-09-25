@@ -85,6 +85,11 @@ CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
 # An Appearances entry: a wikilink, a colon and a description.
 ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
 
+# Transcript body lines: a level-two heading with a title, or speech opening
+# with a speaker tag, a space and text.
+TRANSCRIPT_HEADING = re.compile(r"## \S")
+SPEECH = re.compile(r"\[[^\[\]]+\] \S")
+
 # Fields that link a record to its predecessor, followed record to record.
 CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
 
@@ -219,6 +224,7 @@ def validate_markdown(
     diagnostics.extend(validate_chains(note, index))
     diagnostics.extend(validate_appearances(note, index))
     diagnostics.extend(validate_clue(note, index))
+    diagnostics.extend(validate_transcript(note, index))
     return Result(
         diagnostics=sorted(diagnostics),
         checked=1,
@@ -624,6 +630,60 @@ def validate_clue(note: Note, index: VaultIndex) -> list[Diagnostic]:
             "last_session precedes first_session",
             "last_session",
         )
+    return findings.diagnostics
+
+
+def validate_transcript(note: Note, index: VaultIndex) -> list[Diagnostic]:
+    """Check that a Transcript body follows the transcript line grammar.
+
+    After the frontmatter, every line is a ``## `` heading with a title, a
+    blank line beside a heading, or one utterance opening with a speaker tag,
+    a space and text. The parsed block tree is not used: CommonMark would merge
+    consecutive speech lines into one paragraph.
+
+    Args:
+        note: Selected record; only Transcripts carry speech.
+        index: Vault index used to name the record.
+
+    Returns:
+        list[Diagnostic]: One finding at each offending line: a heading of
+            another level or without a title (transcript.heading), a blank line
+            not beside a heading (transcript.blank), or a line without a
+            speaker tag, including a hard-wrapped continuation of an utterance
+            (transcript.speaker).
+    """
+    if note.frontmatter.type != "Transcript":
+        return []
+    findings = Findings(note.path.relative_to(index.root).as_posix())
+    # 1. Locate the headings, which the blank lines are checked against
+    lines = note.body.text.splitlines()
+    headings = [TRANSCRIPT_HEADING.match(line) is not None for line in lines]
+    # 2. Check every other line
+    for i, line in enumerate(lines):
+        if headings[i]:
+            continue
+        number = note.body.line + i
+        if not line.strip():
+            beside = (i > 0 and headings[i - 1]) or (
+                i + 1 < len(lines) and headings[i + 1]
+            )
+            findings.diagnose(
+                not beside,
+                "transcript.blank",
+                "blank line not beside a heading",
+                line=number,
+            )
+        elif line.startswith("#"):
+            findings.add(
+                "transcript.heading", "heading must be ## with a title", line=number
+            )
+        else:
+            findings.diagnose(
+                SPEECH.match(line) is None,
+                "transcript.speaker",
+                "line must open with a speaker tag",
+                line=number,
+            )
     return findings.diagnostics
 
 

@@ -40,6 +40,7 @@ from armarium.validate import (
     validate_identity_links,
     validate_markdown,
     validate_placement,
+    validate_transcript,
     validate_vault,
     validate_wikilink,
     validate_wikilinks,
@@ -440,6 +441,21 @@ class TestValidateMarkdown:
                 validate_directory(tmp_path, tmp_path)
         assert build.call_count == 1
         assert parse.call_count == 3
+
+    def test_transcript_grammar(
+        self, vault: Path, write_note: Callable[..., Path]
+    ) -> None:
+        path = write_note(
+            {"type": "[[Transcript]]", "session": "[[S-1-001]]"},
+            body="## Opening\n\n[GM] Speech that\nwraps.\n",
+            name="campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md",
+        )
+        result = validate_markdown(path)
+        assert [
+            (d.line, d.message)
+            for d in result.diagnostics
+            if d.rule.startswith("transcript.")
+        ] == [(8, "line must open with a speaker tag")]
 
 
 class TestValidateDirectory:
@@ -2426,3 +2442,80 @@ class TestValidateClue:
             ("campaign.mismatch", "subjects.2"),
             ("link.type", "subjects.3"),
         ]
+
+
+class TestValidateTranscript:
+    PATH = "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
+    HEADING = ("transcript.heading", "heading must be ## with a title")
+    BLANK = ("transcript.blank", "blank line not beside a heading")
+    SPEAKER = ("transcript.speaker", "line must open with a speaker tag")
+    CLEAN = (
+        "## The notice\n\n[GM] An officer posts a notice.\n[Esme] We dispute it.\n"
+        "\n## Across the roofs\n\n[Table] Laughter.\n[?] Who is there?\n"
+    )
+
+    def check(
+        self, tmp_path: Path, body: str, record_type: str = "Transcript"
+    ) -> list[tuple[str, str, int]]:
+        # The body starts on line 4, after three lines of frontmatter.
+        note = Note(
+            tmp_path / self.PATH,
+            Frontmatter({"type": f"[[{record_type}]]"}),
+            Body(body, 4),
+        )
+        result = validate_transcript(note, VaultIndex(tmp_path))
+        assert all((d.path, d.field) == (self.PATH, "") for d in result)
+        return [(d.rule, d.message, d.line) for d in result]
+
+    @pytest.mark.parametrize(
+        "tag", ["[GM]", "[Table]", "[Esme]", "[Darian — Martin]", "[Player?]", "[?]"]
+    )
+    def test_tags(self, tmp_path: Path, tag: str) -> None:
+        assert self.check(tmp_path, f"## Opening\n\n{tag} Speech.\n") == []
+
+    @pytest.mark.parametrize(
+        "body, expected",
+        [
+            ("", []),
+            (CLEAN, []),
+            ("## Opening\n[GM] A.\n## Next\n[GM] B.\n", []),
+            ("## Opening\n \n[GM] A.\n", []),
+            ("\n## Opening\n\n[GM] A.\n", []),
+            ("## Opening\n\n[GM] " + "long " * 200 + "utterance.\n", []),
+            ("# Opening\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
+            ("### Opening\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
+            ("##Opening\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
+            ("## \n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
+            ("##\n\n[GM] A.\n", [(*HEADING, 4), (*BLANK, 5)]),
+            (
+                "# Opening\n[GM] A.\n#### Deep\n[GM] B.\n",
+                [(*HEADING, 4), (*HEADING, 6)],
+            ),
+            ("## Opening\n\n\n[GM] A.\n", [(*BLANK, 6)]),
+            ("## Opening\n\n[GM] A.\n\n[GM] B.\n", [(*BLANK, 7)]),
+            ("## Opening\n\n[GM] A.\n\n", [(*BLANK, 7)]),
+            ("\n\n## Opening\n\n[GM] A.\n", [(*BLANK, 4)]),
+            ("## Opening\n\n[GM] A long\nutterance.\n", [(*SPEAKER, 7)]),
+            ("## Opening\n\n[GM]A.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n[GM] \n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n[GM]\tA.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n[] A.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n[[Esme]] A.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n[Esme A.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\nA.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n- [GM] A.\n", [(*SPEAKER, 6)]),
+            ("## Opening\n\n [GM] A.\n", [(*SPEAKER, 6)]),
+            (
+                "[GM] A.\n# Two\n\n\nB.\n",
+                [(*HEADING, 5), (*BLANK, 6), (*BLANK, 7), (*SPEAKER, 8)],
+            ),
+        ],
+    )
+    def test_lines(
+        self, tmp_path: Path, body: str, expected: list[tuple[str, str, int]]
+    ) -> None:
+        assert self.check(tmp_path, body) == expected
+
+    @pytest.mark.parametrize("record_type", ["Content", "Session", "Type"])
+    def test_other_types(self, tmp_path: Path, record_type: str) -> None:
+        assert self.check(tmp_path, "# Bad\n\n\nprose\n", record_type) == []
