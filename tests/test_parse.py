@@ -303,7 +303,7 @@ class TestFrontmatterLinks:
                     Link("Nested", "custom.1.links.0.0", 0),
                     Link("Last", "custom.2", 0),
                     Link("After", "after", 0),
-                    Link("After.md", "after", 0),
+                    Link("After.md", "after", 0, anchor="Heading"),
                 ),
             ),
             (
@@ -355,10 +355,24 @@ class TestBodyLinks:
         assert body.links == (
             Link("", "", 8, "use [[target]] with balanced double brackets on one line"),
             Link("Other", "", 8),
-            Link("", "", 11),
+            Link("", "", 11, anchor="^block"),
             Link("image.png", "", 11),
         )
         assert body.links is body.links
+
+
+class TestBlockWalk:
+    def test_order(self) -> None:
+        inner = Block("paragraph", 3, "deep")
+        item = Block("item", 2, "one", (Block("list", 3, children=(inner,)),))
+        block = Block("list", 2, children=(item, Block("item", 4, "two")))
+        assert [(b.kind, b.line) for b in block.walk()] == [
+            ("list", 2),
+            ("item", 2),
+            ("list", 3),
+            ("paragraph", 3),
+            ("item", 4),
+        ]
 
 
 class TestBlockFromTokens:

@@ -17,8 +17,8 @@ from armarium.logging import logger
 WIKILINK = re.compile(r"\[\[([^\[\]\r\n]+)\]\]")
 
 
-def parse_wikilink(value: object, *, canonical: bool = False) -> str:
-    """Extract the file target from one complete wikilink.
+def split_wikilink(value: object, *, canonical: bool = False) -> tuple[str, str]:
+    """Extract the file target and anchor from one complete wikilink.
 
     Args:
         value: Candidate wikilink, including its double brackets. Non-strings
@@ -27,10 +27,12 @@ def parse_wikilink(value: object, *, canonical: bool = False) -> str:
             Use this for identity fields such as a note's declared type.
 
     Returns:
-        str: The file target, with surrounding whitespace, display alias and
-            anchor removed. A self-anchor such as ``[[#Heading]]`` returns an
-            empty string when canonical is False. Paths and optional .md
-            extensions are preserved; target existence is not checked.
+        tuple[str, str]: The file target, with surrounding whitespace and any
+            display alias removed, and the anchor after ``#`` (a heading path
+            such as ``Notes#Events`` or a block id such as ``^ab12``), empty
+            when absent. A self-anchor such as ``[[#Heading]]`` has an empty
+            target. Paths and optional .md extensions are preserved; nothing is
+            resolved.
 
     Raises:
         ValueError: The input is not one complete wikilink, its target is empty,
@@ -46,10 +48,27 @@ def parse_wikilink(value: object, *, canonical: bool = False) -> str:
         raise ValueError(
             "canonical wikilinks cannot contain display aliases or anchors"
         )
-    target = contents.split("|", 1)[0].split("#", 1)[0].strip()
+    target, _, anchor = contents.split("|", 1)[0].partition("#")
+    target, anchor = target.strip(), anchor.strip()
     if not target and (canonical or not contents.startswith("#")):
         raise ValueError("wikilink target must not be empty")
-    return target
+    return target, anchor
+
+
+def parse_wikilink(value: object, *, canonical: bool = False) -> str:
+    """Extract the file target from one complete wikilink.
+
+    Args:
+        value: Candidate wikilink, including its double brackets.
+        canonical: Require a file target without a display alias or anchor.
+
+    Returns:
+        str: The file target, as split_wikilink returns it.
+
+    Raises:
+        ValueError: As split_wikilink.
+    """
+    return split_wikilink(value, canonical=canonical)[0]
 
 
 def _find_wikilink_candidates(text: str) -> Iterator[str]:
@@ -79,7 +98,7 @@ def _find_wikilink_candidates(text: str) -> Iterator[str]:
         yield text[start:]
 
 
-def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
+def iter_wikilinks(text: str) -> Iterator[tuple[str, str] | ValueError]:
     """Parse links in text, returning syntax errors without stopping the scan.
 
     Args:
@@ -87,18 +106,16 @@ def iter_wikilinks(text: str) -> Iterator[str | ValueError]:
             regions where wikilink syntax should not be interpreted.
 
     Yields:
-        str | ValueError: The parsed file target or the ValueError explaining
-            invalid syntax.
-            A valid self-anchor has an empty-string target. Errors are yielded
-            as data, not raised, so later links are still parsed.
+        tuple[str, str] | ValueError: The parsed (target, anchor) or the
+            ValueError explaining invalid syntax. A valid self-anchor has an
+            empty-string target. Errors are yielded as data, not raised, so
+            later links are still parsed.
     """
     for candidate in _find_wikilink_candidates(text):
         try:
-            target = parse_wikilink(candidate)
+            yield split_wikilink(candidate)
         except ValueError as exc:
             yield exc
-        else:
-            yield target
 
 
 # -----------------------------------------------------------------------------

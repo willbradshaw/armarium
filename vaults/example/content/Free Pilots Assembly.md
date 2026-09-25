@@ -12,7 +12,7 @@ campaign_2:
 ---
 ## Notes
 
-The Assembly maintains channel markers, arbitrates pilot fees and supplies witnesses for harbor hearings. Members vote by placing their brass pilot tokens on a sailcloth tally. [[Captain Mara Vey]] holds a seat for the eastern approaches.
+The Assembly maintains channel markers, arbitrates pilot fees and supplies witnesses for harbor hearings under the [[The Bell Accord#^hearing]] provision. Members vote by placing their brass pilot tokens on a sailcloth tally. [[Captain Mara Vey]] holds a seat for the eastern approaches.
 
 During [[S-1-002]], the Assembly publicly certified [[Glass Petrel Crew|the crew]]'s petition and released [[Shoal Chart]] into its custody.
 

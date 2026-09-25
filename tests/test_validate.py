@@ -23,7 +23,9 @@ from armarium.validate import (
     VAULT_TEMPLATES,
     VAULT_TYPES,
     Target,
+    _check_anchor,
     _check_campaign_history,
+    _heading_key,
     _link_targets,
     _read_appearances,
     _validate_wikilink_status,
@@ -707,7 +709,13 @@ class TestValidateWikilinks:
     @pytest.mark.parametrize(
         "text, rule",
         [
-            ("[[target|Alias]] [[target.md#Heading]] [[#^block]] ![[image.png]]", None),
+            (
+                "[[target|Alias]] [[target.md#Heading]] [[#^block]] ![[image.png]] ^block",
+                None,
+            ),
+            ("[[target#Missing]]", "link.anchor"),
+            ("[[#^nope]]", "link.anchor"),
+            ("![[image.png#Heading]]", None),
             ("[[missing]]", "link.missing"),
             ("[[broken", "link.syntax"),
             ("```markdown\n[[missing]]\n```", "link.missing"),
@@ -719,7 +727,7 @@ class TestValidateWikilinks:
     def test_body(self, tmp_path: Path, text: str, rule: str | None) -> None:
         for name, body in {
             "selected.md": text,
-            "target.md": "plain",
+            "target.md": "## Heading\nplain",
             "image.png": "asset",
         }.items():
             (tmp_path / name).write_text(body)
@@ -880,6 +888,66 @@ class TestLinkedNote:
             assert outcome is None
         else:
             assert isinstance(outcome, tuple) and outcome[0] == result
+
+
+class TestCheckAnchor:
+    BODY = (
+        "# Title\n"
+        "Intro paragraph. ^intro\n\n"
+        "## Secrets & Clues\n"
+        "- first item ^Item-One\n"
+        "  - nested ^deep\n\n"
+        "### Loot\n"
+        "text\n\n"
+        "## Notes\n"
+        "```\n## Not A Heading\nfake ^fake\n```\n"
+        "> ## Quoted\n"
+    )
+
+    @pytest.mark.parametrize(
+        "anchor, message",
+        [
+            ("Title", None),
+            ("title", None),
+            ("Secrets & Clues", None),
+            ("secrets   &  clues", None),
+            ("Loot", None),
+            ("Secrets & Clues#Loot", None),
+            ("Title#Notes", None),
+            ("Notes#Loot", "no heading Loot"),
+            ("Missing", "no heading Missing"),
+            ("Not A Heading", "no heading Not A Heading"),
+            ("Quoted", "no heading Quoted"),
+            ("^intro", None),
+            ("^INTRO", None),
+            ("^Item-One", None),
+            ("^deep", None),
+            ("^fake", "no block ^fake"),
+            ("^missing", "no block ^missing"),
+        ],
+    )
+    def test_anchor(self, tmp_path: Path, anchor: str, message: str | None) -> None:
+        note = Note(tmp_path / "N.md", Frontmatter(), Body(self.BODY))
+        problem = _check_anchor(note, anchor)
+        if message is None:
+            assert problem is None
+        else:
+            assert problem is not None
+            assert problem[0] == "link.anchor" and problem[1].endswith(message)
+
+
+class TestHeadingKey:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("Notes", "notes"),
+            ("  Secrets   &  Clues ", "secrets & clues"),
+            ("[[Link]] | Pipe ^id #tag", "link pipe id tag"),
+            ("", ""),
+        ],
+    )
+    def test_normalises(self, text: str, expected: str) -> None:
+        assert _heading_key(text) == expected
 
 
 class TestValidateWikilink:

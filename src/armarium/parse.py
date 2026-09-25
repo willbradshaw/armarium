@@ -113,12 +113,14 @@ class Link:
             ``campaign_1.first_session``, or an empty string for a body link.
         line: One-based source line of a body link, or 0 for frontmatter.
         error: Parser message when the link text is malformed, otherwise None.
+        anchor: Heading path or ``^block-id`` after ``#``, or empty.
     """
 
     target: str
     location: str
     line: int
     error: str | None = None
+    anchor: str = ""
 
     @property
     def field(self) -> str:
@@ -221,11 +223,11 @@ class Frontmatter(Mapping[str, Any]):
                     for number in reversed(range(len(value)))
                 )
             elif isinstance(value, str):
-                for target in iter_wikilinks(value):
-                    if isinstance(target, ValueError):
-                        links.append(Link("", location, 0, str(target)))
+                for parsed in iter_wikilinks(value):
+                    if isinstance(parsed, ValueError):
+                        links.append(Link("", location, 0, str(parsed)))
                     else:
-                        links.append(Link(target, location, 0))
+                        links.append(Link(parsed[0], location, 0, anchor=parsed[1]))
         return tuple(links)
 
 
@@ -248,6 +250,16 @@ class Block:
     text: str = ""
     children: tuple["Block", ...] = ()
     block_id: str | None = None
+
+    def walk(self) -> Iterator["Block"]:
+        """Yield this block and every block nested inside it, in order.
+
+        Yields:
+            Block: This block, then each child's walk in turn.
+        """
+        yield self
+        for child in self.children:
+            yield from child.walk()
 
     _BLOCK_ID = re.compile(r"^(.*?)\s*\^([A-Za-z0-9-]+)$", re.S)
     _LEAF_KINDS = {
@@ -460,11 +472,11 @@ class Body(Section):
         """
         links: list[Link] = []
         for line, text in enumerate(self.text.splitlines(), self.line):
-            for target in iter_wikilinks(text):
-                if isinstance(target, ValueError):
-                    links.append(Link("", "", line, str(target)))
+            for parsed in iter_wikilinks(text):
+                if isinstance(parsed, ValueError):
+                    links.append(Link("", "", line, str(parsed)))
                 else:
-                    links.append(Link(target, "", line))
+                    links.append(Link(parsed[0], "", line, anchor=parsed[1]))
         return tuple(links)
 
 

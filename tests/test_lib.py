@@ -20,6 +20,7 @@ from armarium.lib import (
     find_vault,
     iter_wikilinks,
     parse_wikilink,
+    split_wikilink,
 )
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
@@ -86,6 +87,26 @@ class TestFindWikilinkCandidates:
         assert list(_find_wikilink_candidates(text)) == expected
 
 
+class TestSplitWikilink:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("[[Note]]", ("Note", "")),
+            ("[[Note#Heading|Display]]", ("Note", "Heading")),
+            ("[[Note#A#B]]", ("Note", "A#B")),
+            ("[[Note# Heading ]]", ("Note", "Heading")),
+            ("[[#^block]]", ("", "^block")),
+            ("[[Note#]]", ("Note", "")),
+        ],
+    )
+    def test_target_and_anchor(self, value: str, expected: tuple[str, str]) -> None:
+        assert split_wikilink(value) == expected
+
+    def test_canonical_rejects_anchor(self) -> None:
+        with pytest.raises(ValueError, match="canonical"):
+            split_wikilink("[[Note#Heading]]", canonical=True)
+
+
 class TestIterWikilinks:
     @pytest.mark.parametrize(
         ("text", "expected"),
@@ -94,7 +115,7 @@ class TestIterWikilinks:
             ("ordinary [text]", []),
             (
                 r"[[Café\|Display]] [[Note#Heading|Label]] [[#^block]] [[Café]]",
-                ["Café", "Note", "", "Café"],
+                [("Café", ""), ("Note", "Heading"), ("", "^block"), ("Café", "")],
             ),
             (
                 "[[first\nsecond]]",
@@ -102,21 +123,23 @@ class TestIterWikilinks:
             ),
             (
                 "[[ ]] [[Good]]",
-                [ValueError("wikilink target must not be empty"), "Good"],
+                [ValueError("wikilink target must not be empty"), ("Good", "")],
             ),
             (
                 "[[]] [[broken [[Good]] then ]] [[open",
                 [
                     ValueError(_INVALID_BRACKETS),
                     ValueError(_INVALID_BRACKETS),
-                    "Good",
+                    ("Good", ""),
                     ValueError(_INVALID_BRACKETS),
                     ValueError(_INVALID_BRACKETS),
                 ],
             ),
         ],
     )
-    def test_results(self, text: str, expected: list[str | ValueError]) -> None:
+    def test_results(
+        self, text: str, expected: list[tuple[str, str] | ValueError]
+    ) -> None:
         results = list(iter_wikilinks(text))
         assert len(results) == len(expected)
         for actual, wanted in zip(results, expected):
@@ -130,10 +153,10 @@ class TestIterWikilinks:
             "![[reference/views/prepared-clues.base]]\n"
         )
         assert list(iter_wikilinks(text)) == [
-            "reference/views/clue-index.base",
-            "C-2-0001",
-            "C-2-0002",
-            "reference/views/prepared-clues.base",
+            ("reference/views/clue-index.base", "Active"),
+            ("C-2-0001", ""),
+            ("C-2-0002", ""),
+            ("reference/views/prepared-clues.base", ""),
         ]
 
     @pytest.mark.parametrize("vault", ["starter", "example"])
