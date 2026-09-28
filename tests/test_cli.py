@@ -39,6 +39,132 @@ def preserve_logger() -> Iterator[None]:
 
 
 class TestMain:
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_force_warning(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        existing: bool,
+    ) -> None:
+        destination = tmp_path / "my-vault"
+        if existing:
+            destination.mkdir()
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "init", "--force", str(destination)]
+        )
+        main()
+        lines = capsys.readouterr().err.splitlines()
+        warning = "WARNING: Directory already exists; overwriting"
+        if existing:
+            assert len(lines) == 4
+            assert lines[1].endswith(warning)
+            assert lines[2].endswith("New vault successfully initialized; validating")
+        else:
+            assert len(lines) == 3
+            assert all(warning not in line for line in lines)
+
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_init(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        existing: bool,
+    ) -> None:
+        destination = tmp_path / "My Setting"
+        working_directory = tmp_path / "checkout"
+        working_directory.mkdir()
+        monkeypatch.chdir(working_directory)
+        if existing:
+            destination.mkdir()
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", "../My Setting"])
+        if existing:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+            assert list(destination.iterdir()) == []
+        else:
+            assert main() is None
+            assert (destination / ".obsidian/app.json").is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert (
+            "Cannot create vault" if existing else "successfully initialized"
+        ) in output.err
+        assert "Traceback" not in output.err
+        if not existing:
+            assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+                f"Initializing new vault at {destination}",
+                "New vault successfully initialized; validating",
+                "Validation completed successfully",
+            ]
+        else:
+            assert "successfully initialized" not in output.err
+            assert "Validation completed successfully" not in output.err
+
+    def test_init_validation_warning(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        from unittest.mock import Mock
+
+        destination = tmp_path / "my-vault"
+        monkeypatch.setattr(
+            "armarium.cli.validate",
+            Mock(
+                return_value=Result(
+                    [
+                        Diagnostic(
+                            "record.md",
+                            "example.warning",
+                            "Check this",
+                            severity="warning",
+                        ),
+                        Diagnostic(
+                            "template.md", "record.template", "Skipped", severity="info"
+                        ),
+                    ]
+                )
+            ),
+        )
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
+        main()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert len(output.err.splitlines()) == 4
+        assert "WARNING: record.md:: - example.warning - Check this" in output.err
+        assert output.err.rstrip().endswith("Validation completed successfully")
+
+    def test_init_validation_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        import shutil
+
+        starter = tmp_path / "starter"
+        shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/starter", starter)
+        (starter / "content/Broken.md").write_text("Missing frontmatter")
+        monkeypatch.setattr("armarium.init._starter", lambda: starter)
+        destination = tmp_path / "New vault"
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "content/Broken.md:type: - record.type" in output.err
+        assert "1 file failed validation" in output.err
+        assert f"Vault retained at {destination} for inspection" in output.err
+        assert "New vault successfully initialized; validating" in output.err
+        assert "Validation completed successfully" not in output.err
+        assert "Traceback" not in output.err
+        assert (destination / "content/Broken.md").read_text() == "Missing frontmatter"
+
     @pytest.mark.parametrize(
         ("text", "name", "status", "diagnostic", "counts"),
         [
@@ -283,6 +409,13 @@ class TestMain:
 
 
 class TestParseArgs:
+    @pytest.mark.parametrize("force", [False, True])
+    def test_init_path(self, force: bool) -> None:
+        args = parse_args(["init", "A new setting"] + (["--force"] if force else []))
+        assert args.command == "init"
+        assert args.path == Path("A new setting")
+        assert args.force is force
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_paths(self, explicit: bool) -> None:
         argv = ["validate", "record.md"] + (["--vault", "vault"] if explicit else [])
@@ -297,6 +430,8 @@ class TestParseArgs:
             ["unknown"],
             ["validate"],
             ["validate", "--unknown"],
+            ["init"],
+            ["init", "setting", "--vault", "other"],
         ],
     )
     def test_usage_errors(
@@ -310,7 +445,9 @@ class TestParseArgs:
         assert "usage:" in output.err and "error:" in output.err
         assert "Traceback" not in output.err
 
-    @pytest.mark.parametrize("argv", [["--help"], ["validate", "--help"]])
+    @pytest.mark.parametrize(
+        "argv", [["--help"], ["validate", "--help"], ["init", "--help"]]
+    )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:
         with pytest.raises(SystemExit) as exc:
             parse_args(argv)

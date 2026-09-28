@@ -7,16 +7,16 @@ demonstrates this repository's conventions.
 
 ## Create a vault
 
-From this checkout, copy `vaults/starter/` to a new folder whose parent exists:
+With Python 3.14+, install Armarium from this checkout and create a vault:
 
 ```sh
-vault_path="../my-setting"
-mkdir "$vault_path" && cp -R vaults/starter/. "$vault_path/"
+python -m pip install .
+armarium init ../my-vault
 ```
 
 Open the new folder in Obsidian and edit
-`campaigns/campaign_1/reference/Campaign.md`. The copy includes hidden files;
-`mkdir` prevents copying over an existing destination.
+`campaigns/campaign_1/reference/Campaign.md`. See [Creating a vault](docs/init.md)
+for details.
 
 Requires Obsidian **1.13.7+** with **Bases** and
 [Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)

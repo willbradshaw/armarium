@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "armarium"
 version = "0.1.0"
-description = "Read-only validation for Armarium Markdown vaults"
+description = "Create and validate Armarium Markdown vaults"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -28,8 +28,20 @@ dev = [
   "types-jsonschema",
 ]
 
+[tool.hatch.build]
+artifacts = ["/vaults/*/.scratch/.gitkeep"]
+exclude = [
+  "/vaults/*/.obsidian/workspace*.json",
+  "/vaults/*/.env", "/vaults/*/.env.*", "/vaults/*/*.cookie",
+  "/vaults/*/.scratch/**", "**/.DS_Store", "**/__pycache__/**",
+]
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/armarium"]
+only-include = ["src/armarium", "vaults/starter"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src" = ""
+"vaults/starter" = "armarium/starter"
 
 [tool.hatch.build.targets.sdist]
 include = [
