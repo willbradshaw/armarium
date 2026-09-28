@@ -63,6 +63,35 @@ class TestMain:
         assert output.out == ""
         assert ("Cannot create vault" if existing else "Created vault") in output.err
         assert "Traceback" not in output.err
+        if not existing:
+            assert "6 skipped, 0 unsupported" in output.err
+            assert output.err.rstrip().endswith(f"Created vault at {destination}")
+
+    def test_init_validation_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        import shutil
+
+        starter = tmp_path / "starter"
+        shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/starter", starter)
+        (starter / "content/Broken.md").write_text("Missing frontmatter")
+        monkeypatch.setattr("armarium.init._starter", lambda: starter)
+        destination = tmp_path / "New vault"
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "content/Broken.md:type: - record.type" in output.err
+        assert "1 file failed validation" in output.err
+        assert f"Vault retained at {destination} for inspection" in output.err
+        assert "Created vault" not in output.err
+        assert "Traceback" not in output.err
+        assert (destination / "content/Broken.md").read_text() == "Missing frontmatter"
 
     @pytest.mark.parametrize(
         ("text", "name", "status", "diagnostic", "counts"),

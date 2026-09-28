@@ -16,7 +16,8 @@ armarium init ../my-setting
 
 Open the new folder in Obsidian and edit
 `campaigns/campaign_1/reference/Campaign.md`. The parent directory must exist;
-`init` refuses existing destinations, including empty folders. The installed
+`init` refuses existing destinations, including empty folders, and validates the
+new vault before reporting success. The installed
 command includes the starter and works without a checkout. See [Creating a
 vault](docs/init.md) for details.
 

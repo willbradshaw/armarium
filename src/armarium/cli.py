@@ -27,9 +27,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     commands = parser.add_subparsers(dest="command", required=True)
     initialize = commands.add_parser(
         "init",
-        help="create a vault from the bundled starter",
+        help="create and validate a vault from the bundled starter",
         description=(
-            "Create a single-campaign vault at a new path. The parent directory "
+            "Create and validate a single-campaign vault at a new path. The parent directory "
             "must exist; existing files and directories are never overwritten."
         ),
     )
@@ -67,15 +67,19 @@ def main() -> None:
         except OSError as exc:
             logger.error("Cannot create vault at %s: %s", args.path, exc)
             sys.exit(1)
-        logger.info("Created vault at %s", destination)
-        return
-    result = validate(args.path, args.vault)
+        result = validate(destination)
+    else:
+        result = validate(args.path, args.vault)
     result.report()
     if result.failed:
         failed_files = result.failed_files
         noun = "file" if failed_files == 1 else "files"
         logger.error("%s %s failed validation", failed_files, noun)
+        if args.command == "init":
+            logger.error("Vault retained at %s for inspection", destination)
         sys.exit(1)
+    if args.command == "init":
+        logger.info("Created vault at %s", destination)
 
 
 if __name__ == "__main__":

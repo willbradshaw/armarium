@@ -123,6 +123,7 @@ class TestPyproject:
         )
         assert created.returncode == 0, created.stderr
         assert "Created vault" in created.stderr
+        assert "6 skipped, 0 unsupported" in created.stderr
         assert created.stdout == ""
         source = Path(__file__).resolve().parents[1] / "vaults/starter"
         expected = {
