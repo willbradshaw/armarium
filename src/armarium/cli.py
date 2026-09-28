@@ -27,7 +27,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     commands = parser.add_subparsers(dest="command", required=True)
     initialize = commands.add_parser(
         "init",
-        help="create and validate a vault from the bundled starter",
+        help="create and validate a vault from the starter vault",
         description=(
             "Create and validate a single-campaign vault at a new path. The parent directory "
             "must exist; existing files and directories are never overwritten."

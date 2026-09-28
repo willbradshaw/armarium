@@ -4,7 +4,7 @@
 armarium init "../My Setting"
 ```
 
-`armarium init PATH` copies the bundled starter into a new directory. Its parent
+`armarium init PATH` copies the starter vault into a new directory. Its parent
 must already exist. The command refuses existing files, directories (even empty
 ones), and symlinks. If copying fails or is interrupted, it removes the partially
 created vault so the command can be retried. Operational errors are logged and
