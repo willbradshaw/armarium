@@ -107,7 +107,7 @@ class TestPyproject:
         self, installed: tuple[Path, Path, Path], tmp_path: Path
     ) -> None:
         _, command, _ = installed
-        target = tmp_path / "New setting with spaces"
+        target = tmp_path / "new-parent/my-vault"
         environment = {
             key: value
             for key, value in os.environ.items()
@@ -122,8 +122,10 @@ class TestPyproject:
             check=False,
         )
         assert created.returncode == 0, created.stderr
-        assert "Created vault" in created.stderr
-        assert "6 skipped, 0 unsupported" in created.stderr
+        assert len(created.stderr.splitlines()) == 1
+        assert created.stderr.rstrip().endswith(
+            f"New vault successfully initialized and validated at {target}"
+        )
         assert created.stdout == ""
         source = Path(__file__).resolve().parents[1] / "vaults/starter"
         expected = {

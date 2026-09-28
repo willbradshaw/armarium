@@ -96,15 +96,22 @@ class TestInitVault:
             assert target.is_symlink()
 
     def test_missing_parent(self, tmp_path: Path) -> None:
-        with pytest.raises(FileNotFoundError):
-            init_vault(tmp_path / "missing/setting")
-        assert list(tmp_path.iterdir()) == []
+        destination = tmp_path / "missing/nested/my-vault"
+        assert init_vault(destination) == destination
+        assert not validate(destination).failed
+
+    def test_parent_is_file(self, tmp_path: Path) -> None:
+        parent = tmp_path / "file"
+        parent.write_text("Unchanged")
+        with pytest.raises(OSError):
+            init_vault(parent / "my-vault")
+        assert parent.read_text() == "Unchanged"
 
     @pytest.mark.parametrize("error", [OSError("copy failed"), KeyboardInterrupt()])
     def test_copy_failure_cleans_up_and_allows_retry(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
-        target = tmp_path / "setting"
+        target = tmp_path / "new-parent/setting"
 
         def fail_copy(source: Path, destination: Path, **kwargs: object) -> None:
             (destination / "partial.md").write_text("Incomplete")

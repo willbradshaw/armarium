@@ -11,13 +11,13 @@ With Python 3.14+, install Armarium from this checkout and create a vault:
 
 ```sh
 python -m pip install .
-armarium init ../my-setting
+armarium init ../my-vault
 ```
 
 Open the new folder in Obsidian and edit
-`campaigns/campaign_1/reference/Campaign.md`. The parent directory must exist;
-`init` refuses existing destinations, including empty folders, and validates the
-new vault before reporting success. The installed
+`campaigns/campaign_1/reference/Campaign.md`. `init` creates missing parent
+directories, refuses existing destinations, and validates the new vault before
+reporting success. The installed
 command includes the starter and works without a checkout. See [Creating a
 vault](docs/init.md) for details.
 

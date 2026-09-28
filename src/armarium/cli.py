@@ -29,8 +29,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "init",
         help="create and validate a vault from the starter vault",
         description=(
-            "Create and validate a single-campaign vault at a new path. The parent directory "
-            "must exist; existing files and directories are never overwritten."
+            "Create and validate a single-campaign vault at a new path. Missing "
+            "parent directories are created; existing destinations are refused."
         ),
     )
     initialize.add_argument("path", type=Path, help="new vault directory")
@@ -55,9 +55,9 @@ def main() -> None:
 
     Raises:
         SystemExit: Status 1 when vault creation fails or files fail validation.
-            Validation reports all diagnostics and coverage counts before the
-            final error line. Argument parsing exits with 0 for help or 2 for
-            usage errors.
+            Init reports validation warnings and errors; validate also reports
+            informational diagnostics and coverage counts. Argument parsing
+            exits with 0 for help or 2 for usage errors.
     """
     args = parse_args()
     configure_logging()
@@ -68,9 +68,12 @@ def main() -> None:
             logger.error("Cannot create vault at %s: %s", args.path, exc)
             sys.exit(1)
         result = validate(destination)
+        for diagnostic in result.diagnostics:
+            if diagnostic.severity != "info":
+                diagnostic.report()
     else:
         result = validate(args.path, args.vault)
-    result.report()
+        result.report()
     if result.failed:
         failed_files = result.failed_files
         noun = "file" if failed_files == 1 else "files"
@@ -79,7 +82,9 @@ def main() -> None:
             logger.error("Vault retained at %s for inspection", destination)
         sys.exit(1)
     if args.command == "init":
-        logger.info("Created vault at %s", destination)
+        logger.info(
+            "New vault successfully initialized and validated at %s", destination
+        )
 
 
 if __name__ == "__main__":

@@ -61,11 +61,52 @@ class TestMain:
             assert (destination / ".obsidian/app.json").is_file()
         output = capsys.readouterr()
         assert output.out == ""
-        assert ("Cannot create vault" if existing else "Created vault") in output.err
+        assert (
+            "Cannot create vault" if existing else "successfully initialized"
+        ) in output.err
         assert "Traceback" not in output.err
         if not existing:
-            assert "6 skipped, 0 unsupported" in output.err
-            assert output.err.rstrip().endswith(f"Created vault at {destination}")
+            assert len(output.err.splitlines()) == 1
+            assert output.err.rstrip().endswith(
+                f"New vault successfully initialized and validated at {destination}"
+            )
+
+    def test_init_validation_warning(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        from unittest.mock import Mock
+
+        destination = tmp_path / "my-vault"
+        monkeypatch.setattr(
+            "armarium.cli.validate",
+            Mock(
+                return_value=Result(
+                    [
+                        Diagnostic(
+                            "record.md",
+                            "example.warning",
+                            "Check this",
+                            severity="warning",
+                        ),
+                        Diagnostic(
+                            "template.md", "record.template", "Skipped", severity="info"
+                        ),
+                    ]
+                )
+            ),
+        )
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
+        main()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert len(output.err.splitlines()) == 2
+        assert "WARNING: record.md:: - example.warning - Check this" in output.err
+        assert output.err.rstrip().endswith(
+            f"New vault successfully initialized and validated at {destination}"
+        )
 
     def test_init_validation_failure(
         self,
@@ -89,7 +130,7 @@ class TestMain:
         assert "content/Broken.md:type: - record.type" in output.err
         assert "1 file failed validation" in output.err
         assert f"Vault retained at {destination} for inspection" in output.err
-        assert "Created vault" not in output.err
+        assert "successfully initialized" not in output.err
         assert "Traceback" not in output.err
         assert (destination / "content/Broken.md").read_text() == "Missing frontmatter"
 

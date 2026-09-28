@@ -1,26 +1,21 @@
 # Creating a vault
 
 ```sh
-armarium init "../My Setting"
+armarium init ../my-vault
 ```
 
-`armarium init PATH` copies the starter vault into a new directory. Its parent
-must already exist. The command refuses existing files, directories (even empty
-ones), and symlinks. If copying fails or is interrupted, it removes the partially
-created vault so the command can be retried. Operational errors are logged and
-exit with status 1; incorrect arguments exit with status 2. `--help` shows usage.
+`armarium init PATH` initializes a new vault in a fresh directory by copying the
+[starter vault](../vaults/starter/). `PATH` must be a nonexistent directory;
+existing files and directories (even empty ones) are refused, as are symbolic
+links. Missing parent directories are automatically created. If copying fails or
+is interrupted, the partially created vault is removed safely. After copying
+completes, the new vault undergoes validation before success is reported.
 
-After copying, `init` runs full vault validation and reports its diagnostics and
-coverage counts. It reports success only if validation passes. Validation failures
-exit with status 1 and leave the vault available for inspection. To check it again
-after editing, run `armarium validate PATH`.
+Validation reports warnings and errors; otherwise, the only output is
+`New vault successfully initialized and validated at PATH`. Validation failures
+exit with status 1 and leave the vault available for inspection.
 
-The vault begins with one campaign, `campaign_1`, and includes the templates,
-schemas, Bases views, Obsidian settings and hidden files from `vaults/starter/`.
-Open the new folder in Obsidian, enable the plugins listed in the README, and edit
-`campaigns/campaign_1/reference/Campaign.md` to describe your campaign.
-
-The installed package supplies the starter; no source checkout, agent or network
-access is needed to run `init`. The resulting files belong to you. The vault can
-be moved or placed in its own Git repository. `init` does not initialize Git or
-install Obsidian plugins.
+`init` does not initialize Git or install Obsidian plugins. After completion,
+open the new vault in Obsidian and enable the plugins listed in
+[the README](../README.md) before editing. After initialization, the vault can be
+moved or placed in its own Git repository.

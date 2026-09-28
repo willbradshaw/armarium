@@ -29,14 +29,14 @@ def init_vault(destination: Path) -> Path:
     """Copy the starter into a new directory without modifying an existing path.
 
     Args:
-        destination: New vault directory. Its parent must already exist.
+        destination: New vault directory. Missing parents are created.
 
     Returns:
         Path: The absolute path of the created vault.
 
     Raises:
         FileExistsError: The destination exists, including a dangling symlink.
-        OSError: The parent is missing, resources are unavailable, or copying
+        OSError: Directory creation fails, resources are unavailable, or copying
             fails. A failed copy removes the directory created by this call.
         KeyboardInterrupt: An interrupted copy is cleaned up before propagating.
     """
@@ -44,7 +44,7 @@ def init_vault(destination: Path) -> Path:
     with as_file(_starter()) as source:
         # mkdir is the exclusive claim: even an empty directory or dangling
         # symlink must be refused, without relying on an earlier existence check.
-        destination.mkdir()
+        destination.mkdir(parents=True)
         try:
             shutil.copytree(source, destination, dirs_exist_ok=True)
         except BaseException:
