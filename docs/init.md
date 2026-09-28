@@ -11,6 +11,11 @@ links. Missing parent directories are automatically created. If copying fails or
 is interrupted, the partially created vault is removed safely. After copying
 completes, the new vault undergoes validation before success is reported.
 
+Use `armarium init --force PATH` to replace an existing directory and **all its
+contents** with the starter vault. Files and symbolic links are still refused.
+The replacement is copied before the old directory is removed, so a copy failure
+leaves the existing directory intact.
+
 The command reports progress:
 
 ```text

@@ -384,10 +384,12 @@ class TestMain:
 
 
 class TestParseArgs:
-    def test_init_path(self) -> None:
-        args = parse_args(["init", "A new setting"])
+    @pytest.mark.parametrize("force", [False, True])
+    def test_init_path(self, force: bool) -> None:
+        args = parse_args(["init", "A new setting"] + (["--force"] if force else []))
         assert args.command == "init"
         assert args.path == Path("A new setting")
+        assert args.force is force
 
     @pytest.mark.parametrize("explicit", [False, True])
     def test_paths(self, explicit: bool) -> None:
@@ -404,7 +406,6 @@ class TestParseArgs:
             ["validate"],
             ["validate", "--unknown"],
             ["init"],
-            ["init", "setting", "--force"],
             ["init", "setting", "--vault", "other"],
         ],
     )

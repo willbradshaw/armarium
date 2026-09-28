@@ -174,6 +174,21 @@ class TestPyproject:
             for p in relocated.rglob("*")
             if p.is_file()
         } == before
+        forced = subprocess.run(
+            [str(command), "init", "--force", str(relocated)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert forced.returncode == 0, forced.stderr
+        assert forced.stderr.rstrip().endswith("Validation completed successfully")
+        assert {
+            p.relative_to(relocated): p.read_bytes()
+            for p in relocated.rglob("*")
+            if p.is_file()
+        } == expected
 
     def test_imports_come_from_installation(
         self, installed: tuple[Path, Path, Path], tmp_path: Path

@@ -30,10 +30,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="create and validate a vault from the starter vault",
         description=(
             "Create and validate a single-campaign vault at a new path. Missing "
-            "parent directories are created; existing destinations are refused."
+            "parent directories are created. Use --force to replace an existing directory."
         ),
     )
     initialize.add_argument("path", type=Path, help="new vault directory")
+    initialize.add_argument(
+        "--force",
+        action="store_true",
+        help="replace an existing directory and all its contents; refuse files and symlinks",
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -66,7 +71,7 @@ def main() -> None:
             logger.info(
                 "Initializing new vault at %s", args.path.expanduser().resolve()
             )
-            destination = init_vault(args.path)
+            destination = init_vault(args.path, force=args.force)
         except OSError as exc:
             logger.error("Cannot create vault at %s: %s", args.path, exc)
             sys.exit(1)

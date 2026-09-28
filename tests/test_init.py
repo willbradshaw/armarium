@@ -40,6 +40,64 @@ class TestStarter:
 
 
 class TestInitVault:
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_force_replaces_directory(self, tmp_path: Path, existing: bool) -> None:
+        target = tmp_path / "my-vault"
+        if existing:
+            target.mkdir()
+            (target / "obsolete.md").write_text("Old content")
+        assert init_vault(target, force=True) == target
+        assert not (target / "obsolete.md").exists()
+        assert not validate(target).failed
+        assert list(tmp_path.iterdir()) == [target]
+
+    @pytest.mark.parametrize("kind", ["file", "symlink", "dangling"])
+    def test_force_refuses_non_directories(self, tmp_path: Path, kind: str) -> None:
+        target = tmp_path / "target"
+        other = tmp_path / "other"
+        other.mkdir()
+        if kind == "file":
+            target.write_text("Unchanged")
+        else:
+            target.symlink_to(other if kind == "symlink" else tmp_path / "missing")
+        with pytest.raises(FileExistsError):
+            init_vault(target, force=True)
+        if kind == "file":
+            assert target.read_text() == "Unchanged"
+        else:
+            assert target.is_symlink()
+        assert list(other.iterdir()) == []
+
+    @pytest.mark.parametrize("stage", ["copy", "rename"])
+    @pytest.mark.parametrize("error", [OSError("failed"), KeyboardInterrupt()])
+    def test_force_failure_preserves_original(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        stage: str,
+        error: BaseException,
+    ) -> None:
+        target = tmp_path / "my-vault"
+        target.mkdir()
+        (target / "keep.md").write_text("Unchanged")
+        rename = Path.rename
+
+        def fail_install(path: Path, destination: Path) -> Path:
+            if path.name == "replacement":
+                raise error
+            return rename(path, destination)
+
+        if stage == "copy":
+            monkeypatch.setattr(
+                "armarium.init.shutil.copytree", Mock(side_effect=error)
+            )
+        else:
+            monkeypatch.setattr(Path, "rename", fail_install)
+        with pytest.raises(type(error)):
+            init_vault(target, force=True)
+        assert (target / "keep.md").read_text() == "Unchanged"
+        assert list(tmp_path.iterdir()) == [target]
+
     @pytest.mark.parametrize("relative", [False, True])
     def test_creates_independent_valid_copy(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
