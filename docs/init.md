@@ -16,17 +16,6 @@ contents** with the starter vault. Files and symbolic links are still refused.
 The replacement is copied before the old directory is removed, so a copy failure
 leaves the existing directory intact.
 
-The command reports progress:
-
-```text
-Initializing new vault at PATH
-New vault successfully initialized; validating
-Validation completed successfully
-```
-
-Validation also reports warnings and errors. Validation failures exit with
-status 1 and leave the vault available for inspection, without reporting success.
-
 `init` does not initialize Git or install Obsidian plugins. After completion,
 open the new vault in Obsidian and enable the plugins listed in
 [the README](../README.md) before editing. After initialization, the vault can be
