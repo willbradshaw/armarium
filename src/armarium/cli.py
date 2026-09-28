@@ -1,10 +1,11 @@
-"""Command-line adapter for read-only Markdown validation."""
+"""Command-line adapters for vault creation and read-only validation."""
 
 import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from armarium.init import init_vault
 from armarium.logging import configure_logging, logger
 from armarium.validate import validate
 
@@ -16,14 +17,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         argv: Arguments without the executable name, or None to read sys.argv.
 
     Returns:
-        argparse.Namespace: Selected command, file or directory path, and
-            optional vault.
+        argparse.Namespace: Selected command and path; validate also supplies
+            an optional vault.
 
     Raises:
         SystemExit: Argparse exits with 0 for help or 2 for invalid arguments.
     """
     parser = argparse.ArgumentParser(prog="armarium")
     commands = parser.add_subparsers(dest="command", required=True)
+    initialize = commands.add_parser(
+        "init",
+        help="create a vault from the bundled starter",
+        description=(
+            "Create a single-campaign vault at a new path. The parent directory "
+            "must exist; existing files and directories are never overwritten."
+        ),
+    )
+    initialize.add_argument("path", type=Path, help="new vault directory")
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -41,15 +51,24 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def main() -> None:
-    """Run the command from process arguments and log its validation result.
+    """Run the selected command and log its result.
 
     Raises:
-        SystemExit: Status 1 when one or more files failed validation, after
-            reporting all diagnostics, the coverage counts and a final error
-            line; argument parsing exits with 0 for help or 2 for usage errors.
+        SystemExit: Status 1 when vault creation fails or files fail validation.
+            Validation reports all diagnostics and coverage counts before the
+            final error line. Argument parsing exits with 0 for help or 2 for
+            usage errors.
     """
     args = parse_args()
     configure_logging()
+    if args.command == "init":
+        try:
+            destination = init_vault(args.path)
+        except OSError as exc:
+            logger.error("Cannot create vault at %s: %s", args.path, exc)
+            sys.exit(1)
+        logger.info("Created vault at %s", destination)
+        return
     result = validate(args.path, args.vault)
     result.report()
     if result.failed:

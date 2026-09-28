@@ -18,8 +18,31 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
     root = Path(__file__).resolve().parents[1]
     temporary = tmp_path_factory.mktemp("installed package")
     artifacts = temporary / "artifacts"
+    source = temporary / "source"
+    source.mkdir()
+    for folder in ("src", "tests", "vaults", "docs"):
+        shutil.copytree(
+            root / folder, source / folder, ignore=shutil.ignore_patterns("__pycache__")
+        )
+    for name in ("pyproject.toml", "README.md", "AGENTS.md", "ruff.toml", ".gitignore"):
+        shutil.copyfile(root / name, source / name)
+    # Build from a used checkout, not just a pristine tree. Local vault state
+    # must not leak into either distribution or a newly initialized vault.
+    for name in (
+        ".scratch/private.md",
+        ".obsidian/workspace.json",
+        ".obsidian/workspace-mobile.json",
+        ".env",
+        ".env.local",
+        "session.cookie",
+        ".DS_Store",
+        "__pycache__/generated.pyc",
+    ):
+        path = source / "vaults/starter" / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Local-only data")
     subprocess.run(
-        [sys.executable, "-m", "build", "--outdir", str(artifacts), str(root)],
+        [sys.executable, "-m", "build", "--outdir", str(artifacts), str(source)],
         check=True,
         capture_output=True,
         text=True,
@@ -51,12 +74,102 @@ class TestPyproject:
         assert "armarium/cli.py" in names
         assert "armarium/validate.py" in names
         assert not any(name.startswith(("tests/", "vaults/")) for name in names)
-        assert not any("__pycache__" in name or ".scratch" in name for name in names)
+        assert not any("__pycache__" in name for name in names)
+        starter = Path(__file__).resolve().parents[1] / "vaults/starter"
+        expected = {
+            p.relative_to(starter).as_posix() for p in starter.rglob("*") if p.is_file()
+        }
+        assert {
+            name.removeprefix("armarium/starter/")
+            for name in names
+            if name.startswith("armarium/starter/")
+        } == expected
+        with zipfile.ZipFile(next(artifacts.glob("*.whl"))) as wheel:
+            for name in expected:
+                assert (
+                    wheel.read("armarium/starter/" + name)
+                    == (starter / name).read_bytes()
+                )
         with tarfile.open(next(artifacts.glob("*.tar.gz"))) as source:
             names = source.getnames()
         assert any(name.endswith("/pyproject.toml") for name in names)
         assert any(name.endswith("/tests/test_pyproject.py") for name in names)
-        assert not any(".scratch" in name or "__pycache__" in name for name in names)
+        assert not any("__pycache__" in name for name in names)
+        assert not any(
+            ".scratch" in name and not name.endswith(".scratch/.gitkeep")
+            for name in names
+        )
+        assert not any(
+            name.endswith(("workspace.json", ".env", ".DS_Store")) for name in names
+        )
+
+    def test_installed_init(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path
+    ) -> None:
+        _, command, _ = installed
+        target = tmp_path / "New setting with spaces"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        created = subprocess.run(
+            [str(command), "init", str(target)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert created.returncode == 0, created.stderr
+        assert "Created vault" in created.stderr
+        assert created.stdout == ""
+        source = Path(__file__).resolve().parents[1] / "vaults/starter"
+        expected = {
+            p.relative_to(source): p.read_bytes()
+            for p in source.rglob("*")
+            if p.is_file()
+        }
+        assert {
+            p.relative_to(target): p.read_bytes()
+            for p in target.rglob("*")
+            if p.is_file()
+        } == expected
+        # Independent after creation: moving it does not break resources or links.
+        relocated = target.rename(tmp_path / "Moved setting")
+        checked = subprocess.run(
+            [str(command), "validate", str(relocated)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert checked.returncode == 0, checked.stderr
+        assert "6 skipped, 0 unsupported" in checked.stderr
+        customized = relocated / "campaigns/campaign_1/reference/Campaign.md"
+        customized.write_text(customized.read_text() + "\nMy campaign.\n")
+        before = {
+            p.relative_to(relocated): p.read_bytes()
+            for p in relocated.rglob("*")
+            if p.is_file()
+        }
+        refused = subprocess.run(
+            [str(command), "init", str(relocated)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1
+        assert "Cannot create vault" in refused.stderr
+        assert "Traceback" not in refused.stderr
+        assert {
+            p.relative_to(relocated): p.read_bytes()
+            for p in relocated.rglob("*")
+            if p.is_file()
+        } == before
 
     def test_imports_come_from_installation(
         self, installed: tuple[Path, Path, Path], tmp_path: Path

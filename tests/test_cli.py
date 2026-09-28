@@ -39,6 +39,31 @@ def preserve_logger() -> Iterator[None]:
 
 
 class TestMain:
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_init(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        existing: bool,
+    ) -> None:
+        destination = tmp_path / "My Setting"
+        if existing:
+            destination.mkdir()
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
+        if existing:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+            assert list(destination.iterdir()) == []
+        else:
+            assert main() is None
+            assert (destination / ".obsidian/app.json").is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert ("Cannot create vault" if existing else "Created vault") in output.err
+        assert "Traceback" not in output.err
+
     @pytest.mark.parametrize(
         ("text", "name", "status", "diagnostic", "counts"),
         [
@@ -283,6 +308,11 @@ class TestMain:
 
 
 class TestParseArgs:
+    def test_init_path(self) -> None:
+        args = parse_args(["init", "A new setting"])
+        assert args.command == "init"
+        assert args.path == Path("A new setting")
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_paths(self, explicit: bool) -> None:
         argv = ["validate", "record.md"] + (["--vault", "vault"] if explicit else [])
@@ -297,6 +327,9 @@ class TestParseArgs:
             ["unknown"],
             ["validate"],
             ["validate", "--unknown"],
+            ["init"],
+            ["init", "setting", "--force"],
+            ["init", "setting", "--vault", "other"],
         ],
     )
     def test_usage_errors(
@@ -310,7 +343,9 @@ class TestParseArgs:
         assert "usage:" in output.err and "error:" in output.err
         assert "Traceback" not in output.err
 
-    @pytest.mark.parametrize("argv", [["--help"], ["validate", "--help"]])
+    @pytest.mark.parametrize(
+        "argv", [["--help"], ["validate", "--help"], ["init", "--help"]]
+    )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:
         with pytest.raises(SystemExit) as exc:
             parse_args(argv)
