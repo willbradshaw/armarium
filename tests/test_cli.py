@@ -40,6 +40,31 @@ def preserve_logger() -> Iterator[None]:
 
 class TestMain:
     @pytest.mark.parametrize("existing", [False, True])
+    def test_force_warning(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        existing: bool,
+    ) -> None:
+        destination = tmp_path / "my-vault"
+        if existing:
+            destination.mkdir()
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "init", "--force", str(destination)]
+        )
+        main()
+        lines = capsys.readouterr().err.splitlines()
+        warning = "WARNING: Directory already exists; overwriting"
+        if existing:
+            assert len(lines) == 4
+            assert lines[1].endswith(warning)
+            assert lines[2].endswith("New vault successfully initialized; validating")
+        else:
+            assert len(lines) == 3
+            assert all(warning not in line for line in lines)
+
+    @pytest.mark.parametrize("existing", [False, True])
     def test_init(
         self,
         tmp_path: Path,

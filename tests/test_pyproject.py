@@ -183,6 +183,9 @@ class TestPyproject:
             check=False,
         )
         assert forced.returncode == 0, forced.stderr
+        assert forced.stderr.splitlines()[1].endswith(
+            "WARNING: Directory already exists; overwriting"
+        )
         assert forced.stderr.rstrip().endswith("Validation completed successfully")
         assert {
             p.relative_to(relocated): p.read_bytes()

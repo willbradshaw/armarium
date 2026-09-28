@@ -6,6 +6,8 @@ from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 
+from armarium.logging import logger
+
 
 def _starter() -> Traversable:
     """Find packaged starter files, or their source in a development checkout.
@@ -47,6 +49,7 @@ def init_vault(destination: Path, *, force: bool = False) -> Path:
     destination = destination.expanduser().absolute()
     with as_file(_starter()) as source:
         if force and destination.is_dir() and not destination.is_symlink():
+            logger.warning("Directory already exists; overwriting")
             workspace = Path(
                 tempfile.mkdtemp(prefix=".armarium-init-", dir=destination.parent)
             )
