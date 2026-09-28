@@ -18,11 +18,9 @@ Content `summary`, including in past Sessions. Put session-specific instructions
 in Scene notes and actual play under Events. Secrets & Clues, Locations and
 Important NPCs each contain exactly one Base embed and no additional text.
 
-When campaigns use the same reference filename, qualify links with the shortest
-unique path, for example `campaign_2/reference/Campaign`. Update existing
-Session and index links, and the setting's Session template, when adding a campaign
-makes a formerly unique `Campaign` target ambiguous. Set the template's campaign
-link to the intended campaign when creating each Session.
+Always qualify campaign overview links, for example
+`[[campaign_1/reference/Campaign]]`. Set the template’s campaign link to the
+intended campaign when creating each Session.
 
 ## Schema
 

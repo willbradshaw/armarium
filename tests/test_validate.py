@@ -656,6 +656,26 @@ class TestValidateDirectory:
         assert result.checked > 0 and result.skipped == len(VAULT_TEMPLATES)
         assert all(p.read_bytes() == data for p, data in before.items())
 
+    @pytest.mark.parametrize(("name", "number"), [("starter", 2), ("example", 3)])
+    def test_campaign_templates(self, tmp_path: Path, name: str, number: int) -> None:
+        root = tmp_path / "vault"
+        shutil.copytree(ROOT / "vaults" / name, root)
+        campaign = root / "campaigns" / f"campaign_{number}"
+        for directory in CAMPAIGN_DIRECTORIES:
+            (campaign / directory).mkdir(parents=True, exist_ok=True)
+        for template, destination in (
+            ("Campaign", "reference/Campaign.md"),
+            ("Clues", "reference/indexes/Clues.md"),
+        ):
+            text = (root / f"reference/templates/{template}.md").read_text()
+            text = text.replace("campaign_1", f"campaign_{number}").replace(
+                "C-1-", f"C-{number}-"
+            )
+            (campaign / destination).write_text(text)
+        result = validate_directory(root)
+        assert not result.failed, result.diagnostics
+        assert result.unsupported == 0
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_selected_vault_applies_to_entire_subtree(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, explicit: bool

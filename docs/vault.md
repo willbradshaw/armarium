@@ -34,7 +34,7 @@ notes/                        Note records shared by every campaign
 reference/                    shared Reference records
   schemas/                    <type>.schema.json for every Type
   statuses/                   Status records: Abandoned, Dormant, Hinted, Pending, Revealed, Superseded
-  templates/                  one template per authored type: Clue, Content, Note, Player, Session, Transcript
+  templates/                  record templates: Campaign, Clue, Clues, Content, Note, Player, Session, Transcript
   types/                      Type records: Clue, Content, Note, Player, Reference, Session, Status, Transcript, Type
   views/                      Bases views (.base) embedded by records
 ```

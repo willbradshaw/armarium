@@ -150,7 +150,7 @@ class TestPyproject:
             check=False,
         )
         assert checked.returncode == 0, checked.stderr
-        assert "6 skipped, 0 unsupported" in checked.stderr
+        assert "8 skipped, 0 unsupported" in checked.stderr
         customized = relocated / "campaigns/campaign_1/reference/Campaign.md"
         customized.write_text(customized.read_text() + "\nMy campaign.\n")
         before = {
@@ -320,7 +320,7 @@ class TestPyproject:
         assert process.returncode == 0, process.stdout + process.stderr
         assert process.stdout == ""
         if directory:
-            assert process.stderr.endswith("6 skipped, 0 unsupported\n")
+            assert process.stderr.endswith("8 skipped, 0 unsupported\n")
         else:
             assert process.stderr.endswith(
                 "INFO: 1 checked, 0 skipped, 0 unsupported\n"
