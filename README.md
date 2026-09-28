@@ -15,11 +15,8 @@ armarium init ../my-vault
 ```
 
 Open the new folder in Obsidian and edit
-`campaigns/campaign_1/reference/Campaign.md`. `init` creates missing parent
-directories and validates the new vault before reporting success. Use `--force`
-to replace an existing directory and all its contents. The installed
-command includes the starter and works without a checkout. See [Creating a
-vault](docs/init.md) for details.
+`campaigns/campaign_1/reference/Campaign.md`. See [Creating a vault](docs/init.md)
+for details.
 
 Requires Obsidian **1.13.7+** with **Bases** and
 [Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)
