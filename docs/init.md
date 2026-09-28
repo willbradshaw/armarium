@@ -11,9 +11,16 @@ links. Missing parent directories are automatically created. If copying fails or
 is interrupted, the partially created vault is removed safely. After copying
 completes, the new vault undergoes validation before success is reported.
 
-Validation reports warnings and errors; otherwise, the only output is
-`New vault successfully initialized and validated at PATH`. Validation failures
-exit with status 1 and leave the vault available for inspection.
+The command reports progress:
+
+```text
+Initializing new vault at PATH
+New vault successfully initialized; validating
+Validation completed successfully
+```
+
+Validation also reports warnings and errors. Validation failures exit with
+status 1 and leave the vault available for inspection, without reporting success.
 
 `init` does not initialize Git or install Obsidian plugins. After completion,
 open the new vault in Obsidian and enable the plugins listed in

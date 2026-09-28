@@ -122,10 +122,11 @@ class TestPyproject:
             check=False,
         )
         assert created.returncode == 0, created.stderr
-        assert len(created.stderr.splitlines()) == 1
-        assert created.stderr.rstrip().endswith(
-            f"New vault successfully initialized and validated at {target}"
-        )
+        assert [line.split("INFO: ", 1)[1] for line in created.stderr.splitlines()] == [
+            f"Initializing new vault at {target}",
+            "New vault successfully initialized; validating",
+            "Validation completed successfully",
+        ]
         assert created.stdout == ""
         source = Path(__file__).resolve().parents[1] / "vaults/starter"
         expected = {

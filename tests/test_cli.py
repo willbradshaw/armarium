@@ -69,10 +69,14 @@ class TestMain:
         ) in output.err
         assert "Traceback" not in output.err
         if not existing:
-            assert len(output.err.splitlines()) == 1
-            assert output.err.rstrip().endswith(
-                f"New vault successfully initialized and validated at {destination}"
-            )
+            assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+                f"Initializing new vault at {destination}",
+                "New vault successfully initialized; validating",
+                "Validation completed successfully",
+            ]
+        else:
+            assert "successfully initialized" not in output.err
+            assert "Validation completed successfully" not in output.err
 
     def test_init_validation_warning(
         self,
@@ -105,11 +109,9 @@ class TestMain:
         main()
         output = capsys.readouterr()
         assert output.out == ""
-        assert len(output.err.splitlines()) == 2
+        assert len(output.err.splitlines()) == 4
         assert "WARNING: record.md:: - example.warning - Check this" in output.err
-        assert output.err.rstrip().endswith(
-            f"New vault successfully initialized and validated at {destination}"
-        )
+        assert output.err.rstrip().endswith("Validation completed successfully")
 
     def test_init_validation_failure(
         self,
@@ -133,7 +135,8 @@ class TestMain:
         assert "content/Broken.md:type: - record.type" in output.err
         assert "1 file failed validation" in output.err
         assert f"Vault retained at {destination} for inspection" in output.err
-        assert "successfully initialized" not in output.err
+        assert "New vault successfully initialized; validating" in output.err
+        assert "Validation completed successfully" not in output.err
         assert "Traceback" not in output.err
         assert (destination / "content/Broken.md").read_text() == "Missing frontmatter"
 

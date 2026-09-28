@@ -63,10 +63,14 @@ def main() -> None:
     configure_logging()
     if args.command == "init":
         try:
+            logger.info(
+                "Initializing new vault at %s", args.path.expanduser().resolve()
+            )
             destination = init_vault(args.path)
         except OSError as exc:
             logger.error("Cannot create vault at %s: %s", args.path, exc)
             sys.exit(1)
+        logger.info("New vault successfully initialized; validating")
         result = validate(destination)
         for diagnostic in result.diagnostics:
             if diagnostic.severity != "info":
@@ -82,9 +86,7 @@ def main() -> None:
             logger.error("Vault retained at %s for inspection", destination)
         sys.exit(1)
     if args.command == "init":
-        logger.info(
-            "New vault successfully initialized and validated at %s", destination
-        )
+        logger.info("Validation completed successfully")
 
 
 if __name__ == "__main__":
