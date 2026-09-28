@@ -32,7 +32,7 @@ def init_vault(destination: Path) -> Path:
         destination: New vault directory. Missing parents are created.
 
     Returns:
-        Path: The absolute path of the created vault.
+        Path: The resolved absolute path of the created vault.
 
     Raises:
         FileExistsError: The destination exists, including a dangling symlink.
@@ -50,4 +50,4 @@ def init_vault(destination: Path) -> Path:
         except BaseException:
             shutil.rmtree(destination)
             raise
-    return destination
+    return destination.resolve()

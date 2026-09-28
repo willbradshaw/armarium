@@ -48,9 +48,12 @@ class TestMain:
         existing: bool,
     ) -> None:
         destination = tmp_path / "My Setting"
+        working_directory = tmp_path / "checkout"
+        working_directory.mkdir()
+        monkeypatch.chdir(working_directory)
         if existing:
             destination.mkdir()
-        monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
+        monkeypatch.setattr(sys, "argv", ["armarium", "init", "../My Setting"])
         if existing:
             with pytest.raises(SystemExit) as exc:
                 main()
