@@ -122,6 +122,8 @@ template. Numbering starts after the largest existing number, including archives
 overwritten.
 
 Supply nonblank `--text`, or omit it to use nonblank text from the local template.
+`armarium add clue --vault ../my-vault --help` shows the discovered default text,
+or indicates that `--text` is required when the template text is blank.
 Text goes in frontmatter. Its wikilinks must resolve uniquely to shared or
 same-campaign Content; use qualified paths for ambiguous names. `subjects` is
 derived from those targets without duplicates, or `[]` for unlinked text.

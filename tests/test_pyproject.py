@@ -95,6 +95,16 @@ class TestPyproject:
                 str(root),
             ],
             ["add", "note", "Mira notes", "--campaign", "1", "--vault", str(root)],
+            [
+                "add",
+                "clue",
+                "--campaign",
+                "1",
+                "--vault",
+                str(root),
+                "--text",
+                "[[Mira]] knows the route; [[Mira]] drew the map.",
+            ],
             ["validate", str(root)],
         ]
         for arguments in steps:
@@ -110,6 +120,29 @@ class TestPyproject:
         assert (root / "campaigns/campaign_1/notes/Mira notes.md").is_file()
         pc = root / "campaigns/campaign_1/content/Mira.md"
         assert "reference/players/Alex" in pc.read_text()
+        clue = root / "campaigns/campaign_1/clues/C-1-0001.md"
+        assert clue.read_text().count("[[campaigns/campaign_1/content/Mira]]") == 1
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        refused = subprocess.run(
+            [
+                str(command),
+                "add",
+                "clue",
+                "--campaign",
+                "1",
+                "--vault",
+                str(root),
+                "--text",
+                "[[Mira notes]] contains the route.",
+            ],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1 and "must target Content" in refused.stderr
+        assert {p: p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
 
     @pytest.mark.parametrize("scope", ["shared", "inferred", "explicit"])
     def test_installed_add_note(
@@ -296,6 +329,16 @@ class TestPyproject:
         template.write_text(
             template.read_text().replace('text: ""', 'text: "Local fact."')
         )
+        help_result = subprocess.run(
+            [str(command), "add", "clue", "--help", "--vault", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert help_result.returncode == 0, help_result.stderr
+        assert '(default: "Local fact.")' in " ".join(help_result.stdout.split())
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
         arguments = [str(command), "add", "clue"]
         if explicit:

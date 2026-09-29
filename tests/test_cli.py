@@ -825,6 +825,41 @@ class TestMain:
 
 
 class TestParseArgs:
+    @pytest.mark.parametrize(
+        "selection", ["inferred", "explicit_before", "explicit_after", "equals"]
+    )
+    def test_clue_help_template(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        selection: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "selected vault")
+        template = root / "reference/templates/Clue.md"
+        template.write_text(
+            template.read_text().replace('text: ""', 'text: "100% local fact."')
+        )
+        monkeypatch.chdir(
+            root / "campaigns/campaign_1/clues" if selection == "inferred" else tmp_path
+        )
+        options = {
+            "inferred": ["--help"],
+            "explicit_before": ["--vault", str(root), "--help"],
+            "explicit_after": ["-h", "--vault", str(root)],
+            "equals": [f"--vault={root}", "--help"],
+        }
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["add", "clue", *options[selection]])
+        assert exc.value.code == 0
+        output = capsys.readouterr()
+        assert '(default: "100% local fact.")' in " ".join(output.out.split())
+        assert output.err == ""
+        assert all(p.read_bytes() == content for p, content in before.items())
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_player_options(self, explicit: bool) -> None:
         args = parse_args(
@@ -1005,3 +1040,50 @@ class TestParseArgs:
         output = capsys.readouterr()
         assert "usage: armarium" in output.out
         assert output.err == ""
+
+
+class TestClueTextHelp:
+    @pytest.mark.parametrize(
+        "value",
+        ['"A local fact."', '"100% sure\\nSecond line"', '""', '"   "', "null", "42"],
+    )
+    def test_template_value(self, tmp_path: Path, value: str) -> None:
+        from armarium.cli import _clue_text_help
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        template = root / "reference/templates/Clue.md"
+        template.write_text(template.read_text().replace('text: ""', f"text: {value}"))
+        expected = (
+            value.replace("%", "%%")
+            if value.startswith('"') and value.strip('" ')
+            else "none; --text required"
+        )
+        assert _clue_text_help(root) == f"nonblank clue text (default: {expected})"
+
+    @pytest.mark.parametrize(
+        "scenario", ["outside", "nested", "missing", "invalid", "wrong_type", "symlink"]
+    )
+    def test_unavailable(self, tmp_path: Path, scenario: str) -> None:
+        from armarium.cli import _clue_text_help
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        template = root / "reference/templates/Clue.md"
+        if scenario == "missing":
+            template.unlink()
+        elif scenario == "invalid":
+            template.write_text("---\nbad: [\n---\n")
+        elif scenario == "wrong_type":
+            template.write_text("No type")
+        elif scenario == "symlink":
+            template.unlink()
+            template.symlink_to(root / "reference/templates/Content.md")
+        selected = (
+            tmp_path
+            if scenario == "outside"
+            else root / "content"
+            if scenario == "nested"
+            else root
+        )
+        assert "default: unavailable" in _clue_text_help(selected)
