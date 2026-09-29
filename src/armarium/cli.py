@@ -68,9 +68,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="existing campaign number; default: current campaign, otherwise shared content",
     )
     content.add_argument(
-        "--summary", help="short description; default: template summary"
-    )
-    content.add_argument(
         "--player", help="existing Player name or vault-relative path (PC only)"
     )
     command = commands.add_parser(
@@ -127,7 +124,6 @@ def main() -> None:
                     args.subtype,
                     args.vault,
                     campaign=args.campaign,
-                    summary=args.summary,
                     player=args.player,
                 )
         except (OSError, ValueError) as exc:

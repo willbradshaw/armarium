@@ -103,8 +103,6 @@ class TestPyproject:
             subtype,
             "--vault",
             str(root),
-            "--summary",
-            "A description",
         ]
         if subtype == "PC":
             args += ["--player", "Alex"]

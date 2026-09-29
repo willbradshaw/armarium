@@ -61,8 +61,6 @@ class TestMain:
                 "Port Briselle",
                 "--subtype",
                 "Location",
-                "--summary",
-                "A busy port",
             ]
             + (["--vault", str(root), "--campaign", "1"] if campaign else []),
         )
@@ -549,15 +547,13 @@ class TestParseArgs:
                 "2",
                 "--player",
                 "Alex",
-                "--summary",
-                "A captain",
                 "--vault",
                 "my-vault",
             ]
         )
         assert args.addition == "content" and args.name == "Mira"
         assert args.subtype == "PC" and args.campaign == 2
-        assert args.player == "Alex" and args.summary == "A captain"
+        assert args.player == "Alex"
         assert args.vault == Path("my-vault")
 
     @pytest.mark.parametrize("explicit", [False, True])

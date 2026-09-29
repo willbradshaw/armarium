@@ -35,10 +35,9 @@ class TestContentFrontmatter:
             template,
             subtype,
             campaign,
-            "A description",
             "[[Alex]]" if subtype == "PC" else None,
         )
-        assert metadata["subtype"] == subtype and metadata["summary"] == "A description"
+        assert metadata["subtype"] == subtype and metadata["summary"] is None
         assert "campaign_1" not in metadata
         if campaign is not None:
             assert metadata["campaign_2"]["first_session"] is None
@@ -63,7 +62,7 @@ class TestContentFrontmatter:
         assert template is not None
         with pytest.raises(ValueError):
             _content_frontmatter(
-                template, "PC" if scenario == "player" else "Lore", 1, None, None
+                template, "PC" if scenario == "player" else "Lore", 1, None
             )
 
 
@@ -209,20 +208,16 @@ class TestAddContent:
     @pytest.mark.parametrize(
         "player", ["Alex", "[[Alex]]", "campaigns/campaign_1/reference/players/Alex.md"]
     )
-    def test_player_and_summary(self, vault: Path, player: str) -> None:
+    def test_player_resolution(self, vault: Path, player: str) -> None:
         path = add_content(
             "Mira",
             "PC",
             vault,
             campaign=1,
             player=player,
-            summary="A captain: bold & brave",
         )
         record, _ = Record.parse(path, vault)
-        assert (
-            record is not None
-            and record.frontmatter["summary"] == "A captain: bold & brave"
-        )
+        assert record is not None and record.frontmatter["summary"] is None
         assert not validate(path).failed
 
     @pytest.mark.parametrize(
@@ -301,7 +296,6 @@ class TestAddContent:
             "subtype",
             "campaign_zero",
             "campaign_missing",
-            "blank_summary",
             "irrelevant_player",
             "no_player",
             "outside",
@@ -329,7 +323,6 @@ class TestAddContent:
                 else 9
                 if scenario == "campaign_missing"
                 else None,
-                summary=" " if scenario == "blank_summary" else None,
                 player="Alex" if scenario == "irrelevant_player" else None,
             )
         assert not list(vault.rglob("Entity.md"))

@@ -33,7 +33,7 @@ Names may contain spaces; omit the `.md` extension. Existing records are never
 overwritten.
 
 The command uses the vault's Content template and Type directory declaration.
-`--summary` overrides the template's summary. Required nullable subtype fields
+Initial values, including the summary, come from the template. Required nullable subtype fields
 start empty unless set in the template. PCs need an existing Player, supplied
 with `--player` or in the template; use a vault-relative Player path when its
 name is ambiguous.

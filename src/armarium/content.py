@@ -19,7 +19,6 @@ def _content_frontmatter(
     template: Record,
     subtype: str,
     campaign: int | None,
-    summary: str | None,
     player: str | None,
 ) -> dict[str, Any]:
     """Fill a Content template's metadata for a new shared or campaign record.
@@ -28,7 +27,6 @@ def _content_frontmatter(
         template: Parsed local Content template.
         subtype: Selected built-in subtype.
         campaign: Campaign number, or None for shared content.
-        summary: Override for the template summary, or None to keep its default.
         player: Canonical Player link override, or None to use the template value.
 
     Returns:
@@ -45,8 +43,6 @@ def _content_frontmatter(
     }
     data["subtype"] = subtype
     data.setdefault("summary", None)
-    if summary is not None:
-        data["summary"] = summary
     nullable = {"NPC": "stats", "Location": "parent_location", "Faction": "members"}
     if subtype in nullable:
         data.setdefault(nullable[subtype], None)
@@ -75,7 +71,6 @@ def add_content(
     vault: Path | None = None,
     *,
     campaign: int | None = None,
-    summary: str | None = None,
     player: str | None = None,
 ) -> Path:
     """Create one Content record, refusing overwrites and invalid generated records.
@@ -86,7 +81,6 @@ def add_content(
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number. When omitted, infer from the working
             directory inside the selected vault, otherwise create shared content.
-        summary: Optional summary override; otherwise retain the template default.
         player: Player name, path or canonical wikilink, for PCs only.
 
     Returns:
@@ -115,8 +109,6 @@ def add_content(
         raise ValueError(f"subtype must be one of {', '.join(SUBTYPES)}")
     if campaign is not None and campaign < 1:
         raise ValueError("campaign number must be positive")
-    if summary is not None and not summary.strip():
-        raise ValueError("summary must not be blank")
     if player is not None and subtype != "PC":
         raise ValueError("--player is only valid for PC content")
     selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
@@ -172,7 +164,7 @@ def add_content(
                 "--player must uniquely identify an existing Player; use a vault-relative path"
             )
         player = f"[[{resolved.relative_to(root).with_suffix('').as_posix()}]]"
-    metadata = _content_frontmatter(template, subtype, campaign, summary, player)
+    metadata = _content_frontmatter(template, subtype, campaign, player)
     text = (
         "---\n"
         + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True)
