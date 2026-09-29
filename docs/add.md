@@ -1,149 +1,157 @@
 # Adding to a vault
 
-## Campaigns
+`armarium add` creates [campaigns](#adding-a-campaign) and [records](#adding-a-record)
+in an existing [vault](vault.md) using its local templates and conventions, then
+[validates the result](#templates-and-validation). For example:
 
-Add a [campaign](campaign.md) to an existing vault:
+```sh
+armarium add campaign --vault ../my-vault
+armarium add content "Port Briselle" --subtype Location --vault ../my-vault
+armarium add session --campaign 1 --vault ../my-vault
+```
+
+For a new vault, start with [`armarium init`](init.md).
+
+## Shared behavior
+
+All commands share rules for [vault selection](#choosing-a-vault-and-destination),
+[campaign selection](#choosing-a-campaign) and [templates and
+validation](#templates-and-validation).
+
+### Choosing a vault and destination
+
+Pass `--vault PATH` to select a vault's root directory, using an absolute path or a path
+relative to your current directory. Omit it to discover the vault from your current
+directory when running anywhere inside it.
+
+Records go in the selected vault's [declared directory](vault.md#where-records-live) for
+their type and [campaign scope](#choosing-a-campaign), rather than directly in the
+current directory. Existing records and campaigns are never overwritten.
+
+### Choosing a campaign
+
+While inside a [campaign directory](campaign.md#directory) or any descendants, new
+records created with `armarium add` are added to that campaign. Use `--campaign N` to
+select another existing campaign. Selecting a different vault does not inherit the
+current campaign.
+
+Outside a campaign directory, [Content](#content) and [Notes](#notes) default to shared
+scope; [Players](#players), [Sessions](#sessions) and [Clues](#clues) require
+`--campaign`. [Transcripts](#transcripts) always take their campaign from the selected
+Session. [`add campaign`](#adding-a-campaign) creates a new campaign.
+
+### Templates and validation
+
+Initial values come from the vault's local [templates](record.md#anatomy), and validation
+uses its [schemas](record.md#types-statuses-and-schemas). Edit a template to change
+defaults, or edit the new record afterward.
+
+A new [record](record.md) must pass [schema, link and contextual
+checks](validate.md#checks). Failed writes, interruptions and record-validation failures
+remove the new record. Each command then [validates the whole vault](validate.md#scope);
+failure exits with status 1 and retains the valid new record for inspection. Campaign
+creation removes partial campaigns on write failure, but retains them on validation
+failure.
+
+## Adding a campaign
+
+Add a [campaign](campaign.md):
 
 ```sh
 armarium add campaign --vault ../my-vault
 ```
 
-Omit `--vault` when running inside the vault. The new campaign number is one
-greater than the largest existing number; use `--number N` to choose a positive
-number explicitly. Existing campaigns are never overwritten.
+The new number is one greater than the largest existing campaign number; `--number N`
+chooses an unused positive number explicitly.
 
-The command uses the vault's Campaign and Clues templates and Type directory
-declarations, then validates the whole vault. In the templates, `campaign_1`
-and clue IDs beginning `C-1-` identify the new campaign and are updated to its
-number. Other text is preserved. No players, sessions or content are copied from
-existing campaigns. Failed writes remove the partial campaign; validation
-failures leave it available for inspection.
+Campaign and Clues templates supply the initial records. Their `campaign_1` and `C-1-`
+clue ID placeholders are updated to the new number; other text is preserved. Players,
+sessions and content are not copied from existing campaigns.
 
-## Content
+## Adding a record
+
+[Content](#content), [Players](#players) and [Notes](#notes) take a name, which becomes
+the filename. Names may contain spaces; omit `.md`.
+
+[Sessions](#sessions) and [Clues](#clues) use numbered filenames. By default, the number
+is one greater than the largest existing number of that type in the campaign, including
+archives. Use `--number N` to choose an unused number within the type's range.
+
+[References to existing records](record.md#links) must resolve uniquely; use
+vault-relative paths when names are ambiguous.
+
+### Content
 
 ```sh
 armarium add content "Port Briselle" --subtype Location --vault ../my-vault
 armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
 ```
 
-Use `--subtype NPC|PC|Location|Faction|Object|Lore`. Inside a campaign directory
-or its subdirectories, Content defaults to that campaign; elsewhere it is shared.
-`--campaign N` overrides this choice. Omit `--vault` when inside the vault.
-Names may contain spaces; omit the `.md` extension. Existing records are never
-overwritten.
+Use `--subtype NPC|PC|Location|Faction|Object|Lore` to select the [Content
+subtype](type.md#content). Required nullable subtype fields start empty unless set in
+the template. PCs need an existing [Player](#players), supplied with `--player` or in
+the template.
 
-The command uses the vault's Content template and Type directory declaration.
-Initial values, including the summary, come from the template. Required nullable subtype fields
-start empty unless set in the template. PCs need an existing Player, supplied
-with `--player` or in the template; use a vault-relative Player path when its
-name is ambiguous.
+Shared records start without [campaign state](campaign.md#state). Campaign-specific
+records get a `campaign_N` block, where `N` is the selected campaign number; Objects
+also get `held_by` in that block.
 
-Shared records start without campaign state. Campaign-specific records get a
-`campaign_N` block, where `N` is the selected campaign number; Objects also get
-`held_by` in that block.
-
-The new record must pass the vault's schema and contextual checks; failures
-remove it and report diagnostics. The command then validates the whole vault.
-
-## Sessions
+### Sessions
 
 ```sh
 armarium add session --campaign 1 --vault ../my-vault
 ```
 
-Inside a campaign directory or its subdirectories, omit `--campaign` to use that
-campaign. When running outside a campaign directory, `--campaign` is required.
-Omit `--vault` when inside the vault.
+Creates a [Session](type.md#session), `S-N-NNN.md`, with the campaign link and session
+number filled in. Session numbers range from 1 to 999.
 
-The command uses the vault's Session template and Type directory declaration.
-It creates `S-N-NNN.md` with the campaign link and session number filled in;
-dates and other initial values come from the template. The default number is
-one greater than the largest existing session number in that campaign,
-including sessions in subdirectories. Use `--number N` to choose an unused
-number from 1 to 999. Existing records are never overwritten.
-
-The new record must pass the vault's schema and contextual checks; failures
-remove it and report diagnostics. The command then validates the whole vault.
-
-## Players
+### Players
 
 ```sh
 armarium add player "Alex" --campaign 1 --vault ../my-vault
-armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
 ```
 
-Inside a campaign directory or any descendant, omit `--campaign` to use that
-campaign; otherwise it is required. `--campaign N` overrides inference.
-Omit `--vault` when inside the vault. Names may contain spaces; omit `.md`.
-Existing records are never overwritten.
+The standard template creates an unassigned [Player](type.md#player) with `plays: []`.
+Configured links must target shared or same-campaign PCs. Use [add content](#content) to
+create a PC linked to the new Player; creating a Player does not change PCs or
+backlinks.
 
-The command uses the vault's Player template and declared campaign directory.
-The standard template creates an unassigned Player with `plays: []`; local
-initial values and body text are preserved, and configured links must target
-shared or same-campaign PCs. No PCs or backlinks are changed. Use
-[add content](#content) to create a PC linked to the new Player.
-
-The new record must pass local schema and contextual checks; failures remove
-it. Whole-vault validation follows; if that fails, the valid Player is retained
-for inspection and the command exits with status 1.
-
-## Notes
+### Notes
 
 ```sh
 armarium add note "Working ideas" --vault ../my-vault
 armarium add note "Session prep" --campaign 1 --vault ../my-vault
 ```
 
-Inside a campaign directory or any descendant, Notes default to that campaign;
-elsewhere they are shared. `--campaign N` selects an existing campaign explicitly.
-Omit `--vault` to discover the vault from the current directory. Selecting another
-vault does not inherit the current directory's campaign. Names may contain spaces;
-omit `.md`. Existing records are never overwritten.
+Copies the local [Note](type.md#note) template, including its metadata and body. An
+empty body is valid.
 
-The command uses the selected vault's Note template and Type directory declaration,
-preserving template metadata and body. An empty body is valid. Edit the template
-for initial values or edit the new Note afterward.
-
-The new Note must pass local schema and contextual checks; failures remove it
-and report diagnostics. Whole-vault validation follows; failure exits with status
-1 and retains the valid new Note for inspection.
-
-## Clues
+### Clues
 
 ```sh
 armarium add clue --campaign 1 --vault ../my-vault --text 'The gate is locked from within.'
 ```
 
-Omit `--vault` inside the vault and `--campaign` inside a campaign directory or
-any descendant. Otherwise, select an existing campaign explicitly. The command
-creates `C-N-NNNN.md` in the vault's declared Clue directory, using its Clue
-template. Numbering starts after the largest existing number, including archives;
-`--number N` selects an unused number from 1 to 9999. Existing records are never
-overwritten.
+Creates a [Clue](type.md#clue), `C-N-NNNN.md`. Clue numbers range from 1 to 9999.
 
 Supply nonblank `--text`, or omit it to use nonblank text from the local template.
-`armarium add clue --vault ../my-vault --help` shows the discovered default text,
-or indicates that `--text` is required when the template text is blank.
-Text goes in frontmatter. Its wikilinks must resolve uniquely to shared or
-same-campaign Content; use qualified paths for ambiguous names. `subjects` is
-derived from those targets without duplicates, or `[]` for unlinked text.
-Template status, session fields and the Sessions section/Base embed are preserved;
-no other records are updated.
+`armarium add clue --vault ../my-vault --help` shows the discovered default text, or
+indicates that `--text` is required when the template text is blank.
 
-The new record must pass local schema and contextual validation; failure removes
-it. Whole-vault validation follows; failure exits with status 1 and retains the
-valid new Clue for inspection.
+Text goes in [frontmatter](record.md#anatomy). Its [wikilinks](record.md#links) must
+target shared or same-campaign [Content](#content). `subjects` is derived from those
+targets without duplicates, or `[]` for unlinked text. Template status, session fields
+and the Sessions section/Base embed are preserved.
 
-## Transcripts
+### Transcripts
 
 ```sh
-armarium add transcript S-1-001 --body-file "recorded speech.md" --vault ../my-vault
+armarium add transcript S-1-001 --body-file recorded-speech.md --vault ../my-vault
 ```
 
-Select an existing Session by unambiguous name or qualified vault-relative path.
-Its campaign and identity determine the destination, `S-N-NNN Transcript.md`, in
-the vault's declared Transcript directory. No Session is selected automatically.
-Omit `--vault` inside the vault.
+Select an existing [Session](#sessions) by name or vault-relative path. Its campaign and
+identity determine the [Transcript](type.md#transcript) destination, `S-N-NNN
+Transcript.md`. No Session is selected automatically.
 
 `--body-file` is required and reads UTF-8 Markdown without frontmatter:
 
@@ -151,16 +159,12 @@ Omit `--vault` inside the vault.
 ## Arrival
 
 - [GM] The door opens.
-- [Mira] Who is there?
+- [Player] Who is there?
 ```
 
-Use titled level-two sections, each containing one bullet list of attributed,
-single-paragraph utterances. The supplied body replaces the template's instructional
-sample; frontmatter defaults come from the local Transcript template. This creates
-a record from already-formatted text, without transcribing audio or editing speech.
-The source file, Session and existing records remain unchanged; collisions are refused.
-
-The body grammar and local schema are checked before creating the file.
-The new record then passes link and contextual validation; failures remove it and report
-diagnostics. Whole-vault validation follows; if that fails, the valid
-new Transcript is retained for inspection and the command exits with status 1.
+Follow the [Transcript body format](type.md#body-7): titled level-two sections, each
+containing one bullet list of attributed, single-paragraph utterances. The supplied body
+replaces the template's instructional sample. The command imports already-formatted text
+without transcribing audio, editing speech or changing the source file or Session. Body
+grammar and the local schema are checked before creating the file; link and contextual
+checks follow.

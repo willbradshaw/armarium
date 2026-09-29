@@ -9,7 +9,7 @@ import pytest
 
 from armarium.add import add_campaign
 from armarium.parse import Record
-from armarium.session import _session_number, add_session
+from armarium.session import add_session
 from armarium.validate import validate
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,39 +20,6 @@ def vault(tmp_path: Path) -> Path:
     root = tmp_path / "my-vault"
     shutil.copytree(ROOT / "vaults/starter", root)
     return root
-
-
-class TestSessionNumber:
-    @pytest.mark.parametrize(
-        ("requested", "expected"), [(None, 13), (1, 1), (999, 999)]
-    )
-    def test_numbering(
-        self, tmp_path: Path, requested: int | None, expected: int
-    ) -> None:
-        (tmp_path / "archive").mkdir()
-        for name in (
-            "S-1-003.md",
-            "archive/S-1-012.md",
-            "S-2-900.md",
-            "S-1-050 Transcript.md",
-            "notes.md",
-        ):
-            (tmp_path / name).write_text("")
-        assert _session_number(tmp_path, 1, requested) == expected
-
-    def test_empty_campaign(self, tmp_path: Path) -> None:
-        assert _session_number(tmp_path, 1, None) == 1
-
-    @pytest.mark.parametrize("number", [0, -1, 1000, 5])
-    def test_invalid_number(self, tmp_path: Path, number: int) -> None:
-        (tmp_path / "s-1-005.MD").write_text("")
-        with pytest.raises(ValueError):
-            _session_number(tmp_path, 1, number)
-
-    def test_exhausted_numbers(self, tmp_path: Path) -> None:
-        (tmp_path / "S-1-999.md").write_text("")
-        with pytest.raises(ValueError, match="1 and 999"):
-            _session_number(tmp_path, 1, None)
 
 
 class TestAddSession:
@@ -249,7 +216,7 @@ class TestAddSession:
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr("armarium.session.validate", Mock(side_effect=error))
+            patch.setattr("armarium.add.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_session(vault, campaign=1)
         assert not (vault / "campaigns/campaign_1/sessions/S-1-001.md").exists()

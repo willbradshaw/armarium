@@ -212,7 +212,7 @@ class TestAddPlayer:
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr("armarium.player.validate", Mock(side_effect=error))
+            patch.setattr("armarium.add.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_player("New Player", vault, campaign=1)
         assert not (

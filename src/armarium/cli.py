@@ -6,14 +6,13 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.add import add_campaign
+from armarium.add import add_campaign, read_template, select_vault
 from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
-from armarium.parse import Record
 from armarium.player import add_player
 from armarium.session import add_session
 from armarium.transcript import add_transcript
@@ -28,16 +27,8 @@ def _clue_text_help(vault: Path | None) -> str:
     percent signs because argparse interpolates help strings.
     """
     try:
-        selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-        root = find_vault(selected)
-        if vault is not None and selected != root:
-            raise ValueError("--vault must name the vault root")
-        path = root / "reference/templates/Clue.md"
-        if path.is_symlink() or path.parent.is_symlink():
-            raise ValueError("template must be a regular file")
-        template, _ = Record.parse(path, root)
-        if template is None or template.frontmatter.type != "Clue":
-            raise ValueError("cannot read a Clue template")
+        root = select_vault(vault)
+        template = read_template(root, "Clue")
         text = template.frontmatter.get("text")
         default = (
             json.dumps(text, ensure_ascii=False)
@@ -80,73 +71,57 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     add = commands.add_parser("add", help="add to an existing vault")
     additions = add.add_subparsers(dest="addition", required=True)
     campaign = additions.add_parser("campaign", help="create a new campaign")
-    campaign.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
-    )
-    campaign.add_argument(
-        "--number",
-        type=int,
-        help="positive campaign number (default: largest existing number + 1)",
-    )
     content = additions.add_parser("content", help="create a Content record")
-    content.add_argument("name", help="record name without .md")
+    player = additions.add_parser("player", help="create a Player record")
+    note = additions.add_parser("note", help="create a Note record")
+    session = additions.add_parser("session", help="create a Session record")
+    clue = additions.add_parser("clue", help="create a Clue record", add_help=False)
+    transcript = additions.add_parser(
+        "transcript", help="create a Transcript for an existing Session"
+    )
+    for addition, create in (
+        (campaign, add_campaign),
+        (content, add_content),
+        (player, add_player),
+        (note, add_note),
+        (session, add_session),
+        (clue, add_clue),
+        (transcript, add_transcript),
+    ):
+        addition.set_defaults(create=create)
+        addition.add_argument(
+            "--vault",
+            type=Path,
+            help="vault root (default: discovered from the current directory)",
+        )
+    for addition in (content, player, note):
+        addition.add_argument("name", help="record name without .md")
+    for addition, shared in (
+        (content, ", or shared content"),
+        (player, ""),
+        (note, ", or shared notes"),
+        (session, ""),
+        (clue, ""),
+    ):
+        addition.add_argument(
+            "--campaign",
+            type=int,
+            help=f"campaign number within vault (default: current campaign directory{shared})",
+        )
+    for addition, description in (
+        (campaign, "positive campaign number"),
+        (session, "session number from 1 to 999"),
+        (clue, "clue number from 1 to 9999"),
+    ):
+        addition.add_argument(
+            "--number",
+            type=int,
+            help=f"{description} (default: largest existing number + 1)",
+        )
     content.add_argument("--subtype", required=True, choices=SUBTYPES)
-    content.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
-    )
-    content.add_argument(
-        "--campaign",
-        type=int,
-        help="campaign number within vault (default: current campaign directory, or shared content)",
-    )
     content.add_argument(
         "--player", help="existing Player name or vault-relative path (PC only)"
     )
-    player = additions.add_parser("player", help="create a Player record")
-    player.add_argument("name", help="record name without .md")
-    player.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
-    )
-    player.add_argument(
-        "--campaign",
-        type=int,
-        help="campaign number within vault (default: current campaign directory)",
-    )
-    note = additions.add_parser("note", help="create a Note record")
-    note.add_argument("name", help="record name without .md")
-    note.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
-    )
-    note.add_argument(
-        "--campaign",
-        type=int,
-        help="campaign number within vault (default: current campaign directory, or shared notes)",
-    )
-    session = additions.add_parser("session", help="create a Session record")
-    session.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
-    )
-    session.add_argument(
-        "--campaign",
-        type=int,
-        help="campaign number within vault (default: current campaign directory)",
-    )
-    session.add_argument(
-        "--number",
-        type=int,
-        help="session number from 1 to 999 (default: largest existing number + 1)",
-    )
-    clue = additions.add_parser("clue", help="create a Clue record", add_help=False)
     clue.add_argument(
         "-h",
         "--help",
@@ -154,25 +129,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         dest="clue_help",
         help="show this help message and exit",
     )
-    clue.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
-    )
-    clue.add_argument(
-        "--campaign",
-        type=int,
-        help="campaign number within vault (default: current campaign directory)",
-    )
-    clue.add_argument(
-        "--number",
-        type=int,
-        help="clue number from 1 to 9999 (default: largest existing number + 1)",
-    )
     clue_text = clue.add_argument("--text", help="nonblank clue text")
-    transcript = additions.add_parser(
-        "transcript", help="create a Transcript for an existing Session"
-    )
     transcript.add_argument(
         "session", help="unambiguous Session name or vault-relative path"
     )
@@ -181,11 +138,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         required=True,
         help="UTF-8 Markdown file containing transcript body",
-    )
-    transcript.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the current directory)",
     )
     command = commands.add_parser(
         "validate",
@@ -241,33 +193,12 @@ def main() -> None:
         result = validate(destination)
     elif args.command == "add":
         try:
-            if args.addition == "campaign":
-                destination = add_campaign(args.vault, number=args.number)
-            elif args.addition == "player":
-                destination = add_player(args.name, args.vault, campaign=args.campaign)
-            elif args.addition == "note":
-                destination = add_note(args.name, args.vault, campaign=args.campaign)
-            elif args.addition == "clue":
-                destination = add_clue(
-                    args.vault,
-                    campaign=args.campaign,
-                    number=args.number,
-                    text=args.text,
-                )
-            elif args.addition == "session":
-                destination = add_session(
-                    args.vault, campaign=args.campaign, number=args.number
-                )
-            elif args.addition == "transcript":
-                destination = add_transcript(args.session, args.body_file, args.vault)
-            else:
-                destination = add_content(
-                    args.name,
-                    args.subtype,
-                    args.vault,
-                    campaign=args.campaign,
-                    player=args.player,
-                )
+            options = {
+                key: value
+                for key, value in vars(args).items()
+                if key not in {"command", "addition", "create", "clue_help"}
+            }
+            destination = args.create(**options)
         except (OSError, ValueError) as exc:
             logger.error("Cannot add %s: %s", args.addition, exc)
             sys.exit(1)

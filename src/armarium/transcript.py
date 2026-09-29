@@ -2,11 +2,16 @@
 
 from pathlib import Path
 
-import yaml
-
+from armarium.add import (
+    check_destination,
+    read_template,
+    record_directory,
+    record_text,
+    select_vault,
+    write_record,
+)
 from armarium.index import VaultIndex
-from armarium.lib import find_campaign, find_vault, parse_directories, parse_wikilink
-from armarium.logging import logger
+from armarium.lib import find_campaign, parse_wikilink
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import select_schema
 from armarium.validate import validate, validate_transcript
@@ -34,10 +39,7 @@ def add_transcript(
         OSError: Reading or writing fails, or the destination already exists.
         KeyboardInterrupt: Partial creation is removed before propagating.
     """
-    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-    root = find_vault(selected)
-    if vault is not None and selected != root:
-        raise ValueError("--vault must name the vault root")
+    root = select_vault(vault)
     target = parse_wikilink(
         session if session.startswith("[[") else f"[[{session}]]", canonical=True
     )
@@ -56,35 +58,10 @@ def add_transcript(
         for diagnostic in result.diagnostics:
             diagnostic.report()
         raise ValueError("selected Session failed validation; no record created")
-    definition, failures = Record.parse(root / "reference/types/Transcript.md", root)
-    if definition is None:
-        raise ValueError(f"cannot read Transcript Type: {failures[0].message}")
-    declarations = parse_directories(definition.frontmatter.get("directories"))
-    if "campaign" not in declarations:
-        raise ValueError("Transcript Type declares no campaign directory")
-    directory = root / "campaigns" / scope / declarations["campaign"]
-    for path in (directory, *directory.parents):
-        if path == root:
-            break
-        if not path.is_dir() or path.is_symlink():
-            raise ValueError(f"{path} must be an existing real directory")
+    directory = record_directory(root, "Transcript", scope)
     destination = directory / f"{resolved.stem} Transcript.md"
-    if any(
-        path.name.casefold() == destination.name.casefold()
-        for path in directory.iterdir()
-    ):
-        raise FileExistsError(f"record already exists: {destination}")
-    template_path = root / "reference/templates/Transcript.md"
-    if any(
-        path.is_symlink()
-        for path in (template_path, template_path.parent, root / "reference")
-    ):
-        raise ValueError("Transcript template must be a regular file in the vault")
-    template, failures = Record.parse(template_path, root)
-    if template is None:
-        raise ValueError(f"cannot read Transcript template: {failures[0].message}")
-    if template.frontmatter.type != "Transcript":
-        raise ValueError("Transcript template must declare the Transcript type")
+    check_destination(destination)
+    template = read_template(root, "Transcript", check_reference=True)
     try:
         body = body_file.expanduser().read_text(encoding="utf-8")
     except UnicodeError as exc:
@@ -102,25 +79,5 @@ def add_transcript(
         raise ValueError(
             "generated Transcript failed input validation; no record created"
         )
-    text = (
-        "---\n"
-        + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True)
-        + "---\n"
-        + body
-    )
-    logger.info("Adding new Transcript record at %s", destination)
-    stream = destination.open("x", encoding="utf-8")
-    try:
-        with stream:
-            stream.write(text)
-        result = validate(destination, root)
-        if result.failed:
-            for diagnostic in result.diagnostics:
-                diagnostic.report()
-            raise ValueError(
-                "generated Transcript record failed validation; no record created"
-            )
-    except BaseException:
-        destination.unlink()
-        raise
-    return destination
+    text = record_text(metadata, body)
+    return write_record(destination, text, root, "Transcript")
