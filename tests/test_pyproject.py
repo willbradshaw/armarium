@@ -95,6 +95,16 @@ class TestPyproject:
                 str(root),
             ],
             ["add", "note", "Mira notes", "--campaign", "1", "--vault", str(root)],
+            [
+                "add",
+                "clue",
+                "--campaign",
+                "1",
+                "--vault",
+                str(root),
+                "--text",
+                "[[Mira]] knows the route; [[Mira]] drew the map.",
+            ],
             ["validate", str(root)],
         ]
         for arguments in steps:
@@ -110,6 +120,29 @@ class TestPyproject:
         assert (root / "campaigns/campaign_1/notes/Mira notes.md").is_file()
         pc = root / "campaigns/campaign_1/content/Mira.md"
         assert "reference/players/Alex" in pc.read_text()
+        clue = root / "campaigns/campaign_1/clues/C-1-0001.md"
+        assert clue.read_text().count("[[campaigns/campaign_1/content/Mira]]") == 1
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        refused = subprocess.run(
+            [
+                str(command),
+                "add",
+                "clue",
+                "--campaign",
+                "1",
+                "--vault",
+                str(root),
+                "--text",
+                "[[Mira notes]] contains the route.",
+            ],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1 and "must target Content" in refused.stderr
+        assert {p: p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
 
     @pytest.mark.parametrize("scope", ["shared", "inferred", "explicit"])
     def test_installed_add_note(
@@ -271,6 +304,76 @@ class TestPyproject:
         )
         assert created.returncode == 0, created.stderr
         assert destination.read_bytes() == player_before
+
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_installed_add_clue(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "my-vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        initialized = subprocess.run(
+            [str(command), "init", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert initialized.returncode == 0, initialized.stderr
+        template = root / "reference/templates/Clue.md"
+        template.write_text(
+            template.read_text().replace('text: ""', 'text: "Local fact."')
+        )
+        help_result = subprocess.run(
+            [str(command), "add", "clue", "--help", "--vault", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert help_result.returncode == 0, help_result.stderr
+        assert '(default: "Local fact.")' in " ".join(help_result.stdout.split())
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        arguments = [str(command), "add", "clue"]
+        if explicit:
+            arguments += ["--vault", str(root), "--campaign", "1"]
+        working_directory = (
+            tmp_path if explicit else root / "campaigns/campaign_1/clues"
+        )
+        for options, expected in (([], 1), (["--number", "7"], 7), ([], 8)):
+            result = subprocess.run(
+                [*arguments, *options],
+                cwd=working_directory,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == 0, result.stderr
+            assert result.stdout == ""
+            assert result.stderr.rstrip().endswith("Validation completed successfully")
+            destination = root / "campaigns/campaign_1/clues" / f"C-1-{expected:04}.md"
+            assert "Local fact." in destination.read_text()
+        assert all(p.read_bytes() == text for p, text in before.items())
+        original = root / "campaigns/campaign_1/clues/C-1-0001.md"
+        contents = original.read_bytes()
+        refused = subprocess.run(
+            [*arguments, "--number", "1"],
+            cwd=working_directory,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1
+        assert "already exists" in refused.stderr and "Traceback" not in refused.stderr
+        assert original.read_bytes() == contents
 
     @pytest.mark.parametrize("explicit", [False, True])
     def test_installed_add_session(

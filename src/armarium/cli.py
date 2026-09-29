@@ -1,19 +1,51 @@
 """Command-line adapters for creating and validating vaults and records."""
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 from armarium.add import add_campaign
+from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
+from armarium.parse import Record
 from armarium.player import add_player
 from armarium.session import add_session
 from armarium.validate import validate
+
+
+def _clue_text_help(vault: Path | None) -> str:
+    """Describe the selected vault's template text without making help fail.
+
+    Show usable text as a quoted string with escaped newlines. Missing vaults,
+    unreadable templates and invalid defaults are described explicitly. Escape
+    percent signs because argparse interpolates help strings.
+    """
+    try:
+        selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
+        root = find_vault(selected)
+        if vault is not None and selected != root:
+            raise ValueError("--vault must name the vault root")
+        path = root / "reference/templates/Clue.md"
+        if path.is_symlink() or path.parent.is_symlink():
+            raise ValueError("template must be a regular file")
+        template, _ = Record.parse(path, root)
+        if template is None or template.frontmatter.type != "Clue":
+            raise ValueError("cannot read a Clue template")
+        text = template.frontmatter.get("text")
+        default = (
+            json.dumps(text, ensure_ascii=False)
+            if isinstance(text, str) and text.strip()
+            else "none; --text required"
+        )
+    except OSError, ValueError:
+        default = "unavailable; select a vault with a readable Clue template"
+    return f"nonblank clue text (default: {default})".replace("%", "%%")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -113,6 +145,30 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=int,
         help="session number from 1 to 999 (default: largest existing number + 1)",
     )
+    clue = additions.add_parser("clue", help="create a Clue record", add_help=False)
+    clue.add_argument(
+        "-h",
+        "--help",
+        action="store_true",
+        dest="clue_help",
+        help="show this help message and exit",
+    )
+    clue.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
+    clue.add_argument(
+        "--campaign",
+        type=int,
+        help="campaign number within vault (default: current campaign directory)",
+    )
+    clue.add_argument(
+        "--number",
+        type=int,
+        help="clue number from 1 to 9999 (default: largest existing number + 1)",
+    )
+    clue_text = clue.add_argument("--text", help="nonblank clue text")
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -127,6 +183,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     command.add_argument("--vault", type=Path, help="explicit vault directory")
     args = parser.parse_args(argv)
+    if args.command == "add" and args.addition == "clue" and args.clue_help:
+        clue_text.help = _clue_text_help(args.vault)
+        clue.print_help()
+        parser.exit()
     if args.command == "add":
         for option in ("number", "campaign"):
             value = getattr(args, option, None)
@@ -134,6 +194,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                 parser.error(f"--{option} must be positive")
         if args.addition == "session" and args.number is not None and args.number > 999:
             parser.error("--number must be between 1 and 999")
+        if args.addition == "clue" and args.number is not None and args.number > 9999:
+            parser.error("--number must be between 1 and 9999")
     return args
 
 
@@ -167,6 +229,13 @@ def main() -> None:
                 destination = add_player(args.name, args.vault, campaign=args.campaign)
             elif args.addition == "note":
                 destination = add_note(args.name, args.vault, campaign=args.campaign)
+            elif args.addition == "clue":
+                destination = add_clue(
+                    args.vault,
+                    campaign=args.campaign,
+                    number=args.number,
+                    text=args.text,
+                )
             elif args.addition == "session":
                 destination = add_session(
                     args.vault, campaign=args.campaign, number=args.number
