@@ -1,4 +1,4 @@
-"""Command-line adapters for vault and campaign creation and validation."""
+"""Command-line adapters for creating and validating vaults and records."""
 
 import argparse
 import sys
@@ -10,6 +10,7 @@ from armarium.content import SUBTYPES, add_content
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
+from armarium.session import add_session
 from armarium.validate import validate
 
 
@@ -47,12 +48,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     campaign.add_argument(
         "--vault",
         type=Path,
-        help="vault root; otherwise discover from the current directory",
+        help="vault root (default: discovered from the current directory)",
     )
     campaign.add_argument(
         "--number",
         type=int,
-        help="positive campaign number; default: largest existing number + 1",
+        help="positive campaign number (default: largest existing number + 1)",
     )
     content = additions.add_parser("content", help="create a Content record")
     content.add_argument("name", help="record name without .md")
@@ -60,15 +61,31 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     content.add_argument(
         "--vault",
         type=Path,
-        help="vault root; otherwise discover from the current directory",
+        help="vault root (default: discovered from the current directory)",
     )
     content.add_argument(
         "--campaign",
         type=int,
-        help="existing campaign number; default: current campaign, otherwise shared content",
+        help="campaign number within vault (default: current campaign directory, or shared content)",
     )
     content.add_argument(
         "--player", help="existing Player name or vault-relative path (PC only)"
+    )
+    session = additions.add_parser("session", help="create a Session record")
+    session.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
+    session.add_argument(
+        "--campaign",
+        type=int,
+        help="campaign number within vault (default: current campaign directory)",
+    )
+    session.add_argument(
+        "--number",
+        type=int,
+        help="session number from 1 to 999 (default: largest existing number + 1)",
     )
     command = commands.add_parser(
         "validate",
@@ -85,10 +102,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     command.add_argument("--vault", type=Path, help="explicit vault directory")
     args = parser.parse_args(argv)
     if args.command == "add":
-        option = "number" if args.addition == "campaign" else "campaign"
-        value = getattr(args, option)
-        if value is not None and value < 1:
-            parser.error(f"--{option} must be positive")
+        for option in ("number", "campaign"):
+            value = getattr(args, option, None)
+            if value is not None and value < 1:
+                parser.error(f"--{option} must be positive")
+        if args.addition == "session" and args.number is not None and args.number > 999:
+            parser.error("--number must be between 1 and 999")
     return args
 
 
@@ -118,6 +137,10 @@ def main() -> None:
         try:
             if args.addition == "campaign":
                 destination = add_campaign(args.vault, number=args.number)
+            elif args.addition == "session":
+                destination = add_session(
+                    args.vault, campaign=args.campaign, number=args.number
+                )
             else:
                 destination = add_content(
                     args.name,
