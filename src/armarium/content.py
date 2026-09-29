@@ -1,16 +1,21 @@
 """Create valid Content stubs from vault-local templates and declarations."""
 
-import unicodedata
 from pathlib import Path
 from typing import Any
 
-import yaml
-
+from armarium.creation import (
+    check_destination,
+    check_name,
+    infer_campaign,
+    read_template,
+    record_directory,
+    record_text,
+    select_vault,
+    write_record,
+)
 from armarium.index import VaultIndex
-from armarium.lib import CAMPAIGN_NAME, find_vault, parse_directories, parse_wikilink
-from armarium.logging import logger
+from armarium.lib import CAMPAIGN_NAME, parse_wikilink
 from armarium.parse import Record
-from armarium.validate import validate
 
 SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore")
 
@@ -93,67 +98,19 @@ def add_content(
         OSError: The destination exists or a filesystem operation fails.
         KeyboardInterrupt: The partial file is removed before propagating.
     """
-    if (
-        not name
-        or name != " ".join(name.split())
-        or name.startswith(".")
-        or name.endswith(".")
-        or name.lower().endswith(".md")
-        or any(c in name for c in '/\\\x00[]#|:*?"<>')
-        or any(ord(c) < 32 for c in name)
-    ):
-        raise ValueError(
-            "name must be a plain record name without .md, path separators, or reserved characters"
-        )
+    check_name(name)
     if subtype not in SUBTYPES:
         raise ValueError(f"subtype must be one of {', '.join(SUBTYPES)}")
     if campaign is not None and campaign < 1:
         raise ValueError("campaign number must be positive")
     if player is not None and subtype != "PC":
         raise ValueError("--player is only valid for PC content")
-    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-    root = find_vault(selected)
-    if vault is not None and root != selected:
-        raise ValueError("--vault must name the vault root")
-    working_directory = Path.cwd().resolve()
-    if campaign is None and working_directory.is_relative_to(root):
-        parts = working_directory.relative_to(root).parts
-        if (
-            len(parts) >= 2
-            and parts[0] == "campaigns"
-            and CAMPAIGN_NAME.fullmatch(parts[1])
-        ):
-            campaign = int(parts[1].removeprefix("campaign_"))
-    definition, failures = Record.parse(root / "reference/types/Content.md", root)
-    if definition is None:
-        raise ValueError(f"cannot read Content Type: {failures[0].message}")
-    declarations = parse_directories(definition.frontmatter.get("directories"))
-    scope = "shared" if campaign is None else "campaign"
-    if scope not in declarations:
-        raise ValueError(f"Content Type declares no {scope} directory")
-    base = root if campaign is None else root / "campaigns" / f"campaign_{campaign}"
-    directory = base / declarations[scope]
-    # Refuse missing directories and symlinks in every component of the write path.
-    for path in (directory, *directory.parents):
-        if path == root:
-            break
-        if not path.is_dir() or path.is_symlink():
-            raise ValueError(f"{path} must be an existing real directory")
+    root = select_vault(vault)
+    campaign = infer_campaign(root, campaign)
+    directory = record_directory(root, "Content", campaign)
     destination = directory / f"{name}.md"
-    key = unicodedata.normalize("NFC", destination.name).casefold()
-    if any(
-        unicodedata.normalize("NFC", p.name).casefold() == key
-        for p in directory.iterdir()
-    ):
-        raise FileExistsError(f"record already exists: {destination}")
-    template_path = root / "reference/templates/Content.md"
-    if template_path.is_symlink() or template_path.parent.is_symlink():
-        raise ValueError("Content template must be a regular file in the vault")
-    template, failures = Record.parse(template_path, root)
-    if template is None:
-        raise ValueError(f"cannot read Content template: {failures[0].message}")
-    if template.frontmatter.type != "Content":
-        raise ValueError("Content template must declare the Content type")
+    check_destination(destination, normalize=True)
+    template = read_template(root, "Content")
     if player is not None:
         target = parse_wikilink(
             player if player.startswith("[[") else f"[[{player}]]", canonical=True
@@ -165,25 +122,5 @@ def add_content(
             )
         player = f"[[{resolved.relative_to(root).with_suffix('').as_posix()}]]"
     metadata = _content_frontmatter(template, subtype, campaign, player)
-    text = (
-        "---\n"
-        + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True)
-        + "---\n"
-        + template.body.text
-    )
-    logger.info("Adding new Content record at %s", destination)
-    stream = destination.open("x", encoding="utf-8")
-    try:
-        with stream:
-            stream.write(text)
-        result = validate(destination, root)
-        if result.failed:
-            for diagnostic in result.diagnostics:
-                diagnostic.report()
-            raise ValueError(
-                "generated Content record failed validation; no record created"
-            )
-    except BaseException:
-        destination.unlink()
-        raise
-    return destination
+    text = record_text(metadata, template.body.text)
+    return write_record(destination, text, root, "Content")

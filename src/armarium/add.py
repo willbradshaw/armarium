@@ -4,7 +4,8 @@ import re
 import shutil
 from pathlib import Path
 
-from armarium.lib import CAMPAIGN_NAME, find_files, find_vault, parse_directories
+from armarium.creation import select_vault
+from armarium.lib import CAMPAIGN_NAME, find_files, parse_directories
 from armarium.logging import logger
 from armarium.parse import Record
 from armarium.validate import CAMPAIGN_DIRECTORIES
@@ -70,10 +71,7 @@ def add_campaign(vault: Path | None = None, *, number: int | None = None) -> Pat
             creation fails. A partial campaign is removed on write failure.
         KeyboardInterrupt: Interrupted creation is cleaned up before propagating.
     """
-    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-    root = find_vault(selected)
-    if vault is not None and selected != root:
-        raise ValueError("--vault must name the vault root")
+    root = select_vault(vault)
     for directory in ("campaigns", "reference/types", "reference/templates"):
         path = root / directory
         if not path.is_dir() or path.is_symlink():

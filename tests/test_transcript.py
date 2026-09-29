@@ -317,15 +317,7 @@ class TestAddTranscript:
         error: BaseException,
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr(
-                "armarium.transcript.validate",
-                Mock(
-                    side_effect=[
-                        validate(vault / "campaigns/campaign_1/sessions/S-1-001.md"),
-                        error,
-                    ]
-                ),
-            )
+            patch.setattr("armarium.creation.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_transcript("S-1-001", body_file, vault)
         assert not list(vault.rglob("* Transcript.md"))

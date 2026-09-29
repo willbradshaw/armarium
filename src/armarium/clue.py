@@ -1,53 +1,22 @@
 """Create numbered Clue records using a vault's local template."""
 
-import re
 from pathlib import Path
 
-import yaml
-
+from armarium.creation import (
+    check_destination,
+    read_template,
+    record_directory,
+    record_number,
+    record_text,
+    require_campaign,
+    select_vault,
+    write_record,
+)
 from armarium.index import VaultIndex
 from armarium.lib import (
-    CAMPAIGN_NAME,
     find_campaign,
-    find_files,
-    find_vault,
     iter_wikilinks,
-    parse_directories,
 )
-from armarium.logging import logger
-from armarium.parse import Record
-from armarium.validate import validate
-
-
-def _clue_number(directory: Path, campaign: int, number: int | None) -> int:
-    """Select an unused clue number within a campaign's Clue directory.
-
-    Args:
-        directory: Existing Clue directory, including any archive subfolders.
-        campaign: Campaign number appearing in clue filenames.
-        number: Explicit number, or None for one greater than the largest found.
-
-    Returns:
-        int: Unused number from 1 through 9999, matching the four-digit convention.
-
-    Raises:
-        ValueError: The number is used, outside the supported range, or automatic
-            numbering has reached 9999. Directory traversal can also fail.
-        OSError: Existing files cannot be listed.
-    """
-    pattern = re.compile(rf"C-{campaign}-([0-9]{{4}})\.md", re.IGNORECASE)
-    existing = {
-        int(match[1])
-        for path in find_files(directory)
-        if (match := pattern.fullmatch(path.name))
-    }
-    if number is None:
-        number = max(existing, default=0) + 1
-    if not 1 <= number <= 9999:
-        raise ValueError("clue number must be between 1 and 9999")
-    if number in existing:
-        raise ValueError(f"clue number {number} already exists in campaign {campaign}")
-    return number
 
 
 def _clue_subjects(text: str, destination: Path, index: VaultIndex) -> list[str]:
@@ -105,50 +74,15 @@ def add_clue(
         OSError: A destination exists or a filesystem operation fails.
         KeyboardInterrupt: The partial record is removed before propagating.
     """
-    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-    root = find_vault(selected)
-    if vault is not None and selected != root:
-        raise ValueError("--vault must name the vault root")
-    working_directory = Path.cwd().resolve()
-    if campaign is None and working_directory.is_relative_to(root):
-        parts = working_directory.relative_to(root).parts
-        if (
-            len(parts) >= 2
-            and parts[0] == "campaigns"
-            and CAMPAIGN_NAME.fullmatch(parts[1])
-        ):
-            campaign = int(parts[1].removeprefix("campaign_"))
-    if campaign is None:
-        raise ValueError("specify --campaign or run inside a campaign directory")
-    if campaign < 1:
-        raise ValueError("campaign number must be positive")
-    definition, failures = Record.parse(root / "reference/types/Clue.md", root)
-    if definition is None:
-        raise ValueError(f"cannot read Clue Type: {failures[0].message}")
-    declarations = parse_directories(definition.frontmatter.get("directories"))
-    if "campaign" not in declarations:
-        raise ValueError("Clue Type declares no campaign directory")
-    directory = root / "campaigns" / f"campaign_{campaign}" / declarations["campaign"]
-    for path in (directory, *directory.parents):
-        if path == root:
-            break
-        if not path.is_dir() or path.is_symlink():
-            raise ValueError(f"{path} must be an existing real directory")
-    number = _clue_number(directory, campaign, number)
+    root = select_vault(vault)
+    campaign = require_campaign(root, campaign)
+    directory = record_directory(root, "Clue", campaign)
+    number = record_number(
+        directory, campaign, number, kind="clue", prefix="C", digits=4
+    )
     destination = directory / f"C-{campaign}-{number:04}.md"
-    if any(
-        path.name.casefold() == destination.name.casefold()
-        for path in directory.iterdir()
-    ):
-        raise FileExistsError(f"record already exists: {destination}")
-    template_path = root / "reference/templates/Clue.md"
-    if template_path.is_symlink() or template_path.parent.is_symlink():
-        raise ValueError("Clue template must be a regular file in the vault")
-    template, failures = Record.parse(template_path, root)
-    if template is None:
-        raise ValueError(f"cannot read Clue template: {failures[0].message}")
-    if template.frontmatter.type != "Clue":
-        raise ValueError("Clue template must declare the Clue type")
+    check_destination(destination)
+    template = read_template(root, "Clue")
     metadata = dict(template.frontmatter)
     clue_text = text if text is not None else metadata.get("text")
     if not isinstance(clue_text, str) or not clue_text.strip():
@@ -159,25 +93,5 @@ def add_clue(
     metadata["subjects"] = _clue_subjects(clue_text, destination, VaultIndex(root))
     for field in ("first_session", "last_session"):
         metadata.setdefault(field, None)
-    text = (
-        "---\n"
-        + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True)
-        + "---\n"
-        + template.body.text
-    )
-    logger.info("Adding new Clue record at %s", destination)
-    stream = destination.open("x", encoding="utf-8")
-    try:
-        with stream:
-            stream.write(text)
-        result = validate(destination, root)
-        if result.failed:
-            for diagnostic in result.diagnostics:
-                diagnostic.report()
-            raise ValueError(
-                "generated Clue record failed validation; no record created"
-            )
-    except BaseException:
-        destination.unlink()
-        raise
-    return destination
+    text = record_text(metadata, template.body.text)
+    return write_record(destination, text, root, "Clue")

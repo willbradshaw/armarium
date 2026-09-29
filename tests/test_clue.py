@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from armarium.add import add_campaign
-from armarium.clue import _clue_number, add_clue
+from armarium.clue import add_clue
 from armarium.parse import Record
 from armarium.validate import validate
 
@@ -21,39 +21,6 @@ def vault(tmp_path: Path) -> Path:
     root = tmp_path / "vault with spaces"
     shutil.copytree(ROOT / "vaults/starter", root)
     return root
-
-
-class TestClueNumber:
-    @pytest.mark.parametrize(
-        ("requested", "expected"), [(None, 13), (1, 1), (9999, 9999)]
-    )
-    def test_numbering(
-        self, tmp_path: Path, requested: int | None, expected: int
-    ) -> None:
-        (tmp_path / "archive").mkdir()
-        for name in (
-            "C-1-0003.md",
-            "archive/C-1-0012.md",
-            "C-2-0900.md",
-            "C-1-0050 notes.md",
-            "notes.md",
-        ):
-            (tmp_path / name).write_text("")
-        assert _clue_number(tmp_path, 1, requested) == expected
-
-    def test_empty_campaign(self, tmp_path: Path) -> None:
-        assert _clue_number(tmp_path, 1, None) == 1
-
-    @pytest.mark.parametrize("number", [0, -1, 10000, 5])
-    def test_invalid_number(self, tmp_path: Path, number: int) -> None:
-        (tmp_path / "c-1-0005.MD").write_text("")
-        with pytest.raises(ValueError):
-            _clue_number(tmp_path, 1, number)
-
-    def test_exhausted_numbers(self, tmp_path: Path) -> None:
-        (tmp_path / "C-1-9999.md").write_text("")
-        with pytest.raises(ValueError, match="1 and 9999"):
-            _clue_number(tmp_path, 1, None)
 
 
 class TestAddClue:
@@ -217,7 +184,7 @@ class TestAddClue:
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr("armarium.clue.validate", Mock(side_effect=error))
+            patch.setattr("armarium.creation.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_clue(text="A fact.", vault=vault, campaign=1)
         assert not (vault / "campaigns/campaign_1/clues/C-1-0001.md").exists()

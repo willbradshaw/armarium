@@ -378,7 +378,7 @@ class TestAddContent:
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr("armarium.content.validate", Mock(side_effect=error))
+            patch.setattr("armarium.creation.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_content("Entity", "Lore", vault)
         assert not (vault / "content/Entity.md").exists()
