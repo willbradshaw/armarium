@@ -80,7 +80,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     session.add_argument(
         "--campaign",
         type=int,
-        help="existing campaign number; default: current campaign",
+        help="campaign number within vault (default: current campaign directory)",
     )
     session.add_argument(
         "--number",

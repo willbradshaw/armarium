@@ -52,7 +52,8 @@ armarium add session --campaign 1 --vault ../my-vault
 ```
 
 Inside a campaign directory or its subdirectories, omit `--campaign` to use that
-campaign. Omit `--vault` when inside the vault. Elsewhere, specify the campaign.
+campaign. When running outside a campaign directory, `--campaign` is required.
+Omit `--vault` when inside the vault.
 
 The command uses the vault's Session template and Type directory declaration.
 It creates `S-N-NNN.md` with the campaign link and session number filled in;
