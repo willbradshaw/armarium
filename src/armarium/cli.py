@@ -16,6 +16,7 @@ from armarium.note import add_note
 from armarium.parse import Record
 from armarium.player import add_player
 from armarium.session import add_session
+from armarium.transcript import add_transcript
 from armarium.validate import validate
 
 
@@ -169,6 +170,28 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="clue number from 1 to 9999 (default: largest existing number + 1)",
     )
     clue_text = clue.add_argument("--text", help="nonblank clue text")
+    transcript = additions.add_parser(
+        "transcript", help="create a Transcript for an existing Session"
+    )
+    transcript.add_argument(
+        "session", help="unambiguous Session name or vault-relative path"
+    )
+    transcript.add_argument(
+        "--body-file",
+        type=Path,
+        required=True,
+        help="UTF-8 Markdown body with ## sections and - [Speaker] utterances",
+    )
+    transcript.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
+    transcript.add_argument(
+        "--campaign",
+        type=int,
+        help="campaign number to check against the Session (default: selected Session's campaign)",
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -239,6 +262,10 @@ def main() -> None:
             elif args.addition == "session":
                 destination = add_session(
                     args.vault, campaign=args.campaign, number=args.number
+                )
+            elif args.addition == "transcript":
+                destination = add_transcript(
+                    args.session, args.body_file, args.vault, campaign=args.campaign
                 )
             else:
                 destination = add_content(
