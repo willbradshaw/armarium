@@ -82,7 +82,16 @@ VAULT_FILES = (
     ".obsidian/snippets/armarium-prose.css",
 )
 VAULT_STATUSES = ("Abandoned", "Dormant", "Hinted", "Pending", "Revealed", "Superseded")
-VAULT_TEMPLATES = ("Clue", "Content", "Note", "Player", "Session", "Transcript")
+VAULT_TEMPLATES = (
+    "Campaign",
+    "Clue",
+    "Clues",
+    "Content",
+    "Note",
+    "Player",
+    "Session",
+    "Transcript",
+)
 CAMPAIGN_DIRECTORIES = (
     "clues",
     "content",

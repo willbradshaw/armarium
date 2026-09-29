@@ -76,7 +76,7 @@ For example:
 [2026-09-25 19:35:32.83 UTC] ERROR: campaigns/campaign_1/content/Quay Nine.md:parent_location: - link.missing - cannot uniquely resolve [[Port Brisele]]; use a vault-relative path
 [2026-09-25 19:35:32.83 UTC] ERROR: campaigns/campaign_1/content/Quay Nine.md::11 - link.missing - cannot uniquely resolve [[The Bell Acord]]; use a vault-relative path
 [2026-09-25 19:35:32.83 UTC] ERROR: campaigns/campaign_1/sessions/S-1-004.md:type: - record.type - type is required and must be a canonical wikilink
-[2026-09-25 19:35:32.83 UTC] INFO: 66 checked, 6 skipped, 0 unsupported
+[2026-09-25 19:35:32.83 UTC] INFO: 66 checked, 8 skipped, 0 unsupported
 ```
 
 Findings are sorted by path and rule, so runs are comparable. The final line
