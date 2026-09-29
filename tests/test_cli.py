@@ -39,6 +39,64 @@ def preserve_logger() -> Iterator[None]:
 
 
 class TestMain:
+    @pytest.mark.parametrize("campaign", [False, True])
+    def test_add_content(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        campaign: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "add",
+                "content",
+                "Port Briselle",
+                "--subtype",
+                "Location",
+            ]
+            + (["--vault", str(root), "--campaign", "1"] if campaign else []),
+        )
+        main()
+        directory = root / ("campaigns/campaign_1/content" if campaign else "content")
+        destination = directory / "Port Briselle.md"
+        assert destination.is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+            f"Adding new Content record at {destination}",
+            "New content successfully created; validating",
+            "Validation completed successfully",
+        ]
+
+    def test_add_content_missing_player(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(root)
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "add", "content", "Mira", "--subtype", "PC"]
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert "Cannot add content" in output.err and "--player" in output.err
+        assert "Traceback" not in output.err
+        assert not (root / "content/Mira.md").exists()
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_campaign(
         self,
@@ -477,6 +535,27 @@ class TestMain:
 
 
 class TestParseArgs:
+    def test_add_content_options(self) -> None:
+        args = parse_args(
+            [
+                "add",
+                "content",
+                "Mira",
+                "--subtype",
+                "PC",
+                "--campaign",
+                "2",
+                "--player",
+                "Alex",
+                "--vault",
+                "my-vault",
+            ]
+        )
+        assert args.addition == "content" and args.name == "Mira"
+        assert args.subtype == "PC" and args.campaign == 2
+        assert args.player == "Alex"
+        assert args.vault == Path("my-vault")
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_campaign_options(self, explicit: bool) -> None:
         args = parse_args(
@@ -516,6 +595,11 @@ class TestParseArgs:
             ["add", "campaign", "--number", "-1"],
             ["add", "campaign", "--number", "text"],
             ["add", "campaign", "--force"],
+            ["add", "content"],
+            ["add", "content", "Name"],
+            ["add", "content", "Name", "--subtype", "Unknown"],
+            ["add", "content", "Name", "--subtype", "Lore", "--campaign", "0"],
+            ["add", "content", "Name", "--subtype", "Lore", "--force"],
         ],
     )
     def test_usage_errors(
@@ -537,6 +621,7 @@ class TestParseArgs:
             ["init", "--help"],
             ["add", "--help"],
             ["add", "campaign", "--help"],
+            ["add", "content", "--help"],
         ],
     )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:
