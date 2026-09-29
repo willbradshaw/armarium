@@ -257,6 +257,65 @@ class TestMain:
             assert not destination.exists()
             assert "Cannot add clue" in output.err
 
+    @pytest.mark.parametrize("scenario", ["valid", "body", "missing", "unrelated"])
+    def test_add_transcript(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+        from armarium.session import add_session
+
+        root = init_vault(tmp_path / "my vault")
+        add_session(root, campaign=1)
+        body = tmp_path / "speech.md"
+        body.write_text(
+            "Invalid" if scenario == "body" else "## Opening\n- [GM] Hello.\n"
+        )
+        if scenario == "unrelated":
+            (root / "content/Broken.md").write_text("No type")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "add",
+                "transcript",
+                "Missing" if scenario == "missing" else "S-1-001",
+                "--body-file",
+                str(body),
+                "--vault",
+                str(root),
+            ],
+        )
+        if scenario == "valid":
+            main()
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+        output = capsys.readouterr()
+        destination = (
+            root / "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
+        )
+        assert destination.exists() == (scenario in {"valid", "unrelated"})
+        assert output.out == "" and "Traceback" not in output.err
+        assert ("Validation completed successfully" in output.err) == (
+            scenario == "valid"
+        )
+        if scenario == "valid":
+            assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+                f"Adding new Transcript record at {destination}",
+                "New transcript successfully created; validating",
+                "Validation completed successfully",
+            ]
+        elif scenario == "unrelated":
+            assert "Transcript retained at" in output.err
+        else:
+            assert "Cannot add transcript" in output.err
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_session(
         self,
@@ -905,6 +964,48 @@ class TestParseArgs:
         assert args.vault == (Path("my-vault") if explicit else None)
         assert args.campaign == (2 if explicit else None)
         assert args.number == (7 if explicit else None)
+
+    def test_add_transcript_options(self) -> None:
+        args = parse_args(
+            [
+                "add",
+                "transcript",
+                "S-2-001",
+                "--body-file",
+                "speech.md",
+                "--vault",
+                "my vault",
+            ]
+        )
+        assert args.addition == "transcript"
+        assert args.session == "S-2-001"
+        assert args.body_file == Path("speech.md")
+        assert args.vault == Path("my vault")
+        assert not hasattr(args, "campaign")
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["S-1-001"],
+            ["--body-file", "speech.md"],
+            ["S-1-001", "--body-file", "speech.md", "--campaign", "1"],
+            ["S-1-001", "--body-file", "speech.md", "--force"],
+        ],
+    )
+    def test_add_transcript_usage(self, arguments: list[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["add", "transcript", *arguments])
+        assert exc.value.code == 2
+
+    def test_add_transcript_help(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["add", "transcript", "--help"])
+        assert exc.value.code == 0
+        output = capsys.readouterr().out
+        assert "--body-file" in output and "(default:" in output
+        assert "UTF-8 Markdown file containing transcript body" in output
+        assert "--campaign" not in output
 
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_session_options(self, explicit: bool) -> None:

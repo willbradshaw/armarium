@@ -133,3 +133,34 @@ no other records are updated.
 The new record must pass local schema and contextual validation; failure removes
 it. Whole-vault validation follows; failure exits with status 1 and retains the
 valid new Clue for inspection.
+
+## Transcripts
+
+```sh
+armarium add transcript S-1-001 --body-file "recorded speech.md" --vault ../my-vault
+```
+
+Select an existing Session by unambiguous name or qualified vault-relative path.
+Its campaign and identity determine the destination, `S-N-NNN Transcript.md`, in
+the vault's declared Transcript directory. No Session is selected automatically.
+Omit `--vault` inside the vault.
+
+`--body-file` is required and reads UTF-8 Markdown without frontmatter:
+
+```markdown
+## Arrival
+
+- [GM] The door opens.
+- [Mira] Who is there?
+```
+
+Use titled level-two sections, each containing one bullet list of attributed,
+single-paragraph utterances. The supplied body replaces the template's instructional
+sample; frontmatter defaults come from the local Transcript template. This creates
+a record from already-formatted text, without transcribing audio or editing speech.
+The source file, Session and existing records remain unchanged; collisions are refused.
+
+The body grammar and local schema are checked before creating the file.
+The new record then passes link and contextual validation; failures remove it and report
+diagnostics. Whole-vault validation follows; if that fails, the valid
+new Transcript is retained for inspection and the command exits with status 1.

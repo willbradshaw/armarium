@@ -73,6 +73,9 @@ class TestPyproject:
         """Create linked records through the installed commands in one vault."""
         _, command, _ = installed
         root = tmp_path / "workflow-vault"
+        body_file = tmp_path / "speech.md"
+        body = "## Opening\n\n- [Alex] [[Mira]] checks [[Mira notes]] about [[C-1-0001]].\n"
+        body_file.write_text(body)
         environment = {
             key: value
             for key, value in os.environ.items()
@@ -105,6 +108,16 @@ class TestPyproject:
                 "--text",
                 "[[Mira]] knows the route; [[Mira]] drew the map.",
             ],
+            ["add", "session", "--campaign", "1", "--vault", str(root)],
+            [
+                "add",
+                "transcript",
+                "S-1-001",
+                "--body-file",
+                str(body_file),
+                "--vault",
+                str(root),
+            ],
             ["validate", str(root)],
         ]
         for arguments in steps:
@@ -120,6 +133,12 @@ class TestPyproject:
         assert (root / "campaigns/campaign_1/notes/Mira notes.md").is_file()
         pc = root / "campaigns/campaign_1/content/Mira.md"
         assert "reference/players/Alex" in pc.read_text()
+        transcript = (
+            root / "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
+        )
+        assert transcript.read_text().endswith(body)
+        assert "[[campaigns/campaign_1/sessions/S-1-001]]" in transcript.read_text()
+        assert body_file.read_text() == body
         clue = root / "campaigns/campaign_1/clues/C-1-0001.md"
         assert clue.read_text().count("[[campaigns/campaign_1/content/Mira]]") == 1
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
@@ -374,6 +393,81 @@ class TestPyproject:
         assert refused.returncode == 1
         assert "already exists" in refused.stderr and "Traceback" not in refused.stderr
         assert original.read_bytes() == contents
+
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_installed_add_transcript(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "my vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        for arguments in (
+            ["init", str(root)],
+            ["add", "session", "--vault", str(root), "--campaign", "1"],
+        ):
+            result = subprocess.run(
+                [str(command), *arguments],
+                cwd=tmp_path,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == 0, result.stderr
+        body = tmp_path / "recorded speech.md"
+        body.write_text("## Opening\n\n- [GM] Hello.\n")
+        template = root / "reference/templates/Transcript.md"
+        template.write_text(
+            template.read_text().replace("session:", "custom: Local value\nsession:")
+        )
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        arguments = [
+            str(command),
+            "add",
+            "transcript",
+            "campaigns/campaign_1/sessions/S-1-001" if explicit else "S-1-001",
+            "--body-file",
+            str(body),
+        ]
+        if explicit:
+            arguments += ["--vault", str(root)]
+        working = tmp_path if explicit else root / "campaigns/campaign_1/sessions"
+        for expected in (0, 1):
+            result = subprocess.run(
+                arguments,
+                cwd=working,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == expected, result.stderr
+            assert "Traceback" not in result.stderr and result.stdout == ""
+            assert ("Validation completed successfully" in result.stderr) == (
+                expected == 0
+            )
+            if expected:
+                assert "already exists" in result.stderr
+            destination = (
+                root / "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
+            )
+            assert "custom: Local value" in destination.read_text()
+            assert destination.read_text().endswith(body.read_text())
+            assert all(p.read_bytes() == contents for p, contents in before.items())
+        assert body.read_text() == "## Opening\n\n- [GM] Hello.\n"
+        checked = subprocess.run(
+            [str(command), "validate", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert checked.returncode == 0, checked.stderr
 
     @pytest.mark.parametrize("explicit", [False, True])
     def test_installed_add_session(
