@@ -35,7 +35,6 @@ from the selected Session. `add campaign` creates a new campaign.
 
 Initial values come from the vault's local templates, and validation uses its
 schemas. Edit a template to change defaults, or edit the new record afterward.
-Content, Player and Note names may contain spaces; omit `.md`.
 
 A new record must pass schema, link and contextual checks. Failed writes,
 interruptions and record-validation failures remove the new record. Each command
@@ -60,6 +59,16 @@ Players, sessions and content are not copied from existing campaigns.
 
 ## Adding a record
 
+Content, Players and Notes take a name, which becomes the filename. Names may
+contain spaces; omit `.md`.
+
+Sessions and Clues use numbered filenames. By default, the number is one greater
+than the largest existing number of that type in the campaign, including archives.
+Use `--number N` to choose an unused number within the type's range.
+
+References to existing records must resolve uniquely; use vault-relative paths
+when names are ambiguous.
+
 ### Content
 
 ```sh
@@ -69,8 +78,7 @@ armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../m
 
 Use `--subtype NPC|PC|Location|Faction|Object|Lore`. Required nullable subtype
 fields start empty unless set in the template. PCs need an existing Player,
-supplied with `--player` or in the template; use a vault-relative Player path
-when its name is ambiguous.
+supplied with `--player` or in the template.
 
 Shared records start without campaign state. Campaign-specific records get a
 `campaign_N` block, where `N` is the selected campaign number; Objects also get
@@ -83,8 +91,7 @@ armarium add session --campaign 1 --vault ../my-vault
 ```
 
 Creates `S-N-NNN.md` with the campaign link and session number filled in.
-Numbering advances past the largest existing session number, including archives;
-`--number N` chooses an unused number from 1 to 999.
+Session numbers range from 1 to 999.
 
 ### Players
 
@@ -113,16 +120,15 @@ is valid.
 armarium add clue --campaign 1 --vault ../my-vault --text 'The gate is locked from within.'
 ```
 
-Creates `C-N-NNNN.md`. Numbering advances past the largest existing clue number,
-including archives; `--number N` chooses an unused number from 1 to 9999.
+Creates `C-N-NNNN.md`. Clue numbers range from 1 to 9999.
 
 Supply nonblank `--text`, or omit it to use nonblank text from the local template.
 `armarium add clue --vault ../my-vault --help` shows the discovered default text,
 or indicates that `--text` is required when the template text is blank.
 
-Text goes in frontmatter. Its wikilinks must resolve uniquely to shared or
-same-campaign Content; use qualified paths for ambiguous names. `subjects` is
-derived from those targets without duplicates, or `[]` for unlinked text.
+Text goes in frontmatter. Its wikilinks must target shared or same-campaign
+Content. `subjects` is derived from those targets without duplicates, or `[]`
+for unlinked text.
 Template status, session fields and the Sessions section/Base embed are preserved.
 
 ### Transcripts
@@ -131,7 +137,7 @@ Template status, session fields and the Sessions section/Base embed are preserve
 armarium add transcript S-1-001 --body-file recorded-speech.md --vault ../my-vault
 ```
 
-Select an existing Session by unambiguous name or qualified vault-relative path.
+Select an existing Session by name or vault-relative path.
 Its campaign and identity determine the destination, `S-N-NNN Transcript.md`.
 No Session is selected automatically.
 
