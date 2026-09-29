@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from armarium.add import add_campaign
+from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
 from armarium.init import init_vault
 from armarium.lib import find_vault
@@ -113,6 +114,25 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=int,
         help="session number from 1 to 999 (default: largest existing number + 1)",
     )
+    clue = additions.add_parser("clue", help="create a Clue record")
+    clue.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
+    clue.add_argument(
+        "--campaign",
+        type=int,
+        help="campaign number within vault (default: current campaign directory)",
+    )
+    clue.add_argument(
+        "--number",
+        type=int,
+        help="clue number from 1 to 9999 (default: largest existing number + 1)",
+    )
+    clue.add_argument(
+        "--text", help="nonblank clue text (default: local Clue template text)"
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -134,6 +154,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                 parser.error(f"--{option} must be positive")
         if args.addition == "session" and args.number is not None and args.number > 999:
             parser.error("--number must be between 1 and 999")
+        if args.addition == "clue" and args.number is not None and args.number > 9999:
+            parser.error("--number must be between 1 and 9999")
     return args
 
 
@@ -167,6 +189,13 @@ def main() -> None:
                 destination = add_player(args.name, args.vault, campaign=args.campaign)
             elif args.addition == "note":
                 destination = add_note(args.name, args.vault, campaign=args.campaign)
+            elif args.addition == "clue":
+                destination = add_clue(
+                    args.vault,
+                    campaign=args.campaign,
+                    number=args.number,
+                    text=args.text,
+                )
             elif args.addition == "session":
                 destination = add_session(
                     args.vault, campaign=args.campaign, number=args.number

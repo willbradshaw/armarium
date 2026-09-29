@@ -186,6 +186,78 @@ class TestMain:
             assert "Cannot add player" in output.err
 
     @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_clue(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(tmp_path if explicit else root / "campaigns/campaign_1")
+        arguments = ["armarium", "add", "clue", "--text", "A fact."]
+        if explicit:
+            arguments += ["--vault", str(root), "--campaign", "1", "--number", "12"]
+        monkeypatch.setattr(sys, "argv", arguments)
+        main()
+        destination = (
+            root
+            / "campaigns/campaign_1/clues"
+            / ("C-1-0012.md" if explicit else "C-1-0001.md")
+        )
+        assert destination.is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+            f"Adding new Clue record at {destination}",
+            "New clue successfully created; validating",
+            "Validation completed successfully",
+        ]
+
+    @pytest.mark.parametrize(
+        "scenario", ["missing_campaign", "invalid_template", "unrelated_error"]
+    )
+    def test_add_clue_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(root)
+        if scenario == "invalid_template":
+            template = root / "reference/templates/Clue.md"
+            template.write_text(
+                template.read_text().replace("## Sessions", "## Wrong heading")
+            )
+        elif scenario == "unrelated_error":
+            (root / "content/Broken.md").write_text("No type")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "add", "clue", "--text", "A fact."]
+            + ([] if scenario == "missing_campaign" else ["--campaign", "1"]),
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert "Traceback" not in output.err
+        assert "Validation completed successfully" not in output.err
+        destination = root / "campaigns/campaign_1/clues/C-1-0001.md"
+        if scenario == "unrelated_error":
+            assert destination.is_file()
+            assert "Clue retained at" in output.err
+        else:
+            assert not destination.exists()
+            assert "Cannot add clue" in output.err
+
+    @pytest.mark.parametrize("explicit", [False, True])
     def test_add_session(
         self,
         tmp_path: Path,
@@ -785,6 +857,21 @@ class TestParseArgs:
         )
 
     @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_clue_options(self, explicit: bool) -> None:
+        args = parse_args(
+            ["add", "clue"]
+            + (
+                ["--vault", "my-vault", "--campaign", "2", "--number", "7"]
+                if explicit
+                else []
+            )
+        )
+        assert args.addition == "clue"
+        assert args.vault == (Path("my-vault") if explicit else None)
+        assert args.campaign == (2 if explicit else None)
+        assert args.number == (7 if explicit else None)
+
+    @pytest.mark.parametrize("explicit", [False, True])
     def test_add_session_options(self, explicit: bool) -> None:
         args = parse_args(
             ["add", "session"]
@@ -878,6 +965,11 @@ class TestParseArgs:
             ["add", "player", "Name", "--campaign", "0"],
             ["add", "player", "Name", "--campaign", "text"],
             ["add", "player", "Name", "--force"],
+            ["add", "clue", "--number", "0"],
+            ["add", "clue", "--number", "10000"],
+            ["add", "clue", "--campaign", "0"],
+            ["add", "clue", "--number", "text"],
+            ["add", "clue", "--force"],
         ],
     )
     def test_usage_errors(
@@ -903,6 +995,7 @@ class TestParseArgs:
             ["add", "session", "--help"],
             ["add", "player", "--help"],
             ["add", "note", "--help"],
+            ["add", "clue", "--help"],
         ],
     )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:

@@ -107,3 +107,27 @@ for initial values or edit the new Note afterward.
 The new Note must pass local schema and contextual checks; failures remove it
 and report diagnostics. Whole-vault validation follows; failure exits with status
 1 and retains the valid new Note for inspection.
+
+## Clues
+
+```sh
+armarium add clue --campaign 1 --vault ../my-vault --text 'The gate is locked from within.'
+```
+
+Omit `--vault` inside the vault and `--campaign` inside a campaign directory or
+any descendant. Otherwise, select an existing campaign explicitly. The command
+creates `C-N-NNNN.md` in the vault's declared Clue directory, using its Clue
+template. Numbering starts after the largest existing number, including archives;
+`--number N` selects an unused number from 1 to 9999. Existing records are never
+overwritten.
+
+Supply nonblank `--text`, or omit it to use nonblank text from the local template.
+Text goes in frontmatter. Its wikilinks must resolve uniquely to shared or
+same-campaign Content; use qualified paths for ambiguous names. `subjects` is
+derived from those targets without duplicates, or `[]` for unlinked text.
+Template status, session fields and the Sessions section/Base embed are preserved;
+no other records are updated.
+
+The new record must pass local schema and contextual validation; failure removes
+it. Whole-vault validation follows; failure exits with status 1 and retains the
+valid new Clue for inspection.
