@@ -73,6 +73,9 @@ class TestPyproject:
         """Create linked records through the installed commands in one vault."""
         _, command, _ = installed
         root = tmp_path / "workflow-vault"
+        body_file = tmp_path / "speech.md"
+        body = "## Opening\n\n- [Alex] [[Mira]] checks [[Mira notes]] about [[C-1-0001]].\n"
+        body_file.write_text(body)
         environment = {
             key: value
             for key, value in os.environ.items()
@@ -105,6 +108,16 @@ class TestPyproject:
                 "--text",
                 "[[Mira]] knows the route; [[Mira]] drew the map.",
             ],
+            ["add", "session", "--campaign", "1", "--vault", str(root)],
+            [
+                "add",
+                "transcript",
+                "S-1-001",
+                "--body-file",
+                str(body_file),
+                "--vault",
+                str(root),
+            ],
             ["validate", str(root)],
         ]
         for arguments in steps:
@@ -120,6 +133,12 @@ class TestPyproject:
         assert (root / "campaigns/campaign_1/notes/Mira notes.md").is_file()
         pc = root / "campaigns/campaign_1/content/Mira.md"
         assert "reference/players/Alex" in pc.read_text()
+        transcript = (
+            root / "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
+        )
+        assert transcript.read_text().endswith(body)
+        assert "[[campaigns/campaign_1/sessions/S-1-001]]" in transcript.read_text()
+        assert body_file.read_text() == body
         clue = root / "campaigns/campaign_1/clues/C-1-0001.md"
         assert clue.read_text().count("[[campaigns/campaign_1/content/Mira]]") == 1
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
