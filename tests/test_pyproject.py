@@ -68,6 +68,82 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
 @pytest.mark.package
 class TestPyproject:
     @pytest.mark.parametrize("explicit", [False, True])
+    def test_installed_add_player(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "vault with spaces"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        initialized = subprocess.run(
+            [str(command), "init", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert initialized.returncode == 0, initialized.stderr
+        definition = root / "reference/types/Player.md"
+        definition.write_text(
+            definition.read_text().replace(
+                "campaign: reference/players", "campaign: reference/people"
+            )
+        )
+        (root / "campaigns/campaign_1/reference/people").mkdir()
+        template = root / "reference/templates/Player.md"
+        template.write_text(template.read_text() + "\nLocal player guidance.\n")
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        args = [str(command), "add", "player", "New Player"]
+        if explicit:
+            args += ["--vault", str(root), "--campaign", "1"]
+        working = tmp_path if explicit else root / "campaigns/campaign_1/reference"
+        for expected in (0, 1):
+            result = subprocess.run(
+                args,
+                cwd=working,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == expected, result.stderr
+            assert "Traceback" not in result.stderr
+            assert ("Validation completed successfully" in result.stderr) == (
+                expected == 0
+            )
+        destination = root / "campaigns/campaign_1/reference/people/New Player.md"
+        assert "Local player guidance." in destination.read_text()
+        assert all(p.read_bytes() == data for p, data in before.items())
+        player_before = destination.read_bytes()
+        created = subprocess.run(
+            [
+                str(command),
+                "add",
+                "content",
+                "New PC",
+                "--subtype",
+                "PC",
+                "--player",
+                "New Player",
+                "--campaign",
+                "1",
+                "--vault",
+                str(root),
+            ],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert created.returncode == 0, created.stderr
+        assert destination.read_bytes() == player_before
+
+    @pytest.mark.parametrize("explicit", [False, True])
     def test_installed_add_session(
         self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool
     ) -> None:
