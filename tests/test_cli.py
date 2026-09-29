@@ -39,6 +39,78 @@ def preserve_logger() -> Iterator[None]:
 
 
 class TestMain:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_session(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(tmp_path if explicit else root / "campaigns/campaign_1")
+        arguments = ["armarium", "add", "session"]
+        if explicit:
+            arguments += ["--vault", str(root), "--campaign", "1", "--number", "12"]
+        monkeypatch.setattr(sys, "argv", arguments)
+        main()
+        destination = (
+            root
+            / "campaigns/campaign_1/sessions"
+            / ("S-1-012.md" if explicit else "S-1-001.md")
+        )
+        assert destination.is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+            f"Adding new Session record at {destination}",
+            "New session successfully created; validating",
+            "Validation completed successfully",
+        ]
+
+    @pytest.mark.parametrize(
+        "scenario", ["missing_campaign", "invalid_template", "unrelated_error"]
+    )
+    def test_add_session_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(root)
+        if scenario == "invalid_template":
+            template = root / "reference/templates/Session.md"
+            template.write_text(
+                template.read_text().replace("## Starting scene", "## Wrong heading")
+            )
+        elif scenario == "unrelated_error":
+            (root / "content/Broken.md").write_text("No type")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "add", "session"]
+            + ([] if scenario == "missing_campaign" else ["--campaign", "1"]),
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert "Traceback" not in output.err
+        assert "Validation completed successfully" not in output.err
+        destination = root / "campaigns/campaign_1/sessions/S-1-001.md"
+        if scenario == "unrelated_error":
+            assert destination.is_file()
+            assert "Session retained at" in output.err
+        else:
+            assert not destination.exists()
+            assert "Cannot add session" in output.err
+
     @pytest.mark.parametrize("campaign", [False, True])
     def test_add_content(
         self,
@@ -535,6 +607,21 @@ class TestMain:
 
 
 class TestParseArgs:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_session_options(self, explicit: bool) -> None:
+        args = parse_args(
+            ["add", "session"]
+            + (
+                ["--vault", "my-vault", "--campaign", "2", "--number", "7"]
+                if explicit
+                else []
+            )
+        )
+        assert args.addition == "session"
+        assert args.vault == (Path("my-vault") if explicit else None)
+        assert args.campaign == (2 if explicit else None)
+        assert args.number == (7 if explicit else None)
+
     def test_add_content_options(self) -> None:
         args = parse_args(
             [
@@ -600,6 +687,11 @@ class TestParseArgs:
             ["add", "content", "Name", "--subtype", "Unknown"],
             ["add", "content", "Name", "--subtype", "Lore", "--campaign", "0"],
             ["add", "content", "Name", "--subtype", "Lore", "--force"],
+            ["add", "session", "--campaign", "0"],
+            ["add", "session", "--number", "0"],
+            ["add", "session", "--number", "1000"],
+            ["add", "session", "--number", "text"],
+            ["add", "session", "--force"],
         ],
     )
     def test_usage_errors(
@@ -622,6 +714,7 @@ class TestParseArgs:
             ["add", "--help"],
             ["add", "campaign", "--help"],
             ["add", "content", "--help"],
+            ["add", "session", "--help"],
         ],
     )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:

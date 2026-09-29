@@ -67,6 +67,70 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
 
 @pytest.mark.package
 class TestPyproject:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_installed_add_session(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "my-vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        initialized = subprocess.run(
+            [str(command), "init", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert initialized.returncode == 0, initialized.stderr
+        template = root / "reference/templates/Session.md"
+        template.write_text(
+            template.read_text().replace(
+                "## Starting scene\n- N/A", "## Starting scene\nLocal instructions."
+            )
+        )
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        arguments = [str(command), "add", "session"]
+        if explicit:
+            arguments += ["--vault", str(root), "--campaign", "1"]
+        working_directory = (
+            tmp_path if explicit else root / "campaigns/campaign_1/sessions"
+        )
+        for options, expected in (([], 1), (["--number", "7"], 7), ([], 8)):
+            result = subprocess.run(
+                [*arguments, *options],
+                cwd=working_directory,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert result.returncode == 0, result.stderr
+            assert result.stdout == ""
+            assert result.stderr.rstrip().endswith("Validation completed successfully")
+            destination = (
+                root / "campaigns/campaign_1/sessions" / f"S-1-{expected:03}.md"
+            )
+            assert "Local instructions." in destination.read_text()
+        assert all(p.read_bytes() == text for p, text in before.items())
+        original = root / "campaigns/campaign_1/sessions/S-1-001.md"
+        contents = original.read_bytes()
+        refused = subprocess.run(
+            [*arguments, "--number", "1"],
+            cwd=working_directory,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1
+        assert "already exists" in refused.stderr and "Traceback" not in refused.stderr
+        assert original.read_bytes() == contents
+
     @pytest.mark.parametrize("subtype", ["Location", "PC"])
     def test_installed_add_content(
         self, installed: tuple[Path, Path, Path], tmp_path: Path, subtype: str

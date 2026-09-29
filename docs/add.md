@@ -44,3 +44,22 @@ Shared records start without campaign state. Campaign-specific records get a
 
 The new record must pass the vault's schema and contextual checks; failures
 remove it and report diagnostics. The command then validates the whole vault.
+
+## Sessions
+
+```sh
+armarium add session --campaign 1 --vault ../my-vault
+```
+
+Inside a campaign directory or its subdirectories, omit `--campaign` to use that
+campaign. Omit `--vault` when inside the vault. Elsewhere, specify the campaign.
+
+The command uses the vault's Session template and Type directory declaration.
+It creates `S-N-NNN.md` with the campaign link and session number filled in;
+dates and other initial values come from the template. The default number is
+one greater than the largest existing session number in that campaign,
+including sessions in subdirectories. Use `--number N` to choose an unused
+number from 1 to 999. Existing records are never overwritten.
+
+The new record must pass the vault's schema and contextual checks; failures
+remove it and report diagnostics. The command then validates the whole vault.
