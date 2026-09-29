@@ -6,10 +6,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.add import add_campaign
+from armarium.add import add_campaign, read_template, select_vault
 from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
-from armarium.creation import read_template, select_vault
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger

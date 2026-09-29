@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from armarium.creation import (
+from armarium.add import (
     check_destination,
     read_template,
     record_directory,

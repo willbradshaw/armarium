@@ -184,7 +184,7 @@ class TestAddClue:
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr("armarium.creation.validate", Mock(side_effect=error))
+            patch.setattr("armarium.add.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_clue(text="A fact.", vault=vault, campaign=1)
         assert not (vault / "campaigns/campaign_1/clues/C-1-0001.md").exists()

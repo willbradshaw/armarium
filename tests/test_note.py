@@ -295,7 +295,7 @@ class TestAddNote:
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, error: BaseException
     ) -> None:
         with monkeypatch.context() as patch:
-            patch.setattr("armarium.creation.validate", Mock(side_effect=error))
+            patch.setattr("armarium.add.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
                 add_note("Ideas", vault)
         assert not (vault / "notes/Ideas.md").exists()
