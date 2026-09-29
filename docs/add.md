@@ -143,7 +143,7 @@ armarium add transcript S-1-001 --body-file "recorded speech.md" --vault ../my-v
 Select an existing Session by unambiguous name or qualified vault-relative path.
 Its campaign and identity determine the destination, `S-N-NNN Transcript.md`, in
 the vault's declared Transcript directory. No Session is selected automatically.
-Optional `--campaign N` must agree with the Session; omit `--vault` inside the vault.
+Omit `--vault` inside the vault.
 
 `--body-file` is required and reads UTF-8 Markdown without frontmatter:
 
@@ -160,6 +160,7 @@ sample; frontmatter defaults come from the local Transcript template. This creat
 a record from already-formatted text, without transcribing audio or editing speech.
 The source file, Session and existing records remain unchanged; collisions are refused.
 
-The new record must pass the vault's schema and contextual checks; failures remove
-it and report diagnostics. Whole-vault validation follows; if that fails, the valid
+The body grammar and local schema are checked before creating the file.
+The new record then passes link and contextual validation; failures remove it and report
+diagnostics. Whole-vault validation follows; if that fails, the valid
 new Transcript is retained for inspection and the command exits with status 1.

@@ -7,16 +7,15 @@ import yaml
 from armarium.index import VaultIndex
 from armarium.lib import find_campaign, find_vault, parse_directories, parse_wikilink
 from armarium.logging import logger
-from armarium.parse import Record
-from armarium.validate import validate
+from armarium.parse import Body, Frontmatter, Record
+from armarium.schemas import select_schema
+from armarium.validate import validate, validate_transcript
 
 
 def add_transcript(
     session: str,
     body_file: Path,
     vault: Path | None = None,
-    *,
-    campaign: int | None = None,
 ) -> Path:
     """Create and validate a Transcript without changing its Session or source.
 
@@ -26,8 +25,6 @@ def add_transcript(
             bullet-list utterances of the form ``- [Speaker] Speech.``. Replaces
             the local template body; frontmatter comes only from the template.
         vault: Vault root, or None to discover it from the working directory.
-        campaign: Optional campaign number which must agree with the Session.
-            The Session determines scope even outside a campaign directory.
 
     Returns:
         Path: Absolute path of the validated S-N-NNN Transcript.md record.
@@ -41,8 +38,6 @@ def add_transcript(
     root = find_vault(selected)
     if vault is not None and selected != root:
         raise ValueError("--vault must name the vault root")
-    if campaign is not None and campaign < 1:
-        raise ValueError("campaign number must be positive")
     target = parse_wikilink(
         session if session.startswith("[[") else f"[[{session}]]", canonical=True
     )
@@ -56,9 +51,6 @@ def add_transcript(
     scope = find_campaign(resolved, root)
     if record is None or record.frontmatter.type != "Session" or scope is None:
         raise ValueError("session must identify a Session in an existing campaign")
-    number = int(scope.removeprefix("campaign_"))
-    if campaign is not None and campaign != number:
-        raise ValueError("--campaign conflicts with the selected Session's campaign")
     result = validate(resolved, root)
     if result.failed:
         for diagnostic in result.diagnostics:
@@ -99,6 +91,17 @@ def add_transcript(
         raise ValueError(f"body file must contain UTF-8 Markdown: {body_file}") from exc
     metadata = dict(template.frontmatter)
     metadata["session"] = f"[[{resolved.relative_to(root).with_suffix('').as_posix()}]]"
+    candidate = Record(destination, Frontmatter(metadata), Body(body, 1))
+    schema, diagnostics = select_schema(candidate, root)
+    if schema is not None:
+        diagnostics.extend(schema.validate(candidate))
+    diagnostics.extend(validate_transcript(candidate, index).diagnostics)
+    if any(diagnostic.severity == "error" for diagnostic in diagnostics):
+        for diagnostic in diagnostics:
+            diagnostic.report()
+        raise ValueError(
+            "generated Transcript failed input validation; no record created"
+        )
     text = (
         "---\n"
         + yaml.safe_dump(metadata, sort_keys=False, allow_unicode=True)

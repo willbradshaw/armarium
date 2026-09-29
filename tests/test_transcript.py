@@ -77,23 +77,19 @@ class TestAddTranscript:
         assert all(p.read_bytes() == content for p, content in before.items())
         assert body_file.read_text() == BODY
 
-    @pytest.mark.parametrize("explicit", [False, True])
     def test_session_determines_campaign(
         self,
         vault: Path,
         body_file: Path,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
-        explicit: bool,
     ) -> None:
         add_campaign(vault)
         add_session(vault, campaign=2)
         other = tmp_path / "other vault"
         shutil.copytree(vault, other)
         monkeypatch.chdir(other / "campaigns/campaign_1/sessions")
-        destination = add_transcript(
-            "S-2-001", body_file, vault, campaign=2 if explicit else None
-        )
+        destination = add_transcript("S-2-001", body_file, vault)
         assert destination.is_relative_to(vault / "campaigns/campaign_2")
         assert not validate(vault).failed
 
@@ -127,14 +123,6 @@ class TestAddTranscript:
     ) -> None:
         with pytest.raises(ValueError):
             add_transcript(selection, body_file, vault)
-        assert not list(vault.rglob("* Transcript.md"))
-
-    @pytest.mark.parametrize("campaign", [0, -1, 2])
-    def test_campaign_conflict(
-        self, vault: Path, body_file: Path, campaign: int
-    ) -> None:
-        with pytest.raises(ValueError, match="campaign"):
-            add_transcript("S-1-001", body_file, vault, campaign=campaign)
         assert not list(vault.rglob("* Transcript.md"))
 
     @pytest.mark.parametrize(
@@ -174,20 +162,39 @@ class TestAddTranscript:
             "## Opening\n- [GM] Hi\n\nParagraph\n",
             "## Opening\n- [GM] Hi\n  - nested\n",
             "## Opening\n- [GM] Hi\n[Sam] Bye\n",
-            "## Opening\n- [GM] [[Missing]]\n",
             "---\ntype: Other\n---\n## Opening\n- [GM] Hi\n",
         ],
     )
     def test_body_failure_and_retry(
-        self, vault: Path, body_file: Path, body: str
+        self, vault: Path, body_file: Path, body: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         body_file.write_text(body)
-        with pytest.raises(ValueError, match="generated Transcript"):
-            add_transcript("S-1-001", body_file, vault)
+        original_open = Path.open
+
+        def checked_open(path: Path, *args: object, **kwargs: object) -> object:
+            assert args != ("x",), "invalid body must be rejected before creation"
+            return original_open(path, *args, **kwargs)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, "open", checked_open)
+            with pytest.raises(ValueError, match="generated Transcript"):
+                add_transcript("S-1-001", body_file, vault)
         assert not list(vault.rglob("* Transcript.md"))
         assert body_file.read_text() == body
         body_file.write_text(BODY)
         assert add_transcript("S-1-001", body_file, vault).is_file()
+
+    @pytest.mark.parametrize(
+        "link", ["[[Missing]]", "[[#Arrival]]", "[[S-1-001 Transcript#Arrival]]"]
+    )
+    def test_body_links(self, vault: Path, body_file: Path, link: str) -> None:
+        body_file.write_text(f"## Arrival\n\n- [GM] See {link}.\n")
+        if link == "[[Missing]]":
+            with pytest.raises(ValueError, match="generated Transcript"):
+                add_transcript("S-1-001", body_file, vault)
+            assert not list(vault.rglob("* Transcript.md"))
+        else:
+            assert add_transcript("S-1-001", body_file, vault).is_file()
 
     def test_local_customizations(self, vault: Path, body_file: Path) -> None:
         definition = vault / "reference/types/Transcript.md"

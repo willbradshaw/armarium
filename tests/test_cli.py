@@ -975,15 +975,13 @@ class TestParseArgs:
                 "speech.md",
                 "--vault",
                 "my vault",
-                "--campaign",
-                "2",
             ]
         )
         assert args.addition == "transcript"
         assert args.session == "S-2-001"
         assert args.body_file == Path("speech.md")
         assert args.vault == Path("my vault")
-        assert args.campaign == 2
+        assert not hasattr(args, "campaign")
 
     @pytest.mark.parametrize(
         "arguments",
@@ -991,7 +989,7 @@ class TestParseArgs:
             [],
             ["S-1-001"],
             ["--body-file", "speech.md"],
-            ["S-1-001", "--body-file", "speech.md", "--campaign", "0"],
+            ["S-1-001", "--body-file", "speech.md", "--campaign", "1"],
             ["S-1-001", "--body-file", "speech.md", "--force"],
         ],
     )
@@ -1006,6 +1004,8 @@ class TestParseArgs:
         assert exc.value.code == 0
         output = capsys.readouterr().out
         assert "--body-file" in output and "(default:" in output
+        assert "UTF-8 Markdown file containing transcript body" in output
+        assert "--campaign" not in output
 
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_session_options(self, explicit: bool) -> None:

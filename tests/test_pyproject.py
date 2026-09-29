@@ -415,7 +415,7 @@ class TestPyproject:
             str(body),
         ]
         if explicit:
-            arguments += ["--vault", str(root), "--campaign", "1"]
+            arguments += ["--vault", str(root)]
         working = tmp_path if explicit else root / "campaigns/campaign_1/sessions"
         for expected in (0, 1):
             result = subprocess.run(

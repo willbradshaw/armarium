@@ -180,17 +180,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--body-file",
         type=Path,
         required=True,
-        help="UTF-8 Markdown body with ## sections and - [Speaker] utterances",
+        help="UTF-8 Markdown file containing transcript body",
     )
     transcript.add_argument(
         "--vault",
         type=Path,
         help="vault root (default: discovered from the current directory)",
-    )
-    transcript.add_argument(
-        "--campaign",
-        type=int,
-        help="campaign number to check against the Session (default: selected Session's campaign)",
     )
     command = commands.add_parser(
         "validate",
@@ -264,9 +259,7 @@ def main() -> None:
                     args.vault, campaign=args.campaign, number=args.number
                 )
             elif args.addition == "transcript":
-                destination = add_transcript(
-                    args.session, args.body_file, args.vault, campaign=args.campaign
-                )
+                destination = add_transcript(args.session, args.body_file, args.vault)
             else:
                 destination = add_content(
                     args.name,
