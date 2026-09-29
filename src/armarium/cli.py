@@ -48,12 +48,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     campaign.add_argument(
         "--vault",
         type=Path,
-        help="vault root; otherwise discover from the current directory",
+        help="vault root (default: discovered from the current directory)",
     )
     campaign.add_argument(
         "--number",
         type=int,
-        help="positive campaign number; default: largest existing number + 1",
+        help="positive campaign number (default: largest existing number + 1)",
     )
     content = additions.add_parser("content", help="create a Content record")
     content.add_argument("name", help="record name without .md")
@@ -61,12 +61,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     content.add_argument(
         "--vault",
         type=Path,
-        help="vault root; otherwise discover from the current directory",
+        help="vault root (default: discovered from the current directory)",
     )
     content.add_argument(
         "--campaign",
         type=int,
-        help="existing campaign number; default: current campaign, otherwise shared content",
+        help="campaign number within vault (default: current campaign directory, or shared content)",
     )
     content.add_argument(
         "--player", help="existing Player name or vault-relative path (PC only)"
@@ -75,7 +75,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     session.add_argument(
         "--vault",
         type=Path,
-        help="vault root; otherwise discover from the current directory",
+        help="vault root (default: discovered from the current directory)",
     )
     session.add_argument(
         "--campaign",
@@ -85,7 +85,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     session.add_argument(
         "--number",
         type=int,
-        help="session number (1–999); default: largest existing number + 1",
+        help="session number from 1 to 999 (default: largest existing number + 1)",
     )
     command = commands.add_parser(
         "validate",
