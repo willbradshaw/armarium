@@ -64,3 +64,25 @@ number from 1 to 999. Existing records are never overwritten.
 
 The new record must pass the vault's schema and contextual checks; failures
 remove it and report diagnostics. The command then validates the whole vault.
+
+## Players
+
+```sh
+armarium add player "Alex" --campaign 1 --vault ../my-vault
+armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
+```
+
+Inside a campaign directory or any descendant, omit `--campaign` to use that
+campaign; otherwise it is required. `--campaign N` overrides inference.
+Omit `--vault` when inside the vault. Names may contain spaces; omit `.md`.
+Existing records are never overwritten.
+
+The command uses the vault's Player template and declared campaign directory.
+The standard template creates an unassigned Player with `plays: []`; local
+initial values and body text are preserved, and configured links must target
+shared or same-campaign PCs. No PCs or backlinks are changed. Use
+[add content](#content) to create a PC linked to the new Player.
+
+The new record must pass local schema and contextual checks; failures remove
+it. Whole-vault validation follows; if that fails, the valid Player is retained
+for inspection and the command exits with status 1.
