@@ -1,8 +1,14 @@
 # Adding to a vault
 
-`armarium add` uses the selected vault's templates, Type directory declarations
-and schemas. Pass `--vault PATH`, or omit it when running inside the vault.
-Existing records and campaigns are never overwritten.
+## Choosing a vault and destination
+
+Pass `--vault PATH` to select a vault's root directory, using an absolute path or
+a path relative to your current directory. Omit it to discover the vault from
+your current directory when running anywhere inside it.
+
+Records go in the selected vault's declared directory for their type and campaign
+scope, rather than directly in the current directory. Existing records and
+campaigns are never overwritten.
 
 ## Choosing a campaign
 
@@ -16,9 +22,9 @@ selected Session. `add campaign` creates a new campaign.
 
 ## Templates and validation
 
-Initial values come from the vault's local templates. Edit a template to change
-defaults, or edit the new record afterward. Content, Player and Note names may
-contain spaces; omit `.md`.
+Initial values come from the vault's local templates, and validation uses its
+schemas. Edit a template to change defaults, or edit the new record afterward.
+Content, Player and Note names may contain spaces; omit `.md`.
 
 A new record must pass schema, link and contextual checks. Failed writes,
 interruptions and record-validation failures remove the new record. Each command
