@@ -19,14 +19,22 @@ campaigns/campaign_N/
     transcripts/          Transcript records, S-N-NNN Transcript.md
 ```
 
-The starter vault ships `campaign_1`. To add a campaign, create `campaign_N`
-with the directories above. Copy `reference/templates/Campaign.md` to its
-`reference/Campaign.md`, and `reference/templates/Clues.md` to its
-`reference/indexes/Clues.md`. Replace campaign 1 in the clue index's link,
-directory path and clue ID example with the new campaign number. Always qualify
-campaign overview links, such as `[[campaign_2/reference/Campaign]]`.
-The example vault's `campaign_2` shows a second campaign sharing the setting
-with the first.
+The starter vault ships `campaign_1`. Add another with:
+
+```sh
+armarium add campaign --vault ../my-vault
+```
+
+Omit `--vault` when running inside the vault. The new campaign number is one
+greater than the largest existing number; use `--number N` to choose a positive
+number explicitly. Existing campaigns are never overwritten.
+
+The command uses the vault's Campaign and Clues templates and Type directory
+declarations, then validates the whole vault. In the templates, `campaign_1`
+and clue IDs beginning `C-1-` identify the new campaign and are updated to its
+number. Other text is preserved. No players, sessions or content are copied from
+existing campaigns. Failed writes remove the partial campaign; validation
+failures leave it available for inspection.
 
 ## State
 

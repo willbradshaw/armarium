@@ -39,6 +39,74 @@ def preserve_logger() -> Iterator[None]:
 
 
 class TestMain:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_campaign(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        monkeypatch.chdir(tmp_path if explicit else root / "content")
+        argv = ["armarium", "add", "campaign"]
+        if explicit:
+            argv += ["--vault", str(root), "--number", "7"]
+        monkeypatch.setattr(sys, "argv", argv)
+        main()
+        destination = root / "campaigns" / ("campaign_7" if explicit else "campaign_2")
+        assert (destination / "reference/Campaign.md").is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+            f"Adding new campaign at {destination}",
+            "New campaign successfully created; validating",
+            "Validation completed successfully",
+        ]
+
+    @pytest.mark.parametrize(
+        "scenario", ["outside", "existing", "missing_template", "invalid_record"]
+    )
+    def test_add_campaign_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "my-vault")
+        template = root / "reference/templates/Campaign.md"
+        if scenario == "missing_template":
+            template.unlink()
+        elif scenario == "invalid_record":
+            template.write_text("Missing frontmatter")
+        monkeypatch.chdir(tmp_path if scenario == "outside" else root)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "add", "campaign"]
+            + (["--number", "1"] if scenario == "existing" else []),
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "Traceback" not in output.err
+        assert "Validation completed successfully" not in output.err
+        destination = root / "campaigns/campaign_2"
+        if scenario == "invalid_record":
+            assert "record.type" in output.err
+            assert f"Campaign retained at {destination}" in output.err
+            assert destination.is_dir()
+        else:
+            assert "Cannot add campaign" in output.err
+            assert not destination.exists()
+
     @pytest.mark.parametrize("existing", [False, True])
     def test_force_warning(
         self,
@@ -409,6 +477,16 @@ class TestMain:
 
 
 class TestParseArgs:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_campaign_options(self, explicit: bool) -> None:
+        args = parse_args(
+            ["add", "campaign"]
+            + (["--vault", "my-vault", "--number", "12"] if explicit else [])
+        )
+        assert args.command == "add" and args.addition == "campaign"
+        assert args.number == (12 if explicit else None)
+        assert args.vault == (Path("my-vault") if explicit else None)
+
     @pytest.mark.parametrize("force", [False, True])
     def test_init_path(self, force: bool) -> None:
         args = parse_args(["init", "A new setting"] + (["--force"] if force else []))
@@ -432,6 +510,12 @@ class TestParseArgs:
             ["validate", "--unknown"],
             ["init"],
             ["init", "setting", "--vault", "other"],
+            ["add"],
+            ["add", "unknown"],
+            ["add", "campaign", "--number", "0"],
+            ["add", "campaign", "--number", "-1"],
+            ["add", "campaign", "--number", "text"],
+            ["add", "campaign", "--force"],
         ],
     )
     def test_usage_errors(
@@ -446,7 +530,14 @@ class TestParseArgs:
         assert "Traceback" not in output.err
 
     @pytest.mark.parametrize(
-        "argv", [["--help"], ["validate", "--help"], ["init", "--help"]]
+        "argv",
+        [
+            ["--help"],
+            ["validate", "--help"],
+            ["init", "--help"],
+            ["add", "--help"],
+            ["add", "campaign", "--help"],
+        ],
     )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:
         with pytest.raises(SystemExit) as exc:
