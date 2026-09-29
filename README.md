@@ -19,7 +19,7 @@ Open the new folder in Obsidian and edit
 for details.
 
 Add another campaign with `armarium add campaign --vault ../my-vault`; see
-[Campaigns](docs/campaign.md).
+[Adding to a vault](docs/add.md).
 
 Requires Obsidian **1.13.7+** with **Bases** and
 [Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)
