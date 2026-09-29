@@ -38,9 +38,9 @@ start empty unless set in the template. PCs need an existing Player, supplied
 with `--player` or in the template; use a vault-relative Player path when its
 name is ambiguous.
 
-Shared records start without campaign state. Campaign-specific records use the
-template's `campaign_1` block for the selected campaign; Objects also get
-`held_by`. Custom frontmatter values and the Markdown body are preserved, though
+Shared records start without campaign state. Campaign-specific records get a
+`campaign_N` block, where `N` is the selected campaign number; Objects also get
+`held_by` in that block. Custom frontmatter values and the Markdown body are preserved, though
 YAML formatting and comments are not.
 
 The new record must pass the vault's schema and contextual checks; failures
