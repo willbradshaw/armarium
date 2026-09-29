@@ -23,13 +23,13 @@ campaigns are never overwritten.
 
 ### Choosing a campaign
 
-Inside a campaign directory or any descendant, Content, Notes, Players, Sessions
-and Clues default to that campaign. Use `--campaign N` to select another existing
-campaign. Selecting a different vault does not inherit the current campaign.
+While inside a campaign directory or any descendants, new records created with
+`armarium add` are added to that campaign. Use `--campaign N` to select another
+existing campaign. Selecting a different vault does not inherit the current campaign.
 
 Outside a campaign directory, Content and Notes default to shared scope; Players,
-Sessions and Clues require `--campaign`. Transcripts take their campaign from the
-selected Session. `add campaign` creates a new campaign.
+Sessions and Clues require `--campaign`. Transcripts always take their campaign
+from the selected Session. `add campaign` creates a new campaign.
 
 ### Templates and validation
 
