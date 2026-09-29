@@ -6,7 +6,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from armarium.add import add_campaign
+from armarium.content import SUBTYPES, add_content
 from armarium.init import init_vault
+from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
 from armarium.validate import validate
 
@@ -52,6 +54,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=int,
         help="positive campaign number; default: largest existing number + 1",
     )
+    content = additions.add_parser("content", help="create a Content record")
+    content.add_argument("name", help="record name without .md")
+    content.add_argument("--subtype", required=True, choices=SUBTYPES)
+    content.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root; otherwise discover from the current directory",
+    )
+    content.add_argument(
+        "--campaign", type=int, help="existing campaign number; default: shared content"
+    )
+    content.add_argument(
+        "--summary", help="short description; default: template summary"
+    )
+    content.add_argument(
+        "--player", help="existing Player name or vault-relative path (PC only)"
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -66,8 +85,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     command.add_argument("--vault", type=Path, help="explicit vault directory")
     args = parser.parse_args(argv)
-    if args.command == "add" and args.number is not None and args.number < 1:
-        parser.error("--number must be positive")
+    if args.command == "add":
+        option = "number" if args.addition == "campaign" else "campaign"
+        value = getattr(args, option)
+        if value is not None and value < 1:
+            parser.error(f"--{option} must be positive")
     return args
 
 
@@ -95,12 +117,22 @@ def main() -> None:
         result = validate(destination)
     elif args.command == "add":
         try:
-            destination = add_campaign(args.vault, number=args.number)
+            if args.addition == "campaign":
+                destination = add_campaign(args.vault, number=args.number)
+            else:
+                destination = add_content(
+                    args.name,
+                    args.subtype,
+                    args.vault,
+                    campaign=args.campaign,
+                    summary=args.summary,
+                    player=args.player,
+                )
         except (OSError, ValueError) as exc:
-            logger.error("Cannot add campaign: %s", exc)
+            logger.error("Cannot add %s: %s", args.addition, exc)
             sys.exit(1)
-        logger.info("New campaign successfully created; validating")
-        result = validate(destination.parent.parent)
+        logger.info("New %s successfully created; validating", args.addition)
+        result = validate(find_vault(destination))
     else:
         result = validate(args.path, args.vault)
         result.report()
@@ -115,7 +147,11 @@ def main() -> None:
         if args.command == "init":
             logger.error("Vault retained at %s for inspection", destination)
         elif args.command == "add":
-            logger.error("Campaign retained at %s for inspection", destination)
+            logger.error(
+                "%s retained at %s for inspection",
+                args.addition.capitalize(),
+                destination,
+            )
         sys.exit(1)
     if args.command in {"init", "add"}:
         logger.info("Validation completed successfully")

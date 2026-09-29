@@ -19,3 +19,28 @@ number. Other text is preserved. No players, sessions or content are copied from
 existing campaigns. Failed writes remove the partial campaign; validation
 failures leave it available for inspection.
 
+## Content
+
+```sh
+armarium add content "Port Briselle" --subtype Location --vault ../my-vault
+armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
+```
+
+Use `--subtype NPC|PC|Location|Faction|Object|Lore`. Content is shared by default;
+`--campaign N` selects an existing campaign. Omit `--vault` when inside the vault.
+Names may contain spaces; omit the `.md` extension. Existing records are never
+overwritten.
+
+The command uses the vault's Content template and Type directory declaration.
+`--summary` overrides the template's summary. Required nullable subtype fields
+start empty unless set in the template. PCs need an existing Player, supplied
+with `--player` or in the template; use a vault-relative Player path when its
+name is ambiguous.
+
+Shared records start without campaign state. Campaign-specific records use the
+template's `campaign_1` block for the selected campaign; Objects also get
+`held_by`. Custom frontmatter values and the Markdown body are preserved, though
+YAML formatting and comments are not.
+
+The new record must pass the vault's schema and contextual checks; failures
+remove it and report diagnostics. The command then validates the whole vault.

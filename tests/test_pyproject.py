@@ -67,6 +67,75 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
 
 @pytest.mark.package
 class TestPyproject:
+    @pytest.mark.parametrize("subtype", ["Location", "PC"])
+    def test_installed_add_content(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, subtype: str
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "my-vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        initialized = subprocess.run(
+            [str(command), "init", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert initialized.returncode == 0, initialized.stderr
+        (root / "campaigns/campaign_1/reference/players/Alex.md").write_text(
+            '---\ntype: "[[types/Player]]"\nplays: []\n---\n'
+        )
+        template = root / "reference/templates/Content.md"
+        template.write_text(
+            template.read_text().replace("## Notes\n- N/A", "## Notes\nLocal guidance.")
+        )
+        args = [
+            str(command),
+            "add",
+            "content",
+            "New Entity",
+            "--subtype",
+            subtype,
+            "--vault",
+            str(root),
+            "--summary",
+            "A description",
+        ]
+        if subtype == "PC":
+            args += ["--campaign", "1", "--player", "Alex"]
+        created = subprocess.run(
+            args,
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert created.returncode == 0, created.stderr
+        assert created.stderr.rstrip().endswith("Validation completed successfully")
+        directory = root / (
+            "campaigns/campaign_1/content" if subtype == "PC" else "content"
+        )
+        destination = directory / "New Entity.md"
+        assert "Local guidance." in destination.read_text()
+        before = destination.read_bytes()
+        refused = subprocess.run(
+            args,
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1 and "already exists" in refused.stderr
+        assert "Traceback" not in refused.stderr
+        assert destination.read_bytes() == before
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_installed_add_campaign(
         self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool

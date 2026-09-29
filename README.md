@@ -18,7 +18,7 @@ Open the new folder in Obsidian and edit
 `campaigns/campaign_1/reference/Campaign.md`. See [Creating a vault](docs/init.md)
 for details.
 
-Add another campaign with `armarium add campaign --vault ../my-vault`; see
+Add campaigns and Content records with `armarium add`; see
 [Adding to a vault](docs/add.md).
 
 Requires Obsidian **1.13.7+** with **Bases** and
