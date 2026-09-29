@@ -1,6 +1,17 @@
 # Adding to a vault
 
-## Choosing a vault and destination
+`armarium add` creates campaigns and records in an existing vault using its local
+templates and conventions, then validates the result. For example:
+
+```sh
+armarium add campaign --vault ../my-vault
+armarium add content "Port Briselle" --subtype Location --vault ../my-vault
+armarium add session --campaign 1 --vault ../my-vault
+```
+
+## Shared behavior
+
+### Choosing a vault and destination
 
 Pass `--vault PATH` to select a vault's root directory, using an absolute path or
 a path relative to your current directory. Omit it to discover the vault from
@@ -10,7 +21,7 @@ Records go in the selected vault's declared directory for their type and campaig
 scope, rather than directly in the current directory. Existing records and
 campaigns are never overwritten.
 
-## Choosing a campaign
+### Choosing a campaign
 
 Inside a campaign directory or any descendant, Content, Notes, Players, Sessions
 and Clues default to that campaign. Use `--campaign N` to select another existing
@@ -20,7 +31,7 @@ Outside a campaign directory, Content and Notes default to shared scope; Players
 Sessions and Clues require `--campaign`. Transcripts take their campaign from the
 selected Session. `add campaign` creates a new campaign.
 
-## Templates and validation
+### Templates and validation
 
 Initial values come from the vault's local templates, and validation uses its
 schemas. Edit a template to change defaults, or edit the new record afterward.
@@ -32,7 +43,7 @@ then validates the whole vault; failure exits with status 1 and retains the vali
 new record for inspection. Campaign creation removes partial campaigns on write
 failure, but retains them on validation failure.
 
-## Campaigns
+## Adding a campaign
 
 Add a [campaign](campaign.md):
 
@@ -47,7 +58,9 @@ Campaign and Clues templates supply the initial records. Their `campaign_1` and
 `C-1-` clue ID placeholders are updated to the new number; other text is preserved.
 Players, sessions and content are not copied from existing campaigns.
 
-## Content
+## Adding a record
+
+### Content
 
 ```sh
 armarium add content "Port Briselle" --subtype Location --vault ../my-vault
@@ -63,7 +76,7 @@ Shared records start without campaign state. Campaign-specific records get a
 `campaign_N` block, where `N` is the selected campaign number; Objects also get
 `held_by` in that block.
 
-## Sessions
+### Sessions
 
 ```sh
 armarium add session --campaign 1 --vault ../my-vault
@@ -73,7 +86,7 @@ Creates `S-N-NNN.md` with the campaign link and session number filled in.
 Numbering advances past the largest existing session number, including archives;
 `--number N` chooses an unused number from 1 to 999.
 
-## Players
+### Players
 
 ```sh
 armarium add player "Alex" --campaign 1 --vault ../my-vault
@@ -84,7 +97,7 @@ links must target shared or same-campaign PCs. Use [add content](#content) to
 create a PC linked to the new Player; creating a Player does not change PCs or
 backlinks.
 
-## Notes
+### Notes
 
 ```sh
 armarium add note "Working ideas" --vault ../my-vault
@@ -94,7 +107,7 @@ armarium add note "Session prep" --campaign 1 --vault ../my-vault
 Copies the local Note template, including its metadata and body. An empty body
 is valid.
 
-## Clues
+### Clues
 
 ```sh
 armarium add clue --campaign 1 --vault ../my-vault --text 'The gate is locked from within.'
@@ -112,7 +125,7 @@ same-campaign Content; use qualified paths for ambiguous names. `subjects` is
 derived from those targets without duplicates, or `[]` for unlinked text.
 Template status, session fields and the Sessions section/Base embed are preserved.
 
-## Transcripts
+### Transcripts
 
 ```sh
 armarium add transcript S-1-001 --body-file recorded-speech.md --vault ../my-vault
