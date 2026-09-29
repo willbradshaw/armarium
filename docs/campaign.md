@@ -19,7 +19,7 @@ campaigns/campaign_N/
     transcripts/          Transcript records, S-N-NNN Transcript.md
 ```
 
-The starter vault ships `campaign_1`. Use [`armarium add campaign`](add.md)
+The starter vault ships `campaign_1`. Use [`armarium add campaign`](add.md#campaigns)
 to add another.
 
 ## State
