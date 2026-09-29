@@ -86,3 +86,24 @@ shared or same-campaign PCs. No PCs or backlinks are changed. Use
 The new record must pass local schema and contextual checks; failures remove
 it. Whole-vault validation follows; if that fails, the valid Player is retained
 for inspection and the command exits with status 1.
+
+## Notes
+
+```sh
+armarium add note "Working ideas" --vault ../my-vault
+armarium add note "Session prep" --campaign 1 --vault ../my-vault
+```
+
+Inside a campaign directory or any descendant, Notes default to that campaign;
+elsewhere they are shared. `--campaign N` selects an existing campaign explicitly.
+Omit `--vault` to discover the vault from the current directory. Selecting another
+vault does not inherit the current directory's campaign. Names may contain spaces;
+omit `.md`. Existing records are never overwritten.
+
+The command uses the selected vault's Note template and Type directory declaration,
+preserving template metadata and body. An empty body is valid. Edit the template
+for initial values or edit the new Note afterward.
+
+The new Note must pass local schema and contextual checks; failures remove it
+and report diagnostics. Whole-vault validation follows; failure exits with status
+1 and retains the valid new Note for inspection.

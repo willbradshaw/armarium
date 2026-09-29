@@ -10,6 +10,7 @@ from armarium.content import SUBTYPES, add_content
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
+from armarium.note import add_note
 from armarium.player import add_player
 from armarium.session import add_session
 from armarium.validate import validate
@@ -84,6 +85,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=int,
         help="campaign number within vault (default: current campaign directory)",
     )
+    note = additions.add_parser("note", help="create a Note record")
+    note.add_argument("name", help="record name without .md")
+    note.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
+    note.add_argument(
+        "--campaign",
+        type=int,
+        help="campaign number within vault (default: current campaign directory, or shared notes)",
+    )
     session = additions.add_parser("session", help="create a Session record")
     session.add_argument(
         "--vault",
@@ -152,6 +165,8 @@ def main() -> None:
                 destination = add_campaign(args.vault, number=args.number)
             elif args.addition == "player":
                 destination = add_player(args.name, args.vault, campaign=args.campaign)
+            elif args.addition == "note":
+                destination = add_note(args.name, args.vault, campaign=args.campaign)
             elif args.addition == "session":
                 destination = add_session(
                     args.vault, campaign=args.campaign, number=args.number
