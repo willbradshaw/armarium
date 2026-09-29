@@ -1,10 +1,11 @@
-"""Command-line adapters for vault creation and read-only validation."""
+"""Command-line adapters for vault and campaign creation and validation."""
 
 import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from armarium.add import add_campaign
 from armarium.init import init_vault
 from armarium.logging import configure_logging, logger
 from armarium.validate import validate
@@ -17,8 +18,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         argv: Arguments without the executable name, or None to read sys.argv.
 
     Returns:
-        argparse.Namespace: Selected command and path; validate also supplies
-            an optional vault.
+        argparse.Namespace: Selected command and its paths and options.
 
     Raises:
         SystemExit: Argparse exits with 0 for help or 2 for invalid arguments.
@@ -39,6 +39,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="replace an existing directory and all its contents; refuse files and symlinks",
     )
+    add = commands.add_parser("add", help="add to an existing vault")
+    additions = add.add_subparsers(dest="addition", required=True)
+    campaign = additions.add_parser("campaign", help="create a new campaign")
+    campaign.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root; otherwise discover from the current directory",
+    )
+    campaign.add_argument(
+        "--number",
+        type=int,
+        help="positive campaign number; default: largest existing number + 1",
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -52,15 +65,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "path", type=Path, help="Markdown file or directory to validate"
     )
     command.add_argument("--vault", type=Path, help="explicit vault directory")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.command == "add" and args.number is not None and args.number < 1:
+        parser.error("--number must be positive")
+    return args
 
 
 def main() -> None:
     """Run the selected command and log its result.
 
     Raises:
-        SystemExit: Status 1 when vault creation fails or files fail validation.
-            Init reports validation warnings and errors; validate also reports
+        SystemExit: Status 1 when creation fails or files fail validation.
+            Creation reports validation warnings and errors; validate also reports
             informational diagnostics and coverage counts. Argument parsing
             exits with 0 for help or 2 for usage errors.
     """
@@ -77,20 +93,31 @@ def main() -> None:
             sys.exit(1)
         logger.info("New vault successfully initialized; validating")
         result = validate(destination)
-        for diagnostic in result.diagnostics:
-            if diagnostic.severity != "info":
-                diagnostic.report()
+    elif args.command == "add":
+        try:
+            destination = add_campaign(args.vault, number=args.number)
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot add campaign: %s", exc)
+            sys.exit(1)
+        logger.info("New campaign successfully created; validating")
+        result = validate(destination.parent.parent)
     else:
         result = validate(args.path, args.vault)
         result.report()
+    if args.command in {"init", "add"}:
+        for diagnostic in result.diagnostics:
+            if diagnostic.severity != "info":
+                diagnostic.report()
     if result.failed:
         failed_files = result.failed_files
         noun = "file" if failed_files == 1 else "files"
         logger.error("%s %s failed validation", failed_files, noun)
         if args.command == "init":
             logger.error("Vault retained at %s for inspection", destination)
+        elif args.command == "add":
+            logger.error("Campaign retained at %s for inspection", destination)
         sys.exit(1)
-    if args.command == "init":
+    if args.command in {"init", "add"}:
         logger.info("Validation completed successfully")
 
 

@@ -19,14 +19,8 @@ campaigns/campaign_N/
     transcripts/          Transcript records, S-N-NNN Transcript.md
 ```
 
-The starter vault ships `campaign_1`. To add a campaign, create `campaign_N`
-with the directories above. Copy `reference/templates/Campaign.md` to its
-`reference/Campaign.md`, and `reference/templates/Clues.md` to its
-`reference/indexes/Clues.md`. Replace campaign 1 in the clue index's link,
-directory path and clue ID example with the new campaign number. Always qualify
-campaign overview links, such as `[[campaign_2/reference/Campaign]]`.
-The example vault's `campaign_2` shows a second campaign sharing the setting
-with the first.
+The starter vault ships `campaign_1`. Use [`armarium add campaign`](add.md#campaigns)
+to add another.
 
 ## State
 

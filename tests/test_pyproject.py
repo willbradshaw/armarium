@@ -67,6 +67,60 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
 
 @pytest.mark.package
 class TestPyproject:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_installed_add_campaign(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, explicit: bool
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "my-vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        initialized = subprocess.run(
+            [str(command), "init", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert initialized.returncode == 0, initialized.stderr
+        template = root / "reference/templates/Campaign.md"
+        template.write_text(template.read_text() + "\nLocal campaign guidance.\n")
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        arguments = ["add", "campaign"]
+        if explicit:
+            arguments += ["--vault", str(root), "--number", "12"]
+        result = subprocess.run(
+            [str(command), *arguments],
+            cwd=tmp_path if explicit else root / "content",
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == ""
+        assert result.stderr.rstrip().endswith("Validation completed successfully")
+        destination = root / "campaigns" / ("campaign_12" if explicit else "campaign_2")
+        assert (
+            destination / "reference/Campaign.md"
+        ).read_bytes() == template.read_bytes()
+        assert all(p.read_bytes() == contents for p, contents in before.items())
+        refused = subprocess.run(
+            [str(command), "add", "campaign", "--vault", str(root), "--number", "1"],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert refused.returncode == 1
+        assert "already exists" in refused.stderr
+        assert "Traceback" not in refused.stderr
+
     def test_distribution_contents(self, installed: tuple[Path, Path, Path]) -> None:
         _, _, artifacts = installed
         with zipfile.ZipFile(next(artifacts.glob("*.whl"))) as wheel:
