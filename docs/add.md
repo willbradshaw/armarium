@@ -40,8 +40,7 @@ name is ambiguous.
 
 Shared records start without campaign state. Campaign-specific records get a
 `campaign_N` block, where `N` is the selected campaign number; Objects also get
-`held_by` in that block. Custom frontmatter values and the Markdown body are preserved, though
-YAML formatting and comments are not.
+`held_by` in that block.
 
 The new record must pass the vault's schema and contextual checks; failures
 remove it and report diagnostics. The command then validates the whole vault.
