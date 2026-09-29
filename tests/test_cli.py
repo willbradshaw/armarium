@@ -39,6 +39,84 @@ def preserve_logger() -> Iterator[None]:
 
 
 class TestMain:
+    @pytest.mark.parametrize("campaign", [False, True])
+    def test_add_note(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        campaign: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault with spaces")
+        monkeypatch.chdir(root / "notes")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "add", "note", "Working ideas"]
+            + (["--vault", str(root), "--campaign", "1"] if campaign else []),
+        )
+        main()
+        destination = (
+            root
+            / ("campaigns/campaign_1/notes" if campaign else "notes")
+            / "Working ideas.md"
+        )
+        assert destination.is_file()
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert [line.split("INFO: ", 1)[1] for line in output.err.splitlines()] == [
+            f"Adding new Note record at {destination}",
+            "New note successfully created; validating",
+            "Validation completed successfully",
+        ]
+
+    @pytest.mark.parametrize(
+        "scenario", ["missing_campaign", "schema", "unrelated_error", "collision"]
+    )
+    def test_add_note_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault with spaces")
+        monkeypatch.chdir(root)
+        destination = root / "notes/Ideas.md"
+        if scenario == "schema":
+            (root / "reference/schemas/note.schema.json").write_text("false")
+        elif scenario == "unrelated_error":
+            (root / "content/Broken.md").write_text("No type")
+        elif scenario == "collision":
+            destination.write_text("Unchanged")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "add", "note", "Ideas"]
+            + (["--campaign", "9"] if scenario == "missing_campaign" else []),
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert "Traceback" not in output.err
+        assert "Validation completed successfully" not in output.err
+        if scenario == "unrelated_error":
+            assert destination.is_file()
+            assert f"Note retained at {destination}" in output.err
+            assert "record.type" in output.err
+        elif scenario == "collision":
+            assert destination.read_text() == "Unchanged"
+        else:
+            assert not destination.exists()
+            assert "Cannot add note" in output.err
+            if scenario == "schema":
+                assert "schema" in output.err
+
     @pytest.mark.parametrize("explicit", [False, True])
     def test_add_player(
         self,
@@ -686,6 +764,27 @@ class TestParseArgs:
         assert args.vault == (Path("/tmp/vault") if explicit else None)
 
     @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_note_options(self, explicit: bool) -> None:
+        args = parse_args(
+            ["add", "note", "Working ideas"]
+            + (["--vault", "my-vault", "--campaign", "2"] if explicit else [])
+        )
+        assert args.addition == "note" and args.name == "Working ideas"
+        assert args.vault == (Path("my-vault") if explicit else None)
+        assert args.campaign == (2 if explicit else None)
+
+    def test_note_help_defaults(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["add", "note", "--help"])
+        assert exc.value.code == 0
+        help_text = " ".join(capsys.readouterr().out.split())
+        assert "(default: discovered from the current directory)" in help_text
+        assert (
+            "campaign number within vault (default: current campaign directory, or shared notes)"
+            in help_text
+        )
+
+    @pytest.mark.parametrize("explicit", [False, True])
     def test_add_session_options(self, explicit: bool) -> None:
         args = parse_args(
             ["add", "session"]
@@ -756,6 +855,11 @@ class TestParseArgs:
             ["init", "setting", "--vault", "other"],
             ["add"],
             ["add", "unknown"],
+            ["add", "note"],
+            ["add", "note", "Name", "--campaign", "0"],
+            ["add", "note", "Name", "--campaign", "text"],
+            ["add", "note", "Name", "--force"],
+            ["add", "note", "Name", "--body", "text"],
             ["add", "campaign", "--number", "0"],
             ["add", "campaign", "--number", "-1"],
             ["add", "campaign", "--number", "text"],
@@ -798,6 +902,7 @@ class TestParseArgs:
             ["add", "content", "--help"],
             ["add", "session", "--help"],
             ["add", "player", "--help"],
+            ["add", "note", "--help"],
         ],
     )
     def test_help(self, capsys: pytest.CaptureFixture[str], argv: list[str]) -> None:
