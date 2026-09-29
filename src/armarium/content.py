@@ -84,7 +84,8 @@ def add_content(
         name: Record filename without .md; spaces are permitted.
         subtype: NPC, PC, Location, Faction, Object or Lore.
         vault: Vault root, or None to discover it from the working directory.
-        campaign: Existing campaign number, or None for shared content.
+        campaign: Existing campaign number. When omitted, infer from the working
+            directory inside the selected vault, otherwise create shared content.
         summary: Optional summary override; otherwise retain the template default.
         player: Player name, path or canonical wikilink, for PCs only.
 
@@ -122,6 +123,15 @@ def add_content(
     root = find_vault(selected)
     if vault is not None and root != selected:
         raise ValueError("--vault must name the vault root")
+    working_directory = Path.cwd().resolve()
+    if campaign is None and working_directory.is_relative_to(root):
+        parts = working_directory.relative_to(root).parts
+        if (
+            len(parts) >= 2
+            and parts[0] == "campaigns"
+            and CAMPAIGN_NAME.fullmatch(parts[1])
+        ):
+            campaign = int(parts[1].removeprefix("campaign_"))
     definition, failures = Record.parse(root / "reference/types/Content.md", root)
     if definition is None:
         raise ValueError(f"cannot read Content Type: {failures[0].message}")

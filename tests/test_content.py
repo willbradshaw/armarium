@@ -137,9 +137,50 @@ class TestAddContent:
             "campaign_2"
         }
         assert record.frontmatter["campaign_2"]["held_by"] is None
-        # A working directory inside a campaign does not change the shared default.
-        assert add_content("The Coast", "Location").parent == vault / "content"
+        assert (
+            add_content("The Coast", "Location").parent
+            == vault / "campaigns/campaign_2/content"
+        )
         assert not validate(vault).failed
+
+    @pytest.mark.parametrize(
+        "relative", ["campaigns/campaign_1", "campaigns/campaign_1/reference/players"]
+    )
+    @pytest.mark.parametrize("explicit_vault", [False, True])
+    def test_infers_current_campaign(
+        self,
+        vault: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        relative: str,
+        explicit_vault: bool,
+    ) -> None:
+        monkeypatch.chdir(vault / relative)
+        destination = add_content(
+            "Mira", "PC", vault if explicit_vault else None, player="Alex"
+        )
+        assert destination.parent == vault / "campaigns/campaign_1/content"
+        record, _ = Record.parse(destination, vault)
+        assert record is not None and set(record.frontmatter.campaigns) == {
+            "campaign_1"
+        }
+
+    def test_explicit_campaign_overrides_working_directory(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        add_campaign(vault)
+        monkeypatch.chdir(vault / "campaigns/campaign_1")
+        assert (
+            add_content("Harbour", "Location", campaign=2).parent
+            == vault / "campaigns/campaign_2/content"
+        )
+
+    def test_does_not_infer_from_another_vault(
+        self, vault: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        other = tmp_path / "another-vault"
+        shutil.copytree(vault, other)
+        monkeypatch.chdir(other / "campaigns/campaign_1")
+        assert add_content("Harbour", "Location", vault).parent == vault / "content"
 
     def test_customized_template_and_directory(self, vault: Path) -> None:
         definition = vault / "reference/types/Content.md"

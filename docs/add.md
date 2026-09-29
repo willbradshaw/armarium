@@ -26,8 +26,9 @@ armarium add content "Port Briselle" --subtype Location --vault ../my-vault
 armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
 ```
 
-Use `--subtype NPC|PC|Location|Faction|Object|Lore`. Content is shared by default;
-`--campaign N` selects an existing campaign. Omit `--vault` when inside the vault.
+Use `--subtype NPC|PC|Location|Faction|Object|Lore`. Inside a campaign directory
+or its subdirectories, Content defaults to that campaign; elsewhere it is shared.
+`--campaign N` overrides this choice. Omit `--vault` when inside the vault.
 Names may contain spaces; omit the `.md` extension. Existing records are never
 overwritten.
 

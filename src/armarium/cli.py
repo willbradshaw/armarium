@@ -63,7 +63,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="vault root; otherwise discover from the current directory",
     )
     content.add_argument(
-        "--campaign", type=int, help="existing campaign number; default: shared content"
+        "--campaign",
+        type=int,
+        help="existing campaign number; default: current campaign, otherwise shared content",
     )
     content.add_argument(
         "--summary", help="short description; default: template summary"

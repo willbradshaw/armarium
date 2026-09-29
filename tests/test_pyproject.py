@@ -107,10 +107,13 @@ class TestPyproject:
             "A description",
         ]
         if subtype == "PC":
-            args += ["--campaign", "1", "--player", "Alex"]
+            args += ["--player", "Alex"]
+        working_directory = (
+            root / "campaigns/campaign_1" if subtype == "PC" else tmp_path
+        )
         created = subprocess.run(
             args,
-            cwd=tmp_path,
+            cwd=working_directory,
             env=environment,
             capture_output=True,
             text=True,
@@ -126,7 +129,7 @@ class TestPyproject:
         before = destination.read_bytes()
         refused = subprocess.run(
             args,
-            cwd=tmp_path,
+            cwd=working_directory,
             env=environment,
             capture_output=True,
             text=True,
