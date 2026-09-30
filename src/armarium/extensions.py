@@ -4,7 +4,9 @@ import json
 import re
 import shutil
 import tempfile
+import tomllib
 from dataclasses import dataclass
+from importlib.metadata import version
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -24,6 +26,7 @@ class ExtensionDeclaration(TypedDict):
 
     rules: list[dict[str, str]]
     installed: NotRequired[bool]
+    armarium_version: NotRequired[str]
 
 
 DECLARATION = {
@@ -52,6 +55,7 @@ DECLARATION = {
                     },
                 },
                 "installed": {"type": "boolean"},
+                "armarium_version": {"type": "string", "pattern": "\\S"},
             },
             "additionalProperties": False,
         }
@@ -102,7 +106,8 @@ def _declarations(path: Path) -> dict[str, ExtensionDeclaration]:
 def load_extensions(root: Path) -> list[ExtensionRule]:
     """Load enabled rules and check every declared schema and template.
 
-    Missing configuration means no extensions. Paths are relative to reference/. Conflicting template selectors are errors;
+    Missing configuration means no extensions. Paths are relative to reference/.
+    Conflicting template selectors are errors;
     additional schema constraints can be combined freely. Invalid or missing
     files raise ValueError or OSError, never silently disabling an extension.
     """
@@ -163,6 +168,15 @@ def _extension(name: str) -> Traversable:
     raise ValueError(f"unknown extension: {name}")
 
 
+def _armarium_version() -> str:
+    """Identify the release supplying resources, or the checkout's project version."""
+    if files("armarium").joinpath("extensions").is_dir():
+        return version("armarium")
+    project = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    with project.open("rb") as stream:
+        return str(tomllib.load(stream)["project"]["version"])
+
+
 def enable_extension(name: str, vault: Path | None = None) -> Path:
     """Install a complete extension directory and register its rules.
 
@@ -175,10 +189,23 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
     root = select_vault(vault)
     load_extensions(root)
     config = root / CONFIG
-    original = config.read_bytes() if config.exists() else None
-    declarations = _declarations(config) if original is not None else {}
+    declarations = _declarations(config) if config.exists() else {}
     if name in declarations:
         raise ValueError(f"extension already enabled: {name}")
+    _install_extension(name, root, declarations)
+    return root
+
+
+def _install_extension(
+    name: str, root: Path, declarations: dict[str, ExtensionDeclaration]
+) -> None:
+    """Install files and register rules against the complete resulting configuration.
+
+    Enable checks existing rules first; update checks them after replacement so
+    rules referencing this extension remain usable during an update.
+    """
+    config = root / CONFIG
+    original = config.read_bytes() if config.exists() else None
     with as_file(_extension(name)) as source:
         addition = _declarations(source / "extension.json")
         if set(addition) != {name}:
@@ -195,6 +222,7 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
                         _local_path(root, f"reference/extensions/{name}", rule[field])
                         rule[field] = f"extensions/{name}/{rule[field]}"
             addition[name]["installed"] = True
+            addition[name]["armarium_version"] = _armarium_version()
             declarations.update(addition)
             _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
             registered = True
@@ -209,7 +237,6 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
             if not parent_existed:
                 directory.parent.rmdir()
             raise
-    return root
 
 
 def _write_config(path: Path, contents: bytes) -> None:
@@ -266,6 +293,50 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
         committed = True
     except BaseException:
         if registered:
+            _write_config(config, original)
+        if backup.exists():
+            backup.rename(directory)
+        raise
+    finally:
+        if committed or not backup.exists():
+            shutil.rmtree(workspace)
+    return root
+
+
+def update_extension(name: str, vault: Path | None = None) -> Path:
+    """Replace an installed extension with files from the current Armarium.
+
+    Reuse installation checks without requiring the old extension to be valid.
+    Preserve the old directory and declaration until replacement succeeds,
+    including when versions match. Failed restoration retains the backup.
+    Local registrations are not installed extensions and cannot be updated.
+    Callers validate records afterward; no record migration is performed.
+    """
+    from armarium.add import select_vault
+
+    root = select_vault(vault)
+    config = _local_path(root, "reference", "extensions.json")
+    declarations = _declarations(config) if config.exists() else {}
+    if name not in declarations or not declarations[name].get("installed", False):
+        raise ValueError(f"extension is not installed: {name}")
+    original = config.read_bytes()
+    declarations.pop(name)
+    directory = _local_path(root, "reference/extensions", name)
+    workspace = Path(tempfile.mkdtemp(prefix=".armarium-update-", dir=root))
+    backup = workspace / "extension"
+    unregistered = False
+    committed = False
+    try:
+        if directory.exists():
+            directory.rename(backup)
+        _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
+        unregistered = True
+        _install_extension(name, root, declarations)
+        committed = True
+    except BaseException:
+        if unregistered and directory.exists():
+            shutil.rmtree(directory)
+        if unregistered:
             _write_config(config, original)
         if backup.exists():
             backup.rename(directory)

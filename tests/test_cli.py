@@ -1353,3 +1353,72 @@ class TestRepeatedExtensionOptions:
         )
         assert args.extension == ["example", "extra"]
         assert parse_args(["init", "new-vault"]).extension == []
+
+
+class TestUpdateExtensionCommand:
+    @pytest.mark.parametrize("requires_migration", [False, True])
+    def test_update(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        requires_migration: bool,
+    ) -> None:
+        import json
+        import shutil
+
+        import armarium.extensions as extensions
+        from armarium.content import add_content
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault", extensions=["example"])
+        record = add_content("Harbor", "Location", root)
+        original = record.read_bytes()
+        replacement = tmp_path / "replacement"
+        shutil.copytree(
+            Path(__file__).resolve().parents[1] / "extensions/example", replacement
+        )
+        if requires_migration:
+            schema = replacement / "schemas/location.schema.json"
+            data = json.loads(schema.read_text())
+            data["properties"]["frontmatter"]["required"].append("region")
+            schema.write_text(json.dumps(data))
+        monkeypatch.setattr(extensions, "_extension", lambda name: replacement)
+        monkeypatch.setattr(extensions, "_armarium_version", lambda: "2.0.0")
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(sys, "argv", ["armarium", "extension", "update", "example"])
+        if requires_migration:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+        else:
+            main()
+        output = capsys.readouterr().err
+        assert ("Validation completed successfully" in output) != requires_migration
+        assert "updated; validating" in output
+        assert record.read_bytes() == original
+        assert (
+            json.loads((root / extensions.CONFIG).read_text())["example"][
+                "armarium_version"
+            ]
+            == "2.0.0"
+        )
+
+    def test_not_installed(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "extension", "update", "example", "--vault", str(root)],
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        assert "not installed" in capsys.readouterr().err

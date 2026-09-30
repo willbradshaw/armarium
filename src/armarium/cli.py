@@ -9,7 +9,7 @@ from pathlib import Path
 from armarium.add import add_campaign, read_template, select_vault
 from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
-from armarium.extensions import enable_extension, remove_extension
+from armarium.extensions import enable_extension, remove_extension, update_extension
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
@@ -81,6 +81,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     extensions = extension.add_subparsers(dest="extension_action", required=True)
     for action, description in (
         ("enable", "install an extension into a vault"),
+        ("update", "replace an extension with the current Armarium version"),
         ("remove", "remove an extension and its installed files"),
     ):
         command = extensions.add_parser(action, help=description)
@@ -223,11 +224,11 @@ def main() -> None:
         result = validate(destination)
     elif args.command == "extension":
         try:
-            change = (
-                enable_extension
-                if args.extension_action == "enable"
-                else remove_extension
-            )
+            change = {
+                "enable": enable_extension,
+                "remove": remove_extension,
+                "update": update_extension,
+            }[args.extension_action]
             destination = change(args.name, args.vault)
         except (OSError, ValueError) as exc:
             logger.error(
@@ -237,7 +238,9 @@ def main() -> None:
         logger.info(
             "Extension %s %s; validating",
             args.name,
-            "enabled" if args.extension_action == "enable" else "removed",
+            {"enable": "enabled", "remove": "removed", "update": "updated"}[
+                args.extension_action
+            ],
         )
         result = validate(destination)
     elif args.command == "add":

@@ -1040,6 +1040,30 @@ class TestInstalledExtensions:
                 text=True,
             )
             assert result.returncode == 0, result.stderr
+        installed_extension = root / "reference/extensions/example"
+        (installed_extension / "obsolete.md").write_text("Local changes")
+        updated = subprocess.run(
+            [str(command), "extension", "update", "example", "--vault", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        assert updated.returncode == 0, updated.stderr
+        assert not (installed_extension / "obsolete.md").exists()
+        import json
+        import tomllib
+
+        with (Path(__file__).resolve().parents[1] / "pyproject.toml").open(
+            "rb"
+        ) as stream:
+            expected_version = tomllib.load(stream)["project"]["version"]
+        assert (
+            json.loads((root / "reference/extensions.json").read_text())["example"][
+                "armarium_version"
+            ]
+            == expected_version
+        )
         path = root / "content/Harbor.md"
         assert "climate: null" in path.read_text()
         path.write_text(path.read_text().replace("climate: null", "climate: 42"))
