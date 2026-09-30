@@ -1,0 +1,62 @@
+name: draft-release
+
+# When a version bump lands on main, open a DRAFT GitHub release for that
+# version, with notes taken from its CHANGELOG.md section. Review the draft and
+# click Publish to ship it (that triggers publish.yml). This never publishes on
+# its own.
+#
+# Release flow: in one PR, bump `version` in pyproject.toml and rename the
+# CHANGELOG "Unreleased" heading to "<version> (<date>)" (adding a fresh empty
+# Unreleased above it). Merge -> a draft release appears -> review -> Publish.
+on:
+  push:
+    branches: [main]
+    paths: [pyproject.toml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read version from pyproject
+        id: v
+        run: |
+          version=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if a release for this version already exists
+        id: exists
+        run: |
+          if gh release view "${{ steps.v.outputs.version }}" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Build notes from the CHANGELOG section
+        if: steps.exists.outputs.skip == 'false'
+        run: |
+          awk -v ver="${{ steps.v.outputs.version }}" '
+            index($0, "## " ver " ") == 1 { grab = 1; next }
+            grab && /^## / { grab = 0 }
+            grab { print }
+          ' CHANGELOG.md | sed '/./,$!d' > notes.md
+          grep -q '[^[:space:]]' notes.md || { echo "::error::Missing changelog notes for this version"; exit 1; }
+
+      - name: Create draft release
+        if: steps.exists.outputs.skip == 'false'
+        run: >
+          gh release create "${{ steps.v.outputs.version }}"
+          --draft
+          --target "$GITHUB_SHA"
+          --title "${{ steps.v.outputs.version }}"
+          --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

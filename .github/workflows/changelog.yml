@@ -1,0 +1,33 @@
+name: changelog
+
+# Require every PR to update CHANGELOG.md, so the Unreleased section always
+# reflects what's landed (documentation changes included).
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Detect a CHANGELOG update
+        uses: dorny/paths-filter@v3
+        id: changelog
+        with:
+          filters: |
+            updated:
+              - 'CHANGELOG.md'
+
+      - name: Require a CHANGELOG update
+        if: steps.changelog.outputs.updated != 'true'
+        run: |
+          echo "::error::This PR does not update CHANGELOG.md"
+          echo "Add an entry under '## Unreleased' in CHANGELOG.md describing the change."
+          exit 1
