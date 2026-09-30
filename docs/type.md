@@ -74,6 +74,9 @@ order without repeats, and each campaign that appears must have a
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
 
+Date Content represents a particular day or period. Recurring calendar concepts,
+such as a named month or weekday, are Lore.
+
 For Date Content, Appearances records Sessions whose played events occur during
 that day or period. Historical content belongs in Notes; mentions alone do not
 count as appearances. Calendar-specific frontmatter fields are permitted as custom
@@ -84,6 +87,8 @@ fields, with no built-in calendar arithmetic or session-date reconciliation.
 ### Description
 
 A freeform document: working notes, design notes, session prep, ideas.
+Brainstorming Notes contain proposals, not established setting facts. Adopted
+ideas belong in the relevant Content records or Session preparation.
 
 ### Location
 
