@@ -1,0 +1,43 @@
+name: publish
+
+# Publishing a GitHub release publishes its tagged commit to PyPI via OIDC.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: ./.github/actions/setup-python
+      - uses: astral-sh/setup-uv@v6
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PYTHON'
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          if os.environ["RELEASE_TAG"] != version:
+              raise SystemExit("Release tag must match the package version")
+          PYTHON
+      - run: ruff format --check .
+      - run: ruff check .
+      - run: mypy --strict src
+      - run: python -m pytest -q
+      - run: armarium validate vaults
+      - run: uv build
+      - run: uv publish --trusted-publishing always

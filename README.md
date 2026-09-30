@@ -58,6 +58,8 @@ For schema integration and testing, see [Schema development](docs/schemas.md).
 
 Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium/issues).
 
+MIT licensed. See the [changelog](CHANGELOG.md) and [release process](docs/releases.md).
+
 ## Validate records
 
 Validate a record or a whole vault:

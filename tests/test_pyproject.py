@@ -24,7 +24,15 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
         shutil.copytree(
             root / folder, source / folder, ignore=shutil.ignore_patterns("__pycache__")
         )
-    for name in ("pyproject.toml", "README.md", "AGENTS.md", "ruff.toml", ".gitignore"):
+    for name in (
+        "pyproject.toml",
+        "README.md",
+        "AGENTS.md",
+        "ruff.toml",
+        ".gitignore",
+        "LICENSE",
+        "CHANGELOG.md",
+    ):
         shutil.copyfile(root / name, source / name)
     # Build from a used checkout, not just a pristine tree. Local vault state
     # must not leak into either distribution or a newly initialized vault.
@@ -679,6 +687,16 @@ class TestPyproject:
         _, _, artifacts = installed
         with zipfile.ZipFile(next(artifacts.glob("*.whl"))) as wheel:
             names = wheel.namelist()
+            license_path = next(
+                name for name in names if name.endswith(".dist-info/licenses/LICENSE")
+            )
+            assert wheel.read(license_path) == Path("LICENSE").read_bytes()
+            metadata_path = next(
+                name for name in names if name.endswith(".dist-info/METADATA")
+            )
+            metadata = wheel.read(metadata_path).decode()
+            assert "License-Expression: MIT\n" in metadata
+            assert "License-File: LICENSE\n" in metadata
         assert "armarium/cli.py" in names
         assert "armarium/validate.py" in names
         assert not any(name.startswith(("tests/", "vaults/")) for name in names)
@@ -701,6 +719,8 @@ class TestPyproject:
         with tarfile.open(next(artifacts.glob("*.tar.gz"))) as source:
             names = source.getnames()
         assert any(name.endswith("/pyproject.toml") for name in names)
+        assert any(name.endswith("/LICENSE") for name in names)
+        assert any(name.endswith("/CHANGELOG.md") for name in names)
         assert any(name.endswith("/tests/test_pyproject.py") for name in names)
         assert not any("__pycache__" in name for name in names)
         assert not any(
