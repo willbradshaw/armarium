@@ -24,7 +24,8 @@ Open the new folder in Obsidian and edit
 for details.
 
 Add campaigns and records with `armarium add`; see
-[Adding to a vault](docs/add.md).
+[Adding to a vault](docs/add.md). Optional [extensions](docs/extensions.md) add
+system-specific conventions, starting with D&D 5.5 Gear.
 
 Requires Obsidian **1.13.7+** with **Bases** and
 [Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)

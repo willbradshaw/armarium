@@ -44,7 +44,8 @@ Session. [`add campaign`](#adding-a-campaign) creates a new campaign.
 
 Initial values come from the vault's local [templates](record.md#anatomy), and validation
 uses its [schemas](record.md#types-statuses-and-schemas). Edit a template to change
-defaults, or edit the new record afterward.
+defaults, or edit the new record afterward. Enabled [extensions](extensions.md)
+can supply templates for specific types or subtypes and add validation rules.
 
 A new [record](record.md) must pass [schema, link and contextual
 checks](validate.md#checks). Failed writes, interruptions and record-validation failures

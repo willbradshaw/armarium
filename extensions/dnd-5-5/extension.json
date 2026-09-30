@@ -1,0 +1,10 @@
+{
+  "dnd-5-5": [
+    {
+      "type": "Content",
+      "subtype": "Gear",
+      "schema": "extensions/dnd-5-5/gear.schema.json",
+      "template": "extensions/dnd-5-5/Gear.md"
+    }
+  ]
+}

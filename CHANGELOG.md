@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add optional vault extensions with additive schema checks and subtype templates.
+- Add `armarium extension enable dnd-5-5` with D&D Gear fields and reference pages.
 - Add Gear Content with provenance, a rules callout, optional image/source URL,
   and campaign possession tracking.
 - Clarify Date versus recurring calendar lore, and how brainstorming Notes become

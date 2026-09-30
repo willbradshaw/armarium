@@ -8,10 +8,12 @@ from typing import overload
 
 from jsonschema.exceptions import SchemaError
 
+from armarium.extensions import CONFIG, load_extensions
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
     WIKILINK,
+    Diagnostic,
     Findings,
     Result,
     VaultNotFoundError,
@@ -232,6 +234,12 @@ def validate_markdown(
     schema, diagnostics = select_schema(record, root)
     if schema is not None:
         diagnostics.extend(schema.validate(record))
+    try:
+        for rule in load_extensions(root):
+            if rule.matches(record.frontmatter.type, record.frontmatter.get("subtype")):
+                diagnostics.extend(rule.schema.validate(record))
+    except (OSError, ValueError, SchemaError, RecursionError) as exc:
+        diagnostics.append(Diagnostic(relative, "extension.invalid", str(exc)))
     findings += Findings(relative, diagnostics)
     unsupported = int(any(d.rule == "schema.unsupported" for d in diagnostics))
     if any(d.severity == "error" for d in diagnostics):
@@ -395,6 +403,13 @@ def validate_vault(root: Path) -> Findings:
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
+    # Extension declarations are optional, but every enabled rule must be usable.
+    extension_schemas: set[Path] = set()
+    try:
+        extension_schemas = {r.schema.path for r in load_extensions(root)}
+    except (OSError, ValueError, SchemaError, RecursionError) as exc:
+        findings.add("extension.invalid", str(exc))
+
     # 4. Report entries outside the vault skeleton
     named = {Path(relative) for relative, directory in required.items() if directory}
     pending = [root]
@@ -423,7 +438,8 @@ def validate_vault(root: Path) -> Findings:
             elif child.suffix.lower() != ".md" and entry.parts[0] != "assets":
                 # Non-Markdown files belong in assets/, except views and schemas.
                 findings.diagnose(
-                    not any(
+                    entry != CONFIG
+                    and not any(
                         child.name.lower().endswith(suffix)
                         and entry.is_relative_to(home)
                         for suffix, home in ASSET_EXCEPTIONS.items()
@@ -458,7 +474,8 @@ def validate_vault(root: Path) -> Findings:
         name = file.name.removesuffix(".schema.json")
         schema_names.add(name)
         findings.diagnose(
-            name not in {definition.lower() for definition in names},
+            file not in extension_schemas
+            and name not in {definition.lower() for definition in names},
             "schema.unused",
             f"{relative} matches no Type definition",
         )

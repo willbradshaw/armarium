@@ -1221,3 +1221,68 @@ class TestClueTextHelp:
             else root
         )
         assert "default: unavailable" in _clue_text_help(selected)
+
+
+class TestExtensionCommand:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_enable(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "extension", "enable", "dnd-5-5"]
+            + (["--vault", str(root)] if explicit else []),
+        )
+        main()
+        assert (root / "reference/extensions.json").exists()
+        assert "Validation completed successfully" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("scenario", ["unknown", "migration", "invalid-schema"])
+    def test_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.content import add_content
+        from armarium.extensions import enable_extension
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        if scenario == "migration":
+            add_content("Harness", "Gear", root)
+        elif scenario == "invalid-schema":
+            enable_extension("dnd-5-5", root)
+            (root / "reference/schemas/extensions/dnd-5-5/gear.schema.json").write_text(
+                '{"type": "bad"}'
+            )
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "extension",
+                "enable",
+                "absent" if scenario == "unknown" else "dnd-5-5",
+                "--vault",
+                str(root),
+            ],
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr().err
+        assert "Validation completed successfully" not in output
+        if scenario == "migration":
+            assert "Extension retained" in output
+            assert (root / "reference/extensions.json").exists()

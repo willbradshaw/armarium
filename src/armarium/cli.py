@@ -9,6 +9,7 @@ from pathlib import Path
 from armarium.add import add_campaign, read_template, select_vault
 from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
+from armarium.extensions import enable_extension
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
@@ -67,6 +68,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--force",
         action="store_true",
         help="replace an existing directory and all its contents; refuse files and symlinks",
+    )
+    extension = commands.add_parser(
+        "extension", help="manage optional vault extensions"
+    )
+    extensions = extension.add_subparsers(dest="extension_action", required=True)
+    enable = extensions.add_parser("enable", help="install an extension into a vault")
+    enable.add_argument("name", help="extension identifier, such as dnd-5-5")
+    enable.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
     )
     add = commands.add_parser("add", help="add to an existing vault")
     additions = add.add_subparsers(dest="addition", required=True)
@@ -197,6 +209,14 @@ def main() -> None:
             sys.exit(1)
         logger.info("New vault successfully initialized; validating")
         result = validate(destination)
+    elif args.command == "extension":
+        try:
+            destination = enable_extension(args.name, args.vault)
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot enable extension %s: %s", args.name, exc)
+            sys.exit(1)
+        logger.info("Extension %s enabled; validating", args.name)
+        result = validate(destination)
     elif args.command == "add":
         try:
             options = {
@@ -213,7 +233,7 @@ def main() -> None:
     else:
         result = validate(args.path, args.vault)
         result.report()
-    if args.command in {"init", "add"}:
+    if args.command in {"init", "add", "extension"}:
         for diagnostic in result.diagnostics:
             if diagnostic.severity != "info":
                 diagnostic.report()
@@ -229,8 +249,12 @@ def main() -> None:
                 args.addition.capitalize(),
                 destination,
             )
+        elif args.command == "extension":
+            logger.error(
+                "Extension retained; update existing records to satisfy its schema"
+            )
         sys.exit(1)
-    if args.command in {"init", "add"}:
+    if args.command in {"init", "add", "extension"}:
         logger.info("Validation completed successfully")
 
 
