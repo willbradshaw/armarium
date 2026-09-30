@@ -997,8 +997,9 @@ class TestPyproject:
 
 @pytest.mark.package
 class TestInstalledExtensions:
+    @pytest.mark.parametrize("at_init", [False, True])
     def test_enable_create_and_validate(
-        self, installed: tuple[Path, Path, Path], tmp_path: Path
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, at_init: bool
     ) -> None:
         _, command, _ = installed
         root = tmp_path / "vault"
@@ -1007,9 +1008,16 @@ class TestInstalledExtensions:
             for key, value in os.environ.items()
             if key not in {"PYTHONPATH", "PYTHONHOME"}
         }
+        setup = (
+            [("init", str(root), "--extension", "dnd-5-5")]
+            if at_init
+            else [
+                ("init", str(root)),
+                ("extension", "enable", "dnd-5-5", "--vault", str(root)),
+            ]
+        )
         for arguments in (
-            ("init", str(root)),
-            ("extension", "enable", "dnd-5-5", "--vault", str(root)),
+            *setup,
             (
                 "add",
                 "content",

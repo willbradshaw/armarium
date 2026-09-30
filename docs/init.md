@@ -11,10 +11,14 @@ links. Missing parent directories are automatically created. If copying fails or
 is interrupted, the partially created vault is removed safely. After copying
 completes, the new vault undergoes validation before success is reported.
 
+Use `armarium init ../my-vault --extension dnd-5-5` to install an
+[extension](extensions.md) during setup, before validation. Extensions apply
+across the whole vault. If extension installation fails, initialization rolls back.
+
 Use `armarium init --force PATH` to replace an existing directory and **all its
 contents** with the starter vault. Files and symbolic links are still refused.
-The replacement is copied before the old directory is removed, so a copy failure
-leaves the existing directory intact.
+The replacement, including any selected extension, is prepared before the old
+directory is removed, so a setup failure leaves the existing directory intact.
 
 `init` does not initialize Git or install Obsidian plugins. After completion,
 open the new vault in Obsidian and enable the plugins listed in

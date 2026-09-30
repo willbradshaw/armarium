@@ -1,16 +1,25 @@
 # Extensions
 
 Extensions add system-specific schemas, templates and reference pages to a vault.
-Enable D&D 5.5 (2024 rules) Gear support with:
+Select D&D 5.5 (2024 rules) Gear support when [creating a vault](init.md):
+
+```sh
+armarium init ../my-vault --extension dnd-5-5
+armarium add content "Signal Lantern" --subtype Gear --vault ../my-vault
+```
+
+For an existing vault, use the same installer through:
 
 ```sh
 armarium extension enable dnd-5-5 --vault ../my-vault
-armarium add content "Signal Lantern" --subtype Gear --vault ../my-vault
 ```
 
 `--vault` defaults to the vault containing the current directory, as for
 [`armarium add`](add.md#choosing-a-vault-and-destination). Enabling an extension applies its
-conventions throughout the vault, including every campaign.
+conventions throughout the whole vault, including existing records and every
+campaign. Extensions cannot be scoped to individual campaigns. Multiple game
+systems within one vault are not supported; use separate vaults for different
+systems.
 
 ## Installed files
 

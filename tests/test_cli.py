@@ -1286,3 +1286,30 @@ class TestExtensionCommand:
         if scenario == "migration":
             assert "Extension retained" in output
             assert (root / "reference/extensions.json").exists()
+
+
+class TestInitExtensionCommand:
+    @pytest.mark.parametrize("name,success", [("dnd-5-5", True), ("missing", False)])
+    def test_init(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        name: str,
+        success: bool,
+    ) -> None:
+        root = tmp_path / "vault"
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "init", str(root), "--extension", name]
+        )
+        if success:
+            main()
+            assert (root / "reference/extensions.json").exists()
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+            assert not root.exists()
+        assert (
+            "Validation completed successfully" in capsys.readouterr().err
+        ) == success

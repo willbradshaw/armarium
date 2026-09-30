@@ -69,6 +69,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="replace an existing directory and all its contents; refuse files and symlinks",
     )
+    initialize.add_argument(
+        "--extension", help="extension to enable throughout the vault (default: none)"
+    )
     extension = commands.add_parser(
         "extension", help="manage optional vault extensions"
     )
@@ -203,8 +206,10 @@ def main() -> None:
             logger.info(
                 "Initializing new vault at %s", args.path.expanduser().resolve()
             )
-            destination = init_vault(args.path, force=args.force)
-        except OSError as exc:
+            destination = init_vault(
+                args.path, force=args.force, extension=args.extension
+            )
+        except (OSError, ValueError) as exc:
             logger.error("Cannot create vault at %s: %s", args.path, exc)
             sys.exit(1)
         logger.info("New vault successfully initialized; validating")

@@ -4,7 +4,8 @@ type: "[[Reference]]"
 # D&D 5.5 (2024 rules): Gear
 
 Gear uses the structure and campaign possession rules in [[types/Content]].
-The extension adds these frontmatter fields to every Gear record in the vault.
+The extension adds these frontmatter fields to every Gear record in the vault,
+across all campaigns. Use a separate vault for campaigns using another system.
 
 | Field | Required | Values |
 | --- | --- | --- |
