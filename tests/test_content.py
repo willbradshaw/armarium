@@ -554,3 +554,31 @@ class TestAddContent:
                 add_content("Entity", "Lore", vault)
         assert not (vault / "content/Entity.md").exists()
         assert add_content("Entity", "Lore", vault).is_file()
+
+
+class TestExtensionContent:
+    @pytest.mark.parametrize("campaign", [None, 1])
+    def test_local_template_and_core_checks(
+        self, vault: Path, campaign: int | None
+    ) -> None:
+        from armarium.extensions import enable_extension, load_extensions
+
+        enable_extension("example", vault)
+        (rule,) = load_extensions(vault)
+        assert rule.template is not None
+        rule.template.write_text(
+            rule.template.read_text()
+            .replace("climate:", "climate: Temperate")
+            .replace("- N/A", "- Local notes", 1)
+        )
+        path = add_content("Harbor", "Location", vault, campaign=campaign)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        assert record.frontmatter["climate"] == "Temperate"
+        assert record.frontmatter["parent_location"] is None
+        assert "Local notes" in record.body.text
+        if campaign:
+            assert record.frontmatter["campaign_1"]["first_session"] is None
+        assert not validate(path, vault).failed
+        path.write_text(path.read_text().replace("## Notes", "## Missing"))
+        assert validate(path, vault).failed

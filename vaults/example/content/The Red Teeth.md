@@ -1,6 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: Location
+climate: "Temperate maritime; wet winters and warm summers."
 summary: "A broken ridge of red reefs off [[Port Briselle|Briselle]], passable through shifting tidal channels."
 parent_location: "[[The Crownless Coast]]"
 campaign_2:

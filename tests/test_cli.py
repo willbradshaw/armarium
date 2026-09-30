@@ -1221,3 +1221,135 @@ class TestClueTextHelp:
             else root
         )
         assert "default: unavailable" in _clue_text_help(selected)
+
+
+class TestExtensionCommand:
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_enable(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "extension", "enable", "example"]
+            + (["--vault", str(root)] if explicit else []),
+        )
+        main()
+        assert (root / "reference/extensions.json").exists()
+        assert "Validation completed successfully" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("scenario", ["unknown", "migration", "invalid-schema"])
+    def test_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.content import add_content
+        from armarium.extensions import enable_extension
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        if scenario == "migration":
+            add_content("Harbor", "Location", root)
+        elif scenario == "invalid-schema":
+            enable_extension("example", root)
+            (
+                root / "reference/extensions/example/schemas/location.schema.json"
+            ).write_text('{"type": "bad"}')
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "extension",
+                "enable",
+                "absent" if scenario == "unknown" else "example",
+                "--vault",
+                str(root),
+            ],
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr().err
+        assert "Validation completed successfully" not in output
+        if scenario == "migration":
+            assert "Extension change retained" in output
+            assert (root / "reference/extensions.json").exists()
+
+
+class TestInitExtensionCommand:
+    @pytest.mark.parametrize("name,success", [("example", True), ("missing", False)])
+    def test_init(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        name: str,
+        success: bool,
+    ) -> None:
+        root = tmp_path / "vault"
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "init", str(root), "--extension", name]
+        )
+        if success:
+            main()
+            assert (root / "reference/extensions.json").exists()
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+            assert not root.exists()
+        assert (
+            "Validation completed successfully" in capsys.readouterr().err
+        ) == success
+
+
+class TestRemoveExtensionCommand:
+    @pytest.mark.parametrize("scenario", ["valid", "missing", "edited"])
+    def test_remove(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(
+            tmp_path / "vault", extensions=[] if scenario == "missing" else ["example"]
+        )
+        if scenario == "edited":
+            path = root / "reference/extensions/example/README.md"
+            path.write_text(path.read_text() + "Local notes.\n")
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(sys, "argv", ["armarium", "extension", "remove", "example"])
+        if scenario != "missing":
+            main()
+            assert not (root / "reference/extensions/example/README.md").exists()
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+        assert ("Validation completed successfully" in capsys.readouterr().err) == (
+            scenario != "missing"
+        )
+
+
+class TestRepeatedExtensionOptions:
+    def test_accumulates(self) -> None:
+        args = parse_args(
+            ["init", "new-vault", "--extension", "example", "--extension", "extra"]
+        )
+        assert args.extension == ["example", "extra"]
+        assert parse_args(["init", "new-vault"]).extension == []

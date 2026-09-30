@@ -1,0 +1,13 @@
+{
+  "example": {
+    "rules": [
+      {
+        "type": "Content",
+        "subtype": "Location",
+        "schema": "extensions/example/schemas/location.schema.json",
+        "template": "extensions/example/templates/Location.md"
+      }
+    ],
+    "installed": true
+  }
+}

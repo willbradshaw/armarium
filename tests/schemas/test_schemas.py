@@ -220,7 +220,8 @@ class SchemaTests(unittest.TestCase):
             starter = ROOT / "vaults/starter/reference" / folder
             example = ROOT / "vaults/example/reference" / folder
             self.assertEqual(
-                {p.name for p in starter.iterdir()}, {p.name for p in example.iterdir()}
+                {p.name for p in starter.iterdir() if p.is_file()},
+                {p.name for p in example.iterdir() if p.is_file()},
             )
             for path in starter.iterdir():
                 with self.subTest(path=path.name):

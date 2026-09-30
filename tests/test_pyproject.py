@@ -20,7 +20,14 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
     artifacts = temporary / "artifacts"
     source = temporary / "source"
     source.mkdir()
-    for folder in ("src", "tests", "vaults/starter", "vaults/example", "docs"):
+    for folder in (
+        "src",
+        "tests",
+        "vaults/starter",
+        "vaults/example",
+        "docs",
+        "extensions",
+    ):
         shutil.copytree(
             root / folder, source / folder, ignore=shutil.ignore_patterns("__pycache__")
         )
@@ -980,9 +987,80 @@ class TestPyproject:
         assert process.returncode == 0, process.stdout + process.stderr
         assert process.stdout == ""
         if directory:
-            assert process.stderr.endswith("8 skipped, 0 unsupported\n")
+            templates = len(list((source / "reference/templates").rglob("*.md"))) + len(
+                list((source / "reference/extensions").glob("*/templates/**/*.md"))
+            )
+            assert process.stderr.endswith(f"{templates} skipped, 0 unsupported\n")
         else:
             assert process.stderr.endswith(
                 "INFO: 1 checked, 0 skipped, 0 unsupported\n"
             )
         assert record.read_bytes() == before
+
+
+@pytest.mark.package
+class TestInstalledExtensions:
+    @pytest.mark.parametrize("at_init", [False, True])
+    def test_enable_create_and_validate(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path, at_init: bool
+    ) -> None:
+        _, command, _ = installed
+        root = tmp_path / "vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        setup = (
+            [("init", str(root), "--extension", "example")]
+            if at_init
+            else [
+                ("init", str(root)),
+                ("extension", "enable", "example", "--vault", str(root)),
+            ]
+        )
+        for arguments in (
+            *setup,
+            (
+                "add",
+                "content",
+                "Harbor",
+                "--subtype",
+                "Location",
+                "--vault",
+                str(root),
+            ),
+            ("validate", str(root)),
+        ):
+            result = subprocess.run(
+                [str(command), *arguments],
+                cwd=tmp_path,
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0, result.stderr
+        path = root / "content/Harbor.md"
+        assert "climate: null" in path.read_text()
+        path.write_text(path.read_text().replace("climate: null", "climate: 42"))
+        result = subprocess.run(
+            [str(command), "validate", str(path)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 1
+        assert "schema.instance" in result.stderr
+
+        original = path.read_bytes()
+        result = subprocess.run(
+            [str(command), "extension", "remove", "example", "--vault", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert path.read_bytes() == original
+        assert not (root / "reference/extensions/example/README.md").exists()

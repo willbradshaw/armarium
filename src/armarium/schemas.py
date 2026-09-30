@@ -45,16 +45,23 @@ class Schema:
 
         Raises:
             OSError: The schema cannot be read.
-            ValueError: The path escapes reference/schemas, JSON is invalid or
-                the declared dialect is unsupported.
+            ValueError: The path escapes core/extension schema directories, JSON is
+                invalid or the declared dialect is unsupported.
             SchemaError: The schema fails Draft 2020-12 meta-validation.
         """
         root, path = root.absolute(), path.absolute()
         directory = root / "reference/schemas"
+        extensions = root / "reference/extensions"
+        if path.is_relative_to(extensions):
+            relative = path.relative_to(extensions)
+            if len(relative.parts) >= 3 and relative.parts[1] == "schemas":
+                directory = extensions / relative.parts[0] / "schemas"
         if not directory.resolve().is_relative_to(
             root.resolve()
         ) or not path.resolve().is_relative_to(directory.resolve()):
-            raise ValueError("schema reference escapes reference/schemas")
+            raise ValueError(
+                "schema reference escapes reference/schemas or extension schemas"
+            )
         data = json.loads(path.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(data)
         if (

@@ -1,6 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: Location
+climate: "Temperate maritime; wet winters and warm summers."
 summary: "A chain of independent harbor towns joined by trade, rivalry and a shared refusal of hereditary tolls."
 parent_location:
 ---

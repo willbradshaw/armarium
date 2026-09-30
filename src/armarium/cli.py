@@ -9,6 +9,7 @@ from pathlib import Path
 from armarium.add import add_campaign, read_template, select_vault
 from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
+from armarium.extensions import enable_extension, remove_extension
 from armarium.init import init_vault
 from armarium.lib import find_vault
 from armarium.logging import configure_logging, logger
@@ -68,6 +69,27 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="replace an existing directory and all its contents; refuse files and symlinks",
     )
+    initialize.add_argument(
+        "--extension",
+        action="append",
+        default=[],
+        help="extension to enable throughout the vault; repeat for multiple (default: none)",
+    )
+    extension = commands.add_parser(
+        "extension", help="manage optional vault extensions"
+    )
+    extensions = extension.add_subparsers(dest="extension_action", required=True)
+    for action, description in (
+        ("enable", "install an extension into a vault"),
+        ("remove", "remove an extension and its installed files"),
+    ):
+        command = extensions.add_parser(action, help=description)
+        command.add_argument("name", help="extension identifier")
+        command.add_argument(
+            "--vault",
+            type=Path,
+            help="vault root (default: discovered from the current directory)",
+        )
     add = commands.add_parser("add", help="add to an existing vault")
     additions = add.add_subparsers(dest="addition", required=True)
     campaign = additions.add_parser("campaign", help="create a new campaign")
@@ -191,11 +213,32 @@ def main() -> None:
             logger.info(
                 "Initializing new vault at %s", args.path.expanduser().resolve()
             )
-            destination = init_vault(args.path, force=args.force)
-        except OSError as exc:
+            destination = init_vault(
+                args.path, force=args.force, extensions=args.extension
+            )
+        except (OSError, ValueError) as exc:
             logger.error("Cannot create vault at %s: %s", args.path, exc)
             sys.exit(1)
         logger.info("New vault successfully initialized; validating")
+        result = validate(destination)
+    elif args.command == "extension":
+        try:
+            change = (
+                enable_extension
+                if args.extension_action == "enable"
+                else remove_extension
+            )
+            destination = change(args.name, args.vault)
+        except (OSError, ValueError) as exc:
+            logger.error(
+                "Cannot %s extension %s: %s", args.extension_action, args.name, exc
+            )
+            sys.exit(1)
+        logger.info(
+            "Extension %s %s; validating",
+            args.name,
+            "enabled" if args.extension_action == "enable" else "removed",
+        )
         result = validate(destination)
     elif args.command == "add":
         try:
@@ -213,7 +256,7 @@ def main() -> None:
     else:
         result = validate(args.path, args.vault)
         result.report()
-    if args.command in {"init", "add"}:
+    if args.command in {"init", "add", "extension"}:
         for diagnostic in result.diagnostics:
             if diagnostic.severity != "info":
                 diagnostic.report()
@@ -229,8 +272,10 @@ def main() -> None:
                 args.addition.capitalize(),
                 destination,
             )
+        elif args.command == "extension":
+            logger.error("Extension change retained; see validation diagnostics above")
         sys.exit(1)
-    if args.command in {"init", "add"}:
+    if args.command in {"init", "add", "extension"}:
         logger.info("Validation completed successfully")
 
 

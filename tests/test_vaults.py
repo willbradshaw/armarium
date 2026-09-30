@@ -1,5 +1,6 @@
 """Parity between the shipped starter and example vaults outside their content."""
 
+import json
 from pathlib import Path
 
 VAULTS = Path(__file__).resolve().parents[1] / "vaults"
@@ -45,7 +46,16 @@ class TestVaultParity:
         missing = sorted(starter - example)
         extra = sorted(example - starter)
         assert not missing, f"missing from example: {missing[0]}"
-        assert not extra, f"missing from starter: {extra[0]}"
+        declarations = json.loads((EXAMPLE / "reference/extensions.json").read_text())
+        extension_files = {
+            Path("reference/extensions")
+            / name
+            / path.relative_to(VAULTS.parent / "extensions" / name)
+            for name in declarations
+            for path in (VAULTS.parent / "extensions" / name).rglob("*")
+            if path.is_file()
+        }
+        assert set(extra) == extension_files | {Path("reference/extensions.json")}
 
     def test_same_bytes(self) -> None:
         starter = shared_files(STARTER)

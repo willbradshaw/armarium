@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+from armarium.extensions import load_extensions
 from armarium.lib import CAMPAIGN_NAME, find_files, find_vault, parse_directories
 from armarium.logging import logger
 from armarium.parse import Record
@@ -110,13 +111,23 @@ def check_destination(destination: Path, *, normalize: bool = False) -> None:
         raise FileExistsError(f"record already exists: {destination}")
 
 
-def read_template(root: Path, kind: str, *, check_reference: bool = False) -> Record:
+def read_template(
+    root: Path, kind: str, *, check_reference: bool = False, subtype: str | None = None
+) -> Record:
     """Parse a local template of the expected type, rejecting symlinked inputs.
 
+    Enabled extension templates take precedence for matching type/subtype pairs.
     check_reference also rejects a symlink at the reference directory, for
     callers that require that component to be a real directory.
     """
-    path = root / f"reference/templates/{kind}.md"
+    path = next(
+        (
+            r.template
+            for r in load_extensions(root)
+            if r.matches(kind, subtype) and r.template
+        ),
+        root / f"reference/templates/{kind}.md",
+    )
     paths = (
         (path, path.parent, path.parent.parent)
         if check_reference

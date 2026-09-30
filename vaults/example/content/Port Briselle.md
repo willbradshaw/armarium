@@ -1,6 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: "Location"
+climate: "Temperate maritime; wet winters and warm summers."
 summary: "A terraced harbor republic where pilot guilds bargain with merchant captains."
 parent_location: "[[The Crownless Coast]]"
 campaign_1:

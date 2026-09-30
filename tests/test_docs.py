@@ -120,6 +120,7 @@ class TestValidationDocument:
             rule
             for path in (ROOT / "src/armarium").glob("*.py")
             for rule in re.findall(r'"([a-z]+\.[a-z.]+)"', path.read_text())
+            if not rule.endswith(".json")
         }
     )
 

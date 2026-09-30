@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add optional vault extensions with additive schema checks and subtype templates.
+- Add extension selection during initialization and commands to enable and remove
+  extensions in existing vaults.
+- Demonstrate Location climate metadata with an extension enabled in the example vault.
 - Add Gear Content with provenance, a rules callout, optional image/source URL,
   and campaign possession tracking.
 - Clarify Date versus recurring calendar lore, and how brainstorming Notes become

@@ -149,7 +149,7 @@ def add_content(
     directory = record_directory(root, "Content", campaign)
     destination = directory / f"{name}.md"
     check_destination(destination, normalize=True)
-    template = read_template(root, "Content")
+    template = read_template(root, "Content", subtype=subtype)
     links = {"player": player, "reckoning": reckoning}
     for field, value in links.items():
         if value is None:

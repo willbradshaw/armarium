@@ -1,0 +1,12 @@
+{
+  "example": {
+    "rules": [
+      {
+        "type": "Content",
+        "subtype": "Location",
+        "schema": "schemas/location.schema.json",
+        "template": "templates/Location.md"
+      }
+    ]
+  }
+}
