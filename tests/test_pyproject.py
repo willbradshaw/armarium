@@ -20,7 +20,7 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
     artifacts = temporary / "artifacts"
     source = temporary / "source"
     source.mkdir()
-    for folder in ("src", "tests", "vaults", "docs"):
+    for folder in ("src", "tests", "vaults/starter", "vaults/example", "docs"):
         shutil.copytree(
             root / folder, source / folder, ignore=shutil.ignore_patterns("__pycache__")
         )
@@ -34,6 +34,10 @@ def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Pat
         "CHANGELOG.md",
     ):
         shutil.copyfile(root / name, source / name)
+    private = source / "vaults/private/.scratch"
+    private.mkdir(parents=True)
+    (private / ".gitkeep").write_text("")
+    (private.parent / "private.md").write_text("Private vault content")
     # Build from a used checkout, not just a pristine tree. Local vault state
     # must not leak into either distribution or a newly initialized vault.
     for name in (
@@ -701,6 +705,7 @@ class TestPyproject:
         assert "armarium/validate.py" in names
         assert not any(name.startswith(("tests/", "vaults/")) for name in names)
         assert not any("__pycache__" in name for name in names)
+        assert not any("vaults/private/" in name for name in names)
         starter = Path(__file__).resolve().parents[1] / "vaults/starter"
         expected = {
             p.relative_to(starter).as_posix() for p in starter.rglob("*") if p.is_file()
@@ -721,6 +726,7 @@ class TestPyproject:
         assert any(name.endswith("/pyproject.toml") for name in names)
         assert any(name.endswith("/LICENSE") for name in names)
         assert any(name.endswith("/CHANGELOG.md") for name in names)
+        assert not any("vaults/private/" in name for name in names)
         assert any(name.endswith("/tests/test_pyproject.py") for name in names)
         assert not any("__pycache__" in name for name in names)
         assert not any(

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Ignore local vaults other than starter and example, and exclude them from package
+  builds and package-test setup.
+
 ## 0.1.0 (2026-09-30)
 
 - Add `armarium init` for creating standalone vaults.
