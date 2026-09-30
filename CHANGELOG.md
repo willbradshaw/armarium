@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Add `armarium extension update` and record the supplying Armarium version.
+- Add `armarium extension update` and record the supplying Armarium version;
+  require `--allow-downgrade` when replacing an extension from a newer version.
 - Add optional vault extensions with additive schema checks and subtype templates.
 - Add extension selection during initialization and commands to enable and remove
   extensions in existing vaults.

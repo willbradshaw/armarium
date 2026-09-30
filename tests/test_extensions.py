@@ -730,3 +730,60 @@ class TestUpdateExtension:
             extensions.update_extension("example", enabled)
         assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
         assert not list(enabled.glob(".armarium-update-*"))
+
+
+class TestUpdateDowngrade:
+    @pytest.mark.parametrize(
+        "previous,available,downgrade",
+        [
+            ("2.0", "1.0", True),
+            ("0.10", "0.9", True),
+            ("1.0", "1.0rc1", True),
+            ("1.0.post1", "1.0", True),
+            ("1.0", "1.0.dev1", True),
+            ("1.0", "1.0.0", False),
+            ("1.0rc1", "1.0", False),
+            ("0.9", "0.10", False),
+        ],
+    )
+    @pytest.mark.parametrize("allow", [False, True])
+    def test_version_ordering(
+        self,
+        enabled: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        previous: str,
+        available: str,
+        downgrade: bool,
+        allow: bool,
+    ) -> None:
+        import armarium.extensions as extensions
+
+        config = enabled / CONFIG
+        declarations = _declarations(config)
+        declarations["example"]["armarium_version"] = previous
+        config.write_text(json.dumps(declarations))
+        monkeypatch.setattr(extensions, "_armarium_version", lambda: available)
+        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        if downgrade and not allow:
+            with pytest.raises(ValueError, match="--allow-downgrade"):
+                extensions.update_extension("example", enabled)
+            assert before == {
+                p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()
+            }
+            assert not list(enabled.glob(".armarium-update-*"))
+        else:
+            extensions.update_extension("example", enabled, allow_downgrade=allow)
+            assert _declarations(config)["example"]["armarium_version"] == available
+
+    @pytest.mark.parametrize("allow", [False, True])
+    def test_invalid_recorded_version(self, enabled: Path, allow: bool) -> None:
+        from armarium.extensions import update_extension
+
+        config = enabled / CONFIG
+        data = _declarations(config)
+        data["example"]["armarium_version"] = "unknown"
+        config.write_text(json.dumps(data))
+        original = config.read_bytes()
+        with pytest.raises(ValueError, match="Invalid version"):
+            update_extension("example", enabled, allow_downgrade=allow)
+        assert config.read_bytes() == original

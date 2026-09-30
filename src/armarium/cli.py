@@ -86,6 +86,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     ):
         command = extensions.add_parser(action, help=description)
         command.add_argument("name", help="extension identifier")
+        if action == "update":
+            command.add_argument(
+                "--allow-downgrade",
+                action="store_true",
+                help="allow replacement by an older Armarium version",
+            )
         command.add_argument(
             "--vault",
             type=Path,
@@ -224,12 +230,17 @@ def main() -> None:
         result = validate(destination)
     elif args.command == "extension":
         try:
-            change = {
-                "enable": enable_extension,
-                "remove": remove_extension,
-                "update": update_extension,
-            }[args.extension_action]
-            destination = change(args.name, args.vault)
+            if args.extension_action == "update":
+                destination = update_extension(
+                    args.name, args.vault, allow_downgrade=args.allow_downgrade
+                )
+            else:
+                change = (
+                    enable_extension
+                    if args.extension_action == "enable"
+                    else remove_extension
+                )
+                destination = change(args.name, args.vault)
         except (OSError, ValueError) as exc:
             logger.error(
                 "Cannot %s extension %s: %s", args.extension_action, args.name, exc

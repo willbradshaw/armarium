@@ -14,6 +14,7 @@ from typing import NotRequired, TypedDict, cast
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
+from packaging.version import Version
 
 from armarium.parse import Record
 from armarium.schemas import Schema
@@ -303,12 +304,15 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
     return root
 
 
-def update_extension(name: str, vault: Path | None = None) -> Path:
+def update_extension(
+    name: str, vault: Path | None = None, *, allow_downgrade: bool = False
+) -> Path:
     """Replace an installed extension with files from the current Armarium.
 
     Reuse installation checks without requiring the old extension to be valid.
     Preserve the old directory and declaration until replacement succeeds,
-    including when versions match. Failed restoration retains the backup.
+    including when versions match. Downgrades require allow_downgrade.
+    Failed restoration retains the backup.
     Local registrations are not installed extensions and cannot be updated.
     Callers validate records afterward; no record migration is performed.
     """
@@ -319,6 +323,17 @@ def update_extension(name: str, vault: Path | None = None) -> Path:
     declarations = _declarations(config) if config.exists() else {}
     if name not in declarations or not declarations[name].get("installed", False):
         raise ValueError(f"extension is not installed: {name}")
+    previous = declarations[name].get("armarium_version")
+    available = _armarium_version()
+    if (
+        previous is not None
+        and Version(previous) > Version(available)
+        and not allow_downgrade
+    ):
+        raise ValueError(
+            f"extension {name} was installed with newer Armarium {previous}; "
+            f"current version is {available}. Use --allow-downgrade to replace it."
+        )
     original = config.read_bytes()
     declarations.pop(name)
     directory = _local_path(root, "reference/extensions", name)

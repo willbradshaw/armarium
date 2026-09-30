@@ -1088,3 +1088,52 @@ class TestInstalledExtensions:
         assert result.returncode == 0, result.stderr
         assert path.read_bytes() == original
         assert not (root / "reference/extensions/example/README.md").exists()
+
+    def test_installed_downgrade(
+        self, installed: tuple[Path, Path, Path], tmp_path: Path
+    ) -> None:
+        import json
+
+        _, command, _ = installed
+        root = tmp_path / "vault"
+        environment = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"PYTHONPATH", "PYTHONHOME"}
+        }
+        result = subprocess.run(
+            [str(command), "init", str(root), "--extension", "example"],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        config = root / "reference/extensions.json"
+        data = json.loads(config.read_text())
+        actual = data["example"]["armarium_version"]
+        data["example"]["armarium_version"] = "999.0.0"
+        config.write_text(json.dumps(data))
+        original = config.read_bytes()
+        arguments = [
+            str(command),
+            "extension",
+            "update",
+            "example",
+            "--vault",
+            str(root),
+        ]
+        refused = subprocess.run(
+            arguments, cwd=tmp_path, env=environment, capture_output=True, text=True
+        )
+        assert refused.returncode == 1 and "--allow-downgrade" in refused.stderr
+        assert config.read_bytes() == original
+        allowed = subprocess.run(
+            [*arguments, "--allow-downgrade"],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        assert allowed.returncode == 0, allowed.stderr
+        assert json.loads(config.read_text())["example"]["armarium_version"] == actual

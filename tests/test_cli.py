@@ -1422,3 +1422,44 @@ class TestUpdateExtensionCommand:
             main()
         assert exc.value.code == 1
         assert "not installed" in capsys.readouterr().err
+
+
+class TestDowngradeOption:
+    @pytest.mark.parametrize("allow", [False, True])
+    def test_update(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        allow: bool,
+    ) -> None:
+        import json
+
+        import armarium.extensions as extensions
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault", extensions=["example"])
+        config = root / extensions.CONFIG
+        data = json.loads(config.read_text())
+        data["example"]["armarium_version"] = "2.0.0"
+        config.write_text(json.dumps(data))
+        monkeypatch.setattr(extensions, "_armarium_version", lambda: "1.0.0")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "extension", "update", "example", "--vault", str(root)]
+            + (["--allow-downgrade"] if allow else []),
+        )
+        if allow:
+            main()
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+        output = capsys.readouterr().err
+        assert ("Validation completed successfully" in output) == allow
+        if not allow:
+            assert "--allow-downgrade" in output
+        assert json.loads(config.read_text())["example"]["armarium_version"] == (
+            "1.0.0" if allow else "2.0.0"
+        )
