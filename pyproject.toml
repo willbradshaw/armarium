@@ -38,7 +38,7 @@ dev = [
 ]
 
 [tool.hatch.build]
-artifacts = ["/vaults/*/.scratch/.gitkeep"]
+artifacts = ["/vaults/starter/.scratch/.gitkeep", "/vaults/example/.scratch/.gitkeep"]
 exclude = [
   "/vaults/*/.obsidian/workspace*.json",
   "/vaults/*/.env", "/vaults/*/.env.*", "/vaults/*/*.cookie",
@@ -54,7 +54,7 @@ only-include = ["src/armarium", "vaults/starter"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/src", "/tests", "/vaults", "/docs", "/README.md", "/pyproject.toml",
+  "/src", "/tests", "/vaults/starter", "/vaults/example", "/docs", "/README.md", "/pyproject.toml",
   "/ruff.toml", "/AGENTS.md", "/LICENSE", "/CHANGELOG.md",
 ]
 
