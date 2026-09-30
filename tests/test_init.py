@@ -210,7 +210,7 @@ class TestInitExtension:
             (destination / "old.txt").write_text("old")
         installer = Mock(wraps=enable_extension)
         monkeypatch.setattr("armarium.init.enable_extension", installer)
-        root = init_vault(destination, force=force, extension="example")
+        root = init_vault(destination, force=force, extensions=["example"])
         installer.assert_called_once()
         assert installer.call_args.args[0] == "example"
         assert (root / "reference/extensions.json").is_file()
@@ -240,10 +240,68 @@ class TestInitExtension:
 
         monkeypatch.setattr("armarium.init.enable_extension", fail)
         with pytest.raises(failure):
-            init_vault(destination, force=force, extension="example")
+            init_vault(destination, force=force, extensions=["example"])
         if force:
             assert list(destination.iterdir()) == [destination / "old.txt"]
             assert (destination / "old.txt").read_text() == "keep"
         else:
             assert not destination.exists()
         assert not list(tmp_path.glob(".armarium-init-*"))
+
+
+class TestInitMultipleExtensions:
+    @pytest.mark.parametrize("force", [False, True])
+    def test_combined(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, force: bool
+    ) -> None:
+        import json
+
+        import armarium.extensions as extensions
+
+        extra = tmp_path / "extra"
+        (extra / "schemas").mkdir(parents=True)
+        (extra / "schemas/note.schema.json").write_text("true")
+        (extra / "extension.json").write_text(
+            json.dumps(
+                {
+                    "extra": {
+                        "rules": [
+                            {"type": "Note", "schema": "schemas/note.schema.json"}
+                        ]
+                    }
+                }
+            )
+        )
+        real = extensions._extension
+        monkeypatch.setattr(
+            extensions,
+            "_extension",
+            lambda name: extra if name == "extra" else real(name),
+        )
+        root = tmp_path / "vault"
+        if force:
+            root.mkdir()
+            (root / "old.txt").write_text("old")
+        init_vault(root, force=force, extensions=["example", "extra"])
+        assert {rule.extension for rule in extensions.load_extensions(root)} == {
+            "example",
+            "extra",
+        }
+        assert not validate(root).failed
+
+    @pytest.mark.parametrize("force", [False, True])
+    @pytest.mark.parametrize("second", ["unknown", "example"])
+    def test_later_failure_rolls_back(
+        self, tmp_path: Path, force: bool, second: str
+    ) -> None:
+        root = tmp_path / "vault"
+        if force:
+            root.mkdir()
+            (root / "old.txt").write_text("keep")
+        with pytest.raises(ValueError):
+            init_vault(root, force=force, extensions=["example", second])
+        if force:
+            assert list(root.iterdir()) == [root / "old.txt"]
+            assert (root / "old.txt").read_text() == "keep"
+        else:
+            assert not root.exists()

@@ -48,9 +48,12 @@ class TestVaultParity:
         assert not missing, f"missing from example: {missing[0]}"
         declarations = json.loads((EXAMPLE / "reference/extensions.json").read_text())
         extension_files = {
-            Path("reference") / relative
-            for declaration in declarations.values()
-            for relative in declaration["files"]
+            Path("reference/extensions")
+            / name
+            / path.relative_to(VAULTS.parent / "extensions" / name)
+            for name in declarations
+            for path in (VAULTS.parent / "extensions" / name).rglob("*")
+            if path.is_file()
         }
         assert set(extra) == extension_files | {Path("reference/extensions.json")}
 

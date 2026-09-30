@@ -13,7 +13,8 @@ completes, the new vault undergoes validation before success is reported.
 
 Use `armarium init ../my-vault --extension EXTENSION` to install an
 [extension](extensions.md) during setup, before validation. Extensions apply
-across the whole vault. If extension installation fails, initialization rolls back.
+across the whole vault. Repeat `--extension` to select several. If extension
+installation fails, initialization rolls back.
 
 Use `armarium init --force PATH` to replace an existing directory and **all its
 contents** with the starter vault. Files and symbolic links are still refused.

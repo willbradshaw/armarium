@@ -23,7 +23,7 @@ Each supported `type` has a schema in the vault's `reference/schemas/` directory
 | `[[Type]]` | `type.schema.json` |
 | `[[Status]]` | `status.schema.json` |
 
-Enabled [extensions](extensions.md#schemas-and-templates) add schemas to the
+Enabled [extensions](extensions.md) add schemas to the
 checks selected by type. Matching records must pass every applicable schema.
 
 Schemas apply to typed records; unfinished templates are a separate category.

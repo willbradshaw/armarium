@@ -987,7 +987,9 @@ class TestPyproject:
         assert process.returncode == 0, process.stdout + process.stderr
         assert process.stdout == ""
         if directory:
-            templates = len(list((source / "reference/templates").rglob("*.md")))
+            templates = len(list((source / "reference/templates").rglob("*.md"))) + len(
+                list((source / "reference/extensions").glob("*/templates/**/*.md"))
+            )
             assert process.stderr.endswith(f"{templates} skipped, 0 unsupported\n")
         else:
             assert process.stderr.endswith(
@@ -1061,4 +1063,4 @@ class TestInstalledExtensions:
         )
         assert result.returncode == 0, result.stderr
         assert path.read_bytes() == original
-        assert not (root / "reference/example.md").exists()
+        assert not (root / "reference/extensions/example/README.md").exists()

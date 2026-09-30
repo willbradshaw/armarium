@@ -2,6 +2,7 @@
 
 import shutil
 import tempfile
+from collections.abc import Sequence
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
@@ -30,7 +31,7 @@ def _starter() -> Traversable:
 
 
 def init_vault(
-    destination: Path, *, force: bool = False, extension: str | None = None
+    destination: Path, *, force: bool = False, extensions: Sequence[str] = ()
 ) -> Path:
     """Copy the starter into a new directory, optionally replacing an old one.
 
@@ -38,7 +39,7 @@ def init_vault(
         destination: New vault directory. Missing parents are created.
         force: Replace an existing directory and all its contents. Files and
             symlinks are always refused. Setup failures preserve the old directory.
-        extension: Optional extension to install using the shared extension installer.
+        extensions: Extensions to install in order before validating the new vault.
 
     Returns:
         Path: The resolved absolute path of the created vault.
@@ -61,7 +62,7 @@ def init_vault(
             replacement, backup = workspace / "replacement", workspace / "original"
             try:
                 shutil.copytree(source, replacement)
-                if extension is not None:
+                for extension in extensions:
                     enable_extension(extension, replacement)
                 destination.rename(backup)
                 try:
@@ -80,7 +81,7 @@ def init_vault(
         destination.mkdir(parents=True)
         try:
             shutil.copytree(source, destination, dirs_exist_ok=True)
-            if extension is not None:
+            for extension in extensions:
                 enable_extension(extension, destination)
         except BaseException:
             shutil.rmtree(destination)

@@ -653,7 +653,10 @@ class TestValidateDirectory:
         before = {p: p.read_bytes() for p in find_files(root)}
         result = validate_directory(root)
         assert not result.failed and result.unsupported == 0
-        templates = list((root / "reference/templates").rglob("*.md"))
+        templates = [
+            *list((root / "reference/templates").rglob("*.md")),
+            *list((root / "reference/extensions").glob("*/templates/**/*.md")),
+        ]
         assert result.checked > 0 and result.skipped == len(templates)
         assert all(p.read_bytes() == data for p, data in before.items())
 

@@ -1,6 +1,5 @@
 """Install optional reference files and load vault-local extension declarations."""
 
-import hashlib
 import json
 import re
 import shutil
@@ -21,10 +20,10 @@ CONFIG = Path("reference/extensions.json")
 
 
 class ExtensionDeclaration(TypedDict):
-    """Rules and installation hashes for one locally registered extension."""
+    """Rules and installation state for one locally registered extension."""
 
     rules: list[dict[str, str]]
-    files: NotRequired[dict[str, str]]
+    installed: NotRequired[bool]
 
 
 DECLARATION = {
@@ -52,13 +51,7 @@ DECLARATION = {
                         "additionalProperties": False,
                     },
                 },
-                "files": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string",
-                        "pattern": "^[a-f0-9]{64}$",
-                    },
-                },
+                "installed": {"type": "boolean"},
             },
             "additionalProperties": False,
         }
@@ -109,8 +102,7 @@ def _declarations(path: Path) -> dict[str, ExtensionDeclaration]:
 def load_extensions(root: Path) -> list[ExtensionRule]:
     """Load enabled rules and check every declared schema and template.
 
-    Missing configuration means no extensions. Paths are relative to schemas/
-    and templates/ respectively. Conflicting template selectors are errors;
+    Missing configuration means no extensions. Paths are relative to reference/. Conflicting template selectors are errors;
     additional schema constraints can be combined freely. Invalid or missing
     files raise ValueError or OSError, never silently disabling an extension.
     """
@@ -123,15 +115,17 @@ def load_extensions(root: Path) -> list[ExtensionRule]:
             kind, subtype = declaration["type"], declaration.get("subtype")
             try:
                 schema = Schema.load(
-                    _local_path(root, "reference/schemas", declaration["schema"]), root
+                    _local_path(root, "reference", declaration["schema"]), root
                 )
             except SchemaError as exc:
                 raise ValueError(f"invalid extension schema: {exc.message}") from exc
             template = None
             if "template" in declaration:
-                template = _local_path(
-                    root, "reference/templates", declaration["template"]
-                )
+                template = _local_path(root, "reference", declaration["template"])
+                if not is_template(template, root):
+                    raise ValueError(
+                        f"extension template must be in a templates directory: {template}"
+                    )
                 record, errors = Record.parse(template, root)
                 if record is None:
                     raise ValueError(
@@ -170,12 +164,11 @@ def _extension(name: str) -> Traversable:
 
 
 def enable_extension(name: str, vault: Path | None = None) -> Path:
-    """Install reference files without overwrites and register the extension last.
+    """Install a complete extension directory and register its rules.
 
-    Existing declarations are preserved. Re-enabling is refused so local edits
-    cannot be overwritten. A failed or interrupted installation removes its new
-    files and directories. Existing records are not changed; callers validate
-    them afterward so required migrations remain available for inspection.
+    Refuse existing registrations or directories. Failed installation removes
+    its new directory and restores the previous configuration. Callers validate
+    existing records after installation.
     """
     from armarium.add import select_vault
 
@@ -186,56 +179,35 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
     declarations = _declarations(config) if original is not None else {}
     if name in declarations:
         raise ValueError(f"extension already enabled: {name}")
-    created: list[Path] = []
-    directories: list[Path] = []
     with as_file(_extension(name)) as source:
         addition = _declarations(source / "extension.json")
         if set(addition) != {name}:
             raise ValueError("extension declaration does not match its name")
-        sources = sorted(p for p in (source / "reference").rglob("*") if p.is_file())
-        destinations = [
-            _local_path(
-                root, "reference", p.relative_to(source / "reference").as_posix()
-            )
-            for p in sources
-        ]
-        for destination in destinations:
-            if destination.exists():
-                raise FileExistsError(f"extension file already exists: {destination}")
+        directory = _local_path(root, "reference/extensions", name)
+        parent_existed = directory.parent.exists()
+        directory.mkdir(parents=True)
+        registered = False
         try:
-            for source_file, destination in zip(sources, destinations, strict=True):
-                missing = []
-                parent = destination.parent
-                while not parent.exists():
-                    missing.append(parent)
-                    parent = parent.parent
-                for directory in reversed(missing):
-                    directory.mkdir()
-                    directories.append(directory)
-                with destination.open("xb") as stream:
-                    created.append(destination)
-                    stream.write(source_file.read_bytes())
-            addition[name]["files"] = {
-                path.relative_to(root / "reference").as_posix(): hashlib.sha256(
-                    path.read_bytes()
-                ).hexdigest()
-                for path in destinations
-            }
+            shutil.copytree(source, directory, dirs_exist_ok=True)
+            for rule in addition[name]["rules"]:
+                for field in ("schema", "template"):
+                    if field in rule:
+                        _local_path(root, f"reference/extensions/{name}", rule[field])
+                        rule[field] = f"extensions/{name}/{rule[field]}"
+            addition[name]["installed"] = True
             declarations.update(addition)
             _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
-            try:
-                load_extensions(root)
-            except BaseException:
+            registered = True
+            load_extensions(root)
+        except BaseException:
+            if registered:
                 if original is None:
                     config.unlink()
                 else:
                     _write_config(config, original)
-                raise
-        except BaseException:
-            for path in reversed(created):
-                path.unlink(missing_ok=True)
-            for directory in reversed(directories):
-                directory.rmdir()
+            shutil.rmtree(directory)
+            if not parent_existed:
+                directory.parent.rmdir()
             raise
     return root
 
@@ -253,13 +225,12 @@ def _write_config(path: Path, contents: bytes) -> None:
 
 
 def remove_extension(name: str, vault: Path | None = None) -> Path:
-    """Remove registration and unchanged installed files, preserving records.
+    """Unregister an extension and delete its installation, including local edits.
 
-    Installation hashes identify files independently of the current package.
-    Edited files and files declared by other extensions prevent removal. Missing
-    installed files are tolerated, allowing an incomplete extension to be removed.
-    Failures restore moved files and the original configuration. Declarations
-    without installation hashes are unregistered without deleting any files.
+    Records are unchanged. Explicit dependencies prevent removal. A failed
+    change restores the directory and configuration; failed restoration keeps
+    the backup for recovery. Local declarations without an installation are
+    unregistered without deleting their files.
     """
     from armarium.add import select_vault
 
@@ -270,39 +241,25 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
         raise ValueError(f"extension is not enabled: {name}")
     original = config.read_bytes()
     removed = declarations.pop(name)
-    paths: list[Path] = []
-    for relative, digest in removed.get("files", {}).items():
-        path = _local_path(root, "reference", relative)
-        if path == config:
-            raise ValueError("extension cannot own its configuration file")
-        if not path.exists():
-            continue
-        if (
-            not path.is_file()
-            or hashlib.sha256(path.read_bytes()).hexdigest() != digest
-        ):
-            raise ValueError(
-                f"extension file has local changes; preserve or restore it before removal: {path}"
-            )
-        paths.append(path)
-    # Preserve explicitly shared files, including manually edited declarations.
-    for declaration in declarations.values():
-        used = {_local_path(root, "reference", p) for p in declaration.get("files", {})}
-        for rule in declaration["rules"]:
-            used.add(_local_path(root, "reference/schemas", rule["schema"]))
-            if "template" in rule:
-                used.add(_local_path(root, "reference/templates", rule["template"]))
-        if used.intersection(paths):
-            raise ValueError("extension files are used by another enabled extension")
+    directory = _local_path(root, "reference/extensions", name)
+    installed = removed.get("installed", False) and directory.exists()
+    if installed:
+        for declaration in declarations.values():
+            for rule in declaration["rules"]:
+                for field in ("schema", "template"):
+                    if field in rule and _local_path(
+                        root, "reference", rule[field]
+                    ).is_relative_to(directory):
+                        raise ValueError(
+                            "extension files are used by another enabled extension"
+                        )
     workspace = Path(tempfile.mkdtemp(prefix=".armarium-extension-", dir=root))
-    moved: list[tuple[Path, Path]] = []
+    backup = workspace / "extension"
     registered = False
     committed = False
     try:
-        for index, path in enumerate(paths):
-            backup = workspace / str(index)
-            path.rename(backup)
-            moved.append((path, backup))
+        if installed:
+            directory.rename(backup)
         _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
         registered = True
         load_extensions(root)
@@ -310,25 +267,20 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
     except BaseException:
         if registered:
             _write_config(config, original)
-        for path, backup in reversed(moved):
-            backup.rename(path)
+        if backup.exists():
+            backup.rename(directory)
         raise
     finally:
-        # If restoration itself fails, retain backups for recovery.
-        if committed or not any(workspace.iterdir()):
+        if committed or not backup.exists():
             shutil.rmtree(workspace)
-    # Empty extension directories are no longer needed; preserve vault scaffolding.
-    boundaries = {
-        root / "reference",
-        root / "reference/schemas",
-        root / "reference/templates",
-    }
-    for path in paths:
-        parent = path.parent
-        while parent not in boundaries:
-            try:
-                parent.rmdir()
-            except OSError:
-                break
-            parent = parent.parent
     return root
+
+
+def is_template(path: Path, root: Path) -> bool:
+    """Recognize core and extension template directories without loading records."""
+    relative = path.relative_to(root)
+    return relative.is_relative_to("reference/templates") or (
+        len(relative.parts) >= 5
+        and relative.parts[:2] == ("reference", "extensions")
+        and relative.parts[3] == "templates"
+    )

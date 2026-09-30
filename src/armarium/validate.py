@@ -8,7 +8,7 @@ from typing import overload
 
 from jsonschema.exceptions import SchemaError
 
-from armarium.extensions import CONFIG, load_extensions
+from armarium.extensions import CONFIG, is_template, load_extensions
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
@@ -189,7 +189,7 @@ def validate_markdown(
     Returns:
         Result: Diagnostics and checked/skipped/unsupported counts for this
             file. Parse failures and missing or malformed types are errors.
-            After parsing, only files under reference/templates are skipped,
+            After parsing, core and extension template files are skipped,
             with an explicit informational diagnostic. Type/status definitions
             are records too and require declared types and schema validation.
             Typed files receive their vault-local schema checks; absent
@@ -218,7 +218,7 @@ def validate_markdown(
         return Result(diagnostics=diagnostics, checked=1)
     # 1. Skip templates and untyped files
     findings = Findings(relative)
-    if path.is_relative_to(root / "reference/templates"):
+    if is_template(path, root):
         findings.add(
             "record.template",
             "template parsed; completed-record validation skipped",
@@ -403,6 +403,9 @@ def validate_vault(root: Path) -> Findings:
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
+    if (root / "reference/extensions").exists():
+        require("reference/extensions", True)
+
     # Extension declarations are optional, but every enabled rule must be usable.
     extension_schemas: set[Path] = set()
     try:
@@ -439,6 +442,17 @@ def validate_vault(root: Path) -> Findings:
                 # Non-Markdown files belong in assets/, except views and schemas.
                 findings.diagnose(
                     entry != CONFIG
+                    and not (
+                        entry.is_relative_to("reference/extensions")
+                        and (
+                            (len(entry.parts) == 4 and entry.name == "extension.json")
+                            or (
+                                len(entry.parts) >= 5
+                                and entry.parts[3] == "schemas"
+                                and entry.name.endswith(".schema.json")
+                            )
+                        )
+                    )
                     and not any(
                         child.name.lower().endswith(suffix)
                         and entry.is_relative_to(home)

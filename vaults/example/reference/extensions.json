@@ -4,14 +4,10 @@
       {
         "type": "Content",
         "subtype": "Location",
-        "schema": "extensions/example/location.schema.json",
-        "template": "extensions/example/Location.md"
+        "schema": "extensions/example/schemas/location.schema.json",
+        "template": "extensions/example/templates/Location.md"
       }
     ],
-    "files": {
-      "example.md": "9f29cd8e6ce95c131ffc8f7db7510f1f7952ea7cc779aeb9d54b4b24fef5ea5c",
-      "schemas/extensions/example/location.schema.json": "a9049bcabadf0b949b239af3c2dea8b5b8115e419868edba0b794865bdc538a7",
-      "templates/extensions/example/Location.md": "5dba94b01f0bb810eaafc7eae90de23b2d6e84a3cacc612a42e7e28334bd6d11"
-    }
+    "installed": true
   }
 }

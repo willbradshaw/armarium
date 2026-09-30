@@ -1264,7 +1264,7 @@ class TestExtensionCommand:
         elif scenario == "invalid-schema":
             enable_extension("example", root)
             (
-                root / "reference/schemas/extensions/example/location.schema.json"
+                root / "reference/extensions/example/schemas/location.schema.json"
             ).write_text('{"type": "bad"}')
         monkeypatch.setattr(
             sys,
@@ -1327,20 +1327,29 @@ class TestRemoveExtensionCommand:
         from armarium.init import init_vault
 
         root = init_vault(
-            tmp_path / "vault", extension=None if scenario == "missing" else "example"
+            tmp_path / "vault", extensions=[] if scenario == "missing" else ["example"]
         )
         if scenario == "edited":
-            path = root / "reference/example.md"
+            path = root / "reference/extensions/example/README.md"
             path.write_text(path.read_text() + "Local notes.\n")
         monkeypatch.chdir(root / "content")
         monkeypatch.setattr(sys, "argv", ["armarium", "extension", "remove", "example"])
-        if scenario == "valid":
+        if scenario != "missing":
             main()
-            assert not (root / "reference/example.md").exists()
+            assert not (root / "reference/extensions/example/README.md").exists()
         else:
             with pytest.raises(SystemExit) as exc:
                 main()
             assert exc.value.code == 1
         assert ("Validation completed successfully" in capsys.readouterr().err) == (
-            scenario == "valid"
+            scenario != "missing"
         )
+
+
+class TestRepeatedExtensionOptions:
+    def test_accumulates(self) -> None:
+        args = parse_args(
+            ["init", "new-vault", "--extension", "example", "--extension", "extra"]
+        )
+        assert args.extension == ["example", "extra"]
+        assert parse_args(["init", "new-vault"]).extension == []

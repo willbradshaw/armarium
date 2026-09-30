@@ -489,3 +489,27 @@ class TestSelectSchema:
         schema, diagnostics = select_schema(record, root)
         assert diagnostics == [] and schema is not None
         assert (schema.validate(record) == []) is valid
+
+
+class TestExtensionSchemaPaths:
+    @pytest.mark.parametrize(
+        "directory,valid", [("schemas", True), ("templates", False), ("notes", False)]
+    )
+    def test_extension_directories(
+        self, root: Path, directory: str, valid: bool
+    ) -> None:
+        path = root / "reference/extensions/example" / directory / "test.schema.json"
+        path.parent.mkdir(parents=True)
+        path.write_text("true")
+        if valid:
+            assert Schema.load(path, root).contents is True
+        else:
+            with pytest.raises(ValueError, match="escapes"):
+                Schema.load(path, root)
+
+    def test_composes_with_core_schema(self, root: Path, record: Record) -> None:
+        path = root / "reference/extensions/example/schemas/test.schema.json"
+        path.parent.mkdir(parents=True)
+        (root / "reference/schemas/core.schema.json").write_text("true")
+        path.write_text('{"$ref": "../../../schemas/core.schema.json"}')
+        assert Schema.load(path, root).validate(record) == []

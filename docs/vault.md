@@ -86,4 +86,4 @@ This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
 `.obsidian/`, which are per-machine state, not settings.
 
 Optional [extensions](extensions.md) are declared in `reference/extensions.json`;
-their schemas, templates and reference pages live alongside the core files.
+their schemas, templates and reference pages live in `reference/extensions/NAME/`.

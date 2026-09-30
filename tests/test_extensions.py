@@ -16,6 +16,7 @@ from armarium.extensions import (
     _local_path,
     _write_config,
     enable_extension,
+    is_template,
     load_extensions,
     remove_extension,
 )
@@ -98,7 +99,7 @@ class TestDeclarations:
             {
                 "custom": {
                     "rules": [{"type": "Content", "schema": "x"}],
-                    "files": {"x": "bad"},
+                    "installed": "yes",
                 }
             },
             {"custom": [{"type": "Content"}]},
@@ -123,9 +124,11 @@ class TestLoadExtensions:
             and rule.kind == "Content"
             and rule.subtype == "Location"
         )
-        assert rule.schema.path.is_relative_to(enabled / "reference/schemas")
+        assert rule.schema.path.is_relative_to(
+            enabled / "reference/extensions/example/schemas"
+        )
         assert rule.template is not None and rule.template.is_relative_to(
-            enabled / "reference/templates"
+            enabled / "reference/extensions/example/templates"
         )
 
     @pytest.mark.parametrize(
@@ -183,7 +186,7 @@ class TestLoadExtensions:
                 {
                     "type": "Content",
                     "subtype": "Location",
-                    "schema": "house.schema.json",
+                    "schema": "schemas/house.schema.json",
                 }
             ]
         }
@@ -230,8 +233,8 @@ class TestEnableExtension:
     @pytest.mark.parametrize(
         "collision",
         [
-            "reference/example.md",
-            "reference/schemas/extensions/example/location.schema.json",
+            "reference/extensions/example/README.md",
+            "reference/extensions/example/schemas/location.schema.json",
         ],
     )
     def test_collision(self, vault: Path, collision: str) -> None:
@@ -257,14 +260,17 @@ class TestEnableExtension:
             (vault / CONFIG).write_text("{}\n")
         original = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
         original_entries = set(vault.rglob("*"))
-        real = Path.read_bytes
+        real = shutil.copytree
 
-        def read(path: Path) -> bytes:
-            if path.name == "Location.md" and path.is_relative_to(ROOT / "extensions"):
+        def copy(
+            source: Path, destination: Path, *args: object, **kwargs: object
+        ) -> Path:
+            result = real(source, destination, *args, **kwargs)
+            if Path(source) == ROOT / "extensions/example":
                 raise failure("interrupted copy")
-            return real(path)
+            return result
 
-        monkeypatch.setattr(Path, "read_bytes", read)
+        monkeypatch.setattr("armarium.extensions.shutil.copytree", copy)
         with pytest.raises(failure):
             enable_extension("example", vault)
         assert set(vault.rglob("*")) == original_entries
@@ -282,9 +288,7 @@ class TestEnableExtension:
 
         source = tmp_path / "extension"
         shutil.copytree(ROOT / "extensions/example", source)
-        (source / "reference/templates/extensions/example/Location.md").write_text(
-            "invalid"
-        )
+        (source / "templates/Location.md").write_text("invalid")
         monkeypatch.setattr(extensions, "_extension", lambda name: source)
         if existing_config:
             (vault / CONFIG).write_text("{}\n")
@@ -371,7 +375,7 @@ class TestRemoveExtension:
     ) -> None:
         record = add_content("Harbor", "Location", enabled)
         original = record.read_bytes()
-        files = _declarations(enabled / CONFIG)["example"]["files"]
+        directory = enabled / "reference/extensions/example"
         # Removal uses the installation inventory, not today's package resources.
         with monkeypatch.context() as patch:
 
@@ -382,7 +386,7 @@ class TestRemoveExtension:
             assert remove_extension("example", enabled) == enabled
         assert not load_extensions(enabled)
         assert record.read_bytes() == original
-        assert all(not (enabled / "reference" / name).exists() for name in files)
+        assert not directory.exists()
         assert not validate(enabled).failed
         new = add_content("Bay", "Location", enabled)
         assert "climate:" not in new.read_text()
@@ -393,21 +397,22 @@ class TestRemoveExtension:
     @pytest.mark.parametrize(
         "file",
         [
-            "example.md",
-            "schemas/extensions/example/location.schema.json",
-            "templates/extensions/example/Location.md",
+            "README.md",
+            "schemas/location.schema.json",
+            "templates/Location.md",
+            "extra.md",
         ],
     )
-    def test_local_edits_refused(self, enabled: Path, file: str) -> None:
-        path = enabled / "reference" / file
-        path.write_text(path.read_text() + "\n")
-        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
-        with pytest.raises(ValueError, match="local changes"):
-            remove_extension("example", enabled)
-        assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+    def test_local_edits_are_removed(self, enabled: Path, file: str) -> None:
+        directory = enabled / "reference/extensions/example"
+        path = directory / file
+        path.write_text("Local changes")
+        remove_extension("example", enabled)
+        assert not directory.exists()
+        assert not validate(enabled).failed
 
     def test_missing_installed_file(self, enabled: Path) -> None:
-        (enabled / "reference/templates/extensions/example/Location.md").unlink()
+        (enabled / "reference/extensions/example/templates/Location.md").unlink()
         remove_extension("example", enabled)
         assert not validate(enabled).failed
 
@@ -419,11 +424,11 @@ class TestRemoveExtension:
     def test_manual_declaration(self, enabled: Path) -> None:
         config = enabled / CONFIG
         data = _declarations(config)
-        files = data["example"].pop("files")
+        data["example"].pop("installed")
         config.write_text(json.dumps(data))
         remove_extension("example", enabled)
         assert not load_extensions(enabled)
-        assert all((enabled / "reference" / name).exists() for name in files)
+        assert (enabled / "reference/extensions/example").is_dir()
 
     def test_shared_file_refused(self, enabled: Path) -> None:
         config = enabled / CONFIG
@@ -436,19 +441,6 @@ class TestRemoveExtension:
         config.write_text(json.dumps(data))
         before = config.read_bytes()
         with pytest.raises(ValueError, match="used by another"):
-            remove_extension("example", enabled)
-        assert config.read_bytes() == before
-
-    @pytest.mark.parametrize(
-        "path", ["../content/victim.md", "/tmp/victim.md", "extensions.json"]
-    )
-    def test_unsafe_inventory(self, enabled: Path, path: str) -> None:
-        config = enabled / CONFIG
-        data = _declarations(config)
-        data["example"]["files"] = {path: "0" * 64}
-        config.write_text(json.dumps(data))
-        before = config.read_bytes()
-        with pytest.raises(ValueError):
             remove_extension("example", enabled)
         assert config.read_bytes() == before
 
@@ -468,7 +460,7 @@ class TestRemoveExtension:
             real = Path.rename
 
             def rename(path: Path, target: Path) -> Path:
-                if path.name == "Location.md":
+                if path.name == "example":
                     raise failure("failed move")
                 return real(path, target)
 
@@ -497,10 +489,29 @@ class TestExampleVault:
         shutil.copytree(ROOT / "vaults/example", root)
         assert len(load_extensions(root)) == 1
         assert not validate(root).failed
-        declarations = _declarations(root / CONFIG)
-        for relative in declarations["example"]["files"]:
-            assert (root / "reference" / relative).read_bytes() == (
-                ROOT / "extensions/example/reference" / relative
-            ).read_bytes()
+        for source in (ROOT / "extensions/example").rglob("*"):
+            if source.is_file():
+                installed = (
+                    root
+                    / "reference/extensions/example"
+                    / source.relative_to(ROOT / "extensions/example")
+                )
+                assert installed.read_bytes() == source.read_bytes()
         remove_extension("example", root)
         assert not validate(root).failed
+
+
+class TestIsTemplate:
+    @pytest.mark.parametrize(
+        "path,expected",
+        [
+            ("reference/templates/Content.md", True),
+            ("reference/extensions/example/templates/Location.md", True),
+            ("reference/extensions/example/templates/nested/Location.md", True),
+            ("reference/extensions/example/README.md", False),
+            ("reference/extensions/templates/Location.md", False),
+            ("content/templates/Location.md", False),
+        ],
+    )
+    def test_directories(self, vault: Path, path: str, expected: bool) -> None:
+        assert is_template(vault / path, vault) == expected
