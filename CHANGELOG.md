@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add the `dnd-5-5` extension with D&D 2024 Gear fields and a Gear template.
 - Add `armarium extension update` and record the supplying Armarium version;
   require `--allow-downgrade` when replacing an extension from a newer version.
 - Add optional vault extensions with additive schema checks and subtype templates.

@@ -787,3 +787,125 @@ class TestUpdateDowngrade:
         with pytest.raises(ValueError, match="Invalid version"):
             update_extension("example", enabled, allow_downgrade=allow)
         assert config.read_bytes() == original
+
+
+class TestDndGearSchema:
+    @pytest.mark.parametrize("campaign", [None, 1])
+    def test_template_and_scope(self, vault: Path, campaign: int | None) -> None:
+        enable_extension("dnd-5-5", vault)
+        gear = add_content("Compass", "Gear", vault, campaign=campaign)
+        record, _ = Record.parse(gear, vault)
+        assert record is not None
+        for field in ("item_type", "rarity", "attunement", "consumable", "cursed"):
+            assert field in record.frontmatter
+            assert record.frontmatter[field] is None
+        if campaign is not None:
+            assert record.frontmatter[f"campaign_{campaign}"]["held_by"] is None
+        add_content("Legend", "Lore", vault, campaign=campaign)
+        assert not validate(vault).failed
+
+    @pytest.mark.parametrize(
+        "field", ["item_type", "rarity", "attunement", "consumable", "cursed", "source"]
+    )
+    def test_required_fields(self, vault: Path, field: str) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = add_content("Compass", "Gear", vault)
+        path.write_text(path.read_text().replace(f"{field}: null\n", ""))
+        assert validate(path, vault).failed
+
+    @pytest.mark.parametrize(
+        "field,value,valid",
+        [
+            *[
+                ("item_type", v, True)
+                for v in (
+                    None,
+                    "Armor",
+                    "Potion",
+                    "Ring",
+                    "Rod",
+                    "Scroll",
+                    "Staff",
+                    "Wand",
+                    "Weapon",
+                    "Wondrous Item",
+                )
+            ],
+            *[
+                ("rarity", v, True)
+                for v in (
+                    None,
+                    "Common",
+                    "Uncommon",
+                    "Rare",
+                    "Very Rare",
+                    "Legendary",
+                    "Artifact",
+                    "Varies",
+                )
+            ],
+            *[
+                (f, v, valid)
+                for f in ("attunement", "consumable", "cursed", "sentient")
+                for v, valid in [
+                    (None, True),
+                    (True, True),
+                    (False, True),
+                    ("true", False),
+                    (0, False),
+                ]
+            ],
+            ("item_type", "Shield", False),
+            ("item_type", "armor", False),
+            ("rarity", "rare", False),
+            ("rarity", "", False),
+            ("item_tags", ["Armor", "Utility"], True),
+            ("item_tags", [], True),
+            ("item_tags", None, True),
+            ("item_tags", ["Armor", "Armor"], False),
+            ("item_tags", [" "], False),
+            ("item_tags", "Armor", False),
+            ("item_tags", [42], False),
+            ("attunement_restrictions", None, True),
+            ("attunement_restrictions", "", False),
+            ("attunement_restrictions", " ", False),
+            ("attunement_restrictions", 42, False),
+            ("provider_id", 1234, True),
+        ],
+    )
+    def test_values(self, vault: Path, field: str, value: object, valid: bool) -> None:
+        from armarium.add import record_text
+
+        enable_extension("dnd-5-5", vault)
+        path = add_content("Compass", "Gear", vault)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        data = dict(record.frontmatter)
+        data[field] = value
+        path.write_text(record_text(data, record.body.text))
+        assert validate(path, vault).failed != valid
+
+    @pytest.mark.parametrize("attunement", [None, False, True])
+    def test_attunement_prerequisite(
+        self, vault: Path, attunement: bool | None
+    ) -> None:
+        from armarium.add import record_text
+
+        enable_extension("dnd-5-5", vault)
+        path = add_content("Compass", "Gear", vault)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        data = dict(record.frontmatter)
+        data.update(attunement=attunement, attunement_restrictions="A spellcaster")
+        path.write_text(record_text(data, record.body.text))
+        assert validate(path, vault).failed == (attunement is not True)
+
+    def test_existing_gear_and_removal(self, vault: Path) -> None:
+        gear = add_content("Compass", "Gear", vault)
+        before = gear.read_bytes()
+        enable_extension("dnd-5-5", vault)
+        assert validate(gear, vault).failed
+        assert gear.read_bytes() == before
+        remove_extension("dnd-5-5", vault)
+        assert gear.read_bytes() == before
+        assert not validate(vault).failed

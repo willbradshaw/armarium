@@ -1001,8 +1001,18 @@ class TestPyproject:
 @pytest.mark.package
 class TestInstalledExtensions:
     @pytest.mark.parametrize("at_init", [False, True])
+    @pytest.mark.parametrize(
+        "extension,subtype,field",
+        [("example", "Location", "climate"), ("dnd-5-5", "Gear", "rarity")],
+    )
     def test_enable_create_and_validate(
-        self, installed: tuple[Path, Path, Path], tmp_path: Path, at_init: bool
+        self,
+        installed: tuple[Path, Path, Path],
+        tmp_path: Path,
+        at_init: bool,
+        extension: str,
+        subtype: str,
+        field: str,
     ) -> None:
         _, command, _ = installed
         root = tmp_path / "vault"
@@ -1012,11 +1022,11 @@ class TestInstalledExtensions:
             if key not in {"PYTHONPATH", "PYTHONHOME"}
         }
         setup = (
-            [("init", str(root), "--extension", "example")]
+            [("init", str(root), "--extension", extension)]
             if at_init
             else [
                 ("init", str(root)),
-                ("extension", "enable", "example", "--vault", str(root)),
+                ("extension", "enable", extension, "--vault", str(root)),
             ]
         )
         for arguments in (
@@ -1026,7 +1036,7 @@ class TestInstalledExtensions:
                 "content",
                 "Harbor",
                 "--subtype",
-                "Location",
+                subtype,
                 "--vault",
                 str(root),
             ),
@@ -1040,10 +1050,10 @@ class TestInstalledExtensions:
                 text=True,
             )
             assert result.returncode == 0, result.stderr
-        installed_extension = root / "reference/extensions/example"
+        installed_extension = root / "reference/extensions" / extension
         (installed_extension / "obsolete.md").write_text("Local changes")
         updated = subprocess.run(
-            [str(command), "extension", "update", "example", "--vault", str(root)],
+            [str(command), "extension", "update", extension, "--vault", str(root)],
             cwd=tmp_path,
             env=environment,
             capture_output=True,
@@ -1059,14 +1069,14 @@ class TestInstalledExtensions:
         ) as stream:
             expected_version = tomllib.load(stream)["project"]["version"]
         assert (
-            json.loads((root / "reference/extensions.json").read_text())["example"][
+            json.loads((root / "reference/extensions.json").read_text())[extension][
                 "armarium_version"
             ]
             == expected_version
         )
         path = root / "content/Harbor.md"
-        assert "climate: null" in path.read_text()
-        path.write_text(path.read_text().replace("climate: null", "climate: 42"))
+        assert f"{field}: null" in path.read_text()
+        path.write_text(path.read_text().replace(f"{field}: null", f"{field}: 42"))
         result = subprocess.run(
             [str(command), "validate", str(path)],
             cwd=tmp_path,
@@ -1079,7 +1089,7 @@ class TestInstalledExtensions:
 
         original = path.read_bytes()
         result = subprocess.run(
-            [str(command), "extension", "remove", "example", "--vault", str(root)],
+            [str(command), "extension", "remove", extension, "--vault", str(root)],
             cwd=tmp_path,
             env=environment,
             capture_output=True,
@@ -1087,7 +1097,7 @@ class TestInstalledExtensions:
         )
         assert result.returncode == 0, result.stderr
         assert path.read_bytes() == original
-        assert not (root / "reference/extensions/example/README.md").exists()
+        assert not (installed_extension / "README.md").exists()
 
     def test_installed_downgrade(
         self, installed: tuple[Path, Path, Path], tmp_path: Path
