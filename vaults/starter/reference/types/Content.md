@@ -28,8 +28,9 @@ use a list of alternate names, or omit it or leave it empty when there are none.
 | Lore | None. |
 | Date | `reckoning`: a nonempty link to Lore describing the calendar. `scale`: a nonblank calendar-defined string, such as day or year. |
 
-Dates represent particular days or periods within a calendar. Calendar-specific
-fields are custom frontmatter. A custom vault-local schema can constrain date
+Dates represent particular days or periods within a calendar. Recurring calendar
+concepts, such as a named month or weekday, are Lore rather than Dates.
+Calendar-specific fields are custom frontmatter. A custom vault-local schema can constrain date
 notation and allowed scales; the standard schema does not impose those constraints.
 
 Use bare `field:` for null and quote YAML wikilinks. Additional custom fields are

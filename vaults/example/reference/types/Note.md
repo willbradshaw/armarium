@@ -6,6 +6,10 @@ Records with `type: "[[types/Note]]"` are freeform documents that do not fit
 the rest of the type hierarchy, such as GM working notes, design notes, session
 prep and ideas.
 
+Brainstorming Notes contain proposals, not established setting facts. When an
+idea is adopted, incorporate it into the relevant Content record or Session
+preparation.
+
 Shared notes live under `notes/`; campaign-specific notes live under
 `campaigns/campaign_1/notes/` (or the corresponding campaign folder). Use
 [[templates/Note]].

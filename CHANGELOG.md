@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clarify Date versus recurring calendar lore, and how brainstorming Notes become
+  established Content or Session preparation.
 - Add the Date Content subtype with required calendar and scale fields, validation,
   and `armarium add content` support.
 - Require populated Session in-game dates to link to Date Content.
