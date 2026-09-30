@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2] / "vaults"
+VAULTS = (ROOT / "starter", ROOT / "example")
 SELECTIONS = {"clues": "Clue", "locations": "Location", "npcs": "NPC"}
 
 
@@ -34,7 +35,7 @@ def resolve(vault: Path, link: str) -> Path:
 
 class ViewTests(unittest.TestCase):
     def test_all_base_embeds_resolve_in_each_vault(self):
-        for vault in ROOT.iterdir():
+        for vault in VAULTS:
             if not vault.is_dir():
                 continue
             embedded = set()
@@ -64,7 +65,11 @@ class ViewTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), (example / path.name).read_bytes())
 
     def test_every_campaign_index_embeds_the_correct_status_views(self):
-        for path in ROOT.glob("*/campaigns/*/reference/indexes/Clues.md"):
+        for path in (
+            path
+            for vault in VAULTS
+            for path in vault.glob("campaigns/*/reference/indexes/Clues.md")
+        ):
             with self.subTest(path=path):
                 for heading in ["Active", "Closed"]:
                     section = (
@@ -120,7 +125,7 @@ class ViewTests(unittest.TestCase):
         )
 
     def test_every_content_and_clue_uses_its_shared_view(self):
-        for vault in ROOT.iterdir():
+        for vault in VAULTS:
             for path in vault.rglob("*.md"):
                 kind = frontmatter(path).get("type")
                 if kind in {"[[types/Clue]]", "[[types/Content]]"}:
@@ -134,7 +139,7 @@ class ViewTests(unittest.TestCase):
                     )
 
     def test_shipped_vaults_have_no_dataview_expressions(self):
-        for path in ROOT.rglob("*.md"):
+        for path in (path for vault in VAULTS for path in vault.rglob("*.md")):
             with self.subTest(path=path):
                 self.assertNotRegex(
                     path.read_text(), r"(?im)^\s*`{3,}dataview(?:js)?\b|`\s*="

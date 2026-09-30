@@ -25,6 +25,11 @@ def vault(tmp_path: Path) -> Path:
     return root
 
 
+@pytest.fixture
+def calendar(vault: Path) -> None:
+    add_content("Calendar", "Lore", vault)
+
+
 class TestContentFrontmatter:
     @pytest.mark.parametrize("subtype", SUBTYPES)
     @pytest.mark.parametrize("campaign", [None, 2])
@@ -36,6 +41,8 @@ class TestContentFrontmatter:
             subtype,
             campaign,
             "[[Alex]]" if subtype == "PC" else None,
+            reckoning="[[Calendar]]" if subtype == "Date" else None,
+            scale="month" if subtype == "Date" else None,
         )
         assert metadata["subtype"] == subtype and metadata["summary"] is None
         assert "campaign_1" not in metadata
@@ -67,6 +74,110 @@ class TestContentFrontmatter:
 
 
 class TestAddContent:
+    @pytest.mark.parametrize("subtype", ["NPC", "Date"])
+    def test_reckoning_requires_lore(
+        self, vault: Path, calendar: None, subtype: str
+    ) -> None:
+        add_content(
+            "Not a calendar",
+            subtype,
+            vault,
+            reckoning="Calendar" if subtype == "Date" else None,
+            scale="year" if subtype == "Date" else None,
+        )
+        with pytest.raises(ValueError):
+            add_content(
+                "Invalid date", "Date", vault, reckoning="Not a calendar", scale="day"
+            )
+        assert not (vault / "content/Invalid date.md").exists()
+
+    def test_date_history_and_clue_subject(self, vault: Path, calendar: None) -> None:
+        from armarium.clue import add_clue
+        from armarium.session import add_session
+
+        add_session(vault, campaign=1)
+        path = add_content("Year 42", "Date", vault, reckoning="Calendar", scale="year")
+        path.write_text(
+            path.read_text()
+            .replace(
+                "scale: year",
+                'scale: year\ncampaign_1:\n  first_session: "[[S-1-001]]"\n  last_session: "[[S-1-001]]"',
+            )
+            .replace(
+                "## Appearances\n- N/A",
+                "## Appearances\n- [[S-1-001]]: The party arrived during this year.",
+            )
+        )
+        add_clue(vault, campaign=1, text="The charter dates to [[Year 42]].")
+        assert not validate(vault).failed
+        path.write_text(
+            path.read_text().replace(
+                "## Appearances\n- [[S-1-001]]: The party arrived during this year.",
+                "## Appearances\n- N/A",
+            )
+        )
+        assert validate(path).failed
+
+    @pytest.mark.parametrize(
+        "reckoning", ["Calendar", "[[Calendar]]", "content/Calendar.md"]
+    )
+    def test_date_reckoning_resolution(
+        self, vault: Path, reckoning: str, calendar: None
+    ) -> None:
+        path = add_content("Year 42", "Date", vault, reckoning=reckoning, scale="year")
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        assert record.frontmatter["reckoning"] == "[[content/Calendar]]"
+        assert record.frontmatter["scale"] == "year"
+        assert not validate(vault).failed
+
+    @pytest.mark.parametrize("override", [False, True])
+    def test_date_template_defaults(
+        self, vault: Path, override: bool, calendar: None
+    ) -> None:
+        template = vault / "reference/templates/Content.md"
+        template.write_text(
+            template.read_text().replace(
+                "subtype:\n",
+                'subtype:\nreckoning: "[[Calendar]]"\nscale: year\nspan: 2\n',
+            )
+        )
+        path = add_content("Period", "Date", vault, scale="month" if override else None)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        assert record.frontmatter["scale"] == ("month" if override else "year")
+        assert record.frontmatter["span"] == 2
+
+    @pytest.mark.parametrize(
+        "reckoning,scale",
+        [
+            (None, "day"),
+            ("Calendar", None),
+            ("Calendar", " "),
+            ("Missing", "day"),
+            ("Alex", "day"),
+            ("[[Calendar|alias]]", "day"),
+        ],
+    )
+    def test_invalid_date(
+        self, vault: Path, reckoning: str | None, scale: str | None, calendar: None
+    ) -> None:
+        before = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
+        with pytest.raises(ValueError):
+            add_content("Invalid", "Date", vault, reckoning=reckoning, scale=scale)
+        assert {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()} == before
+
+    @pytest.mark.parametrize("field", ["reckoning", "scale"])
+    def test_date_options_on_other_subtype(self, vault: Path, field: str) -> None:
+        with pytest.raises(ValueError, match="only valid for Date"):
+            add_content(
+                "Invalid",
+                "Lore",
+                vault,
+                reckoning="Calendar" if field == "reckoning" else None,
+                scale="day" if field == "scale" else None,
+            )
+
     def test_template_player_default(self, vault: Path) -> None:
         template = vault / "reference/templates/Content.md"
         template.write_text(
@@ -99,6 +210,8 @@ class TestAddContent:
     @pytest.mark.parametrize("subtype", SUBTYPES)
     @pytest.mark.parametrize("campaign", [None, 1])
     def test_valid_stub(self, vault: Path, subtype: str, campaign: int | None) -> None:
+        if subtype == "Date":
+            add_content("Calendar", "Lore", vault)
         before = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
         destination = add_content(
             "New Entity",
@@ -106,6 +219,8 @@ class TestAddContent:
             vault,
             campaign=campaign,
             player="Alex" if subtype == "PC" else None,
+            reckoning="Calendar" if subtype == "Date" else None,
+            scale="month" if subtype == "Date" else None,
         )
         expected = (
             vault

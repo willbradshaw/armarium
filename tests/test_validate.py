@@ -1559,6 +1559,10 @@ class TestLinkTargets:
             ),
             ({"type": "[[Content]]", "subtype": ["PC"]}, {}),
             ({"type": "[[Content]]", "subtype": "Lore"}, {}),
+            (
+                {"type": "[[Content]]", "subtype": "Date"},
+                {"reckoning": Target("Content", frozenset({"Lore"}), local=True)},
+            ),
             ({"type": "[[Custom]]", "plays": "[[X]]"}, {}),
             ({}, {}),
             *[
@@ -3079,3 +3083,47 @@ class TestValidateTranscript:
     @pytest.mark.parametrize("record_type", ["Content", "Session", "Type"])
     def test_other_types(self, tmp_path: Path, record_type: str) -> None:
         assert self.check(tmp_path, "# Bad\n\nprose\n", record_type) == []
+
+
+class TestSessionDateLinks:
+    @pytest.mark.parametrize("field", ["in_game_start_date", "in_game_end_date"])
+    @pytest.mark.parametrize(
+        "target, fails",
+        [
+            ("shared", False),
+            ("same_campaign", False),
+            ("other_campaign", True),
+            ("lore", True),
+            ("missing", True),
+            ("plain_text", True),
+        ],
+    )
+    def test_date_target(
+        self, tmp_path: Path, field: str, target: str, fails: bool
+    ) -> None:
+        from armarium.add import add_campaign
+        from armarium.content import add_content
+        from armarium.init import init_vault
+        from armarium.session import add_session
+
+        root = init_vault(tmp_path / "my-vault")
+        add_campaign(root)
+        add_content("Calendar", "Lore", root)
+        campaign = {"same_campaign": 1, "other_campaign": 2}.get(target)
+        add_content(
+            "Day 8", "Date", root, campaign=campaign, reckoning="Calendar", scale="day"
+        )
+        session = add_session(root, campaign=1)
+        link = {
+            "lore": "[[Calendar]]",
+            "missing": "[[Missing]]",
+            "plain_text": "Day 8",
+        }.get(target, "[[Day 8]]")
+        session.write_text(
+            session.read_text().replace(f"{field}: null", f'{field}: "{link}"')
+        )
+        result = validate(session)
+        assert result.failed == fails, result.diagnostics
+        if fails:
+            expected_field = f"frontmatter.{field}" if target == "plain_text" else field
+            assert any(d.field == expected_field for d in result.diagnostics)

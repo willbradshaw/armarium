@@ -160,6 +160,135 @@
       "name": "Active Clues named view",
       "valid": true,
       "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base#Selected]]\n## Appearances\n"
+    },
+    {
+      "name": "Date invalid reckoning 0",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": null,
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date invalid reckoning 1",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "",
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date invalid reckoning 2",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "Calendar",
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date invalid reckoning 3",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar|alias]]",
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date invalid reckoning 4",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": 3,
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date invalid reckoning 5",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": [],
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date invalid scale 0",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]",
+        "scale": null
+      }
+    },
+    {
+      "name": "Date invalid scale 1",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]",
+        "scale": ""
+      }
+    },
+    {
+      "name": "Date invalid scale 2",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]",
+        "scale": "  "
+      }
+    },
+    {
+      "name": "Date invalid scale 3",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]",
+        "scale": 3
+      }
+    },
+    {
+      "name": "Date invalid scale 4",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]",
+        "scale": []
+      }
+    },
+    {
+      "name": "Date missing reckoning",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "scale": "month"
+      }
+    },
+    {
+      "name": "Date missing scale",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]"
+      }
+    },
+    {
+      "name": "Date custom calendar fields and scale",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Date",
+        "reckoning": "[[Calendar]]",
+        "scale": "month",
+        "year": "[[Year 42]]",
+        "day_of_month": 7,
+        "custom_calendar": {
+          "cycle": 3
+        }
+      }
     }
   ]
 }

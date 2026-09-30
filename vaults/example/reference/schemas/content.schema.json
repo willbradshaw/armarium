@@ -27,7 +27,8 @@
             "Location",
             "Faction",
             "Object",
-            "Lore"
+            "Lore",
+            "Date"
           ]
         },
         "summary": {
@@ -205,6 +206,34 @@
             "patternProperties": {
               "^campaign_[0-9]+$": {
                 "$ref": "#/$defs/objectCampaign"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Date"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "reckoning",
+              "scale"
+            ],
+            "properties": {
+              "reckoning": {
+                "$ref": "#/$defs/wikilink",
+                "description": "Link to a Lore Content record describing the calendar, in the same campaign or shared."
+              },
+              "scale": {
+                "type": "string",
+                "pattern": "\\S"
               }
             }
           }

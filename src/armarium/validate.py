@@ -121,6 +121,9 @@ CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
 LINK_TARGETS = {"type": Target("Type"), "status": Target("Status")}
 RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
     ("Status", None): {"applies_to": Target("Type")},
+    ("Content", "Date"): {
+        "reckoning": Target("Content", frozenset({"Lore"}), local=True)
+    },
     ("Content", "PC"): {"player": Target("Player", local=True)},
     ("Content", "Location"): {
         "parent_location": Target("Content", frozenset({"Location"}), local=True)
@@ -138,6 +141,8 @@ RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
         "superseded_by": Target("Clue", local=True),
     },
     ("Session", None): {
+        "in_game_start_date": Target("Content", frozenset({"Date"}), local=True),
+        "in_game_end_date": Target("Content", frozenset({"Date"}), local=True),
         "campaign": Target("Reference", local=True),
         "players_absent": Target("Player", local=True),
         "prepared_clues": Target("Clue", local=True),

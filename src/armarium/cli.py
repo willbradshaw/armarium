@@ -122,6 +122,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     content.add_argument(
         "--player", help="existing Player name or vault-relative path (PC only)"
     )
+    content.add_argument(
+        "--reckoning", help="calendar Lore name or vault-relative path (Date only)"
+    )
+    content.add_argument(
+        "--scale", help="calendar period, such as day or year (Date only)"
+    )
     clue.add_argument(
         "-h",
         "--help",

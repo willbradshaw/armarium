@@ -425,6 +425,39 @@ class TestMain:
             "Validation completed successfully",
         ]
 
+    def test_add_date_content(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from armarium.content import add_content
+        from armarium.init import init_vault
+        from armarium.parse import Record
+
+        root = init_vault(tmp_path / "my-vault")
+        add_content("Calendar", "Lore", root)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "add",
+                "content",
+                "Year 42",
+                "--subtype",
+                "Date",
+                "--reckoning",
+                "Calendar",
+                "--scale",
+                "year",
+                "--vault",
+                str(root),
+            ],
+        )
+        main()
+        record, _ = Record.parse(root / "content/Year 42.md", root)
+        assert record is not None
+        assert record.frontmatter["reckoning"] == "[[content/Calendar]]"
+        assert record.frontmatter["scale"] == "year"
+
     def test_add_content_missing_player(
         self,
         tmp_path: Path,

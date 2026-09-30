@@ -27,8 +27,8 @@ intended campaign when creating each Session.
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,
 `players_absent`, `in_game_start_date` and `in_game_end_date`. The campaign
 links to its Reference record, and the session number is a positive integer. Date
-is `YYYY-MM-DD` or null when unscheduled. In-game dates are nonblank strings in
-the campaign's calendar, or null when unrecorded.
+is `YYYY-MM-DD` or null when unscheduled. In-game dates link to Content with subtype Date, shared or in the same campaign,
+or are null when unrecorded.
 
 `players_absent` is a list of Player links, `[]` for no absences, or null when
 unrecorded. Optional `aliases` is a list of nonblank strings, an empty list, or

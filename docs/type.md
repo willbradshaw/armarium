@@ -39,7 +39,7 @@ Exactly `## Sessions` followed by one `.base` embed; nothing else.
 
 ### Description
 
-A character, place, group, object or piece of setting lore.
+A character, place, group, object, date or piece of setting lore.
 
 ### Location
 
@@ -51,13 +51,15 @@ A character, place, group, object or piece of setting lore.
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[types/Content]]` |
-| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object` or `Lore` |
+| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore` or `Date` |
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
+| `reckoning` | required for Date | nonempty wikilink to a Lore record describing the calendar, in the same campaign or shared |
+| `scale` | required for Date | nonblank string naming a calendar period, such as `day`, `month`, `year` or `century`; no fixed list of values |
 | `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#state) |
 
 ### Body
@@ -71,6 +73,11 @@ order without repeats, and each campaign that appears must have a
 [`campaign_N` block](campaign.md#state) whose
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
+
+For Date Content, Appearances records Sessions whose played events occur during
+that day or period. Historical content belongs in Notes; mentions alone do not
+count as appearances. Calendar-specific frontmatter fields are permitted as custom
+fields, with no built-in calendar arithmetic or session-date reconciliation.
 
 ## Note
 
@@ -159,7 +166,7 @@ One play session.
 | `session_number` | required | a positive integer equal to the ordinal in the filename |
 | `aliases` | optional | null, `[]` or a list of non-blank strings |
 | `players_absent` | required | null, or a list of links to [Players](#player) in the same campaign |
-| `in_game_start_date`, `in_game_end_date` | required | null, or non-blank text |
+| `in_game_start_date`, `in_game_end_date` | required | null, or a wikilink to Date Content in the same campaign or shared |
 | `prepared_clues`, `prepared_locations`, `prepared_npcs` | optional | ordered lists of links to [Clues](#clue) in the same campaign, and to Location and NPC [Content](#content) in the same campaign or shared; `[]` or omitted selects nothing |
 
 ### Body
