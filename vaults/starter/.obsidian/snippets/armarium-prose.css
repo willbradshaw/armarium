@@ -11,3 +11,17 @@
   > .bases-rendered-value span {
   display: inline;
 }
+
+/* Formula cells contain working links; give them the theme's link styling. */
+.bases-td:is([data-property="formula.text"], [data-property="formula.summary"])
+  > .bases-rendered-value .internal-link {
+  color: var(--link-color);
+  text-decoration-line: var(--link-decoration, underline);
+  cursor: var(--cursor-link, pointer);
+}
+
+.bases-td:is([data-property="formula.text"], [data-property="formula.summary"])
+  > .bases-rendered-value .internal-link:hover {
+  color: var(--link-color-hover);
+  text-decoration-line: var(--link-decoration-hover, underline);
+}
