@@ -1,6 +1,6 @@
 # Extensions
 
-Extensions add system-specific schemas, templates and reference pages to a vault.
+Extensions add additional schemas, templates and reference pages to a vault.
 Select D&D 5.5 (2024 rules) Gear support when [creating a vault](init.md):
 
 ```sh
