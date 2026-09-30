@@ -70,57 +70,17 @@ class TestPyproject:
     def test_installed_record_workflow(
         self, installed: tuple[Path, Path, Path], tmp_path: Path
     ) -> None:
-        """Create linked records through the installed commands in one vault."""
+        """Create two campaigns, linked records and recover from a validation error."""
         _, command, _ = installed
         root = tmp_path / "workflow-vault"
-        body_file = tmp_path / "speech.md"
-        body = "## Opening\n\n- [Alex] [[Mira]] checks [[Mira notes]] about [[C-1-0001]].\n"
-        body_file.write_text(body)
         environment = {
             key: value
             for key, value in os.environ.items()
             if key not in {"PYTHONPATH", "PYTHONHOME"}
         }
-        steps = [
-            ["init", str(root)],
-            ["add", "player", "Alex", "--campaign", "1", "--vault", str(root)],
-            [
-                "add",
-                "content",
-                "Mira",
-                "--subtype",
-                "PC",
-                "--player",
-                "Alex",
-                "--campaign",
-                "1",
-                "--vault",
-                str(root),
-            ],
-            ["add", "note", "Mira notes", "--campaign", "1", "--vault", str(root)],
-            [
-                "add",
-                "clue",
-                "--campaign",
-                "1",
-                "--vault",
-                str(root),
-                "--text",
-                "[[Mira]] knows the route; [[Mira]] drew the map.",
-            ],
-            ["add", "session", "--campaign", "1", "--vault", str(root)],
-            [
-                "add",
-                "transcript",
-                "S-1-001",
-                "--body-file",
-                str(body_file),
-                "--vault",
-                str(root),
-            ],
-            ["validate", str(root)],
-        ]
-        for arguments in steps:
+
+        def run(*arguments: str, expected: int = 0) -> subprocess.CompletedProcess[str]:
+            before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
             result = subprocess.run(
                 [str(command), *arguments],
                 cwd=tmp_path,
@@ -129,39 +89,97 @@ class TestPyproject:
                 text=True,
                 check=False,
             )
-            assert result.returncode == 0, result.stderr
-        assert (root / "campaigns/campaign_1/notes/Mira notes.md").is_file()
-        pc = root / "campaigns/campaign_1/content/Mira.md"
-        assert "reference/players/Alex" in pc.read_text()
-        transcript = (
-            root / "campaigns/campaign_1/sessions/transcripts/S-1-001 Transcript.md"
-        )
-        assert transcript.read_text().endswith(body)
-        assert "[[campaigns/campaign_1/sessions/S-1-001]]" in transcript.read_text()
-        assert body_file.read_text() == body
-        clue = root / "campaigns/campaign_1/clues/C-1-0001.md"
-        assert clue.read_text().count("[[campaigns/campaign_1/content/Mira]]") == 1
-        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
-        refused = subprocess.run(
-            [
-                str(command),
+            assert result.returncode == expected, result.stderr
+            assert "Traceback" not in result.stderr
+            assert all(p.read_bytes() == contents for p, contents in before.items())
+            return result
+
+        run("init", str(root))
+        run("add", "campaign", "--vault", str(root))
+        for name, subtype in (
+            ("Harbor", "Location"),
+            ("Pilot", "NPC"),
+            ("Guild", "Faction"),
+            ("Compass", "Object"),
+            ("Tides", "Lore"),
+        ):
+            run("add", "content", name, "--subtype", subtype, "--vault", str(root))
+        run("add", "note", "World notes", "--vault", str(root))
+        for number, player, character in ((1, "Alex", "Mira"), (2, "Sam", "Tarin")):
+            scope = ("--campaign", str(number), "--vault", str(root))
+            campaign = root / "campaigns" / f"campaign_{number}"
+            run("add", "player", player, *scope)
+            run(
+                "add",
+                "content",
+                character,
+                "--subtype",
+                "PC",
+                "--player",
+                player,
+                *scope,
+            )
+            run("add", "note", f"{character} notes", *scope)
+            run(
                 "add",
                 "clue",
-                "--campaign",
-                "1",
+                "--text",
+                f"[[{character}]] knows [[Harbor]]; [[{character}]] drew the map.",
+                *scope,
+            )
+            run("add", "session", *scope)
+            body_file = tmp_path / f"speech-{number}.md"
+            body = (
+                f"## Opening\n\n- [{player}] [[{character}]] checks "
+                f"[[{character} notes]] about [[C-{number}-0001]].\n"
+            )
+            body_file.write_text(body)
+            run(
+                "add",
+                "transcript",
+                f"S-{number}-001",
+                "--body-file",
+                str(body_file),
                 "--vault",
                 str(root),
+            )
+            assert (campaign / f"notes/{character} notes.md").is_file()
+            pc = campaign / f"content/{character}.md"
+            assert f"reference/players/{player}" in pc.read_text()
+            transcript = campaign / f"sessions/transcripts/S-{number}-001 Transcript.md"
+            assert transcript.read_text().endswith(body)
+            assert (
+                f"[[campaigns/campaign_{number}/sessions/S-{number}-001]]"
+                in transcript.read_text()
+            )
+            assert body_file.read_text() == body
+            clue = campaign / f"clues/C-{number}-0001.md"
+            assert (
+                clue.read_text().count(
+                    f"[[campaigns/campaign_{number}/content/{character}]]"
+                )
+                == 1
+            )
+            assert "[[content/Harbor]]" in clue.read_text()
+            refused = run(
+                "add",
+                "clue",
                 "--text",
-                "[[Mira notes]] contains the route.",
-            ],
-            cwd=tmp_path,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert refused.returncode == 1 and "must target Content" in refused.stderr
-        assert {p: p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+                f"[[{character} notes]] contains the route.",
+                *scope,
+                expected=1,
+            )
+            assert "must target Content" in refused.stderr
+            assert not (campaign / f"clues/C-{number}-0002.md").exists()
+        run("validate", str(root))
+
+        note = root / "notes/World notes.md"
+        original = note.read_bytes()
+        note.write_bytes(original + b"\n[[Missing record]]\n")
+        failure = run("validate", str(root), expected=1)
+        assert "Missing record" in failure.stderr
+        note.write_bytes(original)
+        run("validate", str(root))
 
     @pytest.mark.parametrize("scope", ["shared", "inferred", "explicit"])
     def test_installed_add_note(

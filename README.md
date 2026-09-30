@@ -7,12 +7,17 @@ demonstrates this repository's conventions.
 
 ## Create a vault
 
-With Python 3.14+, install Armarium from this checkout and create a vault:
+With Python 3.14+ and [uv](https://docs.astral.sh/uv/guides/tools/), install
+Armarium from this checkout and create a vault:
 
 ```sh
-python -m pip install .
+uv tool install .
 armarium init ../my-vault
 ```
+
+If `armarium` is not on your PATH, run `uv tool update-shell` and restart your
+terminal. To reinstall after updating this checkout, use
+`uv tool install --reinstall-package armarium .`.
 
 Open the new folder in Obsidian and edit
 `campaigns/campaign_1/reference/Campaign.md`. See [Creating a vault](docs/init.md)
@@ -34,7 +39,8 @@ enabled.
 | `reference/` | Templates, type descriptions, schemas, statuses, and shared reference material. |
 | `assets/` | Maps, images, and handouts. |
 
-Copy a file from `reference/templates/` to create a record. [Records](docs/record.md)
+Use [`armarium add`](docs/add.md#adding-a-record) or copy a file from
+`reference/templates/` to create a record. [Records](docs/record.md)
 describes what every record shares and [Types](docs/type.md) the fields, body
 and rules of each type.
 
@@ -54,12 +60,11 @@ Planned work is tracked in the [issues](https://github.com/willbradshaw/armarium
 
 ## Validate records
 
-With Python 3.14+, install from this checkout and validate a record:
+Validate a record or a whole vault:
 
 ```sh
-python -m pip install .
 armarium validate path/to/record.md
-armarium validate .
+armarium validate ../my-vault
 ```
 
 See [Validation](docs/validate.md) for the command's options, what is checked
