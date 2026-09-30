@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add the Date Content subtype with required calendar and scale fields, validation,
+  and `armarium add content` support.
+
 - Ignore local vaults other than starter and example, and exclude them from package
   builds and package-test setup.
 

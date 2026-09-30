@@ -117,6 +117,31 @@ class TestPyproject:
         ):
             run("add", "content", name, "--subtype", subtype, "--vault", str(root))
         run("add", "note", "World notes", "--vault", str(root))
+        run(
+            "add",
+            "content",
+            "Harbor Calendar",
+            "--subtype",
+            "Lore",
+            "--vault",
+            str(root),
+        )
+        run(
+            "add",
+            "content",
+            "Year 42",
+            "--subtype",
+            "Date",
+            "--reckoning",
+            "Harbor Calendar",
+            "--scale",
+            "year",
+            "--vault",
+            str(root),
+        )
+        assert (
+            "[[content/Harbor Calendar]]" in (root / "content/Year 42.md").read_text()
+        )
         for number, player, character in ((1, "Alex", "Mira"), (2, "Sam", "Tarin")):
             scope = ("--campaign", str(number), "--vault", str(root))
             campaign = root / "campaigns" / f"campaign_{number}"

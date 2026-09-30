@@ -27,7 +27,8 @@
             "Location",
             "Faction",
             "Object",
-            "Lore"
+            "Lore",
+            "Date"
           ]
         },
         "summary": {
@@ -205,6 +206,33 @@
             "patternProperties": {
               "^campaign_[0-9]+$": {
                 "$ref": "#/$defs/objectCampaign"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Date"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "reckoning",
+              "scale"
+            ],
+            "properties": {
+              "reckoning": {
+                "$ref": "#/$defs/wikilink"
+              },
+              "scale": {
+                "type": "string",
+                "pattern": "\\S"
               }
             }
           }

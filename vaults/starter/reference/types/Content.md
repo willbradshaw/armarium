@@ -4,7 +4,7 @@ directories: { shared: content, campaign: content }
 ---
 # Content
 
-Content records describe characters, places, groups, objects, or setting lore.
+Content records describe characters, places, groups, objects, dates, or setting lore.
 Keep each shared entity in one record under `content/`; campaign-specific entries
 live in `campaigns/campaign_1/content/` (or the corresponding campaign folder).
 
@@ -14,7 +14,7 @@ and add its required fields.
 ## Fields
 
 Every Content record requires `type`, `subtype`, and `summary`. The template sets
-`type`; choose subtype NPC, PC, Location, Faction, Object or Lore. Write a short
+`type`; choose subtype NPC, PC, Location, Faction, Object, Lore or Date. Write a short
 summary of stable identity, or leave it empty for a stub. `aliases` is optional:
 use a list of alternate names, or omit it or leave it empty when there are none.
 
@@ -26,6 +26,10 @@ use a list of alternate names, or omit it or leave it empty when there are none.
 | Faction | `members`: empty if unknown, or a list of PC/NPC Content links. An empty list means no recorded members. |
 | Object | `held_by` inside each campaign block: holder link(s) or `GONE`; may be empty before entering play. |
 | Lore | None. |
+| Date | `reckoning`: a nonempty link to calendar Content. `scale`: a nonblank calendar-defined string, such as day or year. |
+
+Dates represent particular days or periods within a calendar. Calendar-specific
+fields are custom frontmatter; no universal date notation or scale list is imposed.
 
 Use bare `field:` for null and quote YAML wikilinks. Additional custom fields are
 allowed. Object holders are PC, NPC or Faction Content. Shared-party possession
@@ -45,7 +49,9 @@ the entry's recorded state. Each existing block requires `first_session` and
 and latest Sessions in that campaign's history.
 
 Use one Appearances list across campaigns; the linked Session IDs identify each
-entry's campaign. Record actual interaction, not mentions/prep, and noteworthy PC
+entry's campaign. For Dates, appearances record Sessions whose played events occur within that day
+or period; historical information and mentions belong in Notes. For other subtypes,
+record actual interaction, not mentions/prep, and noteworthy PC
 contributions rather than attendance. Use `N/A` only when there are no appearances.
 Keep acquisition and transfer history in Session records when current possession
 changes.

@@ -121,6 +121,7 @@ CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
 LINK_TARGETS = {"type": Target("Type"), "status": Target("Status")}
 RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
     ("Status", None): {"applies_to": Target("Type")},
+    ("Content", "Date"): {"reckoning": Target("Content", local=True)},
     ("Content", "PC"): {"player": Target("Player", local=True)},
     ("Content", "Location"): {
         "parent_location": Target("Content", frozenset({"Location"}), local=True)

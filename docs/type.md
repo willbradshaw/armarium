@@ -39,7 +39,7 @@ Exactly `## Sessions` followed by one `.base` embed; nothing else.
 
 ### Description
 
-A character, place, group, object or piece of setting lore.
+A character, place, group, object, date or piece of setting lore.
 
 ### Location
 
@@ -51,13 +51,15 @@ A character, place, group, object or piece of setting lore.
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[types/Content]]` |
-| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object` or `Lore` |
+| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore` or `Date` |
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
+| `reckoning` | required for Date | nonempty wikilink to calendar Content in the same campaign or shared |
+| `scale` | required for Date | nonblank string naming a calendar period; no fixed list of values |
 | `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#state) |
 
 ### Body
@@ -71,6 +73,11 @@ order without repeats, and each campaign that appears must have a
 [`campaign_N` block](campaign.md#state) whose
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
+
+For Date Content, Appearances records Sessions whose played events occur during
+that day or period. Historical content belongs in Notes; mentions alone do not
+count as appearances. Calendar-specific frontmatter fields are permitted as custom
+fields, with no built-in calendar arithmetic or session-date reconciliation.
 
 ## Note
 

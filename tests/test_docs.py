@@ -70,6 +70,8 @@ class TestSchemaFields:
                     "members",
                     "parent_location",
                     "player",
+                    "reckoning",
+                    "scale",
                     "stats",
                     "subtype",
                     "summary",

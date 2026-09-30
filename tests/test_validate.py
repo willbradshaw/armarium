@@ -1559,6 +1559,10 @@ class TestLinkTargets:
             ),
             ({"type": "[[Content]]", "subtype": ["PC"]}, {}),
             ({"type": "[[Content]]", "subtype": "Lore"}, {}),
+            (
+                {"type": "[[Content]]", "subtype": "Date"},
+                {"reckoning": Target("Content", local=True)},
+            ),
             ({"type": "[[Custom]]", "plays": "[[X]]"}, {}),
             ({}, {}),
             *[
