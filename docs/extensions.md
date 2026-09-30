@@ -39,9 +39,21 @@ the vault; validation failures leave the removal in place for correction.
 
 ## Updating
 
-Upgrading Armarium does not change installed extension files. Currently, refreshing
-an extension requires removing it and enabling it again with the newer Armarium
-installation. There is no dedicated update command or installed-version tracking.
+```sh
+armarium extension update EXTENSION --vault ../my-vault
+```
+
+After upgrading Armarium, run this command to replace an installed extension with
+its current files and rules. Local edits to installed files are overwritten;
+records and separate custom schemas are preserved. Installation failures restore
+the previous extension. Validation runs afterward; failures leave the updated
+extension installed for record corrections.
+
+`reference/extensions.json` records the supplying `armarium_version` on enable
+and update. Older installations without this field remain supported and acquire
+it on update. Updating is allowed even when versions match. Replacing an extension
+installed by a newer Armarium version requires `--allow-downgrade`. The command
+does not upgrade Armarium or migrate records automatically.
 
 ## Custom schemas
 

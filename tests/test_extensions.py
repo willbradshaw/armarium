@@ -515,3 +515,275 @@ class TestIsTemplate:
     )
     def test_directories(self, vault: Path, path: str, expected: bool) -> None:
         assert is_template(vault / path, vault) == expected
+
+
+class TestArmariumVersion:
+    @pytest.mark.parametrize("packaged", [False, True])
+    def test_resource_version(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, packaged: bool
+    ) -> None:
+        import armarium.extensions as extensions
+
+        package = tmp_path / "package"
+        package.mkdir()
+        if packaged:
+            (package / "extensions").mkdir()
+        project = tmp_path / "checkout"
+        project.mkdir()
+        (project / "pyproject.toml").write_text('[project]\nversion = "2.3.4"\n')
+        monkeypatch.setattr(extensions, "files", lambda name: package)
+        monkeypatch.setattr(
+            extensions, "__file__", str(project / "src/armarium/extensions.py")
+        )
+        monkeypatch.setattr(extensions, "version", lambda name: "3.4.5")
+        assert extensions._armarium_version() == ("3.4.5" if packaged else "2.3.4")
+
+
+class TestInstallExtension:
+    def test_records_version(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import armarium.extensions as extensions
+
+        monkeypatch.setattr(extensions, "_armarium_version", lambda: "2.0.0")
+        extensions._install_extension("example", vault, {})
+        assert _declarations(vault / CONFIG)["example"]["armarium_version"] == "2.0.0"
+        assert not validate(vault).failed
+
+
+@pytest.fixture
+def replacement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    import armarium.extensions as extensions
+
+    source = tmp_path / "replacement"
+    shutil.copytree(ROOT / "extensions/example", source)
+    monkeypatch.setattr(extensions, "_extension", lambda name: source)
+    monkeypatch.setattr(extensions, "_armarium_version", lambda: "2.0.0")
+    return source
+
+
+class TestUpdateExtension:
+    @pytest.mark.parametrize("previous", [None, "1.0.0", "2.0.0"])
+    def test_replaces_files_and_tracks_version(
+        self, enabled: Path, replacement: Path, previous: str | None
+    ) -> None:
+        from armarium.extensions import update_extension
+
+        config = enabled / CONFIG
+        data = _declarations(config)
+        if previous is None:
+            data["example"].pop("armarium_version", None)
+        else:
+            data["example"]["armarium_version"] = previous
+        config.write_text(json.dumps(data))
+        directory = enabled / "reference/extensions/example"
+        (directory / "obsolete.md").write_text("Local addition")
+        (directory / "README.md").write_text("Local edits")
+        record = add_content("Harbor", "Location", enabled)
+        before = record.read_bytes()
+        (replacement / "README.md").write_text(
+            (replacement / "README.md").read_text() + "\nUpdated reference.\n"
+        )
+        assert update_extension("example", enabled) == enabled
+        assert not (directory / "obsolete.md").exists()
+        assert (directory / "README.md").read_bytes() == (
+            replacement / "README.md"
+        ).read_bytes()
+        assert _declarations(config)["example"]["armarium_version"] == "2.0.0"
+        assert record.read_bytes() == before
+        assert not validate(enabled).failed
+        assert not list(enabled.glob(".armarium-update-*"))
+
+    def test_keeps_custom_rules_and_shared_references(
+        self, enabled: Path, replacement: Path
+    ) -> None:
+        from armarium.extensions import update_extension
+
+        config = enabled / CONFIG
+        data = _declarations(config)
+        data["custom"] = {
+            "rules": [
+                {
+                    "type": "Content",
+                    "subtype": "Location",
+                    "schema": "extensions/example/schemas/location.schema.json",
+                }
+            ]
+        }
+        config.write_text(json.dumps(data))
+        update_extension("example", enabled)
+        assert _declarations(config)["custom"] == data["custom"]
+        assert not validate(enabled).failed
+
+    @pytest.mark.parametrize("missing", ["schema", "directory"])
+    def test_repairs_old_installation(
+        self, enabled: Path, replacement: Path, missing: str
+    ) -> None:
+        from armarium.extensions import update_extension
+
+        directory = enabled / "reference/extensions/example"
+        if missing == "schema":
+            (directory / "schemas/location.schema.json").unlink()
+        else:
+            shutil.rmtree(directory)
+        update_extension("example", enabled)
+        assert not validate(enabled).failed
+
+    @pytest.mark.parametrize("local", [False, True])
+    def test_requires_installed_extension(self, vault: Path, local: bool) -> None:
+        from armarium.extensions import update_extension
+
+        if local:
+            (vault / CONFIG).write_text(
+                json.dumps(
+                    {
+                        "example": {
+                            "rules": [
+                                {
+                                    "type": "Content",
+                                    "schema": "schemas/content.schema.json",
+                                }
+                            ]
+                        }
+                    }
+                )
+            )
+        before = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
+        with pytest.raises(ValueError, match="not installed"):
+            update_extension("example", vault)
+        assert before == {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
+
+    @pytest.mark.parametrize(
+        "scenario", ["invalid-schema", "conflict", "unknown-source"]
+    )
+    def test_rejected_update_restores_original(
+        self, enabled: Path, replacement: Path, scenario: str
+    ) -> None:
+        from armarium.extensions import update_extension
+
+        if scenario == "invalid-schema":
+            (replacement / "schemas/location.schema.json").write_text('{"type": "bad"}')
+        elif scenario == "conflict":
+            config = enabled / CONFIG
+            data = _declarations(config)
+            data["local"] = {
+                "rules": [
+                    {
+                        "type": "Content",
+                        "subtype": "Lore",
+                        "schema": "schemas/content.schema.json",
+                        "template": "templates/Lore.md",
+                    }
+                ]
+            }
+            config.write_text(json.dumps(data))
+            template = enabled / "reference/templates/Lore.md"
+            template.write_text(
+                (enabled / "reference/templates/Content.md")
+                .read_text()
+                .replace("subtype:", "subtype: Lore")
+            )
+            declaration = _declarations(replacement / "extension.json")
+            declaration["example"]["rules"][0].pop("subtype")
+            (replacement / "extension.json").write_text(json.dumps(declaration))
+        else:
+            (replacement / "extension.json").unlink()
+        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        with pytest.raises((ValueError, OSError)):
+            update_extension("example", enabled)
+        assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        assert not list(enabled.glob(".armarium-update-*"))
+
+    @pytest.mark.parametrize("failure", [OSError, KeyboardInterrupt])
+    @pytest.mark.parametrize("stage", ["move", "config", "install"])
+    def test_interrupted_update_rolls_back(
+        self,
+        enabled: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        stage: str,
+        failure: type[BaseException],
+    ) -> None:
+        import armarium.extensions as extensions
+
+        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        if stage == "move":
+
+            def rename(path: Path, target: Path) -> Path:
+                raise failure("cannot move")
+
+            monkeypatch.setattr(Path, "rename", rename)
+        elif stage == "config":
+
+            def write(path: Path, content: bytes) -> None:
+                raise failure("cannot write")
+
+            monkeypatch.setattr(extensions, "_write_config", write)
+        else:
+            install = extensions._install_extension
+
+            def fail(name: str, root: Path, declarations: dict) -> None:
+                install(name, root, declarations)
+                raise failure("interrupted after replacement")
+
+            monkeypatch.setattr(extensions, "_install_extension", fail)
+        with pytest.raises(failure):
+            extensions.update_extension("example", enabled)
+        assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        assert not list(enabled.glob(".armarium-update-*"))
+
+
+class TestUpdateDowngrade:
+    @pytest.mark.parametrize(
+        "previous,available,downgrade",
+        [
+            ("2.0", "1.0", True),
+            ("0.10", "0.9", True),
+            ("1.0", "1.0rc1", True),
+            ("1.0.post1", "1.0", True),
+            ("1.0", "1.0.dev1", True),
+            ("1.0", "1.0.0", False),
+            ("1.0rc1", "1.0", False),
+            ("0.9", "0.10", False),
+        ],
+    )
+    @pytest.mark.parametrize("allow", [False, True])
+    def test_version_ordering(
+        self,
+        enabled: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        previous: str,
+        available: str,
+        downgrade: bool,
+        allow: bool,
+    ) -> None:
+        import armarium.extensions as extensions
+
+        config = enabled / CONFIG
+        declarations = _declarations(config)
+        declarations["example"]["armarium_version"] = previous
+        config.write_text(json.dumps(declarations))
+        monkeypatch.setattr(extensions, "_armarium_version", lambda: available)
+        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        if downgrade and not allow:
+            with pytest.raises(ValueError, match="--allow-downgrade"):
+                extensions.update_extension("example", enabled)
+            assert before == {
+                p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()
+            }
+            assert not list(enabled.glob(".armarium-update-*"))
+        else:
+            extensions.update_extension("example", enabled, allow_downgrade=allow)
+            assert _declarations(config)["example"]["armarium_version"] == available
+
+    @pytest.mark.parametrize("allow", [False, True])
+    def test_invalid_recorded_version(self, enabled: Path, allow: bool) -> None:
+        from armarium.extensions import update_extension
+
+        config = enabled / CONFIG
+        data = _declarations(config)
+        data["example"]["armarium_version"] = "unknown"
+        config.write_text(json.dumps(data))
+        original = config.read_bytes()
+        with pytest.raises(ValueError, match="Invalid version"):
+            update_extension("example", enabled, allow_downgrade=allow)
+        assert config.read_bytes() == original

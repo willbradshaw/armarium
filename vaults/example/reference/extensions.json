@@ -8,6 +8,7 @@
         "template": "extensions/example/templates/Location.md"
       }
     ],
-    "installed": true
+    "installed": true,
+    "armarium_version": "0.1.0"
   }
 }
