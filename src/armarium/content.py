@@ -1,5 +1,6 @@
 """Create valid Content stubs from vault-local templates and declarations."""
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,7 @@ from armarium.index import VaultIndex
 from armarium.lib import CAMPAIGN_NAME, parse_wikilink
 from armarium.parse import Record
 
-SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date")
+SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear")
 
 
 def _content_frontmatter(
@@ -53,7 +54,12 @@ def _content_frontmatter(
     }
     data["subtype"] = subtype
     data.setdefault("summary", None)
-    nullable = {"NPC": "stats", "Location": "parent_location", "Faction": "members"}
+    nullable = {
+        "NPC": "stats",
+        "Location": "parent_location",
+        "Faction": "members",
+        "Gear": "source",
+    }
     if subtype in nullable:
         data.setdefault(nullable[subtype], None)
     if player is not None:
@@ -75,10 +81,26 @@ def _content_frontmatter(
         state = dict(state)
         state.setdefault("first_session", None)
         state.setdefault("last_session", None)
-        if subtype == "Object":
+        if subtype in {"Object", "Gear"}:
             state.setdefault("held_by", None)
         data[f"campaign_{campaign}"] = state
     return data
+
+
+def _content_body(body: str, subtype: str) -> str:
+    """Preserve the template body, adding a rules callout for a new Gear stub.
+
+    Args:
+        body: Markdown from the vault-local Content template.
+        subtype: Selected Content subtype.
+
+    Returns:
+        str: Original body, prefixed with an empty rules callout when Gear lacks
+            one. Existing callouts are preserved; schema validation checks placement.
+    """
+    if subtype == "Gear" and not re.search(r"(?m)^>[ \t]+\[!rules\]", body):
+        return "> [!rules]\n>\n\n" + body
+    return body
 
 
 def add_content(
@@ -95,7 +117,7 @@ def add_content(
 
     Args:
         name: Record filename without .md; spaces are permitted.
-        subtype: NPC, PC, Location, Faction, Object, Lore or Date.
+        subtype: NPC, PC, Location, Faction, Object, Lore, Date or Gear.
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number. When omitted, infer from the working
             directory inside the selected vault, otherwise create shared content.
@@ -145,5 +167,5 @@ def add_content(
     metadata = _content_frontmatter(
         template, subtype, campaign, links["player"], links["reckoning"], scale
     )
-    text = record_text(metadata, template.body.text)
+    text = record_text(metadata, _content_body(template.body.text, subtype))
     return write_record(destination, text, root, "Content")

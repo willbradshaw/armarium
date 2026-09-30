@@ -41,6 +41,6 @@ Session of that campaign in the record's Appearances. `N` must be an existing
 campaign, and a record under `campaigns/campaign_N/content` may carry only that
 campaign's block; shared Content may carry a block for any campaign.
 
-A Content record with the Object subtype has an additional field in its campaign blocks: `held_by`. This is null before the object enters play; then a link to a Content entry denoting the PC, NPC or Faction holding the object, or a list thereof for shared possession; then `GONE` if the object has left play.
+A Content record with the Object or Gear subtype has an additional field in its campaign blocks: `held_by`. This is null before the object enters play; then a link to a Content entry denoting the PC, NPC or Faction holding the object, or a list thereof for shared possession; then `GONE` if the object has left play.
 
 In addition to the `campaign_N` blocks, a Content entry must also describe its subject's appearances in each campaign in its Appearances section; see [Content](type.md#content) for more details.

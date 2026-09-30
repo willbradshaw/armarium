@@ -114,6 +114,7 @@ class TestPyproject:
             ("Guild", "Faction"),
             ("Compass", "Object"),
             ("Tides", "Lore"),
+            ("Harness", "Gear"),
         ):
             run("add", "content", name, "--subtype", subtype, "--vault", str(root))
         run("add", "note", "World notes", "--vault", str(root))

@@ -14,7 +14,7 @@ and add its required fields.
 ## Fields
 
 Every Content record requires `type`, `subtype`, and `summary`. The template sets
-`type`; choose subtype NPC, PC, Location, Faction, Object, Lore or Date. Write a short
+`type`; choose subtype NPC, PC, Location, Faction, Object, Lore, Date or Gear. Write a short
 summary of stable identity, or leave it empty for a stub. `aliases` is optional:
 use a list of alternate names, or omit it or leave it empty when there are none.
 
@@ -24,9 +24,15 @@ use a list of alternate names, or omit it or leave it empty when there are none.
 | PC | `player`: a nonempty wikilink to a Player record. |
 | Location | `parent_location`: empty or a wikilink to Location Content. |
 | Faction | `members`: empty if unknown, or a list of PC/NPC Content links. An empty list means no recorded members. |
-| Object | `held_by` inside each campaign block: holder link(s) or `GONE`; may be empty before entering play. |
+| Object, Gear | `held_by` inside each campaign block: holder link(s) or `GONE`; may be empty before entering play. |
+| Gear | `source`: publication or homebrew attribution; empty when unrecorded. Optional `image` and `url`. |
 | Lore | None. |
 | Date | `reckoning`: a nonempty link to Lore describing the calendar. `scale`: a nonblank calendar-defined string, such as day or year. |
+
+Object describes narrative artifacts; Gear describes equipment with recorded game
+mechanics, whether magical or mundane. Gear may add an `image` path relative to
+the vault root or an image URL, and an HTTP/HTTPS `url` for its source. These fields
+may be omitted or empty. Other rules-specific fields are custom frontmatter.
 
 Dates represent particular days or periods within a calendar. Recurring calendar
 concepts, such as a named month or weekday, are Lore rather than Dates.
@@ -34,11 +40,14 @@ Calendar-specific fields are custom frontmatter. A custom vault-local schema can
 notation and allowed scales; the standard schema does not impose those constraints.
 
 Use bare `field:` for null and quote YAML wikilinks. Additional custom fields are
-allowed. Object holders are PC, NPC or Faction Content. Shared-party possession
+allowed. Object and Gear holders are PC, NPC or Faction Content. Shared-party possession
 links to the party's Faction. Lists represent split sets. `GONE` means the object
 has left play, for example through sale, loss, destruction or consumption.
 
 ## Body and campaign history
+
+Gear begins with a `> [!rules]` callout containing its rules text, optionally
+followed by an image embed. An empty callout is allowed for a stub.
 
 All subtypes share Notes, Active Clues and Appearances, in that order. Notes contain
 established information. A Clue is a candidate fact; displaying it under Active
@@ -69,6 +78,6 @@ or Appearances into campaign subheadings.
 A Content record’s frontmatter requires `type`, `subtype`, `summary` and the
 subtype fields listed above. Its body contains Notes, Active Clues and
 Appearances headings in that order. Each campaign block includes `first_session`
-and `last_session`; Object campaign blocks also include `held_by`.
+and `last_session`; Object and Gear campaign blocks also include `held_by`.
 
 See the [Content schema](../schemas/content.schema.json).
