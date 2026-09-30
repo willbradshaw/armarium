@@ -28,7 +28,8 @@
             "Faction",
             "Object",
             "Lore",
-            "Date"
+            "Date",
+            "Gear"
           ]
         },
         "summary": {
@@ -195,7 +196,10 @@
           "if": {
             "properties": {
               "subtype": {
-                "const": "Object"
+                "enum": [
+                  "Object",
+                  "Gear"
+                ]
               }
             },
             "required": [
@@ -234,6 +238,62 @@
               "scale": {
                 "type": "string",
                 "pattern": "\\S"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Gear"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "required": [
+              "source"
+            ],
+            "properties": {
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "\\S"
+                  }
+                ],
+                "description": "Provenance, such as a publication or homebrew attribution; null when unrecorded."
+              },
+              "image": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "\\S"
+                  }
+                ],
+                "description": "Optional vault-relative image path or image URL."
+              },
+              "url": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "format": "uri",
+                    "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^/?#\\s]+(?:[/?#]|$)"
+                  }
+                ],
+                "description": "Optional source URL."
               }
             }
           }
@@ -383,7 +443,33 @@
           }
         }
       ],
-      "description": "held_by records current possession and is required in each existing Object campaign block. Holder links must resolve to PC, NPC or Faction Content. Collective party possession links to the party's Faction. Lists represent split sets. GONE means sold, consumed, destroyed, lost or otherwise out of play, and can mark departed portions in a list. Before entering play, null is allowed and GONE is not. After entering play a holder or GONE is required; empty lists/items are invalid. Session records retain acquisition and transfer history."
+      "description": "held_by records current possession and is required in each existing Object or Gear campaign block. Holder links must resolve to PC, NPC or Faction Content. Collective party possession links to the party's Faction. Lists represent split sets. GONE means sold, consumed, destroyed, lost or otherwise out of play, and can mark departed portions in a list. Before entering play, null is allowed and GONE is not. After entering play a holder or GONE is required; empty lists/items are invalid. Session records retain acquisition and transfer history."
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "frontmatter": {
+            "properties": {
+              "subtype": {
+                "const": "Gear"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "body": {
+            "pattern": "^(?:[ \\t]*\\r?\\n)*>[ \\t]+\\[!rules\\](?:[+-])?(?:[ \\t][^\\r\\n]*)?[ \\t]*(?:\\r?\\n|$)",
+            "description": "Gear starts with a rules callout, optionally followed by an image before Notes. An empty callout is allowed for a stub."
+          }
+        }
+      }
+    }
+  ]
 }

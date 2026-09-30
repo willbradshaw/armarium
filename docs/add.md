@@ -87,7 +87,7 @@ armarium add content "Port Briselle" --subtype Location --vault ../my-vault
 armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
 ```
 
-Use `--subtype NPC|PC|Location|Faction|Object|Lore|Date` to select the [Content
+Use `--subtype NPC|PC|Location|Faction|Object|Lore|Date|Gear` to select the [Content
 subtype](type.md#content). Required nullable subtype fields start empty unless set in
 the template. PCs need an existing [Player](#players), supplied with `--player` or in
 the template. Dates need `reckoning` and `scale`, supplied with `--reckoning` and
@@ -99,7 +99,11 @@ armarium add content "Year 42" --subtype Date --reckoning "Royal Calendar" --sca
 
 Shared records start without [campaign state](campaign.md#state). Campaign-specific
 records get a `campaign_N` block, where `N` is the selected campaign number; Objects
-also get `held_by` in that block.
+and Gear also get `held_by` in that block.
+
+Gear starts with an empty `source` unless supplied by the template. Its body
+starts with a rules callout; an existing template callout is preserved, otherwise
+an empty one is added before the template body.
 
 ### Sessions
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add Gear Content with provenance, a rules callout, optional image/source URL,
+  and campaign possession tracking.
 - Clarify Date versus recurring calendar lore, and how brainstorming Notes become
   established Content or Session preparation.
 - Add the Date Content subtype with required calendar and scale fields, validation,

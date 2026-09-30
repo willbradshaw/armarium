@@ -72,6 +72,7 @@ class TestSchemaFields:
                     "player",
                     "reckoning",
                     "scale",
+                    "source",
                     "stats",
                     "subtype",
                     "summary",

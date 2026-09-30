@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from armarium.add import add_campaign
-from armarium.content import SUBTYPES, _content_frontmatter, add_content
+from armarium.content import SUBTYPES, _content_body, _content_frontmatter, add_content
 from armarium.parse import Record
 from armarium.validate import validate
 
@@ -48,13 +48,14 @@ class TestContentFrontmatter:
         assert "campaign_1" not in metadata
         if campaign is not None:
             assert metadata["campaign_2"]["first_session"] is None
-            if subtype == "Object":
+            if subtype in {"Object", "Gear"}:
                 assert metadata["campaign_2"]["held_by"] is None
-        if subtype in {"NPC", "Location", "Faction"}:
+        if subtype in {"NPC", "Location", "Faction", "Gear"}:
             field = {
                 "NPC": "stats",
                 "Location": "parent_location",
                 "Faction": "members",
+                "Gear": "source",
             }[subtype]
             assert field in metadata and metadata[field] is None
 
@@ -73,7 +74,62 @@ class TestContentFrontmatter:
             )
 
 
+class TestContentBody:
+    @pytest.mark.parametrize("subtype", ["Gear", "Object", "Lore"])
+    @pytest.mark.parametrize("callout", ["", "> [!rules]\n> Local rules.\n\n"])
+    def test_preserves_template(self, subtype: str, callout: str) -> None:
+        body = callout + "## Notes\nKeep this text.\n"
+        result = _content_body(body, subtype)
+        assert result.endswith(body)
+        if subtype == "Gear":
+            assert result.count("> [!rules]") == 1
+            assert result.startswith("> [!rules]")
+        else:
+            assert result == body
+
+
 class TestAddContent:
+    def test_gear_template_fields_and_rules(self, vault: Path) -> None:
+        template = vault / "reference/templates/Content.md"
+        original = (
+            template.read_text()
+            .replace("subtype:\n", "subtype:\nsource: Homebrew\nrarity: Common\n")
+            .replace("## Notes", "> [!rules]\n> Supports one passenger.\n\n## Notes", 1)
+        )
+        template.write_text(original)
+        path = add_content("Harness", "Gear", vault, campaign=1)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        assert record.frontmatter["source"] == "Homebrew"
+        assert record.frontmatter["rarity"] == "Common"
+        assert record.frontmatter["campaign_1"]["held_by"] is None
+        assert record.body.text.count("> [!rules]") == 1
+        assert "Supports one passenger." in record.body.text
+        assert template.read_text() == original
+
+    @pytest.mark.parametrize(
+        "holder,valid", [("[[Mira]]", True), ("[[Calendar]]", False)]
+    )
+    def test_gear_possession(
+        self, vault: Path, calendar: None, holder: str, valid: bool
+    ) -> None:
+        from armarium.session import add_session
+
+        add_content("Mira", "PC", vault, campaign=1, player="Alex")
+        add_session(vault, campaign=1)
+        path = add_content("Harness", "Gear", vault, campaign=1)
+        path.write_text(
+            path.read_text()
+            .replace("first_session: null", 'first_session: "[[S-1-001]]"')
+            .replace("last_session: null", 'last_session: "[[S-1-001]]"')
+            .replace("held_by: null", f'held_by: "{holder}"')
+            .replace(
+                "## Appearances\n- N/A",
+                "## Appearances\n- [[S-1-001]]: Acquired the harness.",
+            )
+        )
+        assert validate(path).failed != valid
+
     @pytest.mark.parametrize("subtype", ["NPC", "Date"])
     def test_reckoning_requires_lore(
         self, vault: Path, calendar: None, subtype: str

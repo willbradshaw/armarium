@@ -51,18 +51,26 @@ A character, place, group, object, date or piece of setting lore.
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[types/Content]]` |
-| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore` or `Date` |
+| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`, `Date` or `Gear` |
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
+| `source` | required for Gear | null when unrecorded, or nonblank publication/homebrew attribution |
+| `image` | optional for Gear | null, or a nonblank vault-relative image path or image URL |
+| `url` | optional for Gear | null, or an HTTP/HTTPS source URL |
 | `reckoning` | required for Date | nonempty wikilink to a Lore record describing the calendar, in the same campaign or shared |
 | `scale` | required for Date | nonblank string naming a calendar period, such as `day`, `month`, `year` or `century`; no fixed list of values |
 | `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#state) |
 
 ### Body
+
+Gear begins with a `> [!rules]` callout, optionally followed by an image embed.
+The callout may be empty for a stub. Object describes narrative artifacts; Gear
+describes equipment with recorded mechanics, whether magical or mundane. Both
+use the same [possession fields](campaign.md#state).
 
 `## Notes`, `## Active Clues` and `## Appearances`, in that order. Active
 Clues holds exactly one `.base` embed and nothing else. Appearances is one

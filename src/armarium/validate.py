@@ -921,7 +921,7 @@ def _link_targets(record: Record) -> dict[str, Target]:
             # Block fields are bound to that block's campaign, not the record's.
             targets[f"{field}.first_session"] = Target("Session", campaign=field)
             targets[f"{field}.last_session"] = Target("Session", campaign=field)
-            if subtype == "Object":
+            if subtype in {"Object", "Gear"}:
                 targets[f"{field}.held_by"] = Target(
                     "Content", frozenset({"PC", "NPC", "Faction"}), field
                 )

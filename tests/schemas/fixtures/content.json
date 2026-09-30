@@ -289,6 +289,192 @@
           "cycle": 3
         }
       }
+    },
+    {
+      "name": "Gear stub",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear missing source",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear"
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear lacks rules",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null
+      },
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear rules in Notes",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null
+      },
+      "body": "## Notes\n> [!rules]\n> Text.\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear fenced rules",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null
+      },
+      "body": "```markdown\n> [!rules]\n```\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear prose and optional image",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": "Homebrew",
+        "image": "assets/harness.png",
+        "url": "https://example.org/rules"
+      },
+      "body": "> [!rules] Harness\n> Supports one passenger.\n\n![[harness.png]]\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid source: ' '",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": " "
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid source: []",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": []
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid image: []",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "image": []
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid image: ''",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "image": ""
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid url: 'ftp://example.org'",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "url": "ftp://example.org"
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid url: 'https://'",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "url": "https://"
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid url: []",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "url": []
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid url: 'https://example.org/a b'",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "url": "https://example.org/a b"
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear empty optional fields",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "image": null,
+        "url": null
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear object stub",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Gear",
+        "campaign_1": {
+          "first_session": null,
+          "last_session": null,
+          "held_by": null
+        },
+        "source": null
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear object in play",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Gear",
+        "campaign_1": {
+          "first_session": "[[S-1-001]]",
+          "last_session": "[[S-1-002]]",
+          "held_by": "GONE"
+        },
+        "source": null
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear object in play needs holder",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "campaign_1": {
+          "first_session": "[[S-1-001]]",
+          "last_session": "[[S-1-002]]",
+          "held_by": []
+        },
+        "source": null
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
     }
   ]
 }
