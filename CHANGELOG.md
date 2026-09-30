@@ -4,12 +4,12 @@
 
 ## 0.1.0 (2026-09-30)
 
-- Create a standalone vault with `armarium init`.
-- Add campaigns, Content, Clues, Sessions, Players, Notes, and Transcripts with
-  `armarium add`, using the vault's own templates and conventions.
-- Validate individual records, directories, and whole vaults, including schemas,
-  Markdown structure, wikilinks, and relationships between records.
-- Share setting content across campaigns, with campaign-specific clues and
-  session preparation views powered by Obsidian Bases.
-- Include a starter vault and a two-campaign example demonstrating the conventions.
-- Distribute the code and vault materials under the MIT license.
+- Add `armarium init` for creating standalone vaults.
+- Add `armarium add` subcommands for campaigns, Content, Clues, Sessions, Players,
+  Notes, and Transcripts, using vault-local templates and conventions.
+- Add `armarium validate` for records, directories, and vaults, with checks for
+  schemas, Markdown structure, wikilinks, and relationships between records.
+- Add shared setting content and campaign-specific records, with Obsidian Bases
+  views for clues and session preparation.
+- Add a starter vault and a two-campaign example vault.
+- Add the MIT license and changelog-driven release automation.
