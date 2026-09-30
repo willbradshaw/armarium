@@ -26,7 +26,7 @@ templates are rejected. Failed initialization rolls back all selected extensions
 **Do not edit installed extension files.** Add custom constraints in separate
 vault schemas instead. Removal deletes the entire installed extension directory,
 including any edits, but preserves records and their fields. Commands validate the
-vault afterward; validation failures leave the change in place for you to resolve.
+vault afterward; validation failures leave the change in place for correction.
 Upgrading Armarium does not update installed extensions.
 
 To define an extension, put its files in `extensions/NAME/` and declare rules in
