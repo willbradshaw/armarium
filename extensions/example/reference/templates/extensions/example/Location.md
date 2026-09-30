@@ -1,27 +1,14 @@
 ---
 type: "[[types/Content]]"
-subtype: Gear
+subtype: Location
 summary:
-source:
-item_type:
-rarity:
-attunement:
-attunement_restrictions:
-consumable:
-cursed:
-sentient:
-item_tags:
-image:
-url:
+parent_location:
+climate:
 aliases:
 campaign_1:
-  held_by:
   first_session:
   last_session:
 ---
-> [!rules]
->
-
 ## Notes
 - N/A
 ## Active Clues

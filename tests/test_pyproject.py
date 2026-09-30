@@ -987,7 +987,8 @@ class TestPyproject:
         assert process.returncode == 0, process.stdout + process.stderr
         assert process.stdout == ""
         if directory:
-            assert process.stderr.endswith("8 skipped, 0 unsupported\n")
+            templates = len(list((source / "reference/templates").rglob("*.md")))
+            assert process.stderr.endswith(f"{templates} skipped, 0 unsupported\n")
         else:
             assert process.stderr.endswith(
                 "INFO: 1 checked, 0 skipped, 0 unsupported\n"
@@ -1009,11 +1010,11 @@ class TestInstalledExtensions:
             if key not in {"PYTHONPATH", "PYTHONHOME"}
         }
         setup = (
-            [("init", str(root), "--extension", "dnd-5-5")]
+            [("init", str(root), "--extension", "example")]
             if at_init
             else [
                 ("init", str(root)),
-                ("extension", "enable", "dnd-5-5", "--vault", str(root)),
+                ("extension", "enable", "example", "--vault", str(root)),
             ]
         )
         for arguments in (
@@ -1021,9 +1022,9 @@ class TestInstalledExtensions:
             (
                 "add",
                 "content",
-                "Signal Lantern",
+                "Harbor",
                 "--subtype",
-                "Gear",
+                "Location",
                 "--vault",
                 str(root),
             ),
@@ -1037,9 +1038,9 @@ class TestInstalledExtensions:
                 text=True,
             )
             assert result.returncode == 0, result.stderr
-        path = root / "content/Signal Lantern.md"
-        assert "rarity: null" in path.read_text()
-        path.write_text(path.read_text().replace("rarity: null", "rarity: bogus"))
+        path = root / "content/Harbor.md"
+        assert "climate: null" in path.read_text()
+        path.write_text(path.read_text().replace("climate: null", "climate: 42"))
         result = subprocess.run(
             [str(command), "validate", str(path)],
             cwd=tmp_path,
@@ -1049,3 +1050,15 @@ class TestInstalledExtensions:
         )
         assert result.returncode == 1
         assert "schema.instance" in result.stderr
+
+        original = path.read_bytes()
+        result = subprocess.run(
+            [str(command), "extension", "remove", "example", "--vault", str(root)],
+            cwd=tmp_path,
+            env=environment,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert path.read_bytes() == original
+        assert not (root / "reference/example.md").exists()

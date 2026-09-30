@@ -1,12 +1,15 @@
 """Install optional reference files and load vault-local extension declarations."""
 
+import hashlib
 import json
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import cast
+from typing import NotRequired, TypedDict, cast
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
@@ -15,23 +18,49 @@ from armarium.parse import Record
 from armarium.schemas import Schema
 
 CONFIG = Path("reference/extensions.json")
+
+
+class ExtensionDeclaration(TypedDict):
+    """Rules and installation hashes for one locally registered extension."""
+
+    rules: list[dict[str, str]]
+    files: NotRequired[dict[str, str]]
+
+
 DECLARATION = {
     "type": "object",
     "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-                "type": "object",
-                "required": ["type", "schema"],
-                "properties": {
-                    "type": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$"},
-                    "subtype": {"type": "string", "minLength": 1},
-                    "schema": {"type": "string", "minLength": 1},
-                    "template": {"type": "string", "minLength": 1},
+            "type": "object",
+            "required": ["rules"],
+            "properties": {
+                "rules": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "required": ["type", "schema"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+                            },
+                            "subtype": {"type": "string", "minLength": 1},
+                            "schema": {"type": "string", "minLength": 1},
+                            "template": {"type": "string", "minLength": 1},
+                        },
+                        "additionalProperties": False,
+                    },
                 },
-                "additionalProperties": False,
+                "files": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$",
+                    },
+                },
             },
+            "additionalProperties": False,
         }
     },
     "additionalProperties": False,
@@ -68,13 +97,13 @@ def _local_path(root: Path, directory: str, name: str) -> Path:
     return path
 
 
-def _declarations(path: Path) -> dict[str, list[dict[str, str]]]:
+def _declarations(path: Path) -> dict[str, ExtensionDeclaration]:
     """Read and validate a declaration, failing closed on malformed configuration."""
     data = json.loads(path.read_text(encoding="utf-8"))
     errors = list(Draft202012Validator(DECLARATION).iter_errors(data))
     if errors:
         raise ValueError(f"invalid extension declaration {path}: {errors[0].message}")
-    return cast(dict[str, list[dict[str, str]]], data)
+    return cast(dict[str, ExtensionDeclaration], data)
 
 
 def load_extensions(root: Path) -> list[ExtensionRule]:
@@ -90,7 +119,7 @@ def load_extensions(root: Path) -> list[ExtensionRule]:
         return []
     rules: list[ExtensionRule] = []
     for extension, declarations in _declarations(config).items():
-        for declaration in declarations:
+        for declaration in declarations["rules"]:
             kind, subtype = declaration["type"], declaration.get("subtype")
             try:
                 schema = Schema.load(
@@ -186,21 +215,21 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
                 with destination.open("xb") as stream:
                     created.append(destination)
                     stream.write(source_file.read_bytes())
+            addition[name]["files"] = {
+                path.relative_to(root / "reference").as_posix(): hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+                for path in destinations
+            }
             declarations.update(addition)
-            # Write via a sibling temporary file so interruption cannot truncate
-            # an existing configuration. Restore it if declaration checks fail.
-            temporary = config.with_suffix(".json.tmp")
-            with temporary.open("x", encoding="utf-8") as stream:
-                created.append(temporary)
-                stream.write(json.dumps(declarations, indent=2) + "\n")
-            temporary.replace(config)
+            _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
             try:
                 load_extensions(root)
             except BaseException:
                 if original is None:
                     config.unlink()
                 else:
-                    config.write_bytes(original)
+                    _write_config(config, original)
                 raise
         except BaseException:
             for path in reversed(created):
@@ -208,4 +237,98 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
             for directory in reversed(directories):
                 directory.rmdir()
             raise
+    return root
+
+
+def _write_config(path: Path, contents: bytes) -> None:
+    """Replace configuration atomically, preserving it on failed writes."""
+    temporary = path.with_suffix(".json.tmp")
+    with temporary.open("xb") as stream:
+        try:
+            stream.write(contents)
+            stream.close()
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def remove_extension(name: str, vault: Path | None = None) -> Path:
+    """Remove registration and unchanged installed files, preserving records.
+
+    Installation hashes identify files independently of the current package.
+    Edited files and files declared by other extensions prevent removal. Missing
+    installed files are tolerated, allowing an incomplete extension to be removed.
+    Failures restore moved files and the original configuration. Declarations
+    without installation hashes are unregistered without deleting any files.
+    """
+    from armarium.add import select_vault
+
+    root = select_vault(vault)
+    config = _local_path(root, "reference", "extensions.json")
+    declarations = _declarations(config) if config.exists() else {}
+    if name not in declarations:
+        raise ValueError(f"extension is not enabled: {name}")
+    original = config.read_bytes()
+    removed = declarations.pop(name)
+    paths: list[Path] = []
+    for relative, digest in removed.get("files", {}).items():
+        path = _local_path(root, "reference", relative)
+        if path == config:
+            raise ValueError("extension cannot own its configuration file")
+        if not path.exists():
+            continue
+        if (
+            not path.is_file()
+            or hashlib.sha256(path.read_bytes()).hexdigest() != digest
+        ):
+            raise ValueError(
+                f"extension file has local changes; preserve or restore it before removal: {path}"
+            )
+        paths.append(path)
+    # Preserve explicitly shared files, including manually edited declarations.
+    for declaration in declarations.values():
+        used = {_local_path(root, "reference", p) for p in declaration.get("files", {})}
+        for rule in declaration["rules"]:
+            used.add(_local_path(root, "reference/schemas", rule["schema"]))
+            if "template" in rule:
+                used.add(_local_path(root, "reference/templates", rule["template"]))
+        if used.intersection(paths):
+            raise ValueError("extension files are used by another enabled extension")
+    workspace = Path(tempfile.mkdtemp(prefix=".armarium-extension-", dir=root))
+    moved: list[tuple[Path, Path]] = []
+    registered = False
+    committed = False
+    try:
+        for index, path in enumerate(paths):
+            backup = workspace / str(index)
+            path.rename(backup)
+            moved.append((path, backup))
+        _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
+        registered = True
+        load_extensions(root)
+        committed = True
+    except BaseException:
+        if registered:
+            _write_config(config, original)
+        for path, backup in reversed(moved):
+            backup.rename(path)
+        raise
+    finally:
+        # If restoration itself fails, retain backups for recovery.
+        if committed or not any(workspace.iterdir()):
+            shutil.rmtree(workspace)
+    # Empty extension directories are no longer needed; preserve vault scaffolding.
+    boundaries = {
+        root / "reference",
+        root / "reference/schemas",
+        root / "reference/templates",
+    }
+    for path in paths:
+        parent = path.parent
+        while parent not in boundaries:
+            try:
+                parent.rmdir()
+            except OSError:
+                break
+            parent = parent.parent
     return root

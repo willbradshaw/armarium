@@ -653,7 +653,8 @@ class TestValidateDirectory:
         before = {p: p.read_bytes() for p in find_files(root)}
         result = validate_directory(root)
         assert not result.failed and result.unsupported == 0
-        assert result.checked > 0 and result.skipped == len(VAULT_TEMPLATES)
+        templates = list((root / "reference/templates").rglob("*.md"))
+        assert result.checked > 0 and result.skipped == len(templates)
         assert all(p.read_bytes() == data for p, data in before.items())
 
     @pytest.mark.parametrize(("name", "number"), [("starter", 2), ("example", 3)])

@@ -563,22 +563,22 @@ class TestExtensionContent:
     ) -> None:
         from armarium.extensions import enable_extension, load_extensions
 
-        enable_extension("dnd-5-5", vault)
+        enable_extension("example", vault)
         (rule,) = load_extensions(vault)
         assert rule.template is not None
         rule.template.write_text(
             rule.template.read_text()
-            .replace("source:", "source: Homebrew")
+            .replace("climate:", "climate: Temperate")
             .replace("- N/A", "- Local notes", 1)
         )
-        path = add_content("Harness", "Gear", vault, campaign=campaign)
+        path = add_content("Harbor", "Location", vault, campaign=campaign)
         record, _ = Record.parse(path, vault)
         assert record is not None
-        assert record.frontmatter["source"] == "Homebrew"
-        assert record.frontmatter["rarity"] is None
+        assert record.frontmatter["climate"] == "Temperate"
+        assert record.frontmatter["parent_location"] is None
         assert "Local notes" in record.body.text
         if campaign:
-            assert record.frontmatter["campaign_1"]["held_by"] is None
+            assert record.frontmatter["campaign_1"]["first_session"] is None
         assert not validate(path, vault).failed
         path.write_text(path.read_text().replace("## Notes", "## Missing"))
         assert validate(path, vault).failed

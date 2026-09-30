@@ -1,6 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: "Location"
+climate: "Temperate maritime; wet winters and warm summers."
 summary: "A narrow working quay beneath [[Port Briselle|Briselle]]'s eastern signal tower."
 parent_location: "[[Port Briselle]]"
 campaign_1:

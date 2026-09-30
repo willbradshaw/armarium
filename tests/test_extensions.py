@@ -14,8 +14,10 @@ from armarium.extensions import (
     _declarations,
     _extension,
     _local_path,
+    _write_config,
     enable_extension,
     load_extensions,
+    remove_extension,
 )
 from armarium.parse import Record
 from armarium.validate import validate
@@ -32,14 +34,14 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def enabled(vault: Path) -> Path:
-    enable_extension("dnd-5-5", vault)
+    enable_extension("example", vault)
     return vault
 
 
 class TestExtensionRule:
-    @pytest.mark.parametrize("selector", [None, "Gear"])
+    @pytest.mark.parametrize("selector", [None, "Location"])
     @pytest.mark.parametrize(
-        "kind,subtype", [("Content", "Gear"), ("Content", "Lore"), ("Note", None)]
+        "kind,subtype", [("Content", "Location"), ("Content", "Lore"), ("Note", None)]
     )
     def test_matches(
         self, enabled: Path, selector: str | None, kind: str, subtype: str | None
@@ -78,10 +80,10 @@ class TestLocalPath:
 class TestDeclarations:
     def test_valid(self) -> None:
         assert (
-            _declarations(ROOT / "extensions/dnd-5-5/extension.json")["dnd-5-5"][0][
-                "subtype"
-            ]
-            == "Gear"
+            _declarations(ROOT / "extensions/example/extension.json")["example"][
+                "rules"
+            ][0]["subtype"]
+            == "Location"
         )
 
     @pytest.mark.parametrize(
@@ -91,6 +93,14 @@ class TestDeclarations:
             [],
             {"../bad": []},
             {"custom": []},
+            {"custom": {"rules": []}},
+            {"custom": {"rules": [{"type": "Content"}]}},
+            {
+                "custom": {
+                    "rules": [{"type": "Content", "schema": "x"}],
+                    "files": {"x": "bad"},
+                }
+            },
             {"custom": [{"type": "Content"}]},
             {"custom": [{"type": "Content", "schema": "x", "typo": True}]},
         ],
@@ -109,9 +119,9 @@ class TestLoadExtensions:
     def test_loads_local_files(self, enabled: Path) -> None:
         (rule,) = load_extensions(enabled)
         assert (
-            rule.extension == "dnd-5-5"
+            rule.extension == "example"
             and rule.kind == "Content"
-            and rule.subtype == "Gear"
+            and rule.subtype == "Location"
         )
         assert rule.schema.path.is_relative_to(enabled / "reference/schemas")
         assert rule.template is not None and rule.template.is_relative_to(
@@ -147,14 +157,14 @@ class TestLoadExtensions:
             rule.template.write_text(
                 text.replace("types/Content", "types/Note")
                 if scenario == "template-type"
-                else text.replace("subtype: Gear", "subtype: Lore")
+                else text.replace("subtype: Location", "subtype: Lore")
             )
         elif scenario in {"conflict", "broad-conflict"}:
             data = json.loads(config.read_text())
-            other = dict(data["dnd-5-5"][0])
+            other = dict(data["example"]["rules"][0])
             if scenario == "broad-conflict":
                 other.pop("subtype")
-            data["custom"] = [other]
+            data["custom"] = {"rules": [other]}
             config.write_text(json.dumps(data))
         elif scenario == "config-invalid":
             config.write_text("{")
@@ -168,24 +178,32 @@ class TestLoadExtensions:
     def test_additional_local_constraints(self, enabled: Path) -> None:
         config = enabled / CONFIG
         data = json.loads(config.read_text())
-        data["house-rules"] = [
-            {"type": "Content", "subtype": "Gear", "schema": "house.schema.json"}
-        ]
+        data["house-rules"] = {
+            "rules": [
+                {
+                    "type": "Content",
+                    "subtype": "Location",
+                    "schema": "house.schema.json",
+                }
+            ]
+        }
         (enabled / "reference/schemas/house.schema.json").write_text(
             json.dumps({"properties": {"frontmatter": {"required": ["rating"]}}})
         )
         config.write_text(json.dumps(data))
         assert len(load_extensions(enabled)) == 2
         with pytest.raises(ValueError):
-            add_content("Harness", "Gear", enabled)
-        assert not (enabled / "content/Harness.md").exists()
+            add_content("Harbor", "Location", enabled)
+        assert not (enabled / "content/Harbor.md").exists()
 
 
 class TestExtension:
     def test_checkout(self) -> None:
-        assert _extension("dnd-5-5").joinpath("extension.json").is_file()
+        assert _extension("example").joinpath("extension.json").is_file()
 
-    @pytest.mark.parametrize("name", ["absent", "../dnd-5-5", "/dnd-5-5", "DND", ""])
+    @pytest.mark.parametrize(
+        "name", ["absent", "../example", "/example", "INVALID", ""]
+    )
     def test_unknown(self, name: str) -> None:
         with pytest.raises(ValueError):
             _extension(name)
@@ -194,7 +212,7 @@ class TestExtension:
 class TestEnableExtension:
     def test_install_preserves_core(self, vault: Path) -> None:
         original = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
-        assert enable_extension("dnd-5-5", vault) == vault
+        assert enable_extension("example", vault) == vault
         assert all(p.read_bytes() == contents for p, contents in original.items())
         assert not validate(vault).failed
 
@@ -202,18 +220,18 @@ class TestEnableExtension:
         (rule,) = load_extensions(enabled)
         assert rule.template is not None
         rule.template.write_text(
-            rule.template.read_text().replace("source:", "source: Homebrew")
+            rule.template.read_text().replace("climate:", "climate: Temperate")
         )
         before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
         with pytest.raises(ValueError, match="already enabled"):
-            enable_extension("dnd-5-5", enabled)
+            enable_extension("example", enabled)
         assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
 
     @pytest.mark.parametrize(
         "collision",
         [
-            "reference/dnd-5-5.md",
-            "reference/schemas/extensions/dnd-5-5/gear.schema.json",
+            "reference/example.md",
+            "reference/schemas/extensions/example/location.schema.json",
         ],
     )
     def test_collision(self, vault: Path, collision: str) -> None:
@@ -222,7 +240,7 @@ class TestEnableExtension:
         path.write_text("Keep me")
         before = set(vault.rglob("*"))
         with pytest.raises(FileExistsError):
-            enable_extension("dnd-5-5", vault)
+            enable_extension("example", vault)
         assert set(vault.rglob("*")) == before
         assert path.read_text() == "Keep me"
 
@@ -242,13 +260,13 @@ class TestEnableExtension:
         real = Path.read_bytes
 
         def read(path: Path) -> bytes:
-            if path.name == "Gear.md" and path.is_relative_to(ROOT / "extensions"):
+            if path.name == "Location.md" and path.is_relative_to(ROOT / "extensions"):
                 raise failure("interrupted copy")
             return real(path)
 
         monkeypatch.setattr(Path, "read_bytes", read)
         with pytest.raises(failure):
-            enable_extension("dnd-5-5", vault)
+            enable_extension("example", vault)
         assert set(vault.rglob("*")) == original_entries
         assert all(p.read_bytes() == content for p, content in original.items())
 
@@ -263,8 +281,8 @@ class TestEnableExtension:
         import armarium.extensions as extensions
 
         source = tmp_path / "extension"
-        shutil.copytree(ROOT / "extensions/dnd-5-5", source)
-        (source / "reference/templates/extensions/dnd-5-5/Gear.md").write_text(
+        shutil.copytree(ROOT / "extensions/example", source)
+        (source / "reference/templates/extensions/example/Location.md").write_text(
             "invalid"
         )
         monkeypatch.setattr(extensions, "_extension", lambda name: source)
@@ -273,14 +291,14 @@ class TestEnableExtension:
         before = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
         entries = set(vault.rglob("*"))
         with pytest.raises(ValueError):
-            enable_extension("dnd-5-5", vault)
+            enable_extension("example", vault)
         assert set(vault.rglob("*")) == entries
         assert before == {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
 
     def test_existing_records_require_migration(self, vault: Path) -> None:
-        gear = add_content("Harness", "Gear", vault)
+        gear = add_content("Harbor", "Location", vault)
         original = gear.read_bytes()
-        enable_extension("dnd-5-5", vault)
+        enable_extension("example", vault)
         assert gear.read_bytes() == original
         assert validate(gear, vault).failed
         lore = add_content("Legend", "Lore", vault)
@@ -288,55 +306,201 @@ class TestEnableExtension:
 
     def test_portable(self, enabled: Path, tmp_path: Path) -> None:
         moved = enabled.rename(tmp_path / "moved")
-        add_content("Harness", "Gear", moved)
+        add_content("Harbor", "Location", moved)
         assert not validate(moved).failed
 
 
-class TestDndGearSchema:
+class TestExampleSchema:
     @pytest.mark.parametrize(
-        "field,value,valid",
-        [
-            ("rarity", "Rare", True),
-            ("rarity", "Varies", True),
-            ("rarity", "rare", False),
-            ("item_type", "Shield", False),
-            ("item_type", "Rope", False),
-            ("item_type", " ", False),
-            ("item_type", "Armor", True),
-            ("attunement", True, True),
-            ("attunement", "true", False),
-            ("consumable", False, True),
-            ("consumable", 0, False),
-            ("cursed", True, True),
-            ("cursed", "unknown", False),
-            ("sentient", None, True),
-            ("sentient", "false", False),
-            ("item_tags", [], True),
-            ("item_tags", ["Weapon", "Homebrew"], True),
-            ("item_tags", ["Weapon", "Weapon"], False),
-            ("item_tags", [" "], False),
-            ("attunement_restrictions", "Wizard", False),
-            ("joke_score", 5, True),
-            ("ddb_id", 123, True),
-        ],
+        "value,valid",
+        [(None, True), ("Temperate", True), ("", False), (" ", False), (42, False)],
     )
-    def test_fields(
-        self, enabled: Path, field: str, value: object, valid: bool
-    ) -> None:
-        path = add_content("Harness", "Gear", enabled)
-        record, _ = Record.parse(path, enabled)
-        assert record is not None
+    def test_climate(self, enabled: Path, value: object, valid: bool) -> None:
         from armarium.add import record_text
 
+        path = add_content("Harbor", "Location", enabled)
+        record, _ = Record.parse(path, enabled)
+        assert record is not None
         data = dict(record.frontmatter)
-        data[field] = value
+        data["climate"] = value
         path.write_text(record_text(data, record.body.text))
         assert validate(path, enabled).failed != valid
 
-    @pytest.mark.parametrize(
-        "field", ["item_type", "rarity", "attunement", "consumable", "cursed", "source"]
-    )
+    @pytest.mark.parametrize("field", ["climate", "parent_location"])
     def test_required_fields(self, enabled: Path, field: str) -> None:
-        path = add_content("Harness", "Gear", enabled)
+        path = add_content("Harbor", "Location", enabled)
         path.write_text(path.read_text().replace(f"{field}: null\n", ""))
         assert validate(path, enabled).failed
+
+
+class TestWriteConfig:
+    def test_replaces_atomically(self, tmp_path: Path) -> None:
+        path = tmp_path / "extensions.json"
+        path.write_bytes(b"old")
+        _write_config(path, b"new")
+        assert path.read_bytes() == b"new"
+        assert not path.with_suffix(".json.tmp").exists()
+
+    def test_failure_preserves_original(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        path = tmp_path / "extensions.json"
+        path.write_bytes(b"old")
+
+        def fail(path: Path, target: Path) -> Path:
+            raise OSError("cannot replace")
+
+        monkeypatch.setattr(Path, "replace", fail)
+        with pytest.raises(OSError):
+            _write_config(path, b"new")
+        assert path.read_bytes() == b"old"
+        assert not path.with_suffix(".json.tmp").exists()
+
+    def test_existing_temporary_file(self, tmp_path: Path) -> None:
+        path = tmp_path / "extensions.json"
+        temporary = path.with_suffix(".json.tmp")
+        temporary.write_bytes(b"keep")
+        with pytest.raises(FileExistsError):
+            _write_config(path, b"new")
+        assert temporary.read_bytes() == b"keep"
+
+
+class TestRemoveExtension:
+    def test_preserves_records_and_allows_reenable(
+        self, enabled: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        record = add_content("Harbor", "Location", enabled)
+        original = record.read_bytes()
+        files = _declarations(enabled / CONFIG)["example"]["files"]
+        # Removal uses the installation inventory, not today's package resources.
+        with monkeypatch.context() as patch:
+
+            def unavailable(name: str) -> Path:
+                raise AssertionError("must not read installed package")
+
+            patch.setattr("armarium.extensions._extension", unavailable)
+            assert remove_extension("example", enabled) == enabled
+        assert not load_extensions(enabled)
+        assert record.read_bytes() == original
+        assert all(not (enabled / "reference" / name).exists() for name in files)
+        assert not validate(enabled).failed
+        new = add_content("Bay", "Location", enabled)
+        assert "climate:" not in new.read_text()
+        enable_extension("example", enabled)
+        assert validate(new, enabled).failed
+        assert not validate(record, enabled).failed
+
+    @pytest.mark.parametrize(
+        "file",
+        [
+            "example.md",
+            "schemas/extensions/example/location.schema.json",
+            "templates/extensions/example/Location.md",
+        ],
+    )
+    def test_local_edits_refused(self, enabled: Path, file: str) -> None:
+        path = enabled / "reference" / file
+        path.write_text(path.read_text() + "\n")
+        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        with pytest.raises(ValueError, match="local changes"):
+            remove_extension("example", enabled)
+        assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+
+    def test_missing_installed_file(self, enabled: Path) -> None:
+        (enabled / "reference/templates/extensions/example/Location.md").unlink()
+        remove_extension("example", enabled)
+        assert not validate(enabled).failed
+
+    def test_unknown(self, vault: Path) -> None:
+        with pytest.raises(ValueError, match="not enabled"):
+            remove_extension("missing", vault)
+        assert not (vault / CONFIG).exists()
+
+    def test_manual_declaration(self, enabled: Path) -> None:
+        config = enabled / CONFIG
+        data = _declarations(config)
+        files = data["example"].pop("files")
+        config.write_text(json.dumps(data))
+        remove_extension("example", enabled)
+        assert not load_extensions(enabled)
+        assert all((enabled / "reference" / name).exists() for name in files)
+
+    def test_shared_file_refused(self, enabled: Path) -> None:
+        config = enabled / CONFIG
+        data = _declarations(config)
+        data["custom"] = {
+            "rules": [
+                {"type": "Content", "schema": "extensions/example/location.schema.json"}
+            ]
+        }
+        config.write_text(json.dumps(data))
+        before = config.read_bytes()
+        with pytest.raises(ValueError, match="used by another"):
+            remove_extension("example", enabled)
+        assert config.read_bytes() == before
+
+    @pytest.mark.parametrize(
+        "path", ["../content/victim.md", "/tmp/victim.md", "extensions.json"]
+    )
+    def test_unsafe_inventory(self, enabled: Path, path: str) -> None:
+        config = enabled / CONFIG
+        data = _declarations(config)
+        data["example"]["files"] = {path: "0" * 64}
+        config.write_text(json.dumps(data))
+        before = config.read_bytes()
+        with pytest.raises(ValueError):
+            remove_extension("example", enabled)
+        assert config.read_bytes() == before
+
+    @pytest.mark.parametrize("stage", ["move", "write", "load"])
+    @pytest.mark.parametrize("failure", [OSError, KeyboardInterrupt])
+    def test_failure_restores_files(
+        self,
+        enabled: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        stage: str,
+        failure: type[BaseException],
+    ) -> None:
+        import armarium.extensions as extensions
+
+        before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        if stage == "move":
+            real = Path.rename
+
+            def rename(path: Path, target: Path) -> Path:
+                if path.name == "Location.md":
+                    raise failure("failed move")
+                return real(path, target)
+
+            monkeypatch.setattr(Path, "rename", rename)
+        elif stage == "write":
+
+            def write(path: Path, contents: bytes) -> None:
+                raise failure("failed configuration write")
+
+            monkeypatch.setattr(extensions, "_write_config", write)
+        else:
+
+            def load(root: Path) -> list[ExtensionRule]:
+                raise failure("failed remaining extension check")
+
+            monkeypatch.setattr(extensions, "load_extensions", load)
+        with pytest.raises(failure):
+            remove_extension("example", enabled)
+        assert before == {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
+        assert not list(enabled.glob(".armarium-extension-*"))
+
+
+class TestExampleVault:
+    def test_enabled_and_removable(self, tmp_path: Path) -> None:
+        root = tmp_path / "example"
+        shutil.copytree(ROOT / "vaults/example", root)
+        assert len(load_extensions(root)) == 1
+        assert not validate(root).failed
+        declarations = _declarations(root / CONFIG)
+        for relative in declarations["example"]["files"]:
+            assert (root / "reference" / relative).read_bytes() == (
+                ROOT / "extensions/example/reference" / relative
+            ).read_bytes()
+        remove_extension("example", root)
+        assert not validate(root).failed

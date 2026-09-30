@@ -1239,7 +1239,7 @@ class TestExtensionCommand:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["armarium", "extension", "enable", "dnd-5-5"]
+            ["armarium", "extension", "enable", "example"]
             + (["--vault", str(root)] if explicit else []),
         )
         main()
@@ -1260,12 +1260,12 @@ class TestExtensionCommand:
 
         root = init_vault(tmp_path / "vault")
         if scenario == "migration":
-            add_content("Harness", "Gear", root)
+            add_content("Harbor", "Location", root)
         elif scenario == "invalid-schema":
-            enable_extension("dnd-5-5", root)
-            (root / "reference/schemas/extensions/dnd-5-5/gear.schema.json").write_text(
-                '{"type": "bad"}'
-            )
+            enable_extension("example", root)
+            (
+                root / "reference/schemas/extensions/example/location.schema.json"
+            ).write_text('{"type": "bad"}')
         monkeypatch.setattr(
             sys,
             "argv",
@@ -1273,7 +1273,7 @@ class TestExtensionCommand:
                 "armarium",
                 "extension",
                 "enable",
-                "absent" if scenario == "unknown" else "dnd-5-5",
+                "absent" if scenario == "unknown" else "example",
                 "--vault",
                 str(root),
             ],
@@ -1284,12 +1284,12 @@ class TestExtensionCommand:
         output = capsys.readouterr().err
         assert "Validation completed successfully" not in output
         if scenario == "migration":
-            assert "Extension retained" in output
+            assert "Extension change retained" in output
             assert (root / "reference/extensions.json").exists()
 
 
 class TestInitExtensionCommand:
-    @pytest.mark.parametrize("name,success", [("dnd-5-5", True), ("missing", False)])
+    @pytest.mark.parametrize("name,success", [("example", True), ("missing", False)])
     def test_init(
         self,
         tmp_path: Path,
@@ -1313,3 +1313,34 @@ class TestInitExtensionCommand:
         assert (
             "Validation completed successfully" in capsys.readouterr().err
         ) == success
+
+
+class TestRemoveExtensionCommand:
+    @pytest.mark.parametrize("scenario", ["valid", "missing", "edited"])
+    def test_remove(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario: str,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(
+            tmp_path / "vault", extension=None if scenario == "missing" else "example"
+        )
+        if scenario == "edited":
+            path = root / "reference/example.md"
+            path.write_text(path.read_text() + "Local notes.\n")
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(sys, "argv", ["armarium", "extension", "remove", "example"])
+        if scenario == "valid":
+            main()
+            assert not (root / "reference/example.md").exists()
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+        assert ("Validation completed successfully" in capsys.readouterr().err) == (
+            scenario == "valid"
+        )

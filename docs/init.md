@@ -11,7 +11,7 @@ links. Missing parent directories are automatically created. If copying fails or
 is interrupted, the partially created vault is removed safely. After copying
 completes, the new vault undergoes validation before success is reported.
 
-Use `armarium init ../my-vault --extension dnd-5-5` to install an
+Use `armarium init ../my-vault --extension EXTENSION` to install an
 [extension](extensions.md) during setup, before validation. Extensions apply
 across the whole vault. If extension installation fails, initialization rolls back.
 

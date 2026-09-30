@@ -210,12 +210,12 @@ class TestInitExtension:
             (destination / "old.txt").write_text("old")
         installer = Mock(wraps=enable_extension)
         monkeypatch.setattr("armarium.init.enable_extension", installer)
-        root = init_vault(destination, force=force, extension="dnd-5-5")
+        root = init_vault(destination, force=force, extension="example")
         installer.assert_called_once()
-        assert installer.call_args.args[0] == "dnd-5-5"
+        assert installer.call_args.args[0] == "example"
         assert (root / "reference/extensions.json").is_file()
         assert not (root / "old.txt").exists()
-        add_content("Harness", "Gear", root)
+        add_content("Harbor", "Location", root)
         assert not validate(root).failed
 
     @pytest.mark.parametrize("force", [False, True])
@@ -240,7 +240,7 @@ class TestInitExtension:
 
         monkeypatch.setattr("armarium.init.enable_extension", fail)
         with pytest.raises(failure):
-            init_vault(destination, force=force, extension="dnd-5-5")
+            init_vault(destination, force=force, extension="example")
         if force:
             assert list(destination.iterdir()) == [destination / "old.txt"]
             assert (destination / "old.txt").read_text() == "keep"
