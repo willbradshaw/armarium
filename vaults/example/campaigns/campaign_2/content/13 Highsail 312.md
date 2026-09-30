@@ -1,7 +1,7 @@
 ---
 type: "[[types/Content]]"
 subtype: Date
-summary: 5 June 312 in the Coastal Calendar.
+summary: 13 Highsail 312 in the Coastal Calendar.
 reckoning: "[[Coastal Calendar]]"
 scale: day
 campaign_2:
