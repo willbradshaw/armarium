@@ -1,6 +1,6 @@
 name: draft-release
 
-# When a version bump lands on main, open a DRAFT GitHub release for that
+# When a versioned changelog entry lands on main, open a DRAFT GitHub release for that
 # version, with notes taken from its CHANGELOG.md section. Review the draft and
 # click Publish to ship it (that triggers publish.yml). This never publishes on
 # its own.
@@ -11,7 +11,7 @@ name: draft-release
 on:
   push:
     branches: [main]
-    paths: [pyproject.toml]
+    paths: [pyproject.toml, CHANGELOG.md]
   workflow_dispatch:
 
 permissions:
@@ -29,10 +29,15 @@ jobs:
           version=$(grep -m1 '^version = ' pyproject.toml | sed -E 's/.*"([^"]+)".*/\1/')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Skip if a release for this version already exists
+      - name: Skip unreleased versions and existing releases
         id: exists
         run: |
-          if gh release view "${{ steps.v.outputs.version }}" >/dev/null 2>&1; then
+          if ! awk -v ver="${{ steps.v.outputs.version }}" '
+            index($0, "## " ver " (") == 1 { found = 1 }
+            END { exit !found }
+          ' CHANGELOG.md; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif gh release view "${{ steps.v.outputs.version }}" >/dev/null 2>&1; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"

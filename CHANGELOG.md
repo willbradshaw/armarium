@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-## 0.1.0 (2026-09-30)
-
 - Add `armarium init` for creating standalone vaults.
 - Add `armarium add` subcommands for campaigns, Content, Clues, Sessions, Players,
   Notes, and Transcripts, using vault-local templates and conventions.
