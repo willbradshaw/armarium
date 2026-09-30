@@ -26,10 +26,11 @@ use a list of alternate names, or omit it or leave it empty when there are none.
 | Faction | `members`: empty if unknown, or a list of PC/NPC Content links. An empty list means no recorded members. |
 | Object | `held_by` inside each campaign block: holder link(s) or `GONE`; may be empty before entering play. |
 | Lore | None. |
-| Date | `reckoning`: a nonempty link to calendar Content. `scale`: a nonblank calendar-defined string, such as day or year. |
+| Date | `reckoning`: a nonempty link to Lore describing the calendar. `scale`: a nonblank calendar-defined string, such as day or year. |
 
 Dates represent particular days or periods within a calendar. Calendar-specific
-fields are custom frontmatter; no universal date notation or scale list is imposed.
+fields are custom frontmatter. A custom vault-local schema can constrain date
+notation and allowed scales; the standard schema does not impose those constraints.
 
 Use bare `field:` for null and quote YAML wikilinks. Additional custom fields are
 allowed. Object holders are PC, NPC or Faction Content. Shared-party possession
@@ -49,10 +50,10 @@ the entry's recorded state. Each existing block requires `first_session` and
 and latest Sessions in that campaign's history.
 
 Use one Appearances list across campaigns; the linked Session IDs identify each
-entry's campaign. For Dates, appearances record Sessions whose played events occur within that day
-or period; historical information and mentions belong in Notes. For other subtypes,
-record actual interaction, not mentions/prep, and noteworthy PC
-contributions rather than attendance. Use `N/A` only when there are no appearances.
+entry's campaign. For Dates, appearances record Sessions whose played events occur
+within that day or period; historical information and mentions belong in Notes.
+For other subtypes, record actual interaction, not mentions/prep, and noteworthy
+PC contributions rather than attendance. Use `N/A` only when there are no appearances.
 Keep acquisition and transfer history in Session records when current possession
 changes.
 

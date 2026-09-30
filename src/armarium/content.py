@@ -35,7 +35,7 @@ def _content_frontmatter(
         subtype: Selected built-in subtype.
         campaign: Campaign number, or None for shared content.
         player: Canonical Player link override, or None to use the template value.
-        reckoning: Calendar Content link override, or None to use the template.
+        reckoning: Calendar Lore link override, or None to use the template.
         scale: Date scale override, or None to use the template.
 
     Returns:
@@ -100,7 +100,7 @@ def add_content(
         campaign: Existing campaign number. When omitted, infer from the working
             directory inside the selected vault, otherwise create shared content.
         player: Player name, path or canonical wikilink, for PCs only.
-        reckoning: Calendar Content name, path or wikilink, for Dates only.
+        reckoning: Calendar Lore name, path or wikilink, for Dates only.
         scale: Nonblank calendar-defined period name, for Dates only.
 
     Returns:
@@ -137,7 +137,7 @@ def add_content(
         )
         resolved, problem = VaultIndex(root).resolve(target, destination)
         if problem or resolved is None:
-            kind = "Player" if field == "player" else "calendar Content record"
+            kind = "Player" if field == "player" else "calendar Lore record"
             raise ValueError(
                 f"--{field} must uniquely identify an existing {kind}; use a vault-relative path"
             )

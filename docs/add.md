@@ -91,7 +91,7 @@ Use `--subtype NPC|PC|Location|Faction|Object|Lore|Date` to select the [Content
 subtype](type.md#content). Required nullable subtype fields start empty unless set in
 the template. PCs need an existing [Player](#players), supplied with `--player` or in
 the template. Dates need `reckoning` and `scale`, supplied with `--reckoning` and
-`--scale` or in the template. The reckoning must identify existing calendar Content.
+`--scale` or in the template. The reckoning must identify an existing Lore record describing the calendar.
 
 ```sh
 armarium add content "Year 42" --subtype Date --reckoning "Royal Calendar" --scale year --vault ../my-vault

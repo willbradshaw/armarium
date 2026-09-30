@@ -58,8 +58,8 @@ A character, place, group, object, date or piece of setting lore.
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
-| `reckoning` | required for Date | nonempty wikilink to calendar Content in the same campaign or shared |
-| `scale` | required for Date | nonblank string naming a calendar period; no fixed list of values |
+| `reckoning` | required for Date | nonempty wikilink to a Lore record describing the calendar, in the same campaign or shared |
+| `scale` | required for Date | nonblank string naming a calendar period, such as `day`, `month`, `year` or `century`; no fixed list of values |
 | `campaign_N` | optional, one per campaign the record has state in | a mapping of the record's [state in that campaign](campaign.md#state) |
 
 ### Body
@@ -166,7 +166,7 @@ One play session.
 | `session_number` | required | a positive integer equal to the ordinal in the filename |
 | `aliases` | optional | null, `[]` or a list of non-blank strings |
 | `players_absent` | required | null, or a list of links to [Players](#player) in the same campaign |
-| `in_game_start_date`, `in_game_end_date` | required | null, or non-blank text |
+| `in_game_start_date`, `in_game_end_date` | required | null, or a wikilink to Date Content in the same campaign or shared |
 | `prepared_clues`, `prepared_locations`, `prepared_npcs` | optional | ordered lists of links to [Clues](#clue) in the same campaign, and to Location and NPC [Content](#content) in the same campaign or shared; `[]` or omitted selects nothing |
 
 ### Body

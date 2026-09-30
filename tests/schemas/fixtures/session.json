@@ -21,8 +21,8 @@
         "players_absent": [
           "[[Ellis]]"
         ],
-        "in_game_start_date": "Third bell, Day 8",
-        "in_game_end_date": "Day 9"
+        "in_game_start_date": "[[Day 8]]",
+        "in_game_end_date": "[[Day 9]]"
       }
     },
     {
@@ -400,6 +400,48 @@
       "name": "Important NPCs named view",
       "valid": true,
       "body": "# Preparation\n## Starting scene\n- N/A\n## Other scenes\n- N/A\n## Secrets & Clues\n![[reference/views/prepared-clues.base]]\n## Locations\n![[reference/views/prepared-locations.base]]\n## Important NPCs\n![[reference/views/prepared-npcs.base#Selected]]\n## Scene notes\n- N/A\n## Encounters\n- N/A\n## Prepared rewards\n- N/A\n# Notes\n## Preamble\n- N/A\n## Events\n- N/A\n## Rewards\n### Loot\n| Item | Acquired by |\n| ---- | ----------- |\n| N/A  |             |\n"
+    },
+    {
+      "name": "in_game_start_date rejects Day 8",
+      "valid": false,
+      "frontmatter": {
+        "in_game_start_date": "Day 8"
+      }
+    },
+    {
+      "name": "in_game_start_date rejects [[Day 8|eighth day]]",
+      "valid": false,
+      "frontmatter": {
+        "in_game_start_date": "[[Day 8|eighth day]]"
+      }
+    },
+    {
+      "name": "in_game_start_date rejects [[Day 8#Notes]]",
+      "valid": false,
+      "frontmatter": {
+        "in_game_start_date": "[[Day 8#Notes]]"
+      }
+    },
+    {
+      "name": "in_game_end_date rejects Day 8",
+      "valid": false,
+      "frontmatter": {
+        "in_game_end_date": "Day 8"
+      }
+    },
+    {
+      "name": "in_game_end_date rejects [[Day 8|eighth day]]",
+      "valid": false,
+      "frontmatter": {
+        "in_game_end_date": "[[Day 8|eighth day]]"
+      }
+    },
+    {
+      "name": "in_game_end_date rejects [[Day 8#Notes]]",
+      "valid": false,
+      "frontmatter": {
+        "in_game_end_date": "[[Day 8#Notes]]"
+      }
     }
   ]
 }

@@ -167,7 +167,7 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": null,
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -176,7 +176,7 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": "",
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -185,7 +185,7 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": "Calendar",
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -194,7 +194,7 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": "[[Calendar|alias]]",
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -203,7 +203,7 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": 3,
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -212,7 +212,7 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": [],
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -265,7 +265,7 @@
       "valid": false,
       "frontmatter": {
         "subtype": "Date",
-        "scale": "tetrant"
+        "scale": "month"
       }
     },
     {
@@ -282,9 +282,9 @@
       "frontmatter": {
         "subtype": "Date",
         "reckoning": "[[Calendar]]",
-        "scale": "tetrant",
+        "scale": "month",
         "year": "[[Year 42]]",
-        "day_of_tetrant": 7,
+        "day_of_month": 7,
         "custom_calendar": {
           "cycle": 3
         }

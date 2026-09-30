@@ -228,7 +228,8 @@
             ],
             "properties": {
               "reckoning": {
-                "$ref": "#/$defs/wikilink"
+                "$ref": "#/$defs/wikilink",
+                "description": "Link to a Lore Content record describing the calendar, in the same campaign or shared."
               },
               "scale": {
                 "type": "string",

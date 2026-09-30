@@ -76,10 +76,10 @@
               "type": "null"
             },
             {
-              "type": "string",
-              "pattern": "\\S"
+              "$ref": "#/$defs/wikilink"
             }
-          ]
+          ],
+          "description": "Link to Date Content in the same campaign or shared; null when unrecorded."
         },
         "in_game_end_date": {
           "anyOf": [
@@ -87,10 +87,10 @@
               "type": "null"
             },
             {
-              "type": "string",
-              "pattern": "\\S"
+              "$ref": "#/$defs/wikilink"
             }
-          ]
+          ],
+          "description": "Link to Date Content in the same campaign or shared; null when unrecorded."
         },
         "prepared_clues": {
           "type": "array",

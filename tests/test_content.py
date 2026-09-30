@@ -42,7 +42,7 @@ class TestContentFrontmatter:
             campaign,
             "[[Alex]]" if subtype == "PC" else None,
             reckoning="[[Calendar]]" if subtype == "Date" else None,
-            scale="tetrant" if subtype == "Date" else None,
+            scale="month" if subtype == "Date" else None,
         )
         assert metadata["subtype"] == subtype and metadata["summary"] is None
         assert "campaign_1" not in metadata
@@ -74,6 +74,23 @@ class TestContentFrontmatter:
 
 
 class TestAddContent:
+    @pytest.mark.parametrize("subtype", ["NPC", "Date"])
+    def test_reckoning_requires_lore(
+        self, vault: Path, calendar: None, subtype: str
+    ) -> None:
+        add_content(
+            "Not a calendar",
+            subtype,
+            vault,
+            reckoning="Calendar" if subtype == "Date" else None,
+            scale="year" if subtype == "Date" else None,
+        )
+        with pytest.raises(ValueError):
+            add_content(
+                "Invalid date", "Date", vault, reckoning="Not a calendar", scale="day"
+            )
+        assert not (vault / "content/Invalid date.md").exists()
+
     def test_date_history_and_clue_subject(self, vault: Path, calendar: None) -> None:
         from armarium.clue import add_clue
         from armarium.session import add_session
@@ -125,12 +142,10 @@ class TestAddContent:
                 'subtype:\nreckoning: "[[Calendar]]"\nscale: year\nspan: 2\n',
             )
         )
-        path = add_content(
-            "Period", "Date", vault, scale="tetrant" if override else None
-        )
+        path = add_content("Period", "Date", vault, scale="month" if override else None)
         record, _ = Record.parse(path, vault)
         assert record is not None
-        assert record.frontmatter["scale"] == ("tetrant" if override else "year")
+        assert record.frontmatter["scale"] == ("month" if override else "year")
         assert record.frontmatter["span"] == 2
 
     @pytest.mark.parametrize(
@@ -205,7 +220,7 @@ class TestAddContent:
             campaign=campaign,
             player="Alex" if subtype == "PC" else None,
             reckoning="Calendar" if subtype == "Date" else None,
-            scale="tetrant" if subtype == "Date" else None,
+            scale="month" if subtype == "Date" else None,
         )
         expected = (
             vault
