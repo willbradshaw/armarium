@@ -1,0 +1,12 @@
+{
+  "dnd-5-5": {
+    "rules": [
+      {
+        "type": "Content",
+        "subtype": "Gear",
+        "schema": "schemas/gear.schema.json",
+        "template": "templates/Gear.md"
+      }
+    ]
+  }
+}

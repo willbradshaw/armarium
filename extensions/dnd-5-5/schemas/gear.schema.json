@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "D&D 5.5 Gear fields",
+  "type": "object",
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "item_type",
+        "rarity",
+        "attunement",
+        "consumable",
+        "cursed",
+        "sentient",
+        "item_tags"
+      ],
+      "properties": {
+        "item_type": {
+          "enum": [
+            "Equipment",
+            "Armor",
+            "Potion",
+            "Ring",
+            "Rod",
+            "Scroll",
+            "Staff",
+            "Wand",
+            "Weapon",
+            "Wondrous Item"
+          ]
+        },
+        "rarity": {
+          "enum": [
+            "Mundane",
+            "Common",
+            "Uncommon",
+            "Rare",
+            "Very Rare",
+            "Legendary",
+            "Artifact",
+            "Varies"
+          ]
+        },
+        "attunement": {
+          "type": "boolean"
+        },
+        "consumable": {
+          "type": "boolean"
+        },
+        "cursed": {
+          "type": "boolean"
+        },
+        "sentient": {
+          "type": "boolean"
+        },
+        "attunement_restrictions": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "item_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "attunement_restrictions"
+            ],
+            "properties": {
+              "attunement_restrictions": {
+                "type": "string"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "attunement"
+            ],
+            "properties": {
+              "attunement": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
