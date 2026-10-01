@@ -1,9 +1,12 @@
 """Create numbered Clue records using a vault's local template."""
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from armarium.add import (
     check_destination,
+    merge_frontmatter,
     read_template,
     record_directory,
     record_number,
@@ -54,7 +57,7 @@ def add_clue(
     *,
     campaign: int | None = None,
     number: int | None = None,
-    text: str | None = None,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> Path:
     """Create and validate a Clue stub without modifying existing records.
 
@@ -62,7 +65,7 @@ def add_clue(
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number, or None to infer the current campaign.
         number: Clue number, or None for the largest existing number plus one.
-        text: Nonblank clue text, or None to use the local template text.
+        frontmatter: Fields to merge into template defaults; generated identity is protected.
 
     Returns:
         Path: Resolved path of the new C-N-NNNN.md record after its schema and
@@ -83,14 +86,15 @@ def add_clue(
     destination = directory / f"C-{campaign}-{number:04}.md"
     check_destination(destination)
     template = read_template(root, "Clue")
-    metadata = dict(template.frontmatter)
-    clue_text = text if text is not None else metadata.get("text")
+    metadata = merge_frontmatter(template.frontmatter, frontmatter)
+    clue_text = metadata.get("text")
     if not isinstance(clue_text, str) or not clue_text.strip():
         raise ValueError(
-            "provide nonblank --text or set text in the local Clue template"
+            "provide nonblank text in frontmatter or the local Clue template"
         )
     metadata["text"] = clue_text
     metadata["subjects"] = _clue_subjects(clue_text, destination, VaultIndex(root))
+    metadata = merge_frontmatter(metadata, frontmatter, protected=("type", "subjects"))
     for field in ("first_session", "last_session"):
         metadata.setdefault(field, None)
     text = record_text(metadata, template.body.text)

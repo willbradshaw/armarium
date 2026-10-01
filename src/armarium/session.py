@@ -1,9 +1,12 @@
 """Create numbered Session records using a vault's local template."""
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from armarium.add import (
     check_destination,
+    merge_frontmatter,
     read_template,
     record_directory,
     record_number,
@@ -15,7 +18,11 @@ from armarium.add import (
 
 
 def add_session(
-    vault: Path | None = None, *, campaign: int | None = None, number: int | None = None
+    vault: Path | None = None,
+    *,
+    campaign: int | None = None,
+    number: int | None = None,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> Path:
     """Create and validate a Session stub without modifying existing records.
 
@@ -23,6 +30,7 @@ def add_session(
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number, or None to infer the current campaign.
         number: Session number, or None for the largest existing number plus one.
+        frontmatter: Fields to merge into template defaults; generated identity is protected.
 
     Returns:
         Path: Resolved path of the new S-N-NNN.md record after its schema and
@@ -48,5 +56,8 @@ def add_session(
     metadata["session_number"] = number
     for field in ("date", "players_absent", "in_game_start_date", "in_game_end_date"):
         metadata.setdefault(field, None)
+    metadata = merge_frontmatter(
+        metadata, frontmatter, protected=("type", "campaign", "session_number")
+    )
     text = record_text(metadata, template.body.text)
     return write_record(destination, text, root, "Session")

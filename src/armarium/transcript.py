@@ -1,9 +1,12 @@
 """Create Transcript records from existing Sessions and supplied Markdown."""
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from armarium.add import (
     check_destination,
+    merge_frontmatter,
     read_template,
     record_directory,
     record_text,
@@ -21,6 +24,8 @@ def add_transcript(
     session: str,
     body_file: Path,
     vault: Path | None = None,
+    *,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> Path:
     """Create and validate a Transcript without changing its Session or source.
 
@@ -28,8 +33,9 @@ def add_transcript(
         session: Unambiguous Session name, qualified vault path or canonical link.
         body_file: UTF-8 Markdown body with titled level-two sections containing
             bullet-list utterances of the form ``- [Speaker] Speech.``. Replaces
-            the local template body; frontmatter comes only from the template.
+            the local template body.
         vault: Vault root, or None to discover it from the working directory.
+        frontmatter: Fields to merge into template defaults; generated identity is protected.
 
     Returns:
         Path: Absolute path of the validated S-N-NNN Transcript.md record.
@@ -68,6 +74,7 @@ def add_transcript(
         raise ValueError(f"body file must contain UTF-8 Markdown: {body_file}") from exc
     metadata = dict(template.frontmatter)
     metadata["session"] = f"[[{resolved.relative_to(root).with_suffix('').as_posix()}]]"
+    metadata = merge_frontmatter(metadata, frontmatter, protected=("type", "session"))
     candidate = Record(destination, Frontmatter(metadata), Body(body, 1))
     schema, diagnostics = select_schema(candidate, root)
     if schema is not None:

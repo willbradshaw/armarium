@@ -143,6 +143,31 @@ def read_template(
     return template
 
 
+def merge_frontmatter(
+    metadata: Mapping[str, Any],
+    supplied: Mapping[str, Any] | None,
+    *,
+    protected: tuple[str, ...] = ("type",),
+) -> dict[str, Any]:
+    """Overlay fields recursively, rejecting conflicting command-owned values.
+
+    Mappings merge; lists, scalars and null replace the previous value. Inputs
+    are not modified. Protected fields may be repeated only with their generated
+    values, so frontmatter cannot change a record's identity or derived links.
+    """
+    result = dict(metadata)
+    for key, value in (supplied or {}).items():
+        if key in protected and value != metadata.get(key):
+            raise ValueError(f"frontmatter {key!r} conflicts with its generated value")
+        previous = result.get(key)
+        result[key] = (
+            merge_frontmatter(previous, value, protected=())
+            if isinstance(previous, Mapping) and isinstance(value, Mapping)
+            else value
+        )
+    return result
+
+
 def record_text(metadata: Mapping[str, Any], body: str) -> str:
     """Serialize frontmatter without reordering fields and append the given body."""
     return (

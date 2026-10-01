@@ -198,6 +198,8 @@ class TestLoadExtensions:
         with pytest.raises(ValueError):
             add_content("Harbor", "Location", enabled)
         assert not (enabled / "content/Harbor.md").exists()
+        path = add_content("Harbor", "Location", enabled, frontmatter={"rating": 3})
+        assert not validate(path, enabled).failed
 
 
 class TestExtension:
@@ -790,15 +792,24 @@ class TestUpdateDowngrade:
 
 
 class TestDndGearSchema:
+    FIELDS = {
+        "item_type": "Equipment",
+        "rarity": "Mundane",
+        "attunement": False,
+        "consumable": False,
+        "cursed": False,
+    }
+
     @pytest.mark.parametrize("campaign", [None, 1])
     def test_template_and_scope(self, vault: Path, campaign: int | None) -> None:
         enable_extension("dnd-5-5", vault)
-        gear = add_content("Compass", "Gear", vault, campaign=campaign)
+        gear = add_content(
+            "Compass", "Gear", vault, campaign=campaign, frontmatter=self.FIELDS
+        )
         record, _ = Record.parse(gear, vault)
         assert record is not None
-        for field in ("item_type", "rarity", "attunement", "consumable", "cursed"):
-            assert field in record.frontmatter
-            assert record.frontmatter[field] is None
+        for field, value in self.FIELDS.items():
+            assert record.frontmatter[field] == value
         if campaign is not None:
             assert record.frontmatter[f"campaign_{campaign}"]["held_by"] is None
         add_content("Legend", "Lore", vault, campaign=campaign)
@@ -809,8 +820,14 @@ class TestDndGearSchema:
     )
     def test_required_fields(self, vault: Path, field: str) -> None:
         enable_extension("dnd-5-5", vault)
-        path = add_content("Compass", "Gear", vault)
-        path.write_text(path.read_text().replace(f"{field}: null\n", ""))
+        path = add_content("Compass", "Gear", vault, frontmatter=self.FIELDS)
+        from armarium.add import record_text
+
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        data = dict(record.frontmatter)
+        del data[field]
+        path.write_text(record_text(data, record.body.text))
         assert validate(path, vault).failed
 
     @pytest.mark.parametrize(
@@ -819,7 +836,7 @@ class TestDndGearSchema:
             *[
                 ("item_type", v, True)
                 for v in (
-                    None,
+                    "Equipment",
                     "Armor",
                     "Potion",
                     "Ring",
@@ -834,7 +851,7 @@ class TestDndGearSchema:
             *[
                 ("rarity", v, True)
                 for v in (
-                    None,
+                    "Mundane",
                     "Common",
                     "Uncommon",
                     "Rare",
@@ -848,13 +865,17 @@ class TestDndGearSchema:
                 (f, v, valid)
                 for f in ("attunement", "consumable", "cursed", "sentient")
                 for v, valid in [
-                    (None, True),
                     (True, True),
                     (False, True),
                     ("true", False),
                     (0, False),
                 ]
             ],
+            *[
+                (f, None, False)
+                for f in ("item_type", "rarity", "attunement", "consumable", "cursed")
+            ],
+            ("sentient", None, True),
             ("item_type", "Shield", False),
             ("item_type", "armor", False),
             ("rarity", "rare", False),
@@ -877,7 +898,7 @@ class TestDndGearSchema:
         from armarium.add import record_text
 
         enable_extension("dnd-5-5", vault)
-        path = add_content("Compass", "Gear", vault)
+        path = add_content("Compass", "Gear", vault, frontmatter=self.FIELDS)
         record, _ = Record.parse(path, vault)
         assert record is not None
         data = dict(record.frontmatter)
@@ -892,7 +913,7 @@ class TestDndGearSchema:
         from armarium.add import record_text
 
         enable_extension("dnd-5-5", vault)
-        path = add_content("Compass", "Gear", vault)
+        path = add_content("Compass", "Gear", vault, frontmatter=self.FIELDS)
         record, _ = Record.parse(path, vault)
         assert record is not None
         data = dict(record.frontmatter)
@@ -909,3 +930,11 @@ class TestDndGearSchema:
         remove_extension("dnd-5-5", vault)
         assert gear.read_bytes() == before
         assert not validate(vault).failed
+
+    @pytest.mark.parametrize("missing", list(FIELDS))
+    def test_creation_requires_fields(self, vault: Path, missing: str) -> None:
+        enable_extension("dnd-5-5", vault)
+        fields = {k: v for k, v in self.FIELDS.items() if k != missing}
+        with pytest.raises(ValueError, match="failed validation"):
+            add_content("Compass", "Gear", vault, frontmatter=fields)
+        assert not (vault / "content/Compass.md").exists()
