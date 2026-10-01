@@ -3,9 +3,7 @@ type: "[[Reference]]"
 ---
 # D&D 5.5 (2024 rules): Gear
 
-Gear represents equipment with recorded game mechanics, including magic items,
-weapons, armor, tools and adventuring supplies. It uses the structure and campaign
-possession rules in [[types/Content]].
+See [[types/Content#Fields]] for the definition of Gear and its core fields.
 The extension adds these frontmatter fields to every Gear record in the vault,
 across all campaigns. Use a separate vault for campaigns using another system.
 
@@ -37,11 +35,6 @@ Magic shields use `item_type: Armor`.
 Use `Varies` for a record describing multiple rarity variants; describe them in
 the rules callout. These additional values supplement the categories and rarities
 in the [2024 magic item rules](https://www.dndbeyond.com/sources/dnd/br-2024/magic-items).
-
-The rules callout holds mechanics and any further restrictions. Publication or
-homebrew attribution belongs in `source`; the optional `url` links to a source
-page using HTTP or HTTPS, or is null when unrecorded.
-Additional custom fields are allowed.
 
 See the [Gear schema](schemas/gear.schema.json) and
 [Gear template](templates/Gear.md).
