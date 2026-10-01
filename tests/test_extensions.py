@@ -798,6 +798,8 @@ class TestDndGearSchema:
         "attunement": False,
         "consumable": False,
         "cursed": False,
+        "sentient": False,
+        "item_tags": [],
     }
 
     @pytest.mark.parametrize("campaign", [None, 1])
@@ -815,9 +817,7 @@ class TestDndGearSchema:
         add_content("Legend", "Lore", vault, campaign=campaign)
         assert not validate(vault).failed
 
-    @pytest.mark.parametrize(
-        "field", ["item_type", "rarity", "attunement", "consumable", "cursed", "source"]
-    )
+    @pytest.mark.parametrize("field", [*FIELDS, "summary", "source"])
     def test_required_fields(self, vault: Path, field: str) -> None:
         enable_extension("dnd-5-5", vault)
         path = add_content("Compass", "Gear", vault, frontmatter=self.FIELDS)
@@ -871,19 +871,17 @@ class TestDndGearSchema:
                     (0, False),
                 ]
             ],
-            *[
-                (f, None, False)
-                for f in ("item_type", "rarity", "attunement", "consumable", "cursed")
-            ],
-            ("sentient", None, True),
+            *[(f, None, False) for f in FIELDS],
             ("item_type", "Shield", False),
             ("item_type", "armor", False),
             ("rarity", "rare", False),
             ("rarity", "", False),
-            ("item_tags", ["Armor", "Utility"], True),
+            ("item_tags", ["Warding", "Utility"], True),
             ("item_tags", [], True),
-            ("item_tags", None, True),
-            ("item_tags", ["Armor", "Armor"], False),
+            ("item_tags", ["Warding", "Warding"], False),
+            ("item_tags", ["Custom tag"], True),
+            ("item_tags", ["warding"], True),
+            ("item_tags", [""], False),
             ("item_tags", [" "], False),
             ("item_tags", "Armor", False),
             ("item_tags", [42], False),
@@ -938,3 +936,13 @@ class TestDndGearSchema:
         with pytest.raises(ValueError, match="failed validation"):
             add_content("Compass", "Gear", vault, frontmatter=fields)
         assert not (vault / "content/Compass.md").exists()
+
+    def test_custom_tags_at_creation(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        tags = ["Local tradition", "Artisan-made"]
+        path = add_content(
+            "Compass", "Gear", vault, frontmatter={**self.FIELDS, "item_tags": tags}
+        )
+        record, _ = Record.parse(path, vault)
+        assert record is not None and record.frontmatter["item_tags"] == tags
+        assert not validate(path, vault).failed

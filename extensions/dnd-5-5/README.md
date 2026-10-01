@@ -15,16 +15,16 @@ across all campaigns. Use a separate vault for campaigns using another system.
 | `consumable` | Yes | Boolean: whether using the item consumes it. |
 | `cursed` | Yes | Boolean: whether the item is cursed. |
 | `attunement_restrictions` | No | Nonblank prerequisite description, or null. A description requires `attunement: true`. |
-| `sentient` | No | Boolean, or null when unrecorded. |
-| `item_tags` | No | List of distinct nonblank tags, or null when unrecorded. |
+| `sentient` | Yes | Boolean: whether the item is sentient. |
+| `item_tags` | Yes | List of unique, nonblank strings; `[]` for no tags. |
 
 Use YAML booleans (`true` or `false`), not quoted strings. An empty list of tags
-means no recorded tags. All five required fields need concrete values; the template
+means no recorded tags. All seven required fields need concrete values; the template
 provides no assumed defaults. Supply them through frontmatter:
 
 ```sh
 armarium add content "Rope" --subtype Gear \
-  --frontmatter '{"item_type":"Equipment","rarity":"Mundane","attunement":false,"consumable":false,"cursed":false}'
+  --frontmatter '{"item_type":"Equipment","rarity":"Mundane","attunement":false,"consumable":false,"cursed":false,"sentient":false,"item_tags":[]}'
 ```
 
 `--frontmatter-file PATH` accepts a JSON object file instead. These fields record

@@ -10,7 +10,9 @@
         "rarity",
         "attunement",
         "consumable",
-        "cursed"
+        "cursed",
+        "sentient",
+        "item_tags"
       ],
       "properties": {
         "item_type": {
@@ -49,10 +51,7 @@
           "type": "boolean"
         },
         "sentient": {
-          "type": [
-            "boolean",
-            "null"
-          ]
+          "type": "boolean"
         },
         "attunement_restrictions": {
           "type": [
@@ -62,10 +61,7 @@
           "pattern": "\\S"
         },
         "item_tags": {
-          "type": [
-            "array",
-            "null"
-          ],
+          "type": "array",
           "items": {
             "type": "string",
             "pattern": "\\S"
