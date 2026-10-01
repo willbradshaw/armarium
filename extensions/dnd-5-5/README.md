@@ -3,7 +3,9 @@ type: "[[Reference]]"
 ---
 # D&D 5.5 (2024 rules): Gear
 
-Gear uses the structure and campaign possession rules in [[types/Content]].
+Gear represents equipment with recorded game mechanics, including magic items,
+weapons, armor, tools and adventuring supplies. It uses the structure and campaign
+possession rules in [[types/Content]].
 The extension adds these frontmatter fields to every Gear record in the vault,
 across all campaigns. Use a separate vault for campaigns using another system.
 
@@ -30,14 +32,15 @@ armarium add content "Rope" --subtype Gear \
 `--frontmatter-file PATH` accepts a JSON object file instead. These fields record
 GM knowledge, including properties not yet revealed to the players.
 
-Shields use `item_type: Armor`. Use `Equipment` when none of the nine magic-item
-categories applies, and `Mundane` for nonmagical equipment.
+For nonmagical equipment, use the `Equipment` type and `Mundane` rarity.
+Magic shields use `item_type: Armor`.
 Use `Varies` for a record describing multiple rarity variants; describe them in
 the rules callout. These additional values supplement the categories and rarities
 in the [2024 magic item rules](https://www.dndbeyond.com/sources/dnd/br-2024/magic-items).
 
 The rules callout holds mechanics and any further restrictions. Publication or
-homebrew attribution belongs in `source`; `url` can link to the source page.
+homebrew attribution belongs in `source`; the optional `url` links to a source
+page using HTTP or HTTPS, or is null when unrecorded.
 Additional custom fields are allowed.
 
 See the [Gear schema](schemas/gear.schema.json) and
