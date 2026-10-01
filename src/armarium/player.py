@@ -1,10 +1,13 @@
 """Create Player records using vault-local templates and directory declarations."""
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from armarium.add import (
     check_destination,
     check_name,
+    merge_frontmatter,
     read_template,
     record_directory,
     record_text,
@@ -15,7 +18,11 @@ from armarium.add import (
 
 
 def add_player(
-    name: str, vault: Path | None = None, *, campaign: int | None = None
+    name: str,
+    vault: Path | None = None,
+    *,
+    campaign: int | None = None,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> Path:
     """Create and validate a Player without changing PCs or other records.
 
@@ -23,6 +30,7 @@ def add_player(
         name: Plain record name without .md; spaces are permitted.
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number, or None to infer the current campaign.
+        frontmatter: Fields to merge into template defaults; generated identity is protected.
 
     Returns:
         Path: Absolute destination after schema and contextual validation.
@@ -40,6 +48,6 @@ def add_player(
     destination = directory / f"{name}.md"
     check_destination(destination, normalize=True)
     template = read_template(root, "Player")
-    metadata = dict(template.frontmatter)
+    metadata = merge_frontmatter(template.frontmatter, frontmatter)
     text = record_text(metadata, template.body.text)
     return write_record(destination, text, root, "Player")

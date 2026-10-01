@@ -6,7 +6,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.add import add_campaign, read_template, select_vault
+from armarium.add import add_campaign
 from armarium.clue import add_clue
 from armarium.content import SUBTYPES, add_content
 from armarium.extensions import enable_extension, remove_extension, update_extension
@@ -20,25 +20,28 @@ from armarium.transcript import add_transcript
 from armarium.validate import validate
 
 
-def _clue_text_help(vault: Path | None) -> str:
-    """Describe the selected vault's template text without making help fail.
+def _frontmatter_json(value: str) -> dict[str, object]:
+    """Parse a strict JSON object, rejecting duplicate keys and nonfinite numbers."""
 
-    Show usable text as a quoted string with escaped newlines. Missing vaults,
-    unreadable templates and invalid defaults are described explicitly. Escape
-    percent signs because argparse interpolates help strings.
-    """
+    def pairs(items: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, item in items:
+            if key in result:
+                raise ValueError(f"duplicate frontmatter key: {key}")
+            result[key] = item
+        return result
+
+    def constant(value: str) -> object:
+        raise ValueError(f"invalid JSON constant: {value}")
+
     try:
-        root = select_vault(vault)
-        template = read_template(root, "Clue")
-        text = template.frontmatter.get("text")
-        default = (
-            json.dumps(text, ensure_ascii=False)
-            if isinstance(text, str) and text.strip()
-            else "none; --text required"
-        )
-    except OSError, ValueError:
-        default = "unavailable; select a vault with a readable Clue template"
-    return f"nonblank clue text (default: {default})".replace("%", "%%")
+        data = json.loads(value, object_pairs_hook=pairs, parse_constant=constant)
+        if not isinstance(data, dict):
+            raise ValueError("frontmatter must be a JSON object")
+        json.dumps(data, allow_nan=False)
+        return data
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -104,7 +107,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     player = additions.add_parser("player", help="create a Player record")
     note = additions.add_parser("note", help="create a Note record")
     session = additions.add_parser("session", help="create a Session record")
-    clue = additions.add_parser("clue", help="create a Clue record", add_help=False)
+    clue = additions.add_parser("clue", help="create a Clue record")
     transcript = additions.add_parser(
         "transcript", help="create a Transcript for an existing Session"
     )
@@ -148,23 +151,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             help=f"{description} (default: largest existing number + 1)",
         )
     content.add_argument("--subtype", required=True, choices=SUBTYPES)
-    content.add_argument(
-        "--player", help="existing Player name or vault-relative path (PC only)"
-    )
-    content.add_argument(
-        "--reckoning", help="calendar Lore name or vault-relative path (Date only)"
-    )
-    content.add_argument(
-        "--scale", help="calendar period, such as day or year (Date only)"
-    )
-    clue.add_argument(
-        "-h",
-        "--help",
-        action="store_true",
-        dest="clue_help",
-        help="show this help message and exit",
-    )
-    clue_text = clue.add_argument("--text", help="nonblank clue text")
+    for addition in (content, player, note, session, clue, transcript):
+        fields = addition.add_mutually_exclusive_group()
+        fields.add_argument(
+            "--frontmatter",
+            type=_frontmatter_json,
+            metavar="JSON",
+            help="JSON object merged into template fields (default: template values)",
+        )
+        fields.add_argument(
+            "--frontmatter-file",
+            type=Path,
+            metavar="PATH",
+            help="UTF-8 JSON object file merged into template fields",
+        )
     transcript.add_argument(
         "session", help="unambiguous Session name or vault-relative path"
     )
@@ -188,11 +188,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     command.add_argument("--vault", type=Path, help="explicit vault directory")
     args = parser.parse_args(argv)
-    if args.command == "add" and args.addition == "clue" and args.clue_help:
-        clue_text.help = _clue_text_help(args.vault)
-        clue.print_help()
-        parser.exit()
     if args.command == "add":
+        path = vars(args).pop("frontmatter_file", None)
+        if path is not None:
+            try:
+                args.frontmatter = _frontmatter_json(
+                    path.expanduser().read_text(encoding="utf-8")
+                )
+            except (OSError, UnicodeError, argparse.ArgumentTypeError) as exc:
+                parser.error(f"cannot read frontmatter from {path}: {exc}")
         for option in ("number", "campaign"):
             value = getattr(args, option, None)
             if value is not None and value < 1:
@@ -259,7 +263,7 @@ def main() -> None:
             options = {
                 key: value
                 for key, value in vars(args).items()
-                if key not in {"command", "addition", "create", "clue_help"}
+                if key not in {"command", "addition", "create"}
             }
             destination = args.create(**options)
         except (OSError, ValueError) as exc:

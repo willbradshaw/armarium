@@ -40,9 +40,15 @@ class TestContentFrontmatter:
             template,
             subtype,
             campaign,
-            "[[Alex]]" if subtype == "PC" else None,
-            reckoning="[[Calendar]]" if subtype == "Date" else None,
-            scale="month" if subtype == "Date" else None,
+            frontmatter={
+                k: v
+                for k, v in {
+                    "player": "[[Alex]]" if subtype == "PC" else None,
+                    "reckoning": "[[Calendar]]" if subtype == "Date" else None,
+                    "scale": "month" if subtype == "Date" else None,
+                }.items()
+                if v is not None
+            },
         )
         assert metadata["subtype"] == subtype and metadata["summary"] is None
         assert "campaign_1" not in metadata
@@ -59,19 +65,13 @@ class TestContentFrontmatter:
             }[subtype]
             assert field in metadata and metadata[field] is None
 
-    @pytest.mark.parametrize("scenario", ["player", "state"])
-    def test_missing_required_input(self, vault: Path, scenario: str) -> None:
+    def test_invalid_campaign_state(self, vault: Path) -> None:
         path = vault / "reference/templates/Content.md"
-        if scenario == "state":
-            path.write_text(
-                '---\ntype: "[[types/Content]]"\ncampaign_1: invalid\n---\n'
-            )
+        path.write_text('---\ntype: "[[types/Content]]"\ncampaign_1: invalid\n---\n')
         template, _ = Record.parse(path, vault)
         assert template is not None
-        with pytest.raises(ValueError):
-            _content_frontmatter(
-                template, "PC" if scenario == "player" else "Lore", 1, None
-            )
+        with pytest.raises(ValueError, match="campaign_1 must be a mapping"):
+            _content_frontmatter(template, "Lore", 1)
 
 
 class TestContentBody:
@@ -115,7 +115,7 @@ class TestAddContent:
     ) -> None:
         from armarium.session import add_session
 
-        add_content("Mira", "PC", vault, campaign=1, player="Alex")
+        add_content("Mira", "PC", vault, campaign=1, frontmatter={"player": "[[Alex]]"})
         add_session(vault, campaign=1)
         path = add_content("Harness", "Gear", vault, campaign=1)
         path.write_text(
@@ -138,12 +138,21 @@ class TestAddContent:
             "Not a calendar",
             subtype,
             vault,
-            reckoning="Calendar" if subtype == "Date" else None,
-            scale="year" if subtype == "Date" else None,
+            frontmatter={
+                k: v
+                for k, v in {
+                    "reckoning": "[[Calendar]]" if subtype == "Date" else None,
+                    "scale": "year" if subtype == "Date" else None,
+                }.items()
+                if v is not None
+            },
         )
         with pytest.raises(ValueError):
             add_content(
-                "Invalid date", "Date", vault, reckoning="Not a calendar", scale="day"
+                "Invalid date",
+                "Date",
+                vault,
+                frontmatter={"reckoning": "[[Not a calendar]]", "scale": "day"},
             )
         assert not (vault / "content/Invalid date.md").exists()
 
@@ -152,7 +161,12 @@ class TestAddContent:
         from armarium.session import add_session
 
         add_session(vault, campaign=1)
-        path = add_content("Year 42", "Date", vault, reckoning="Calendar", scale="year")
+        path = add_content(
+            "Year 42",
+            "Date",
+            vault,
+            frontmatter={"reckoning": "[[Calendar]]", "scale": "year"},
+        )
         path.write_text(
             path.read_text()
             .replace(
@@ -164,7 +178,9 @@ class TestAddContent:
                 "## Appearances\n- [[S-1-001]]: The party arrived during this year.",
             )
         )
-        add_clue(vault, campaign=1, text="The charter dates to [[Year 42]].")
+        add_clue(
+            vault, campaign=1, frontmatter={"text": "The charter dates to [[Year 42]]."}
+        )
         assert not validate(vault).failed
         path.write_text(
             path.read_text().replace(
@@ -180,10 +196,26 @@ class TestAddContent:
     def test_date_reckoning_resolution(
         self, vault: Path, reckoning: str, calendar: None
     ) -> None:
-        path = add_content("Year 42", "Date", vault, reckoning=reckoning, scale="year")
+        path = add_content(
+            "Year 42",
+            "Date",
+            vault,
+            frontmatter={
+                k: v
+                for k, v in {
+                    "reckoning": reckoning
+                    if reckoning is None or reckoning.startswith("[[")
+                    else f"[[{reckoning}]]",
+                    "scale": "year",
+                }.items()
+                if v is not None
+            },
+        )
         record, _ = Record.parse(path, vault)
         assert record is not None
-        assert record.frontmatter["reckoning"] == "[[content/Calendar]]"
+        assert record.frontmatter["reckoning"] == (
+            reckoning if reckoning.startswith("[[") else f"[[{reckoning}]]"
+        )
         assert record.frontmatter["scale"] == "year"
         assert not validate(vault).failed
 
@@ -198,7 +230,16 @@ class TestAddContent:
                 'subtype:\nreckoning: "[[Calendar]]"\nscale: year\nspan: 2\n',
             )
         )
-        path = add_content("Period", "Date", vault, scale="month" if override else None)
+        path = add_content(
+            "Period",
+            "Date",
+            vault,
+            frontmatter={
+                k: v
+                for k, v in {"scale": "month" if override else None}.items()
+                if v is not None
+            },
+        )
         record, _ = Record.parse(path, vault)
         assert record is not None
         assert record.frontmatter["scale"] == ("month" if override else "year")
@@ -220,19 +261,22 @@ class TestAddContent:
     ) -> None:
         before = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
         with pytest.raises(ValueError):
-            add_content("Invalid", "Date", vault, reckoning=reckoning, scale=scale)
-        assert {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()} == before
-
-    @pytest.mark.parametrize("field", ["reckoning", "scale"])
-    def test_date_options_on_other_subtype(self, vault: Path, field: str) -> None:
-        with pytest.raises(ValueError, match="only valid for Date"):
             add_content(
                 "Invalid",
-                "Lore",
+                "Date",
                 vault,
-                reckoning="Calendar" if field == "reckoning" else None,
-                scale="day" if field == "scale" else None,
+                frontmatter={
+                    k: v
+                    for k, v in {
+                        "reckoning": reckoning
+                        if reckoning is None or reckoning.startswith("[[")
+                        else f"[[{reckoning}]]",
+                        "scale": scale,
+                    }.items()
+                    if v is not None
+                },
             )
+        assert {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()} == before
 
     def test_template_player_default(self, vault: Path) -> None:
         template = vault / "reference/templates/Content.md"
@@ -274,9 +318,15 @@ class TestAddContent:
             subtype,
             vault,
             campaign=campaign,
-            player="Alex" if subtype == "PC" else None,
-            reckoning="Calendar" if subtype == "Date" else None,
-            scale="month" if subtype == "Date" else None,
+            frontmatter={
+                k: v
+                for k, v in {
+                    "player": "[[Alex]]" if subtype == "PC" else None,
+                    "reckoning": "[[Calendar]]" if subtype == "Date" else None,
+                    "scale": "month" if subtype == "Date" else None,
+                }.items()
+                if v is not None
+            },
         )
         expected = (
             vault
@@ -291,10 +341,7 @@ class TestAddContent:
         assert record is not None
         assert record.frontmatter.get("summary") is None
         if subtype == "PC":
-            assert (
-                record.frontmatter["player"]
-                == "[[campaigns/campaign_1/reference/players/Alex]]"
-            )
+            assert record.frontmatter["player"] == "[[Alex]]"
 
     def test_campaign_two_and_discovery(
         self, vault: Path, monkeypatch: pytest.MonkeyPatch
@@ -326,7 +373,10 @@ class TestAddContent:
     ) -> None:
         monkeypatch.chdir(vault / relative)
         destination = add_content(
-            "Mira", "PC", vault if explicit_vault else None, player="Alex"
+            "Mira",
+            "PC",
+            vault if explicit_vault else None,
+            frontmatter={"player": "[[Alex]]"},
         )
         assert destination.parent == vault / "campaigns/campaign_1/content"
         record, _ = Record.parse(destination, vault)
@@ -385,7 +435,15 @@ class TestAddContent:
             "PC",
             vault,
             campaign=1,
-            player=player,
+            frontmatter={
+                k: v
+                for k, v in {
+                    "player": player
+                    if player is None or player.startswith("[[")
+                    else f"[[{player}]]"
+                }.items()
+                if v is not None
+            },
         )
         record, _ = Record.parse(path, vault)
         assert record is not None and record.frontmatter["summary"] is None
@@ -457,7 +515,15 @@ class TestAddContent:
                 "PC",
                 vault,
                 campaign=2 if scenario == "wrong_campaign" else 1,
-                player=player,
+                frontmatter={
+                    k: v
+                    for k, v in {
+                        "player": player
+                        if player is None or player.startswith("[[")
+                        else f"[[{player}]]"
+                    }.items()
+                    if v is not None
+                },
             )
         assert not list(vault.rglob("Mira.md"))
 
@@ -467,7 +533,6 @@ class TestAddContent:
             "subtype",
             "campaign_zero",
             "campaign_missing",
-            "irrelevant_player",
             "no_player",
             "outside",
             "nested_vault",
@@ -494,7 +559,6 @@ class TestAddContent:
                 else 9
                 if scenario == "campaign_missing"
                 else None,
-                player="Alex" if scenario == "irrelevant_player" else None,
             )
         assert not list(vault.rglob("Entity.md"))
 
@@ -582,3 +646,23 @@ class TestExtensionContent:
         assert not validate(path, vault).failed
         path.write_text(path.read_text().replace("## Notes", "## Missing"))
         assert validate(path, vault).failed
+
+    def test_nested_frontmatter(self, vault: Path) -> None:
+        add_campaign(vault, number=2)
+        path = add_content(
+            "Harness",
+            "Gear",
+            vault,
+            campaign=2,
+            frontmatter={"campaign_2": {"custom": {"rating": 3}}, "source": "Homebrew"},
+        )
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        assert record.frontmatter["campaign_2"] == {
+            "first_session": None,
+            "last_session": None,
+            "held_by": None,
+            "custom": {"rating": 3},
+        }
+        assert "campaign_1" not in record.frontmatter
+        assert record.frontmatter["source"] == "Homebrew"

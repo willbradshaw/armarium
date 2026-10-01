@@ -21,7 +21,7 @@ validation](#templates-and-validation).
 ### Choosing a vault and destination
 
 Pass `--vault PATH` to select a vault's root directory, using an absolute path or a path
-relative to your current directory. Omit it to discover the vault from your current
+relative to the current directory. Omit it to discover the vault from the current
 directory when running anywhere inside it.
 
 Records go in the selected vault's [declared directory](vault.md#where-records-live) for
@@ -44,7 +44,7 @@ Session. [`add campaign`](#adding-a-campaign) creates a new campaign.
 
 Initial values come from the vault's local [templates](record.md#anatomy), and validation
 uses its [schemas](record.md#types-statuses-and-schemas). Edit a template to change
-defaults, or edit the new record afterward. Enabled [extensions](extensions.md)
+defaults, supply [frontmatter](#supplying-frontmatter), or edit the new record afterward. Enabled [extensions](extensions.md)
 can supply templates for specific types or subtypes and add validation rules.
 
 A new [record](record.md) must pass [schema, link and contextual
@@ -81,21 +81,40 @@ archives. Use `--number N` to choose an unused number within the type's range.
 [References to existing records](record.md#links) must resolve uniquely; use
 vault-relative paths when names are ambiguous.
 
+### Supplying frontmatter
+
+All record commands accept either an inline JSON object or a UTF-8 JSON file:
+
+```sh
+armarium add content "Port Briselle" --subtype Location --frontmatter '{"summary":"A busy harbor"}'
+armarium add content "Port Briselle" --subtype Location --frontmatter-file ../location.json
+```
+
+Supplied fields override template defaults, including fields required by
+[extensions](extensions.md). Nested objects merge; lists, scalars and null replace
+the previous value. Campaign blocks use their actual number, such as `campaign_2`.
+File paths are relative to the current directory. The two options are mutually exclusive.
+
+Use [wikilinks](record.md#links) for link fields, such as `"player": "[[Alex]]"`.
+Command-controlled values (`type`, Content `subtype`, Session `campaign` and
+`session_number`, Transcript `session`, and derived Clue `subjects`) cannot be
+changed through frontmatter. Missing required fields and invalid values fail
+[validation](#templates-and-validation); no invalid new record is retained.
+
 ### Content
 
 ```sh
 armarium add content "Port Briselle" --subtype Location --vault ../my-vault
-armarium add content "Mira" --subtype PC --campaign 1 --player Alex --vault ../my-vault
+armarium add content "Mira" --subtype PC --campaign 1 --frontmatter '{"player":"[[Alex]]"}' --vault ../my-vault
 ```
 
 Use `--subtype NPC|PC|Location|Faction|Object|Lore|Date|Gear` to select the [Content
-subtype](type.md#content). Required nullable subtype fields start empty unless set in
-the template. PCs need an existing [Player](#players), supplied with `--player` or in
-the template. Dates need `reckoning` and `scale`, supplied with `--reckoning` and
-`--scale` or in the template. The reckoning must identify an existing Lore record describing the calendar.
+subtype](type.md#content). PCs require a `player` link to an existing [Player](#players).
+Dates require `reckoning`, a link to a Lore record describing the calendar, and
+`scale`, such as day or year. Supply these through frontmatter or template defaults.
 
 ```sh
-armarium add content "Year 42" --subtype Date --reckoning "Royal Calendar" --scale year --vault ../my-vault
+armarium add content "Year 42" --subtype Date --frontmatter '{"reckoning":"[[Royal Calendar]]","scale":"year"}' --vault ../my-vault
 ```
 
 Shared records start without [campaign state](campaign.md#state). Campaign-specific
@@ -139,14 +158,12 @@ empty body is valid.
 ### Clues
 
 ```sh
-armarium add clue --campaign 1 --vault ../my-vault --text 'The gate is locked from within.'
+armarium add clue --campaign 1 --vault ../my-vault --frontmatter '{"text":"The gate is locked from within."}'
 ```
 
 Creates a [Clue](type.md#clue), `C-N-NNNN.md`. Clue numbers range from 1 to 9999.
 
-Supply nonblank `--text`, or omit it to use nonblank text from the local template.
-`armarium add clue --vault ../my-vault --help` shows the discovered default text, or
-indicates that `--text` is required when the template text is blank.
+Supply nonblank `text` through frontmatter or the local template.
 
 Text goes in [frontmatter](record.md#anatomy). Its [wikilinks](record.md#links) must
 target shared or same-campaign [Content](#content). `subjects` is derived from those

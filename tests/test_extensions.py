@@ -198,6 +198,8 @@ class TestLoadExtensions:
         with pytest.raises(ValueError):
             add_content("Harbor", "Location", enabled)
         assert not (enabled / "content/Harbor.md").exists()
+        path = add_content("Harbor", "Location", enabled, frontmatter={"rating": 3})
+        assert not validate(path, enabled).failed
 
 
 class TestExtension:

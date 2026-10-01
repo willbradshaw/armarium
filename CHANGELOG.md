@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add JSON frontmatter input to all record-creation commands, replacing dedicated
+  Player, Date and Clue field options.
 - Add `armarium extension update` and record the supplying Armarium version;
   require `--allow-downgrade` when replacing an extension from a newer version.
 - Add optional vault extensions with additive schema checks and subtype templates.
