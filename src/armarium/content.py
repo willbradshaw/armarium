@@ -1,6 +1,7 @@
 """Create valid Content stubs from vault-local templates and declarations."""
 
 import re
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -8,14 +9,14 @@ from armarium.add import (
     check_destination,
     check_name,
     infer_campaign,
+    merge_frontmatter,
     read_template,
     record_directory,
     record_text,
     select_vault,
     write_record,
 )
-from armarium.index import VaultIndex
-from armarium.lib import CAMPAIGN_NAME, parse_wikilink
+from armarium.lib import CAMPAIGN_NAME
 from armarium.parse import Record
 
 SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear")
@@ -25,9 +26,7 @@ def _content_frontmatter(
     template: Record,
     subtype: str,
     campaign: int | None,
-    player: str | None,
-    reckoning: str | None = None,
-    scale: str | None = None,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Fill a Content template's metadata for a new shared or campaign record.
 
@@ -35,17 +34,14 @@ def _content_frontmatter(
         template: Parsed local Content template.
         subtype: Selected built-in subtype.
         campaign: Campaign number, or None for shared content.
-        player: Canonical Player link override, or None to use the template value.
-        reckoning: Calendar Lore link override, or None to use the template.
-        scale: Date scale override, or None to use the template.
+        frontmatter: Fields applied after campaign adaptation.
 
     Returns:
         dict[str, Any]: Metadata retaining custom fields, with required nullable
             fields supplied. Campaign 1 is the template's campaign-state placeholder.
 
     Raises:
-        ValueError: A required PC/Date field is missing or template campaign state
-            is malformed.
+        ValueError: Template campaign state is malformed or supplied identity conflicts.
     """
     data = {
         key: value
@@ -62,18 +58,6 @@ def _content_frontmatter(
     }
     if subtype in nullable:
         data.setdefault(nullable[subtype], None)
-    if player is not None:
-        data["player"] = player
-    if subtype == "PC" and not data.get("player"):
-        raise ValueError(
-            "PC requires --player naming an existing Player, or a player in the template"
-        )
-    if subtype == "Date":
-        for field, value in (("reckoning", reckoning), ("scale", scale)):
-            if value is not None:
-                data[field] = value
-            if not data.get(field):
-                raise ValueError(f"Date requires --{field} or {field} in the template")
     if campaign is not None:
         state = template.frontmatter.get("campaign_1", {})
         if not isinstance(state, dict):
@@ -84,7 +68,7 @@ def _content_frontmatter(
         if subtype in {"Object", "Gear"}:
             state.setdefault("held_by", None)
         data[f"campaign_{campaign}"] = state
-    return data
+    return merge_frontmatter(data, frontmatter, protected=("type", "subtype"))
 
 
 def _content_body(body: str, subtype: str) -> str:
@@ -109,9 +93,7 @@ def add_content(
     vault: Path | None = None,
     *,
     campaign: int | None = None,
-    player: str | None = None,
-    reckoning: str | None = None,
-    scale: str | None = None,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> Path:
     """Create one Content record, refusing overwrites and invalid generated records.
 
@@ -121,9 +103,7 @@ def add_content(
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number. When omitted, infer from the working
             directory inside the selected vault, otherwise create shared content.
-        player: Player name, path or canonical wikilink, for PCs only.
-        reckoning: Calendar Lore name, path or wikilink, for Dates only.
-        scale: Nonblank calendar-defined period name, for Dates only.
+        frontmatter: Fields to merge into template defaults; generated identity is protected.
 
     Returns:
         Path: Absolute path of the new record after it passes local schema and
@@ -140,32 +120,12 @@ def add_content(
         raise ValueError(f"subtype must be one of {', '.join(SUBTYPES)}")
     if campaign is not None and campaign < 1:
         raise ValueError("campaign number must be positive")
-    if player is not None and subtype != "PC":
-        raise ValueError("--player is only valid for PC content")
-    if subtype != "Date" and (reckoning is not None or scale is not None):
-        raise ValueError("--reckoning and --scale are only valid for Date content")
     root = select_vault(vault)
     campaign = infer_campaign(root, campaign)
     directory = record_directory(root, "Content", campaign)
     destination = directory / f"{name}.md"
     check_destination(destination, normalize=True)
     template = read_template(root, "Content", subtype=subtype)
-    links = {"player": player, "reckoning": reckoning}
-    for field, value in links.items():
-        if value is None:
-            continue
-        target = parse_wikilink(
-            value if value.startswith("[[") else f"[[{value}]]", canonical=True
-        )
-        resolved, problem = VaultIndex(root).resolve(target, destination)
-        if problem or resolved is None:
-            kind = "Player" if field == "player" else "calendar Lore record"
-            raise ValueError(
-                f"--{field} must uniquely identify an existing {kind}; use a vault-relative path"
-            )
-        links[field] = f"[[{resolved.relative_to(root).with_suffix('').as_posix()}]]"
-    metadata = _content_frontmatter(
-        template, subtype, campaign, links["player"], links["reckoning"], scale
-    )
+    metadata = _content_frontmatter(template, subtype, campaign, frontmatter)
     text = record_text(metadata, _content_body(template.body.text, subtype))
     return write_record(destination, text, root, "Content")

@@ -29,7 +29,7 @@ class TestAddClue:
         root = tmp_path / "vault with spaces"
         shutil.copytree(ROOT / "vaults" / name, root)
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
-        destination = add_clue(text="A fact.", vault=root, campaign=1)
+        destination = add_clue(vault=root, campaign=1, frontmatter={"text": "A fact."})
         assert destination.parent == root / "campaigns/campaign_1/clues"
         record, _ = Record.parse(destination, root)
         assert record is not None
@@ -51,7 +51,9 @@ class TestAddClue:
     ) -> None:
         add_campaign(vault)
         monkeypatch.chdir(vault / "campaigns/campaign_2" / ("clues" if nested else ""))
-        destination = add_clue(text="A fact.", vault=vault if explicit_vault else None)
+        destination = add_clue(
+            vault=vault if explicit_vault else None, frontmatter={"text": "A fact."}
+        )
         assert destination.name == "C-2-0001.md"
         assert not validate(destination).failed
 
@@ -60,10 +62,18 @@ class TestAddClue:
     ) -> None:
         add_campaign(vault)
         monkeypatch.chdir(vault / "campaigns/campaign_1")
-        assert add_clue(text="A fact.", campaign=2, number=12).name == "C-2-0012.md"
-        assert add_clue(text="A fact.", campaign=2).name == "C-2-0013.md"
-        assert add_clue(text="A fact.", campaign=2, number=3).name == "C-2-0003.md"
-        assert add_clue(text="A fact.").name == "C-1-0001.md"
+        assert (
+            add_clue(campaign=2, number=12, frontmatter={"text": "A fact."}).name
+            == "C-2-0012.md"
+        )
+        assert (
+            add_clue(campaign=2, frontmatter={"text": "A fact."}).name == "C-2-0013.md"
+        )
+        assert (
+            add_clue(campaign=2, number=3, frontmatter={"text": "A fact."}).name
+            == "C-2-0003.md"
+        )
+        assert add_clue(frontmatter={"text": "A fact."}).name == "C-1-0001.md"
         assert not validate(vault).failed
 
     @pytest.mark.parametrize(
@@ -98,13 +108,13 @@ class TestAddClue:
         )
         with pytest.raises(ValueError):
             add_clue(
-                text="A fact.",
                 vault=selected,
                 campaign=0
                 if scenario == "zero"
                 else 8
                 if scenario == "nonexistent"
                 else None,
+                frontmatter={"text": "A fact."},
             )
         assert not list(vault.glob("campaigns/*/clues/C-*.md"))
 
@@ -127,7 +137,7 @@ class TestAddClue:
                 / ("reference/templates/Clue.md" if kind == "symlink" else "missing")
             )
         with pytest.raises((FileExistsError, ValueError)):
-            add_clue(text="A fact.", vault=vault, campaign=1, number=1)
+            add_clue(vault=vault, campaign=1, number=1, frontmatter={"text": "A fact."})
         if kind in {"file", "case", "archived"}:
             assert target.read_text() == "Unchanged"
         elif kind == "directory":
@@ -176,7 +186,7 @@ class TestAddClue:
             data["properties"]["frontmatter"]["required"].append("custom_required")
             schema.write_text(json.dumps(data))
         with pytest.raises(ValueError):
-            add_clue(text="A fact.", vault=vault, campaign=1)
+            add_clue(vault=vault, campaign=1, frontmatter={"text": "A fact."})
         assert not list(vault.rglob("C-1-0001.md"))
 
     @pytest.mark.parametrize("error", [OSError("failed"), KeyboardInterrupt()])
@@ -186,9 +196,12 @@ class TestAddClue:
         with monkeypatch.context() as patch:
             patch.setattr("armarium.add.validate", Mock(side_effect=error))
             with pytest.raises(type(error)):
-                add_clue(text="A fact.", vault=vault, campaign=1)
+                add_clue(vault=vault, campaign=1, frontmatter={"text": "A fact."})
         assert not (vault / "campaigns/campaign_1/clues/C-1-0001.md").exists()
-        assert add_clue(text="A fact.", vault=vault, campaign=1).name == "C-1-0001.md"
+        assert (
+            add_clue(vault=vault, campaign=1, frontmatter={"text": "A fact."}).name
+            == "C-1-0001.md"
+        )
 
     def test_write_failure(self, vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         destination = vault / "campaigns/campaign_1/clues/C-1-0001.md"
@@ -205,14 +218,17 @@ class TestAddClue:
         with monkeypatch.context() as patch:
             patch.setattr(Path, "open", failing_open)
             with pytest.raises(OSError, match="write failed"):
-                add_clue(text="A fact.", vault=vault, campaign=1)
+                add_clue(vault=vault, campaign=1, frontmatter={"text": "A fact."})
         assert not destination.exists()
-        assert add_clue(text="A fact.", vault=vault, campaign=1) == destination
+        assert (
+            add_clue(vault=vault, campaign=1, frontmatter={"text": "A fact."})
+            == destination
+        )
 
     @pytest.mark.parametrize("text", [None, "", " \n\t"])
     def test_missing_text(self, vault: Path, text: str | None) -> None:
         with pytest.raises(ValueError, match="nonblank"):
-            add_clue(vault, campaign=1, text=text)
+            add_clue(vault, campaign=1, frontmatter={"text": text})
         assert not list(vault.rglob("C-1-0001.md"))
 
     def test_local_customizations(self, vault: Path) -> None:
@@ -262,11 +278,22 @@ class TestAddClue:
             add_clue(
                 vault,
                 campaign=1,
-                text="[[Harbour#Missing]]" if change == "anchor" else "[[Harbour]]",
+                frontmatter={
+                    k: v
+                    for k, v in {
+                        "text": "[[Harbour#Missing]]"
+                        if change == "anchor"
+                        else "[[Harbour]]"
+                    }.items()
+                    if v is not None
+                },
             )
         assert not list(vault.rglob("C-1-0001.md"))
         template.write_text(original)
-        assert add_clue(vault, campaign=1, text="A fact.").name == "C-1-0001.md"
+        assert (
+            add_clue(vault, campaign=1, frontmatter={"text": "A fact."}).name
+            == "C-1-0001.md"
+        )
 
     def test_late_collision(self, vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         destination = vault / "campaigns/campaign_1/clues/C-1-0001.md"
@@ -280,7 +307,7 @@ class TestAddClue:
 
         monkeypatch.setattr(Path, "open", racing_open)
         with pytest.raises(FileExistsError):
-            add_clue(vault, campaign=1, text="A fact.")
+            add_clue(vault, campaign=1, frontmatter={"text": "A fact."})
         assert destination.read_text() == "Concurrent record"
 
 
@@ -305,7 +332,7 @@ class TestClueSubjects:
         add_content("Mira", "NPC", vault, campaign=1)
         destination = vault / "campaigns/campaign_1/clues/C-1-0001.md"
         assert _clue_subjects(text, destination, VaultIndex(vault)) == expected
-        created = add_clue(vault, campaign=1, text=text)
+        created = add_clue(vault, campaign=1, frontmatter={"text": text})
         record, _ = Record.parse(created, vault)
         assert record is not None and record.frontmatter["subjects"] == expected
         assert not validate(vault).failed
@@ -348,5 +375,5 @@ class TestClueSubjects:
         with pytest.raises(ValueError):
             _clue_subjects(text, destination, VaultIndex(vault))
         with pytest.raises(ValueError):
-            add_clue(vault, campaign=1, text=text)
+            add_clue(vault, campaign=1, frontmatter={"text": text})
         assert not destination.exists()

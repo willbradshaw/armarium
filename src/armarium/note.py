@@ -1,20 +1,28 @@
 """Create shared or campaign Notes from the selected vault's local template."""
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from armarium.add import (
     check_destination,
     check_name,
     infer_campaign,
+    merge_frontmatter,
     read_template,
     record_directory,
+    record_text,
     select_vault,
     write_record,
 )
 
 
 def add_note(
-    name: str, vault: Path | None = None, *, campaign: int | None = None
+    name: str,
+    vault: Path | None = None,
+    *,
+    campaign: int | None = None,
+    frontmatter: Mapping[str, Any] | None = None,
 ) -> Path:
     """Create and validate a Note without changing existing records.
 
@@ -23,6 +31,7 @@ def add_note(
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number; infer from the working directory
             within the selected vault when omitted, otherwise use shared scope.
+        frontmatter: Fields to merge into template defaults; generated identity is protected.
 
     Returns:
         Path: Absolute destination after local schema and contextual validation.
@@ -43,4 +52,7 @@ def add_note(
     check_destination(destination, normalize=True)
     template = read_template(root, "Note", check_reference=True)
     text = template.path.read_text(encoding="utf-8")
+    if frontmatter is not None:
+        metadata = merge_frontmatter(template.frontmatter, frontmatter)
+        text = record_text(metadata, template.body.text)
     return write_record(destination, text, root, "Note")

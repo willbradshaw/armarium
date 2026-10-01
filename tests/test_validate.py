@@ -3115,7 +3115,11 @@ class TestSessionDateLinks:
         add_content("Calendar", "Lore", root)
         campaign = {"same_campaign": 1, "other_campaign": 2}.get(target)
         add_content(
-            "Day 8", "Date", root, campaign=campaign, reckoning="Calendar", scale="day"
+            "Day 8",
+            "Date",
+            root,
+            campaign=campaign,
+            frontmatter={"reckoning": "[[Calendar]]", "scale": "day"},
         )
         session = add_session(root, campaign=1)
         link = {

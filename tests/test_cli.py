@@ -1,5 +1,6 @@
 """Command parsing, diagnostics, exit status and process entry point."""
 
+import json
 import os
 import re
 import subprocess
@@ -197,7 +198,13 @@ class TestMain:
 
         root = init_vault(tmp_path / "my-vault")
         monkeypatch.chdir(tmp_path if explicit else root / "campaigns/campaign_1")
-        arguments = ["armarium", "add", "clue", "--text", "A fact."]
+        arguments = [
+            "armarium",
+            "add",
+            "clue",
+            "--frontmatter",
+            json.dumps({"text": "A fact."}),
+        ]
         if explicit:
             arguments += ["--vault", str(root), "--campaign", "1", "--number", "12"]
         monkeypatch.setattr(sys, "argv", arguments)
@@ -240,7 +247,13 @@ class TestMain:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["armarium", "add", "clue", "--text", "A fact."]
+            [
+                "armarium",
+                "add",
+                "clue",
+                "--frontmatter",
+                json.dumps({"text": "A fact."}),
+            ]
             + ([] if scenario == "missing_campaign" else ["--campaign", "1"]),
         )
         with pytest.raises(SystemExit) as exc:
@@ -444,18 +457,16 @@ class TestMain:
                 "Year 42",
                 "--subtype",
                 "Date",
-                "--reckoning",
-                "Calendar",
-                "--scale",
-                "year",
                 "--vault",
                 str(root),
+                "--frontmatter",
+                json.dumps({"reckoning": "[[" + "Calendar" + "]]", "scale": "year"}),
             ],
         )
         main()
         record, _ = Record.parse(root / "content/Year 42.md", root)
         assert record is not None
-        assert record.frontmatter["reckoning"] == "[[content/Calendar]]"
+        assert record.frontmatter["reckoning"] == "[[Calendar]]"
         assert record.frontmatter["scale"] == "year"
 
     def test_add_content_missing_player(
@@ -475,7 +486,7 @@ class TestMain:
             main()
         assert exc.value.code == 1
         output = capsys.readouterr()
-        assert "Cannot add content" in output.err and "--player" in output.err
+        assert "Cannot add content" in output.err and "player" in output.err
         assert "Traceback" not in output.err
         assert not (root / "content/Mira.md").exists()
 
@@ -920,7 +931,7 @@ class TestParseArgs:
     @pytest.mark.parametrize(
         "selection", ["inferred", "explicit_before", "explicit_after", "equals"]
     )
-    def test_clue_help_template(
+    def test_clue_help(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -948,7 +959,7 @@ class TestParseArgs:
             parse_args(["add", "clue", *options[selection]])
         assert exc.value.code == 0
         output = capsys.readouterr()
-        assert '(default: "100% local fact.")' in " ".join(output.out.split())
+        assert "--frontmatter" in output.out
         assert output.err == ""
         assert all(p.read_bytes() == content for p, content in before.items())
 
@@ -1065,15 +1076,15 @@ class TestParseArgs:
                 "PC",
                 "--campaign",
                 "2",
-                "--player",
-                "Alex",
                 "--vault",
                 "my-vault",
+                "--frontmatter",
+                json.dumps({"player": "[[Alex]]"}),
             ]
         )
         assert args.addition == "content" and args.name == "Mira"
         assert args.subtype == "PC" and args.campaign == 2
-        assert args.player == "Alex"
+        assert args.frontmatter == {"player": "[[Alex]]"}
         assert args.vault == Path("my-vault")
 
     @pytest.mark.parametrize("explicit", [False, True])
@@ -1174,53 +1185,6 @@ class TestParseArgs:
         output = capsys.readouterr()
         assert "usage: armarium" in output.out
         assert output.err == ""
-
-
-class TestClueTextHelp:
-    @pytest.mark.parametrize(
-        "value",
-        ['"A local fact."', '"100% sure\\nSecond line"', '""', '"   "', "null", "42"],
-    )
-    def test_template_value(self, tmp_path: Path, value: str) -> None:
-        from armarium.cli import _clue_text_help
-        from armarium.init import init_vault
-
-        root = init_vault(tmp_path / "vault")
-        template = root / "reference/templates/Clue.md"
-        template.write_text(template.read_text().replace('text: ""', f"text: {value}"))
-        expected = (
-            value.replace("%", "%%")
-            if value.startswith('"') and value.strip('" ')
-            else "none; --text required"
-        )
-        assert _clue_text_help(root) == f"nonblank clue text (default: {expected})"
-
-    @pytest.mark.parametrize(
-        "scenario", ["outside", "nested", "missing", "invalid", "wrong_type", "symlink"]
-    )
-    def test_unavailable(self, tmp_path: Path, scenario: str) -> None:
-        from armarium.cli import _clue_text_help
-        from armarium.init import init_vault
-
-        root = init_vault(tmp_path / "vault")
-        template = root / "reference/templates/Clue.md"
-        if scenario == "missing":
-            template.unlink()
-        elif scenario == "invalid":
-            template.write_text("---\nbad: [\n---\n")
-        elif scenario == "wrong_type":
-            template.write_text("No type")
-        elif scenario == "symlink":
-            template.unlink()
-            template.symlink_to(root / "reference/templates/Content.md")
-        selected = (
-            tmp_path
-            if scenario == "outside"
-            else root / "content"
-            if scenario == "nested"
-            else root
-        )
-        assert "default: unavailable" in _clue_text_help(selected)
 
 
 class TestExtensionCommand:
@@ -1463,3 +1427,188 @@ class TestDowngradeOption:
         assert json.loads(config.read_text())["example"]["armarium_version"] == (
             "1.0.0" if allow else "2.0.0"
         )
+
+
+class TestFrontmatterJson:
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            "[]",
+            "null",
+            '"text"',
+            "42",
+            "{",
+            '{"a":1,"a":2}',
+            '{"nested":{"a":1,"a":2}}',
+            '{"x":NaN}',
+            '{"x":Infinity}',
+            '{"x":1e999}',
+        ],
+    )
+    def test_invalid(self, raw: str) -> None:
+        import argparse
+
+        from armarium.cli import _frontmatter_json
+
+        with pytest.raises(argparse.ArgumentTypeError):
+            _frontmatter_json(raw)
+
+    def test_values(self) -> None:
+        from armarium.cli import _frontmatter_json
+
+        value = {
+            "link": "[[Alex]]",
+            "true": True,
+            "false": False,
+            "empty": None,
+            "number": 3,
+            "list": [1, "two"],
+            "nested": {"field": "café"},
+        }
+        assert _frontmatter_json(json.dumps(value)) == value
+
+
+class TestFrontmatterInput:
+    @pytest.mark.parametrize("file", [False, True])
+    @pytest.mark.parametrize(
+        "kind", ["content", "player", "note", "session", "clue", "transcript"]
+    )
+    def test_record_creation(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, file: bool, kind: str
+    ) -> None:
+        from armarium.init import init_vault
+        from armarium.parse import Record
+        from armarium.session import add_session
+
+        root = init_vault(tmp_path / "vault")
+        monkeypatch.chdir(root / "campaigns/campaign_1")
+        fields = {"custom": {"enabled": True, "tags": ["one", "two"], "empty": None}}
+        args = ["armarium", "add", kind]
+        if kind in {"content", "player", "note"}:
+            args += ["New record"]
+        if kind == "content":
+            args += ["--subtype", "Lore"]
+        if kind == "clue":
+            fields["text"] = "A fact."
+        if kind == "transcript":
+            add_session(root, campaign=1)
+            body = tmp_path / "speech.md"
+            body.write_text("## Arrival\n\n- [GM] Welcome.\n")
+            args += ["S-1-001", "--body-file", str(body)]
+        if file:
+            source = Path("../../../fields.json")
+            source.write_text(json.dumps(fields), encoding="utf-8")
+            args += ["--frontmatter-file", str(source)]
+        else:
+            args += ["--frontmatter", json.dumps(fields)]
+        before = set(root.rglob("*.md"))
+        monkeypatch.setattr(sys, "argv", args)
+        main()
+        [created] = set(root.rglob("*.md")) - before
+        record, _ = Record.parse(created, root)
+        assert record is not None
+        assert record.frontmatter["custom"] == fields["custom"]
+
+    @pytest.mark.parametrize(
+        "scenario", ["missing", "directory", "encoding", "syntax", "both"]
+    )
+    def test_invalid_file(self, tmp_path: Path, scenario: str) -> None:
+        path = tmp_path / "fields.json"
+        if scenario == "directory":
+            path.mkdir()
+        elif scenario == "encoding":
+            path.write_bytes(b"\xff")
+        elif scenario in {"syntax", "both"}:
+            path.write_text("{")
+        args = ["add", "note", "Idea", "--frontmatter-file", str(path)]
+        if scenario == "both":
+            args += ["--frontmatter", "{}"]
+        with pytest.raises(SystemExit) as exc:
+            parse_args(args)
+        assert exc.value.code == 2
+
+    @pytest.mark.parametrize("option", ["--player", "--reckoning", "--scale", "--text"])
+    def test_removed_options(self, option: str) -> None:
+        args = (
+            ["add", "clue"]
+            if option == "--text"
+            else ["add", "content", "Name", "--subtype", "PC"]
+        )
+        with pytest.raises(SystemExit) as exc:
+            parse_args([*args, option, "value"])
+        assert exc.value.code == 2
+
+    @pytest.mark.parametrize(
+        "kind,fields",
+        [
+            ("note", {"type": "[[Content]]"}),
+            ("player", {"type": None}),
+            ("content", {"subtype": "NPC"}),
+            ("session", {"session_number": 9}),
+            ("session", {"campaign": "[[Another Campaign]]"}),
+            ("clue", {"text": "A fact.", "subjects": ["[[Wrong]]"]}),
+            ("transcript", {"session": "[[S-1-002]]"}),
+        ],
+    )
+    def test_conflicting_identity(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str, fields: dict
+    ) -> None:
+        from armarium.init import init_vault
+        from armarium.session import add_session
+
+        root = init_vault(tmp_path / "vault")
+        monkeypatch.chdir(root / "campaigns/campaign_1")
+        args = ["armarium", "add", kind]
+        if kind in {"content", "note", "player"}:
+            args += ["Name"]
+        if kind == "content":
+            args += ["--subtype", "Lore"]
+        if kind == "transcript":
+            add_session(root, campaign=1)
+            body = tmp_path / "speech.md"
+            body.write_text("## Arrival\n\n- [GM] Welcome.\n")
+            args += ["S-1-001", "--body-file", str(body)]
+        before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        monkeypatch.setattr(sys, "argv", [*args, "--frontmatter", json.dumps(fields)])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        assert {p: p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
+
+    @pytest.mark.parametrize("value,valid", [("Temperate", True), (42, False)])
+    def test_extension_fields(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        value: object,
+        valid: bool,
+    ) -> None:
+        from armarium.init import init_vault
+        from armarium.parse import Record
+
+        root = init_vault(tmp_path / "vault", extensions=["example"])
+        monkeypatch.chdir(root)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "add",
+                "content",
+                "Harbor",
+                "--subtype",
+                "Location",
+                "--frontmatter",
+                json.dumps({"climate": value}),
+            ],
+        )
+        destination = root / "content/Harbor.md"
+        if valid:
+            main()
+            record, _ = Record.parse(destination, root)
+            assert record is not None and record.frontmatter["climate"] == value
+        else:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+            assert not destination.exists()

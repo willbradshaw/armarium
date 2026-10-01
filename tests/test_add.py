@@ -461,3 +461,42 @@ class TestRecordNumber:
         (tmp_path / f"{prefix}-1-{maximum}.md").touch()
         with pytest.raises(ValueError, match=f"1 and {maximum}"):
             record_number(tmp_path, 1, None, kind=kind, prefix=prefix, digits=digits)
+
+
+class TestMergeFrontmatter:
+    @pytest.mark.parametrize(
+        "supplied,expected",
+        [
+            (None, {"state": {"a": 1, "b": 2}, "tags": ["old"]}),
+            ({"state": {"a": 3}, "tags": []}, {"state": {"a": 3, "b": 2}, "tags": []}),
+            ({"state": None}, {"state": None, "tags": ["old"]}),
+            (
+                {"state": "new", "custom": False},
+                {"state": "new", "tags": ["old"], "custom": False},
+            ),
+        ],
+    )
+    def test_merge(self, supplied: dict | None, expected: dict) -> None:
+        from copy import deepcopy
+
+        from armarium.add import merge_frontmatter
+
+        defaults = {"state": {"a": 1, "b": 2}, "tags": ["old"]}
+        before = deepcopy((defaults, supplied))
+        assert merge_frontmatter(defaults, supplied) == expected
+        assert (defaults, supplied) == before
+
+    @pytest.mark.parametrize(
+        "value,valid", [("[[Content]]", True), ("[[Note]]", False), (None, False)]
+    )
+    def test_protected(self, value: str | None, valid: bool) -> None:
+        from armarium.add import merge_frontmatter
+
+        if valid:
+            assert (
+                merge_frontmatter({"type": "[[Content]]"}, {"type": value})["type"]
+                == value
+            )
+        else:
+            with pytest.raises(ValueError, match="conflicts"):
+                merge_frontmatter({"type": "[[Content]]"}, {"type": value})

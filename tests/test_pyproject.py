@@ -1,5 +1,6 @@
 """Build and installed-command acceptance for the package configuration."""
 
+import json
 import os
 import re
 import shutil
@@ -140,16 +141,12 @@ class TestPyproject:
             "Year 42",
             "--subtype",
             "Date",
-            "--reckoning",
-            "Harbor Calendar",
-            "--scale",
-            "year",
             "--vault",
             str(root),
+            "--frontmatter",
+            json.dumps({"reckoning": "[[Harbor Calendar]]", "scale": "year"}),
         )
-        assert (
-            "[[content/Harbor Calendar]]" in (root / "content/Year 42.md").read_text()
-        )
+        assert "[[Harbor Calendar]]" in (root / "content/Year 42.md").read_text()
         for number, player, character in ((1, "Alex", "Mira"), (2, "Sam", "Tarin")):
             scope = ("--campaign", str(number), "--vault", str(root))
             campaign = root / "campaigns" / f"campaign_{number}"
@@ -160,17 +157,30 @@ class TestPyproject:
                 character,
                 "--subtype",
                 "PC",
-                "--player",
-                player,
                 *scope,
+                "--frontmatter",
+                json.dumps({"player": f"[[{player}]]"}),
             )
-            run("add", "note", f"{character} notes", *scope)
+            fields = tmp_path / "note-fields.json"
+            fields.write_text(json.dumps({"custom": {"reviewed": True}}))
+            run(
+                "add",
+                "note",
+                f"{character} notes",
+                *scope,
+                "--frontmatter-file",
+                str(fields),
+            )
             run(
                 "add",
                 "clue",
-                "--text",
-                f"[[{character}]] knows [[Harbor]]; [[{character}]] drew the map.",
                 *scope,
+                "--frontmatter",
+                json.dumps(
+                    {
+                        "text": f"[[{character}]] knows [[Harbor]]; [[{character}]] drew the map."
+                    }
+                ),
             )
             run("add", "session", *scope)
             body_file = tmp_path / f"speech-{number}.md"
@@ -190,7 +200,7 @@ class TestPyproject:
             )
             assert (campaign / f"notes/{character} notes.md").is_file()
             pc = campaign / f"content/{character}.md"
-            assert f"reference/players/{player}" in pc.read_text()
+            assert f"[[{player}]]" in pc.read_text()
             transcript = campaign / f"sessions/transcripts/S-{number}-001 Transcript.md"
             assert transcript.read_text().endswith(body)
             assert (
@@ -209,9 +219,9 @@ class TestPyproject:
             refused = run(
                 "add",
                 "clue",
-                "--text",
-                f"[[{character} notes]] contains the route.",
                 *scope,
+                "--frontmatter",
+                json.dumps({"text": f"[[{character} notes]] contains the route."}),
                 expected=1,
             )
             assert "must target Content" in refused.stderr
@@ -371,12 +381,12 @@ class TestPyproject:
                 "New PC",
                 "--subtype",
                 "PC",
-                "--player",
-                "New Player",
                 "--campaign",
                 "1",
                 "--vault",
                 str(root),
+                "--frontmatter",
+                json.dumps({"player": "[[New Player]]"}),
             ],
             cwd=tmp_path,
             env=environment,
@@ -420,7 +430,7 @@ class TestPyproject:
             check=False,
         )
         assert help_result.returncode == 0, help_result.stderr
-        assert '(default: "Local fact.")' in " ".join(help_result.stdout.split())
+        assert "--frontmatter" in help_result.stdout
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
         arguments = [str(command), "add", "clue"]
         if explicit:
@@ -634,7 +644,7 @@ class TestPyproject:
             str(root),
         ]
         if subtype == "PC":
-            args += ["--player", "Alex"]
+            args += ["--frontmatter", json.dumps({"player": "[[Alex]]"})]
         working_directory = (
             root / "campaigns/campaign_1" if subtype == "PC" else tmp_path
         )

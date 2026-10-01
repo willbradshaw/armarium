@@ -280,9 +280,25 @@ class TestAddPlayer:
         add_content("Not a PC", "NPC", vault, campaign=1)
         add_campaign(vault)
         add_player("Other", vault, campaign=2)
-        add_content("Other PC", "PC", vault, campaign=2, player="Other")
+        add_content(
+            "Other PC", "PC", vault, campaign=2, frontmatter={"player": "[[Other]]"}
+        )
         for campaign, player in [(1, "Existing"), (2, "Other")]:
-            add_content("Duplicate", "PC", vault, campaign=campaign, player=player)
+            add_content(
+                "Duplicate",
+                "PC",
+                vault,
+                campaign=campaign,
+                frontmatter={
+                    k: v
+                    for k, v in {
+                        "player": player
+                        if player is None or player.startswith("[[")
+                        else f"[[{player}]]"
+                    }.items()
+                    if v is not None
+                },
+            )
         template = vault / "reference/templates/Player.md"
         original = template.read_text()
         template.write_text(original.replace("plays: []", f"plays: {plays}"))
@@ -301,7 +317,11 @@ class TestAddPlayer:
         player = add_player("New Player", vault, campaign=1)
         before = player.read_bytes()
         pc = add_content(
-            "New PC", "PC", vault, campaign=None if shared else 1, player="New Player"
+            "New PC",
+            "PC",
+            vault,
+            campaign=None if shared else 1,
+            frontmatter={"player": "[[New Player]]"},
         )
         assert player.read_bytes() == before
         template = vault / "reference/templates/Player.md"
