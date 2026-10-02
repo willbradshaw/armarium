@@ -511,6 +511,19 @@ class TestRecordChecks:
 
 
 class TestValidateDirectory:
+    @pytest.mark.parametrize("target", [".", "scripts", "scripts/tests"])
+    def test_scripts_are_not_records(self, tmp_path: Path, target: str) -> None:
+        make_vault(tmp_path)
+        baseline = validate_directory(tmp_path)
+        scripts = tmp_path / "scripts"
+        (scripts / "tests").mkdir(parents=True)
+        (scripts / "README.md").write_text("Tooling documentation without frontmatter")
+        (scripts / "tests/fixture.md").write_text("---\ninvalid: [\n---\n")
+        (scripts / "tests/test_tool.py").write_text("assert True\n")
+        assert validate_directory(tmp_path / target) == (
+            baseline if target == "." else Result()
+        )
+
     @pytest.mark.parametrize("relative", [False, True])
     def test_matches_individual_checks(
         self, vault: Path, monkeypatch: pytest.MonkeyPatch, relative: bool
@@ -1970,6 +1983,16 @@ class TestValidateVault:
             ("reference/views/clues.base", False, None),
             ("reference/views/nested/clues.BASE", False, None),
             ("reference/schemas/nested/widget.schema.json", False, None),
+            ("scripts", True, None),
+            ("scripts/run.py", False, None),
+            ("scripts/tests/fixtures/input.json", False, None),
+            ("scripts/README.md", False, None),
+            ("scripts", False, "scripts is not in the vault skeleton"),
+            (
+                "campaigns/campaign_1/scripts",
+                True,
+                "campaigns/campaign_1/scripts is not in the vault skeleton",
+            ),
             ("assets/map.png", False, None),
             ("assets/maps/map.png", False, None),
             ("assets/records", True, None),
