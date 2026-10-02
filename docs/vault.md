@@ -41,11 +41,16 @@ reference/                    shared Reference records
 
 Every entry shown is required, as a real directory or file rather than a
 symlink. The vault root, `campaigns/`, each `campaign_N/` and each `reference/`
-hold exactly the entries shown (plus Reference records in `reference/`); every
-other directory may hold subfolders of your own. Every Markdown file in the
-vault is a record and must follow the [record rules](record.md). Files that are
-not Markdown belong in `assets/`; the only exceptions are the views in
-`reference/views/` and the schemas in `reference/schemas/`.
+hold the entries shown, plus Reference records in `reference/` and optional
+`scripts/` at the root. Other directories may hold subfolders. Markdown in the
+record directories must follow the [record rules](record.md). Outside `scripts/`,
+non-Markdown files belong in `assets/`, except views in `reference/views/` and
+schemas in `reference/schemas/`.
+
+An optional root-level `scripts/` directory holds maintenance scripts, their
+documentation and tests (under `scripts/tests/`). Its contents are excluded from
+record validation during vault and directory scans. An explicitly selected
+Markdown file still receives single-record validation.
 
 `reference/types/` and `reference/schemas/` correspond one to one: `Clue.md`
 has `clue.schema.json`, and so on, the schema named after the lowercased type.

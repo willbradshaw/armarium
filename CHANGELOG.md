@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow an optional vault `scripts/` directory for tooling and tests, excluding
+  its contents from record validation during directory scans.
 - Add the `dnd-5-5` extension with D&D 2024 Gear fields and a Gear template.
 - Add JSON frontmatter input to all record-creation commands, replacing dedicated
   Player, Date and Clue field options.

@@ -261,7 +261,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
 
     Args:
         path: Directory to scan recursively. Hidden entries, caches,
-            node_modules and symlinks are excluded by find_files.
+            node_modules and symlinks are excluded by find_files. Markdown under
+            the vault's optional scripts/ directory is not record-validated.
         vault: Optional explicit vault containing the entire selected directory.
             Otherwise try the selected directory, then descend until a vault
             is found. A selected vault applies to its entire subtree.
@@ -291,7 +292,12 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
             if child.is_dir()
         ]
         return sum(results, Result())
-    files = [file for file in find_files(path) if file.suffix.lower() == ".md"]
+    files = [
+        file
+        for file in find_files(path)
+        if file.suffix.lower() == ".md"
+        and not file.resolve().is_relative_to(context / "scripts")
+    ]
     index = VaultIndex(context)
     result = sum(
         (validate_markdown(file, context, index=index) for file in files), Result()
@@ -424,7 +430,10 @@ def validate_vault(root: Path) -> Findings:
         for child in find_children(directory):
             entry = child.relative_to(root)
             location = entry.as_posix()
-            if entry == Path("campaigns"):
+            if entry == Path("scripts") and child.is_dir():
+                # Optional maintenance tooling is outside the record skeleton.
+                continue
+            elif entry == Path("campaigns"):
                 # Phase 2 reports its entries; check the campaigns it found.
                 pending += [child / name for name in found]
             elif child.is_dir():
