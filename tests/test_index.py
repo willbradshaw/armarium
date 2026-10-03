@@ -4,9 +4,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from jsonschema.exceptions import SchemaError
 
+from armarium.extensions import ExtensionSet
 from armarium.index import VaultIndex, _key
 from armarium.parse import Body, Frontmatter, Record
+from armarium.schemas import Schema
 
 # A case-only pair cannot coexist on case-insensitive filesystems such as
 # macOS, so tests patch find_files to index one without creating it.
@@ -38,6 +41,61 @@ class TestVaultIndex:
         with patch("armarium.index.find_files", return_value=paths):
             index = VaultIndex(tmp_path)
         assert index.targets == {"quay nine.md": set(paths), "quay nine": set(paths)}
+
+
+class TestVaultIndexExtensionSet:
+    def test_loads_once(self, tmp_path: Path) -> None:
+        index = VaultIndex(tmp_path)
+        loaded = ExtensionSet([], ("Lore",))
+        with patch("armarium.index.load_extension_set", return_value=loaded) as load:
+            assert index.extension_set() is loaded
+            assert index.extension_set() is loaded
+        load.assert_called_once_with(index.root)
+
+    @pytest.mark.parametrize(
+        "error", [OSError("unreadable"), ValueError("invalid"), RecursionError("deep")]
+    )
+    def test_error_raised_again(self, tmp_path: Path, error: Exception) -> None:
+        index = VaultIndex(tmp_path)
+        with patch("armarium.index.load_extension_set", side_effect=error) as load:
+            for _ in range(2):
+                with pytest.raises(type(error), match=str(error)):
+                    index.extension_set()
+        load.assert_called_once()
+
+
+class TestVaultIndexLoadSchema:
+    def test_loads_each_path_once(self, tmp_path: Path) -> None:
+        schemas = tmp_path / "reference/schemas"
+        schemas.mkdir(parents=True)
+        (schemas / "a.schema.json").write_text("true")
+        (schemas / "b.schema.json").write_text("false")
+        index = VaultIndex(tmp_path)
+        with patch.object(Schema, "load", wraps=Schema.load) as load:
+            first = index.load_schema(schemas / "a.schema.json", tmp_path)
+            again = index.load_schema(schemas / "a.schema.json", tmp_path)
+            other = index.load_schema(schemas / "b.schema.json", tmp_path)
+        assert first is again and first.contents is True and other.contents is False
+        assert load.call_count == 2
+
+    @pytest.mark.parametrize(
+        "contents, error",
+        [(None, OSError), ("{", ValueError), ('{"type": 3}', SchemaError)],
+    )
+    def test_error_raised_again(
+        self, tmp_path: Path, contents: str | None, error: type[Exception]
+    ) -> None:
+        schemas = tmp_path / "reference/schemas"
+        schemas.mkdir(parents=True)
+        path = schemas / "a.schema.json"
+        if contents is not None:
+            path.write_text(contents)
+        index = VaultIndex(tmp_path)
+        with patch.object(Schema, "load", wraps=Schema.load) as load:
+            for _ in range(2):
+                with pytest.raises(error):
+                    index.load_schema(path, tmp_path)
+        load.assert_called_once()
 
 
 class TestVaultIndexResolve:

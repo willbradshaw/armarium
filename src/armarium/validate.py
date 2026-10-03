@@ -237,14 +237,19 @@ def validate_markdown(
             "record.type", "type is required and must be a canonical wikilink", "type"
         )
         return Result(diagnostics=findings.diagnostics, checked=1)
-    # 2. Validate against the vault-local schema; a failure ends the checks
-    schema, diagnostics = select_schema(record, root)
+    # 2. Validate against the vault-local schema; a failure ends the checks.
+    # A shared index loads each schema and the extension set once per run.
+    schema, diagnostics = select_schema(
+        record, root, index.load_schema if index is not None else Schema.load
+    )
     if schema is not None:
         diagnostics.extend(schema.validate(record))
     subtype = record.frontmatter.get("subtype")
     extensions: ExtensionSet | None = None
     try:
-        extensions = load_extension_set(root)
+        extensions = (
+            index.extension_set() if index is not None else load_extension_set(root)
+        )
         for rule in extensions.rules:
             if rule.matches(record.frontmatter.type, subtype):
                 diagnostics.extend(rule.schema.validate(record))
@@ -375,15 +380,17 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
     # A vault root, whether named directly or found by recursion, must also
     # carry the shared infrastructure; a directory inside a vault need not.
     if path.resolve() == context:
-        result += Result(diagnostics=validate_vault(context).diagnostics)
+        result += Result(diagnostics=validate_vault(context, index).diagnostics)
     return result.add_context(context, relative_to=path.resolve())
 
 
-def validate_vault(root: Path) -> Findings:
+def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
     """Check a vault root's shared infrastructure and campaign layout.
 
     Args:
         root: Resolved vault directory.
+        index: Optional index for this vault, whose cached schemas and
+            extension set a directory run has already loaded.
 
     Returns:
         Findings: Problems attributed to the vault itself (an empty path,
@@ -485,7 +492,10 @@ def validate_vault(root: Path) -> Findings:
     # Extension declarations are optional, but every enabled rule must be usable.
     extension_schemas: set[Path] = set()
     try:
-        extension_schemas = {r.schema.path for r in load_extensions(root)}
+        rules = (
+            index.extension_set().rules if index is not None else load_extensions(root)
+        )
+        extension_schemas = {r.schema.path for r in rules}
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         findings.add("extension.invalid", str(exc))
 
@@ -561,7 +571,7 @@ def validate_vault(root: Path) -> Findings:
             )
             continue
         try:
-            Schema.load(file, root)
+            (index.load_schema if index is not None else Schema.load)(file, root)
         except (OSError, ValueError, SchemaError, RecursionError) as exc:
             findings.add("schema.invalid", f"{relative}: {exc}")
         name = file.name.removesuffix(".schema.json")

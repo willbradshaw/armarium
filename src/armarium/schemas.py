@@ -1,6 +1,7 @@
 """Vault-local Draft 2020-12 schemas with offline, confined references."""
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -150,12 +151,16 @@ class Schema:
             return [Diagnostic(relative, "schema.invalid", str(exc))]
 
 
-def select_schema(record: Record, root: Path) -> tuple[Schema | None, list[Diagnostic]]:
+def select_schema(
+    record: Record, root: Path, load: Callable[[Path, Path], Schema] = Schema.load
+) -> tuple[Schema | None, list[Diagnostic]]:
     """Load the vault-local schema selected by a record's canonical type.
 
     Args:
         record: Parsed record inside the vault with a canonical declared type.
         root: Vault path, absolute or relative to the working directory.
+        load: Schema loader taking the schema path and vault root; a validation
+            run passes VaultIndex.load_schema to load each schema once.
 
     Returns:
         tuple[Schema | None, list[Diagnostic]]: A loaded schema and no findings,
@@ -180,6 +185,6 @@ def select_schema(record: Record, root: Path) -> tuple[Schema | None, list[Diagn
             )
         ]
     try:
-        return Schema.load(path, root), []
+        return load(path, root), []
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         return None, [Diagnostic(relative, "schema.invalid", str(exc))]

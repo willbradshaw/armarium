@@ -3,8 +3,15 @@
 import unicodedata
 from pathlib import Path
 
+from jsonschema.exceptions import SchemaError
+
+from armarium.extensions import ExtensionSet, load_extension_set
 from armarium.lib import Diagnostic, find_campaign, find_files, parse_directories
 from armarium.parse import Record
+from armarium.schemas import Schema
+
+# Failures loading a schema or the extension set, kept to raise again for each record.
+LOAD_ERRORS = (OSError, ValueError, SchemaError, RecursionError)
 
 
 class VaultIndex:
@@ -24,6 +31,7 @@ class VaultIndex:
 
         Parsed records are stored separately in self.records, initially empty.
         parse() fills that cache only when a record's contents are needed.
+        Schemas and the extension set are likewise loaded once, on first use.
 
         Args:
             root: Vault directory; hidden files and symlinks are excluded.
@@ -31,6 +39,8 @@ class VaultIndex:
         self.root = root.resolve()
         self.targets: dict[str, set[Path]] = {}
         self.records: dict[Path, tuple[Record | None, list[Diagnostic]]] = {}
+        self._extensions: ExtensionSet | Exception | None = None
+        self._schemas: dict[Path, Schema | Exception] = {}
         for path in find_files(self.root):
             relative = path.relative_to(self.root)
             # Markdown links may include or omit .md; asset extensions matter.
@@ -43,6 +53,51 @@ class VaultIndex:
                 for offset in range(len(parts)):
                     key = _key("/".join(parts[offset:]))
                     self.targets.setdefault(key, set()).add(path)
+
+    def extension_set(self) -> ExtensionSet:
+        """Load the vault's enabled extensions once for this validation run.
+
+        Returns:
+            ExtensionSet: The rules and permitted Content subtypes.
+
+        Raises:
+            OSError, ValueError, SchemaError, RecursionError: The extension set
+                is invalid. The same error is raised again on every later call,
+                so each record reports it as it would without the cache.
+        """
+        if self._extensions is None:
+            try:
+                self._extensions = load_extension_set(self.root)
+            except LOAD_ERRORS as exc:
+                self._extensions = exc
+        if isinstance(self._extensions, Exception):
+            raise self._extensions
+        return self._extensions
+
+    def load_schema(self, path: Path, root: Path) -> Schema:
+        """Load one schema once for this validation run; see Schema.load.
+
+        Args:
+            path: Schema file path.
+            root: Vault path, as Schema.load takes it.
+
+        Returns:
+            Schema: The loaded schema, shared by every later call for this path.
+
+        Raises:
+            OSError, ValueError, SchemaError, RecursionError: The schema is
+                invalid; the same error is raised again on every later call.
+        """
+        key = path.absolute()
+        if key not in self._schemas:
+            try:
+                self._schemas[key] = Schema.load(path, root)
+            except LOAD_ERRORS as exc:
+                self._schemas[key] = exc
+        cached = self._schemas[key]
+        if isinstance(cached, Exception):
+            raise cached
+        return cached
 
     def resolve(self, target: str, source: Path) -> tuple[Path | None, str | None]:
         """Find the single file named by a wikilink's target text.

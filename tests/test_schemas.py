@@ -367,6 +367,20 @@ class TestSelectSchema:
         assert schema.path == path
         assert schema.contents is False
 
+    def test_custom_loader(
+        self, root: Path, write_schema: Callable[..., Path], record: Record
+    ) -> None:
+        path = write_schema(False)
+        calls: list[tuple[Path, Path]] = []
+
+        def load(schema_path: Path, schema_root: Path) -> Schema:
+            calls.append((schema_path, schema_root))
+            return Schema.load(schema_path, schema_root)
+
+        schema, diagnostics = select_schema(record, root, load)
+        assert diagnostics == [] and schema is not None and schema.path == path
+        assert calls == [(path, root)]
+
     def test_missing_schema_is_error(self, root: Path, record: Record) -> None:
         schema, diagnostics = select_schema(record, root)
         assert schema is None and len(diagnostics) == 1
