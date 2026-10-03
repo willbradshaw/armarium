@@ -427,6 +427,13 @@ class TestBlockFromTokens:
             ),
             ("***\n", Block("rule", 5), 1),
             ("<div>x</div>\n", Block("html", 5), 1),
+            (
+                "```statblock\nname: X\n```\n",
+                Block("code", 5, "name: X\n", info="statblock"),
+                1,
+            ),
+            ("```\nplain\n```\n", Block("code", 5, "plain\n"), 1),
+            ("    indented\n", Block("code", 5, "indented\n"), 1),
         ],
     )
     def test_block(self, text: str, expected: Block, after: int | None) -> None:

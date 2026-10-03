@@ -46,6 +46,7 @@ from armarium.validate import (
     validate_vault,
     validate_wikilink,
     validate_wikilinks,
+    validate_yaml_blocks,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -533,6 +534,71 @@ class TestValidateMarkdown:
             for d in result.diagnostics
             if d.rule.startswith("transcript.")
         ] == [(7, "square brackets after the speaker tag")]
+
+
+class TestValidateYamlBlocks:
+    @pytest.mark.parametrize(
+        ("block", "errors"),
+        [
+            ("```statblock\nname: X\nac: 12\n```\n", []),
+            ("```statblock\nname: [unclosed\n```\n", ["not valid YAML"]),
+            ("```statblock\n- a list\n```\n", ["must hold a YAML mapping"]),
+            ("```statblock\n```\n", ["must hold a YAML mapping"]),
+            (
+                "- item\n\n  ```statblock\n  plain text\n  ```\n",
+                ["must hold a YAML mapping"],
+            ),
+            ("```other\n- not checked\n```\n", []),
+            ("    indented: [code\n", []),
+        ],
+    )
+    def test_blocks(
+        self,
+        vault: Path,
+        write_record: Callable[..., Path],
+        block: str,
+        errors: list[str],
+    ) -> None:
+        path = write_record({"type": "[[types/Widget]]"}, body="## Notes\n" + block)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        findings = validate_yaml_blocks(record, "content/Test.md", {"statblock"})
+        assert [d.rule for d in findings.diagnostics] == ["extension.yaml"] * len(
+            errors
+        )
+        for diagnostic, error in zip(findings.diagnostics, errors, strict=True):
+            assert error in diagnostic.message and diagnostic.line > 3
+
+    def test_validate_markdown_applies_matching_rules(
+        self, vault: Path, write_record: Callable[..., Path]
+    ) -> None:
+        (vault / "reference/schemas/widget.schema.json").write_text("true")
+        (vault / "reference/schemas/custom.schema.json").write_text("true")
+        (vault / "reference/extensions.json").write_text(
+            json.dumps(
+                {
+                    "custom": {
+                        "rules": [
+                            {
+                                "type": "Widget",
+                                "schema": "schemas/custom.schema.json",
+                                "yaml_blocks": ["statblock"],
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+        path = write_record(
+            {"type": "[[types/Widget]]"}, body="## Notes\n```statblock\n- x\n```\n"
+        )
+        result = validate_markdown(path)
+        assert [d.rule for d in result.diagnostics] == ["extension.yaml"]
+        assert result.failed
+        (vault / "reference/extensions.json").write_text("{}")
+        assert "extension.yaml" not in {
+            d.rule for d in validate_markdown(path).diagnostics
+        }
 
 
 class TestRecordChecks:

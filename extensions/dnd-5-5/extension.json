@@ -2,7 +2,8 @@
   "dnd-5-5": {
     "subtypes": {
       "Content": [
-        "Spell"
+        "Spell",
+        "Monster"
       ]
     },
     "rules": [
@@ -17,6 +18,15 @@
         "subtype": "Spell",
         "schema": "schemas/spell.schema.json",
         "template": "templates/Spell.md"
+      },
+      {
+        "type": "Content",
+        "subtype": "Monster",
+        "schema": "schemas/monster.schema.json",
+        "template": "templates/Monster.md",
+        "yaml_blocks": [
+          "statblock"
+        ]
       }
     ]
   }

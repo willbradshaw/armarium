@@ -244,6 +244,8 @@ class Block:
         children: A list's items, an item's further blocks, a quote's blocks,
             a table's rows (header first), a row's cells.
         block_id: An Obsidian ``^id`` ending a paragraph or item, if any.
+        info: A fenced code block's info string, such as ``statblock``;
+            empty otherwise.
     """
 
     kind: str
@@ -251,6 +253,7 @@ class Block:
     text: str = ""
     children: tuple["Block", ...] = ()
     block_id: str | None = None
+    info: str = ""
 
     def walk(self) -> Iterator["Block"]:
         """Yield this block and every block nested inside it, in order.
@@ -308,7 +311,7 @@ class Block:
             rows = cls._rows(tokens, start, end, start_line)
             return cls("table", line, children=rows), end + 1
         if kind in {"fence", "code_block"}:
-            return cls("code", line, token.content), end + 1
+            return cls("code", line, token.content, info=token.info.strip()), end + 1
         return cls(cls._LEAF_KINDS.get(kind, "other"), line), end + 1
 
     @classmethod

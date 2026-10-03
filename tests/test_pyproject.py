@@ -1017,6 +1017,7 @@ class TestInstalledExtensions:
             ("example", "Location", "climate"),
             ("dnd-5-5", "Gear", "rarity"),
             ("dnd-5-5", "Spell", "school"),
+            ("dnd-5-5", "Monster", "creature_type"),
         ],
     )
     def test_enable_create_and_validate(
@@ -1057,6 +1058,15 @@ class TestInstalledExtensions:
                 "concentration": False,
                 "requires_save": False,
                 "requires_attack": False,
+                "content_tags": [],
+            },
+            "Monster": {
+                "source": "Monster Manual",
+                "cr": "1/2",
+                "cr_sort": 0.5,
+                "xp": 100,
+                "size": "Medium",
+                "creature_type": "Beast",
                 "content_tags": [],
             },
         }[subtype]
@@ -1115,7 +1125,12 @@ class TestInstalledExtensions:
             == expected_version
         )
         path = root / "content/Harbor.md"
-        initial = {"Location": "null", "Gear": "Mundane", "Spell": "Evocation"}[subtype]
+        initial = {
+            "Location": "null",
+            "Gear": "Mundane",
+            "Spell": "Evocation",
+            "Monster": "Beast",
+        }[subtype]
         assert f"{field}: {initial}" in path.read_text()
         path.write_text(path.read_text().replace(f"{field}: {initial}", f"{field}: 42"))
         result = subprocess.run(
@@ -1137,7 +1152,7 @@ class TestInstalledExtensions:
             text=True,
         )
         # Removal keeps records; a Spell then has a subtype the vault lacks.
-        if subtype == "Spell":
+        if subtype in {"Spell", "Monster"}:
             assert result.returncode == 1 and "record.subtype" in result.stderr
         else:
             assert result.returncode == 0, result.stderr
