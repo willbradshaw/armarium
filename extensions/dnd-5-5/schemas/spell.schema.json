@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "D&D 5.5 Spell fields",
+  "type": "object",
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "source",
+        "level",
+        "school",
+        "casting_time",
+        "ritual",
+        "range",
+        "components",
+        "duration",
+        "concentration",
+        "content_tags"
+      ],
+      "properties": {
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "image": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^/?#\\s]+(?:[/?#]|$)"
+            }
+          ]
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "school": {
+          "enum": [
+            "Abjuration",
+            "Conjuration",
+            "Divination",
+            "Enchantment",
+            "Evocation",
+            "Illusion",
+            "Necromancy",
+            "Transmutation"
+          ]
+        },
+        "casting_time": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "ritual": {
+          "type": "boolean"
+        },
+        "range": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "area": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "Verbal",
+              "Somatic",
+              "Material"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "material": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "duration": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "concentration": {
+          "type": "boolean"
+        },
+        "content_tags": {
+          "type": "array"
+        }
+      },
+      "if": {
+        "properties": {
+          "components": {
+            "contains": {
+              "const": "Material"
+            }
+          }
+        },
+        "required": [
+          "components"
+        ]
+      },
+      "then": {
+        "required": [
+          "material"
+        ],
+        "properties": {
+          "material": {
+            "type": "string"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "material": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "body": {
+      "type": "string",
+      "pattern": "^(?:[ \\t]*\\r?\\n)*>[ \\t]+\\[!rules\\](?:[+-])?(?:[ \\t][^\\r\\n]*)?[ \\t]*(?:\\r?\\n|$)"
+    }
+  }
+}

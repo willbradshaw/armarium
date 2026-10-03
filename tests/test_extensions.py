@@ -1131,3 +1131,179 @@ class TestDndGearSchema:
         record, _ = Record.parse(path, vault)
         assert record is not None and record.frontmatter["content_tags"] == tags
         assert not validate(path, vault).failed
+
+
+class TestDndSpellSchema:
+    FIELDS = {
+        "source": "Homebrew",
+        "level": 1,
+        "school": "Abjuration",
+        "casting_time": "1 Action",
+        "ritual": True,
+        "range": "Touch",
+        "components": ["Verbal", "Material"],
+        "material": "a pinch of sea salt",
+        "duration": "8 hours",
+        "concentration": False,
+        "content_tags": [],
+    }
+    MISSING = object()
+
+    def spell(self, vault: Path, **fields: object) -> Path:
+        """Create a valid Spell, then rewrite fields; MISSING deletes one."""
+        from armarium.add import record_text
+
+        path = add_content("Salt Ward", "Spell", vault, frontmatter=self.FIELDS)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        data = dict(record.frontmatter)
+        for field, value in fields.items():
+            if value is self.MISSING:
+                data.pop(field, None)
+            else:
+                data[field] = value
+        path.write_text(record_text(data, record.body.text))
+        return path
+
+    @pytest.mark.parametrize("campaign", [None, 1])
+    def test_template_and_scope(self, vault: Path, campaign: int | None) -> None:
+        enable_extension("dnd-5-5", vault)
+        assert "Spell" in content_subtypes(vault)
+        path = add_content(
+            "Salt Ward", "Spell", vault, campaign=campaign, frontmatter=self.FIELDS
+        )
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        assert record.frontmatter["subtype"] == "Spell"
+        for field, value in self.FIELDS.items():
+            assert record.frontmatter[field] == value
+        assert record.body.text.startswith("> [!rules]")
+        if campaign is not None:
+            assert "held_by" not in record.frontmatter[f"campaign_{campaign}"]
+        assert not validate(vault).failed
+
+    @pytest.mark.parametrize("field", [*FIELDS, "summary"])
+    def test_required_fields(self, vault: Path, field: str) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = self.spell(vault, **{field: self.MISSING})
+        assert validate(path, vault).failed
+
+    @pytest.mark.parametrize(
+        "field,value,valid",
+        [
+            *[("level", v, True) for v in range(10)],
+            *[("level", v, False) for v in (-1, 10, 1.5, "1", True, None)],
+            *[
+                ("school", v, True)
+                for v in (
+                    "Abjuration",
+                    "Conjuration",
+                    "Divination",
+                    "Enchantment",
+                    "Evocation",
+                    "Illusion",
+                    "Necromancy",
+                    "Transmutation",
+                )
+            ],
+            ("school", "abjuration", False),
+            ("school", "Chronurgy", False),
+            *[
+                (f, v, valid)
+                for f in ("ritual", "concentration")
+                for v, valid in [
+                    (True, True),
+                    (False, True),
+                    ("true", False),
+                    (0, False),
+                    (None, False),
+                ]
+            ],
+            *[
+                (f, v, valid)
+                for f in ("casting_time", "range", "duration")
+                for v, valid in [
+                    ("Special", True),
+                    ("", False),
+                    (" ", False),
+                    (1, False),
+                    (None, False),
+                ]
+            ],
+            ("area", "20-foot Sphere", True),
+            ("area", "40,000 square feet", True),
+            ("area", None, True),
+            ("area", MISSING, True),
+            ("area", "", False),
+            ("area", " ", False),
+            ("area", 20, False),
+            ("components", ["Material", "Verbal", "Somatic"], True),
+            ("components", ["V", "Material"], False),
+            ("components", ["Material", "Material"], False),
+            ("components", "Material", False),
+            ("material", "", False),
+            ("material", " ", False),
+            ("source", None, True),
+            ("source", 42, False),
+            ("source", "", False),
+            ("content_tags", ["Warding", "Utility"], True),
+            ("content_tags", ["Warding", "Warding"], False),
+            ("content_tags", [""], False),
+            ("content_tags", "Warding", False),
+            ("image", None, True),
+            ("image", "assets/salt-ward.webp", True),
+            ("image", "", False),
+            ("url", None, True),
+            ("url", "https://example.org/salt-ward", True),
+            ("url", "ftp://example.org/salt-ward", False),
+            ("provider_id", 1234, True),
+        ],
+    )
+    def test_values(self, vault: Path, field: str, value: object, valid: bool) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = self.spell(vault, **{field: value})
+        assert validate(path, vault).failed != valid
+
+    @pytest.mark.parametrize(
+        "components,material,valid",
+        [
+            (["Verbal", "Material"], "a pinch of sea salt", True),
+            (["Verbal", "Material"], None, False),
+            (["Verbal", "Material"], MISSING, False),
+            (["Verbal", "Somatic"], None, True),
+            (["Verbal", "Somatic"], MISSING, True),
+            (["Verbal", "Somatic"], "a pinch of sea salt", False),
+            ([], MISSING, True),
+        ],
+    )
+    def test_material_component(
+        self, vault: Path, components: list[str], material: object, valid: bool
+    ) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = self.spell(vault, components=components, material=material)
+        assert validate(path, vault).failed != valid
+
+    def test_rules_callout(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = self.spell(vault)
+        path.write_text(path.read_text().replace("> [!rules]\n>\n", ""))
+        assert validate(path, vault).failed
+
+    # The template's null source is valid: unrecorded provenance.
+    @pytest.mark.parametrize("missing", [f for f in FIELDS if f != "source"])
+    def test_creation_requires_fields(self, vault: Path, missing: str) -> None:
+        enable_extension("dnd-5-5", vault)
+        fields = {k: v for k, v in self.FIELDS.items() if k != missing}
+        if missing == "material":
+            fields["components"] = ["Verbal", "Material"]
+        with pytest.raises(ValueError, match="failed validation"):
+            add_content("Salt Ward", "Spell", vault, frontmatter=fields)
+        assert not (vault / "content/Salt Ward.md").exists()
+
+    def test_removal(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = add_content("Salt Ward", "Spell", vault, frontmatter=self.FIELDS)
+        before = path.read_bytes()
+        remove_extension("dnd-5-5", vault)
+        assert path.read_bytes() == before
+        assert [d.rule for d in validate(path, vault).diagnostics] == ["record.subtype"]
