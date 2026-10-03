@@ -1230,6 +1230,13 @@ class TestDndSpellSchema:
                     (None, False),
                 ]
             ],
+            ("area", "20-foot Sphere", True),
+            ("area", "40,000 square feet", True),
+            ("area", None, True),
+            ("area", MISSING, True),
+            ("area", "", False),
+            ("area", " ", False),
+            ("area", 20, False),
             ("components", ["Material", "Verbal", "Somatic"], True),
             ("components", ["V", "Material"], False),
             ("components", ["Material", "Material"], False),

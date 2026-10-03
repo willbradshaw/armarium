@@ -8,6 +8,7 @@ school:
 casting_time:
 ritual:
 range:
+area:
 components:
 material:
 duration:

@@ -72,6 +72,13 @@
           "type": "string",
           "pattern": "\\S"
         },
+        "area": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
         "components": {
           "type": "array",
           "items": {

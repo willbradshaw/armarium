@@ -72,6 +72,7 @@ They apply in addition to the core fields in [[types/Content#Fields]].
 | `casting_time` | Yes | Nonblank text, such as `1 Action` or `1 Reaction, which you take when you fall`. |
 | `ritual` | Yes | Boolean: whether the spell can be cast as a ritual. |
 | `range` | Yes | Nonblank text, such as `Self`, `Touch` or `60 feet`. |
+| `area` | No | Nonblank area of effect, such as `20-foot Sphere`, or null for none. |
 | `components` | Yes | List of unique values from Verbal, Somatic and Material. |
 | `material` | With Material | Nonblank description of the material component; null or omitted otherwise. |
 | `duration` | Yes | Nonblank text, such as `Instantaneous` or `1 minute`. |
