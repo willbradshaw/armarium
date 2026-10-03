@@ -22,17 +22,29 @@ from armarium.parse import (
     Record,
     Section,
     load_yaml,
+    require_libyaml,
 )
 
-# The pure-Python loader and, when PyYAML includes libyaml, its counterpart.
-LOADERS = [FrontmatterLoader, *filter(None, [_FAST_LOADERS.get(FrontmatterLoader)])]
-needs_libyaml = pytest.mark.skipif(not _FAST_LOADERS, reason="PyYAML lacks libyaml")
+# The pure-Python loader and its libyaml counterpart.
+LOADERS = [FrontmatterLoader, _FAST_LOADERS[FrontmatterLoader]]
 
 
 @pytest.fixture(params=LOADERS, ids=lambda loader: loader.__name__)
 def loader_class(request: pytest.FixtureRequest) -> Any:
     """Each frontmatter loader sharing FrontmatterConstructor."""
     return request.param
+
+
+class TestRequireLibyaml:
+    def test_available(self) -> None:
+        require_libyaml(True)
+
+    def test_missing(self) -> None:
+        with pytest.raises(ImportError, match="requires PyYAML built with libyaml"):
+            require_libyaml(False)
+
+    def test_installed_pyyaml_has_libyaml(self) -> None:
+        assert yaml.__with_libyaml__
 
 
 class TestLoadYaml:
@@ -59,9 +71,9 @@ class TestLoadYaml:
         reference = yaml.load(text, Loader=loader)
         with patch(self.LOADS, wraps=yaml.load) as load:
             assert load_yaml(text, loader) == reference
-        # libyaml answers alone when present; otherwise the given loader does.
+        # libyaml answers alone for a valid document.
         used = [call.kwargs["Loader"] for call in load.call_args_list]
-        assert used == [_FAST_LOADERS.get(loader, loader)]
+        assert used == [_FAST_LOADERS[loader]]
         if expected is not None:
             assert reference == expected
 
@@ -100,7 +112,6 @@ class TestLoadYaml:
         )
         assert (first and first.line) == (second and second.line)
 
-    @needs_libyaml
     def test_unprintable_text_skips_libyaml(self) -> None:
         with patch(self.LOADS, wraps=yaml.load) as load:
             with pytest.raises(yaml.reader.ReaderError):
@@ -109,7 +120,6 @@ class TestLoadYaml:
             FrontmatterLoader
         ]
 
-    @needs_libyaml
     def test_python_loader_decides_what_libyaml_rejects(self) -> None:
         def load(text: str, Loader: type) -> Any:
             if Loader is not yaml.SafeLoader:
@@ -118,15 +128,6 @@ class TestLoadYaml:
 
         with patch(self.LOADS, side_effect=load):
             assert load_yaml("a: 1") == {"from": "python"}
-
-    @pytest.mark.parametrize("loader", [yaml.SafeLoader, FrontmatterLoader])
-    def test_without_libyaml(self, loader: type[yaml.SafeLoader]) -> None:
-        with (
-            patch.dict(_FAST_LOADERS, clear=True),
-            patch(self.LOADS, wraps=yaml.load) as load,
-        ):
-            assert load_yaml("a: [1]", loader) == {"a": [1]}
-        assert [call.kwargs["Loader"] for call in load.call_args_list] == [loader]
 
     def test_other_loaders_are_used_directly(self) -> None:
         class Custom(yaml.SafeLoader):

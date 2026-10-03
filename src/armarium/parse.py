@@ -108,26 +108,45 @@ class FrontmatterConstructor(SafeConstructor):
         raise ValueError("frontmatter contains a non-JSON YAML value")
 
 
+def require_libyaml(available: bool) -> None:
+    """Refuse to run on a PyYAML built without libyaml.
+
+    YAML is always parsed by libyaml, so every installation accepts the same
+    documents; a pure-Python fallback could accept or reject differently.
+
+    Args:
+        available: Whether PyYAML includes libyaml (yaml.__with_libyaml__).
+
+    Raises:
+        ImportError: PyYAML lacks libyaml.
+    """
+    if not available:
+        raise ImportError(
+            "Armarium requires PyYAML built with libyaml; reinstall PyYAML from a "
+            "wheel, which includes it, or build it with the libyaml headers"
+        )
+
+
+require_libyaml(yaml.__with_libyaml__)
+
+
 class FrontmatterLoader(FrontmatterConstructor, yaml.SafeLoader):
-    """Load frontmatter with PyYAML's Python parser, which defines the results."""
+    """Load frontmatter with PyYAML's Python parser, which words the errors."""
 
 
-# libyaml counterparts of the loaders load_yaml accepts; empty when PyYAML was
-# built without libyaml.
-_FAST_LOADERS: dict[type[yaml.SafeLoader], type[yaml.CSafeLoader]] = {}
-if yaml.__with_libyaml__:
+class _FastFrontmatterLoader(FrontmatterConstructor, yaml.CSafeLoader):
+    """Load frontmatter with libyaml's parser."""
 
-    class _FastFrontmatterLoader(FrontmatterConstructor, yaml.CSafeLoader):
-        """Load frontmatter with libyaml's parser."""
 
-    _FAST_LOADERS = {
-        yaml.SafeLoader: yaml.CSafeLoader,
-        FrontmatterLoader: _FastFrontmatterLoader,
-    }
+# libyaml counterparts of the loaders load_yaml accepts.
+_FAST_LOADERS: dict[type[yaml.SafeLoader], type[yaml.CSafeLoader]] = {
+    yaml.SafeLoader: yaml.CSafeLoader,
+    FrontmatterLoader: _FastFrontmatterLoader,
+}
 
 
 def load_yaml(text: str, loader: type[yaml.SafeLoader] = yaml.SafeLoader) -> Any:
-    """Load one YAML document, through libyaml when PyYAML includes it.
+    """Load one YAML document with libyaml, keeping the Python parser's errors.
 
     libyaml parses several times faster than PyYAML's Python parser, but words
     its errors differently and accepts characters the Python reader rejects.
