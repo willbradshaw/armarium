@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add bare rules reference pages (rules terms, a condition and feats) to the `dnd-5-5` extension.
 - Load each schema and the extension set once per validation run, not once per record.
 - Add a Monster Content subtype to the `dnd-5-5` extension.
 - Let extension rules require named code blocks to hold YAML mappings.

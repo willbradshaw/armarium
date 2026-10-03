@@ -1508,3 +1508,34 @@ class TestDndMonsterSchema:
         remove_extension("dnd-5-5", vault)
         assert path.read_bytes() == before
         assert [d.rule for d in validate(path, vault).diagnostics] == ["record.subtype"]
+
+
+class TestDndRulesReference:
+    FOLDERS = ("rules", "conditions", "feats")
+    PAGES = sorted(
+        path.relative_to(ROOT / "extensions/dnd-5-5")
+        for folder in FOLDERS
+        for path in (ROOT / "extensions/dnd-5-5" / folder).glob("*.md")
+    )
+
+    def test_pages_are_bare_references(self) -> None:
+        assert len(self.PAGES) == 15
+        readme = (ROOT / "extensions/dnd-5-5/README.md").read_text()
+        for page in self.PAGES:
+            text = (ROOT / "extensions/dnd-5-5" / page).read_text()
+            assert text == '---\ntype: "[[Reference]]"\n---\n', page
+            assert page.stem in readme, page
+
+    def test_links_resolve_while_enabled(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        installed = vault / "reference/extensions/dnd-5-5"
+        assert all((installed / page).is_file() for page in self.PAGES)
+        path = add_content("Long March", "Lore", vault)
+        links = "; ".join(f"[[{page.stem}]]" for page in self.PAGES)
+        path.write_text(
+            path.read_text().replace("## Notes\n- N/A", f"## Notes\n- {links}")
+        )
+        assert not validate(vault).failed
+        remove_extension("dnd-5-5", vault)
+        rules = [d.rule for d in validate(path, vault).diagnostics]
+        assert rules == ["link.missing"] * len(self.PAGES)

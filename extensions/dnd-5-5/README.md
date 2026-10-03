@@ -5,7 +5,8 @@ type: "[[Reference]]"
 
 The `dnd-5-5` extension adapts Armarium vaults for Dungeons & Dragons' 2024 rules.
 It provides schemas and templates for recording equipment, spells and monsters,
-so they can be described consistently and filtered by their game properties.
+so they can be described consistently and filtered by their game properties, and
+reference pages for rules terms.
 Spell and Monster are Content subtypes this extension adds. Monster stat blocks
 render with the [Fantasy Statblocks](https://github.com/javalent/fantasy-statblocks)
 Obsidian plugin.
@@ -126,3 +127,20 @@ armarium add content "Reef Shark" --subtype Monster \
 
 See the [Monster schema](schemas/monster.schema.json) and
 [Monster template](templates/Monster.md).
+
+## Rules reference
+
+The extension installs Reference pages for D&D rules terms, so records can link
+to them by name, for example `[[Short Rest]]` or `[[Sentinel]]`. The pages hold
+no text yet.
+
+| Folder | Pages |
+| --- | --- |
+| `rules/` | Blindsight, Heroic Inspiration, Long Rest, Origin Feat, Proficiency, Short Rest, Skill, Species |
+| `conditions/` | Exhaustion |
+| `feats/` | Ability Score Improvement, Durable, Heavy Armor Master, Mage Slayer, Sentinel, Spell Sniper |
+
+Like every installed extension file, these pages are replaced on update and
+removed with the extension, so keep vault notes about a rule elsewhere. A vault
+record with the same name as one of these pages makes links to that name
+ambiguous.
