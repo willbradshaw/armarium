@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Parse YAML with libyaml when PyYAML includes it, keeping the Python parser's results and errors.
 - Speed up directory validation: read declared directories once, skip inline Markdown parsing and sort findings once.
 - Add a bare Divine Sense class feature page to the `dnd-5-5` rules reference.
 - Add bare rules reference pages (rules terms, a condition and feats) to the `dnd-5-5` extension.
