@@ -4,13 +4,15 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
+from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from referencing.exceptions import NoSuchResource
 
 from armarium.parse import Body, Frontmatter, Record
-from armarium.schemas import Schema, select_schema
+from armarium.schemas import Schema, _check_schema, select_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,6 +42,26 @@ def record(root: Path) -> Record:
         Frontmatter({"type": "[[types/Widget]]", "name": "Example"}),
         Body("## Notes\n", 5),
     )
+
+
+class TestCheckSchema:
+    @pytest.mark.parametrize("text", ["true", "{}", '{"type": "object"}'])
+    def test_valid_schema_is_checked_once(self, text: str) -> None:
+        _check_schema.cache_clear()
+        with patch(
+            "armarium.schemas.Draft202012Validator.check_schema",
+            wraps=Draft202012Validator.check_schema,
+        ) as check:
+            _check_schema(text)
+            _check_schema(text)
+        check.assert_called_once_with(json.loads(text))
+
+    def test_invalid_schema_raises_every_time(self) -> None:
+        _check_schema.cache_clear()
+        for _ in range(2):
+            with pytest.raises(SchemaError):
+                _check_schema('{"type": 12}')
+        assert _check_schema.cache_info().currsize == 0
 
 
 class TestSchema:

@@ -1,5 +1,6 @@
 """Vault-local Draft 2020-12 schemas with offline, confined references."""
 
+import functools
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,6 +16,23 @@ from referencing.jsonschema import DRAFT202012
 
 from armarium.lib import Diagnostic
 from armarium.parse import Record
+
+
+@functools.cache
+def _check_schema(text: str) -> None:
+    """Meta-validate schema JSON once per distinct text.
+
+    Draft 2020-12 meta-validation is slow, and the same schema files are loaded
+    again for every referencing record and every installed vault. Only passing
+    texts are cached, so an invalid schema raises each time it is loaded.
+
+    Args:
+        text: JSON text of a schema, already known to parse.
+
+    Raises:
+        SchemaError: The schema fails Draft 2020-12 meta-validation.
+    """
+    Draft202012Validator.check_schema(json.loads(text))
 
 
 @dataclass(frozen=True)
@@ -63,8 +81,9 @@ class Schema:
             raise ValueError(
                 "schema reference escapes reference/schemas or extension schemas"
             )
-        data = json.loads(path.read_text(encoding="utf-8"))
-        Draft202012Validator.check_schema(data)
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text)
+        _check_schema(text)
         if (
             isinstance(data, dict)
             and data.get("$schema", "https://json-schema.org/draft/2020-12/schema")
