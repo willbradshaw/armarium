@@ -5,20 +5,137 @@ from dataclasses import FrozenInstanceError
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 import yaml
 from yaml.nodes import MappingNode
 
 from armarium.parse import (
+    _FAST_LOADERS,
     Block,
     Body,
     Frontmatter,
+    FrontmatterConstructor,
     FrontmatterLoader,
     Link,
     Record,
     Section,
+    load_yaml,
+    require_libyaml,
 )
+
+# The pure-Python loader and its libyaml counterpart.
+LOADERS = [FrontmatterLoader, _FAST_LOADERS[FrontmatterLoader]]
+
+
+@pytest.fixture(params=LOADERS, ids=lambda loader: loader.__name__)
+def loader_class(request: pytest.FixtureRequest) -> Any:
+    """Each frontmatter loader sharing FrontmatterConstructor."""
+    return request.param
+
+
+class TestRequireLibyaml:
+    def test_available(self) -> None:
+        require_libyaml(True)
+
+    def test_missing(self) -> None:
+        with pytest.raises(ImportError, match="requires PyYAML built with libyaml"):
+            require_libyaml(False)
+
+    def test_installed_pyyaml_has_libyaml(self) -> None:
+        assert yaml.__with_libyaml__
+
+
+class TestLoadYaml:
+    LOADS = "armarium.parse.yaml.load"
+
+    @pytest.mark.parametrize(
+        ("text", "loader", "expected"),
+        [
+            ("name: Example\nitems: [1, 2.5, true, null]", yaml.SafeLoader, None),
+            ("- a list", yaml.SafeLoader, None),
+            ("", yaml.SafeLoader, None),
+            ("when: 2026-01-02", yaml.SafeLoader, {"when": date(2026, 1, 2)}),
+            ("when: 2026-01-02", FrontmatterLoader, {"when": "2026-01-02"}),
+            (
+                "first: &items [2026-01-02]\nsecond: *items\ntext: 'é ✓'",
+                FrontmatterLoader,
+                None,
+            ),
+        ],
+    )
+    def test_matches_python_loader(
+        self, text: str, loader: type[yaml.SafeLoader], expected: Any
+    ) -> None:
+        reference = yaml.load(text, Loader=loader)
+        with patch(self.LOADS, wraps=yaml.load) as load:
+            assert load_yaml(text, loader) == reference
+        # libyaml answers alone for a valid document.
+        used = [call.kwargs["Loader"] for call in load.call_args_list]
+        assert used == [_FAST_LOADERS[loader]]
+        if expected is not None:
+            assert reference == expected
+
+    def test_default_loader_is_safe(self) -> None:
+        assert load_yaml("a: 1") == {"a": 1}
+        with pytest.raises(yaml.constructor.ConstructorError):
+            load_yaml("!!python/object:builtins.object {}")
+
+    @pytest.mark.parametrize(
+        ("text", "loader"),
+        [
+            ("x: [", yaml.SafeLoader),
+            ("x: [", FrontmatterLoader),
+            ("a: b: c", FrontmatterLoader),
+            ("\tx: 1", FrontmatterLoader),
+            ("x: 'unterminated", yaml.SafeLoader),
+            ("x: *missing", FrontmatterLoader),
+            ("name: first\nname: second", FrontmatterLoader),
+            ("x: .nan", FrontmatterLoader),
+            ("1: value", FrontmatterLoader),
+            ("x: &x [*x]", FrontmatterLoader),
+            ("when: 2026-13-45", yaml.SafeLoader),
+            ("bell: \x07", FrontmatterLoader),
+        ],
+    )
+    def test_errors_are_the_python_loaders(
+        self, text: str, loader: type[yaml.SafeLoader]
+    ) -> None:
+        with pytest.raises((yaml.YAMLError, ValueError)) as reference:
+            yaml.load(text, Loader=loader)
+        with pytest.raises(type(reference.value)) as raised:
+            load_yaml(text, loader)
+        assert str(raised.value) == str(reference.value)
+        first, second = (
+            getattr(error.value, "problem_mark", None) for error in (raised, reference)
+        )
+        assert (first and first.line) == (second and second.line)
+
+    def test_unprintable_text_skips_libyaml(self) -> None:
+        with patch(self.LOADS, wraps=yaml.load) as load:
+            with pytest.raises(yaml.reader.ReaderError):
+                load_yaml("bell: \x07", FrontmatterLoader)
+        assert [call.kwargs["Loader"] for call in load.call_args_list] == [
+            FrontmatterLoader
+        ]
+
+    def test_python_loader_decides_what_libyaml_rejects(self) -> None:
+        def load(text: str, Loader: type) -> Any:
+            if Loader is not yaml.SafeLoader:
+                raise yaml.YAMLError("libyaml disagrees")
+            return {"from": "python"}
+
+        with patch(self.LOADS, side_effect=load):
+            assert load_yaml("a: 1") == {"from": "python"}
+
+    def test_other_loaders_are_used_directly(self) -> None:
+        class Custom(yaml.SafeLoader):
+            pass
+
+        with patch(self.LOADS, wraps=yaml.load) as load:
+            assert load_yaml("a: 1", Custom) == {"a": 1}
+        assert [call.kwargs["Loader"] for call in load.call_args_list] == [Custom]
 
 
 class TestFrontmatterLoader:
@@ -30,15 +147,21 @@ class TestFrontmatterLoader:
             ("items: [one, two]", {"items": ["one", "two"]}),
         ],
     )
-    def test_safe_values(self, text: str, expected: dict[str, Any]) -> None:
-        assert yaml.load(text, Loader=FrontmatterLoader) == expected
+    def test_safe_values(
+        self, loader_class: Any, text: str, expected: dict[str, Any]
+    ) -> None:
+        assert yaml.load(text, Loader=loader_class) == expected
 
-    def test_rejects_python_objects(self) -> None:
+    def test_rejects_python_objects(self, loader_class: Any) -> None:
         with pytest.raises(yaml.constructor.ConstructorError):
-            yaml.load("!!python/object:builtins.object {}", Loader=FrontmatterLoader)
+            yaml.load("!!python/object:builtins.object {}", Loader=loader_class)
+
+    def test_shares_the_constructor(self, loader_class: Any) -> None:
+        assert issubclass(loader_class, FrontmatterConstructor)
+        assert issubclass(FrontmatterLoader, yaml.SafeLoader)
 
 
-class TestFrontmatterLoaderConstructMapping:
+class TestFrontmatterConstructorConstructMapping:
     @pytest.mark.parametrize(
         ("text", "expected"),
         [
@@ -46,8 +169,10 @@ class TestFrontmatterLoaderConstructMapping:
             ("name: Example\nitems: [one]", {"name": "Example", "items": ["one"]}),
         ],
     )
-    def test_mapping(self, text: str, expected: dict[str, Any]) -> None:
-        loader = FrontmatterLoader(text)
+    def test_mapping(
+        self, loader_class: Any, text: str, expected: dict[str, Any]
+    ) -> None:
+        loader = loader_class(text)
         try:
             node = loader.get_single_node()
             assert isinstance(node, MappingNode)
@@ -72,9 +197,9 @@ class TestFrontmatterLoaderConstructMapping:
         ],
     )
     def test_invalid_mapping(
-        self, text: str, exception: type[Exception], message: str
+        self, loader_class: Any, text: str, exception: type[Exception], message: str
     ) -> None:
-        loader = FrontmatterLoader(text)
+        loader = loader_class(text)
         try:
             node = loader.get_single_node()
             assert isinstance(node, MappingNode)
@@ -84,7 +209,7 @@ class TestFrontmatterLoaderConstructMapping:
             loader.dispose()
 
 
-class TestFrontmatterLoaderGetSingleData:
+class TestFrontmatterConstructorGetSingleData:
     @pytest.mark.parametrize(
         ("text", "expected"),
         [
@@ -97,8 +222,10 @@ class TestFrontmatterLoaderGetSingleData:
             ),
         ],
     )
-    def test_normalized_document(self, text: str, expected: Any) -> None:
-        loader = FrontmatterLoader(text)
+    def test_normalized_document(
+        self, loader_class: Any, text: str, expected: Any
+    ) -> None:
+        loader = loader_class(text)
         try:
             assert loader.get_single_data() == expected
         finally:
@@ -112,8 +239,8 @@ class TestFrontmatterLoaderGetSingleData:
             ("x: &x [*x]", "recursive YAML aliases"),
         ],
     )
-    def test_invalid_document(self, text: str, message: str) -> None:
-        loader = FrontmatterLoader(text)
+    def test_invalid_document(self, loader_class: Any, text: str, message: str) -> None:
+        loader = loader_class(text)
         try:
             with pytest.raises(ValueError, match=message):
                 loader.get_single_data()
@@ -121,10 +248,10 @@ class TestFrontmatterLoaderGetSingleData:
             loader.dispose()
 
 
-class TestFrontmatterLoaderNormalize:
+class TestFrontmatterConstructorNormalize:
     @pytest.fixture
-    def loader(self) -> Iterator[FrontmatterLoader]:
-        loader = FrontmatterLoader("")
+    def loader(self, loader_class: Any) -> Iterator[FrontmatterConstructor]:
+        loader = loader_class("")
         try:
             yield loader
         finally:
@@ -147,7 +274,7 @@ class TestFrontmatterLoaderNormalize:
         ],
     )
     def test_json_values(
-        self, loader: FrontmatterLoader, value: Any, expected: Any
+        self, loader: FrontmatterConstructor, value: Any, expected: Any
     ) -> None:
         result = loader._normalize(value)
         assert result == expected
@@ -165,13 +292,13 @@ class TestFrontmatterLoaderNormalize:
         ],
     )
     def test_invalid_values(
-        self, loader: FrontmatterLoader, value: Any, message: str
+        self, loader: FrontmatterConstructor, value: Any, message: str
     ) -> None:
         with pytest.raises(ValueError, match=message):
             loader._normalize(value)
 
     @pytest.mark.parametrize("container", [[], {}], ids=["list", "mapping"])
-    def test_cycles(self, loader: FrontmatterLoader, container: Any) -> None:
+    def test_cycles(self, loader: FrontmatterConstructor, container: Any) -> None:
         if isinstance(container, list):
             container.append(container)
         else:
@@ -180,7 +307,7 @@ class TestFrontmatterLoaderNormalize:
             loader._normalize(container)
 
     def test_shared_aliases_are_copied_without_mutating_input(
-        self, loader: FrontmatterLoader
+        self, loader: FrontmatterConstructor
     ) -> None:
         shared = [date(2026, 1, 2)]
         source = {"first": shared, "second": shared}

@@ -12,13 +12,19 @@ from typing import Any
 import yaml
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
+from yaml.constructor import SafeConstructor
 from yaml.nodes import MappingNode
+from yaml.reader import Reader
 
 from armarium.lib import CAMPAIGN_NAME, Diagnostic, iter_wikilinks, parse_wikilink
 
 
-class FrontmatterLoader(yaml.SafeLoader):
-    """Load safe YAML frontmatter with unique keys and JSON-compatible values."""
+class FrontmatterConstructor(SafeConstructor):
+    """Construct safe YAML frontmatter with unique keys and JSON-compatible values.
+
+    Shared by the pure-Python and libyaml frontmatter loaders, which differ
+    only in the parser beneath this constructor.
+    """
 
     def construct_mapping(self, node: MappingNode, deep: bool = False) -> Any:
         """Construct a YAML mapping after checking its keys for duplicates.
@@ -100,6 +106,72 @@ class FrontmatterLoader(yaml.SafeLoader):
         if isinstance(value, float) and math.isfinite(value):
             return value
         raise ValueError("frontmatter contains a non-JSON YAML value")
+
+
+def require_libyaml(available: bool) -> None:
+    """Refuse to run on a PyYAML built without libyaml.
+
+    YAML is always parsed by libyaml, so every installation accepts the same
+    documents; a pure-Python fallback could accept or reject differently.
+
+    Args:
+        available: Whether PyYAML includes libyaml (yaml.__with_libyaml__).
+
+    Raises:
+        ImportError: PyYAML lacks libyaml.
+    """
+    if not available:
+        raise ImportError(
+            "Armarium requires PyYAML built with libyaml; reinstall PyYAML from a "
+            "wheel, which includes it, or build it with the libyaml headers"
+        )
+
+
+require_libyaml(yaml.__with_libyaml__)
+
+
+class FrontmatterLoader(FrontmatterConstructor, yaml.SafeLoader):
+    """Load frontmatter with PyYAML's Python parser, which words the errors."""
+
+
+class _FastFrontmatterLoader(FrontmatterConstructor, yaml.CSafeLoader):
+    """Load frontmatter with libyaml's parser."""
+
+
+# libyaml counterparts of the loaders load_yaml accepts.
+_FAST_LOADERS: dict[type[yaml.SafeLoader], type[yaml.CSafeLoader]] = {
+    yaml.SafeLoader: yaml.CSafeLoader,
+    FrontmatterLoader: _FastFrontmatterLoader,
+}
+
+
+def load_yaml(text: str, loader: type[yaml.SafeLoader] = yaml.SafeLoader) -> Any:
+    """Load one YAML document with libyaml, keeping the Python parser's errors.
+
+    libyaml parses several times faster than PyYAML's Python parser, but words
+    its errors differently and accepts characters the Python reader rejects.
+    A document that libyaml rejects, or that holds such characters, is loaded
+    by the given loader instead, so every error is the one that loader reports.
+
+    Args:
+        text: YAML source of a single document.
+        loader: Pure-Python loader defining the result: yaml.SafeLoader or
+            FrontmatterLoader. Any other loader is used directly.
+
+    Returns:
+        Any: The value the given loader constructs.
+
+    Raises:
+        yaml.YAMLError: The document is invalid.
+        ValueError: The loader rejects a constructed value.
+    """
+    fast = _FAST_LOADERS.get(loader)
+    if fast is not None and not Reader.NON_PRINTABLE.search(text):
+        try:
+            return yaml.load(text, Loader=fast)
+        except yaml.YAMLError, ValueError, RecursionError:
+            pass
+    return yaml.load(text, Loader=loader)
 
 
 @dataclass(frozen=True)
@@ -577,7 +649,7 @@ class Record:
             )
             if end is None:
                 raise ValueError("frontmatter has no closing --- delimiter")
-            data = yaml.load("".join(lines[1:end]), Loader=FrontmatterLoader)
+            data = load_yaml("".join(lines[1:end]), FrontmatterLoader)
             if data is None:
                 data = {}
             if not isinstance(data, dict):

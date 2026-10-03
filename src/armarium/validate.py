@@ -33,7 +33,7 @@ from armarium.lib import (
     parse_directories,
     parse_wikilink,
 )
-from armarium.parse import Record, Section
+from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
 
 
@@ -313,7 +313,7 @@ def validate_yaml_blocks(record: Record, relative: str, infos: Set[str]) -> Find
         if block.kind != "code" or block.info not in infos:
             continue
         try:
-            data = yaml.safe_load(block.text)
+            data = load_yaml(block.text)
         except yaml.YAMLError as exc:
             problem = getattr(exc, "problem", None) or str(exc).splitlines()[0]
             findings.add(
