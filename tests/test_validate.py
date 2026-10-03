@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 import yaml
 
+from armarium.extensions import load_extension_set
 from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Body, Frontmatter, Record
@@ -630,6 +631,27 @@ class TestRecordChecks:
 
 
 class TestValidateDirectory:
+    def test_loads_schemas_and_extensions_once(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        from armarium.extensions import enable_extension
+        from armarium.schemas import Schema
+
+        root = tmp_path / "vault"
+        shutil.copytree(ROOT / "vaults/example", root)
+        enable_extension("dnd-5-5", root)
+        with (
+            patch(
+                "armarium.index.load_extension_set", wraps=load_extension_set
+            ) as load,
+            patch.object(Schema, "load", wraps=Schema.load) as schemas,
+        ):
+            result = validate_directory(root)
+        assert result.checked > 50
+        load.assert_called_once()
+        paths = [call.args[0].absolute() for call in schemas.call_args_list]
+        assert len(paths) == len(set(paths))
+
     @pytest.mark.parametrize("target", [".", "scripts", "scripts/tests"])
     def test_scripts_are_not_records(self, tmp_path: Path, target: str) -> None:
         make_vault(tmp_path)
