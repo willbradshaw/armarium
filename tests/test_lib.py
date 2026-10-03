@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Literal
+from unittest.mock import patch
 
 import pytest
 
@@ -493,6 +494,40 @@ class TestResultAdd:
 
     def test_unsupported_operand(self) -> None:
         assert Result().__add__(object()) is NotImplemented
+
+
+class TestResultCombine:
+    RESULTS = (
+        Result([Diagnostic("z.md", "z", "Error")], checked=1, skipped=2),
+        Result(),
+        Result(
+            [
+                Diagnostic("a.md", "b", "Second"),
+                Diagnostic("a.md", "a", "Warning", severity="warning"),
+            ],
+            checked=2,
+            unsupported=1,
+        ),
+        Result([Diagnostic("m.md", "m", "Info", severity="info")], skipped=1),
+    )
+
+    @pytest.mark.parametrize("count", range(len(RESULTS) + 1))
+    def test_equals_pairwise_addition(self, count: int) -> None:
+        results = self.RESULTS[:count]
+        combined = Result.combine(iter(results))
+        assert combined == sum(results, Result())
+        assert combined.diagnostics == sorted(combined.diagnostics)
+
+    def test_does_not_mutate_inputs(self) -> None:
+        before = [list(result.diagnostics) for result in self.RESULTS]
+        Result.combine(self.RESULTS).diagnostics.clear()
+        assert [result.diagnostics for result in self.RESULTS] == before
+
+    def test_sorts_once(self) -> None:
+        results = [Result([Diagnostic(f"{n}.md", "r", "m")]) for n in range(50)]
+        with patch("armarium.lib.sorted", wraps=sorted, create=True) as sort:
+            Result.combine(results)
+        assert sort.call_count == 1
 
 
 class TestVaultNotFoundError:

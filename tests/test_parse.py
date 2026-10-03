@@ -500,6 +500,24 @@ class TestSectionNest:
 
 
 class TestBody:
+    def test_inline_markup_is_kept_as_written(self) -> None:
+        # Blocks carry their source text; the inline pass is never run.
+        text = "# *Title* `code`\n\nA [link](x) and **bold** ^id\n\n- `item` [[X]]\n"
+        tokens = Body._PARSER.parse(text)
+        assert [t.children for t in tokens if t.type == "inline"] == [[], [], []]
+        body = Body(text)
+        assert body.children == (
+            Section(
+                "*Title* `code`",
+                1,
+                1,
+                (
+                    Block("paragraph", 3, "A [link](x) and **bold**", block_id="id"),
+                    Block("list", 5, children=(Block("item", 5, "`item` [[X]]"),)),
+                ),
+            ),
+        )
+
     def test_tree_and_blocks(self) -> None:
         text = (
             "Preamble paragraph.\n\n"

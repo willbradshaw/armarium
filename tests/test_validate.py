@@ -652,6 +652,23 @@ class TestValidateDirectory:
         paths = [call.args[0].absolute() for call in schemas.call_args_list]
         assert len(paths) == len(set(paths))
 
+    def test_reads_declared_directories_once(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        root = tmp_path / "vault"
+        shutil.copytree(ROOT / "vaults/example", root)
+        with (
+            patch("armarium.index.find_files", wraps=find_files) as find,
+            patch.object(Result, "combine", wraps=Result.combine) as combine,
+        ):
+            result = validate_directory(root)
+        assert result.checked > 50
+        listed = [call.args[0] for call in find.call_args_list]
+        assert listed == [root.resolve(), root.resolve() / "reference/types"]
+        # Per-file results are combined in one pass, then the vault's findings
+        # are added: the diagnostics are not sorted again for every file.
+        assert combine.call_count == 2
+
     @pytest.mark.parametrize("target", [".", "scripts", "scripts/tests"])
     def test_scripts_are_not_records(self, tmp_path: Path, target: str) -> None:
         make_vault(tmp_path)

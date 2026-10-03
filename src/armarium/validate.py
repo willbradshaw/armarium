@@ -366,7 +366,7 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
             for child in find_children(path)
             if child.is_dir()
         ]
-        return sum(results, Result())
+        return Result.combine(results)
     files = [
         file
         for file in find_files(path)
@@ -374,8 +374,8 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         and not file.resolve().is_relative_to(context / "scripts")
     ]
     index = VaultIndex(context)
-    result = sum(
-        (validate_markdown(file, context, index=index) for file in files), Result()
+    result = Result.combine(
+        validate_markdown(file, context, index=index) for file in files
     )
     # A vault root, whether named directly or found by recursion, must also
     # carry the shared infrastructure; a directory inside a vault need not.

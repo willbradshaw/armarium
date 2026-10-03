@@ -41,6 +41,7 @@ class VaultIndex:
         self.records: dict[Path, tuple[Record | None, list[Diagnostic]]] = {}
         self._extensions: ExtensionSet | Exception | None = None
         self._schemas: dict[Path, Schema | Exception] = {}
+        self._declarations: dict[str, dict[str, str]] | None = None
         for path in find_files(self.root):
             relative = path.relative_to(self.root)
             # Markdown links may include or omit .md; asset extensions matter.
@@ -188,7 +189,15 @@ class VaultIndex:
             dict[str, dict[str, str]]: Type name (the record's filename stem)
                 to its declared directory per scope, for every reference/types
                 record with a usable declaration; the others are left out.
+                Read once per validation run; every call returns the same
+                mapping, which callers must not modify.
         """
+        if self._declarations is None:
+            self._declarations = self._read_declarations()
+        return self._declarations
+
+    def _read_declarations(self) -> dict[str, dict[str, str]]:
+        """List and parse the Type records for declared_directories."""
         types = self.root / "reference/types"
         if types.is_symlink() or not types.is_dir():
             return {}
@@ -222,19 +231,25 @@ class VaultIndex:
         Raises:
             ValueError: The path is outside this vault.
         """
+        # Compare path components rather than building a Path per declaration:
+        # this runs for every record and every type-bound link target.
+        parts = path.relative_to(self.root).parts
         scope = find_campaign(path, self.root)
-        bases = {
-            "shared": self.root,
-            "campaign": self.root / "campaigns" / scope if scope else None,
+        bases: dict[str, tuple[str, ...] | None] = {
+            "shared": (),
+            "campaign": ("campaigns", scope) if scope else None,
         }
-        found: dict[Path, tuple[str, str, set[str]]] = {}
+        found: dict[tuple[str, ...], tuple[str, str, set[str]]] = {}
         for name, directories in self.declared_directories().items():
             for area, declared in directories.items():
                 base = bases[area]
-                if base is None or not path.is_relative_to(base / declared):
+                if base is None:
                     continue
-                found.setdefault(base / declared, (area, declared, set()))[2].add(name)
-        return [found[key] for key in sorted(found, key=lambda d: len(d.parts))]
+                directory = (*base, *declared.split("/"))
+                if parts[: len(directory)] != directory:
+                    continue
+                found.setdefault(directory, (area, declared, set()))[2].add(name)
+        return [found[key] for key in sorted(found, key=len)]
 
 
 def _key(name: str) -> str:
