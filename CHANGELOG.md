@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Require `requires_save` and `requires_attack` on `dnd-5-5` Spells.
 - Add a Spell Content subtype to the `dnd-5-5` extension.
 - Add optional `content_tags` to Content, replacing Gear's `item_tags` in `dnd-5-5`.
 - Let extensions declare new Content subtypes, each with a template.

@@ -1055,6 +1055,8 @@ class TestInstalledExtensions:
                 "components": ["Verbal"],
                 "duration": "Instantaneous",
                 "concentration": False,
+                "requires_save": False,
+                "requires_attack": False,
                 "content_tags": [],
             },
         }[subtype]

@@ -1145,6 +1145,8 @@ class TestDndSpellSchema:
         "material": "a pinch of sea salt",
         "duration": "8 hours",
         "concentration": False,
+        "requires_save": False,
+        "requires_attack": False,
         "content_tags": [],
     }
     MISSING = object()
@@ -1210,7 +1212,7 @@ class TestDndSpellSchema:
             ("school", "Chronurgy", False),
             *[
                 (f, v, valid)
-                for f in ("ritual", "concentration")
+                for f in ("ritual", "concentration", "requires_save", "requires_attack")
                 for v, valid in [
                     (True, True),
                     (False, True),

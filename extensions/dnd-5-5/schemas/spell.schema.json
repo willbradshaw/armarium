@@ -15,6 +15,8 @@
         "components",
         "duration",
         "concentration",
+        "requires_save",
+        "requires_attack",
         "content_tags"
       ],
       "properties": {
@@ -102,6 +104,12 @@
           "pattern": "\\S"
         },
         "concentration": {
+          "type": "boolean"
+        },
+        "requires_save": {
+          "type": "boolean"
+        },
+        "requires_attack": {
           "type": "boolean"
         },
         "content_tags": {
