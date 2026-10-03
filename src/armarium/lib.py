@@ -285,11 +285,28 @@ class Result:
         """
         if not isinstance(other, Result):
             return NotImplemented
-        return Result(
-            diagnostics=sorted(self.diagnostics + other.diagnostics),
-            checked=self.checked + other.checked,
-            skipped=self.skipped + other.skipped,
-            unsupported=self.unsupported + other.unsupported,
+        return Result.combine((self, other))
+
+    @classmethod
+    def combine(cls, results: Iterable["Result"]) -> "Result":
+        """Combine any number of results, sorting their diagnostics once.
+
+        Summing results pairwise sorts the growing list again for each one,
+        which is quadratic in a directory scan with many findings.
+
+        Args:
+            results: Results to combine; none is modified.
+
+        Returns:
+            Result: A new result with sorted diagnostics and summed counts,
+                equal to adding the results one by one.
+        """
+        results = list(results)
+        return cls(
+            diagnostics=sorted(d for result in results for d in result.diagnostics),
+            checked=sum(result.checked for result in results),
+            skipped=sum(result.skipped for result in results),
+            unsupported=sum(result.unsupported for result in results),
         )
 
     def add_context(

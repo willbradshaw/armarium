@@ -8,6 +8,7 @@ from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import ExtensionSet
 from armarium.index import VaultIndex, _key
+from armarium.lib import find_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
 
@@ -240,6 +241,22 @@ class TestVaultIndexDeclaredDirectories:
             assert index.declared_directories() == index.declared_directories()
         assert parse.call_count == 0
 
+    @pytest.mark.parametrize("declared", [True, False])
+    def test_reads_once_per_run(self, tmp_path: Path, declared: bool) -> None:
+        types = tmp_path / "reference/types"
+        types.mkdir(parents=True)
+        if declared:
+            (types / "Content.md").write_text(
+                "---\ndirectories: {shared: content}\n---\n"
+            )
+        index = VaultIndex(tmp_path)
+        with patch("armarium.index.find_files", wraps=find_files) as find:
+            first = index.declared_directories()
+            # An empty result is cached like any other.
+            assert index.declared_directories() is first
+        assert first == ({"Content": {"shared": "content"}} if declared else {})
+        assert [call.args for call in find.call_args_list] == [(types,)]
+
     @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
     def test_unusable_types_directory(self, tmp_path: Path, kind: str) -> None:
         types = tmp_path / "reference/types"
@@ -251,6 +268,22 @@ class TestVaultIndexDeclaredDirectories:
             types.parent.mkdir()
             types.symlink_to(tmp_path / "elsewhere", target_is_directory=True)
         assert VaultIndex(tmp_path).declared_directories() == {}
+
+
+class TestVaultIndexReadDeclarations:
+    def test_reads_on_every_call(self, tmp_path: Path) -> None:
+        types = tmp_path / "reference/types"
+        types.mkdir(parents=True)
+        (types / "Content.md").write_text("---\ndirectories: {shared: content}\n---\n")
+        index = VaultIndex(tmp_path)
+        with patch("armarium.index.find_files", wraps=find_files) as find:
+            first = index._read_declarations()
+            assert first == {"Content": {"shared": "content"}}
+            assert index._read_declarations() is not first
+        assert [call.args for call in find.call_args_list] == [(types,), (types,)]
+
+    def test_unusable_types_directory(self, tmp_path: Path) -> None:
+        assert VaultIndex(tmp_path)._read_declarations() == {}
 
 
 class TestVaultIndexContainingDirectories:
@@ -282,6 +315,14 @@ class TestVaultIndexContainingDirectories:
                 ],
             ),
             ("campaigns/other/content/A.md", []),
+            # A declared directory matches whole path components only.
+            ("contents/A.md", []),
+            (
+                "campaigns/campaign_1/sessions/transcripts.md",
+                [
+                    ("campaign", "sessions", {"Session"}),
+                ],
+            ),
             ("sessions/S.md", []),
             ("elsewhere.md", []),
         ],
@@ -295,6 +336,21 @@ class TestVaultIndexContainingDirectories:
             path.write_text(f"---\ndirectories: {declared}\n---\n")
         index = VaultIndex(tmp_path)
         assert index.containing_directories(tmp_path / relative) == expected
+
+    def test_scopes_declaring_one_directory(self, tmp_path: Path) -> None:
+        # A shared path and a campaign path naming the same directory share
+        # one entry, described by the first declaration read.
+        for name, declared in {
+            "Content": "{campaign: content}",
+            "Atlas": "{shared: campaigns/campaign_1/content}",
+        }.items():
+            path = tmp_path / "reference/types" / f"{name}.md"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(f"---\ndirectories: {declared}\n---\n")
+        record = tmp_path / "campaigns/campaign_1/content/A.md"
+        assert VaultIndex(tmp_path).containing_directories(record) == [
+            ("shared", "campaigns/campaign_1/content", {"Atlas", "Content"})
+        ]
 
     def test_outside_vault(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):

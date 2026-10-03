@@ -468,7 +468,9 @@ class Body(Section):
     # must itself declare a default.
     text: str = ""
 
-    _PARSER = MarkdownIt("commonmark").enable("table")
+    # Only block structure is read, and block rules set each inline token's
+    # content, so the inline pass that would build its children is skipped.
+    _PARSER = MarkdownIt("commonmark").enable("table").disable(["inline", "text_join"])
 
     def __init__(self, text: str, start_line: int = 1) -> None:
         """Parse the body's structure.
