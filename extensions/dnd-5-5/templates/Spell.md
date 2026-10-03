@@ -13,6 +13,8 @@ components:
 material:
 duration:
 concentration:
+requires_save:
+requires_attack:
 content_tags:
 image:
 url:

@@ -77,6 +77,7 @@ They apply in addition to the core fields in [[types/Content#Fields]].
 | `material` | With Material | Nonblank description of the material component; null or omitted otherwise. |
 | `duration` | Yes | Nonblank text, such as `Instantaneous` or `1 minute`. |
 | `concentration` | Yes | Boolean: whether the spell requires concentration. |
+| `requires_save`, `requires_attack` | Yes | Booleans: whether the spell calls for a saving throw or an attack roll. |
 | `content_tags` | Yes | A list, not null; `[]` for no tags. |
 | `image`, `url` | No | As for Gear: an image path or URL, and an HTTP/HTTPS source URL. |
 
@@ -85,7 +86,7 @@ and the template provides no assumed values:
 
 ```sh
 armarium add content "Salt Ward" --subtype Spell \
-  --frontmatter '{"source":"Homebrew","level":1,"school":"Abjuration","casting_time":"1 Action","ritual":true,"range":"Touch","components":["Verbal","Material"],"material":"a pinch of sea salt","duration":"8 hours","concentration":false,"content_tags":[]}'
+  --frontmatter '{"source":"Homebrew","level":1,"school":"Abjuration","casting_time":"1 Action","ritual":true,"range":"Touch","components":["Verbal","Material"],"material":"a pinch of sea salt","duration":"8 hours","concentration":false,"requires_save":false,"requires_attack":false,"content_tags":[]}'
 ```
 
 See the [Spell schema](schemas/spell.schema.json) and
