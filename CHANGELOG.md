@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let extensions declare new Content subtypes, each with a template.
 - Allow an optional vault `scripts/` directory for tooling and tests, excluding
   its contents from record validation during directory scans.
 - Add the `dnd-5-5` extension with D&D 2024 Gear fields and a Gear template.

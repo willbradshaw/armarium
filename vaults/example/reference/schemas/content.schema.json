@@ -21,16 +21,9 @@
           "const": "[[types/Content]]"
         },
         "subtype": {
-          "enum": [
-            "NPC",
-            "PC",
-            "Location",
-            "Faction",
-            "Object",
-            "Lore",
-            "Date",
-            "Gear"
-          ]
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+          "description": "NPC, PC, Location, Faction, Object, Lore, Date, Gear, or a subtype declared by an enabled extension. Membership requires a separate vault-aware check."
         },
         "summary": {
           "anyOf": [

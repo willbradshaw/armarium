@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from armarium.add import add_campaign
-from armarium.content import SUBTYPES, _content_body, _content_frontmatter, add_content
+from armarium.content import _content_body, _content_frontmatter, add_content
+from armarium.lib import SUBTYPES
 from armarium.parse import Record
 from armarium.validate import validate
 
@@ -646,6 +647,35 @@ class TestExtensionContent:
         assert not validate(path, vault).failed
         path.write_text(path.read_text().replace("## Notes", "## Missing"))
         assert validate(path, vault).failed
+
+    @pytest.mark.parametrize("declared", [False, True])
+    def test_declared_subtype(self, vault: Path, declared: bool) -> None:
+        if declared:
+            (vault / "reference/schemas/relic.schema.json").write_text("true")
+            (vault / "reference/templates/Relic.md").write_text(
+                (vault / "reference/templates/Content.md")
+                .read_text()
+                .replace("subtype:\n", "subtype: Relic\n")
+            )
+            rule = {
+                "type": "Content",
+                "subtype": "Relic",
+                "schema": "schemas/relic.schema.json",
+                "template": "templates/Relic.md",
+            }
+            (vault / "reference/extensions.json").write_text(
+                json.dumps(
+                    {"relics": {"subtypes": {"Content": ["Relic"]}, "rules": [rule]}}
+                )
+            )
+            path = add_content("Crown", "Relic", vault)
+            assert not validate(path, vault).failed
+        else:
+            with pytest.raises(
+                ValueError, match=r"^subtype must be one of NPC, PC, .*, Gear$"
+            ):
+                add_content("Crown", "Relic", vault)
+            assert not (vault / "content/Crown.md").exists()
 
     def test_nested_frontmatter(self, vault: Path) -> None:
         add_campaign(vault, number=2)

@@ -6,12 +6,19 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from armarium.add import add_campaign
+from jsonschema.exceptions import SchemaError
+
+from armarium.add import add_campaign, select_vault
 from armarium.clue import add_clue
-from armarium.content import SUBTYPES, add_content
-from armarium.extensions import enable_extension, remove_extension, update_extension
+from armarium.content import add_content
+from armarium.extensions import (
+    content_subtypes,
+    enable_extension,
+    remove_extension,
+    update_extension,
+)
 from armarium.init import init_vault
-from armarium.lib import find_vault
+from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.player import add_player
@@ -42,6 +49,36 @@ def _frontmatter_json(value: str) -> dict[str, object]:
         return data
     except ValueError as exc:
         raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def _subtype_choices(argv: Sequence[str] | None) -> tuple[tuple[str, ...] | None, str]:
+    """Select Content subtypes for `add content` from the vault it targets.
+
+    The vault is the one named by --vault, otherwise the one containing the
+    current directory. Its enabled extensions may add subtypes to the core set.
+
+    Args:
+        argv: Arguments without the executable name, or None to read sys.argv.
+
+    Returns:
+        tuple[tuple[str, ...] | None, str]: The permitted subtypes and a note
+            for the help text. Other commands, and add content outside a vault,
+            get the core subtypes. When the vault's extensions cannot be loaded
+            the choices are None, so creation reports the underlying error.
+    """
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:2] != ["add", "content"]:
+        return SUBTYPES, ""
+    options = argparse.ArgumentParser(add_help=False, exit_on_error=False)
+    options.add_argument("--vault", type=Path)
+    try:
+        root = select_vault(options.parse_known_args(arguments[2:])[0].vault)
+    except argparse.ArgumentError, OSError, ValueError:
+        return SUBTYPES, "; enabled extensions may add others"
+    try:
+        return content_subtypes(root), " (core subtypes and enabled extensions)"
+    except (OSError, ValueError, SchemaError, RecursionError) as exc:
+        return None, f"; cannot read the vault's extensions: {exc}"
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -150,7 +187,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             type=int,
             help=f"{description} (default: largest existing number + 1)",
         )
-    content.add_argument("--subtype", required=True, choices=SUBTYPES)
+    subtypes, origin = _subtype_choices(argv)
+    content.add_argument(
+        "--subtype", required=True, choices=subtypes, help=f"Content subtype{origin}"
+    )
     for addition in (content, player, note, session, clue, transcript):
         fields = addition.add_mutually_exclusive_group()
         fields.add_argument(

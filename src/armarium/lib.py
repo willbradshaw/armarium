@@ -490,6 +490,9 @@ def find_campaign(path: Path, root: Path) -> str | None:
 # relative to the vault root, campaign paths to each campaigns/campaign_N.
 DIRECTORY_SCOPES = ("shared", "campaign")
 
+# Content subtypes every vault permits; enabled extensions may declare more.
+SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear")
+
 # A declared directory: a relative path without empty, . or .. segments.
 DIRECTORY = re.compile(r"(?!\.\.?(?:/|$))[^/]+(?:/(?!\.\.?(?:/|$))[^/]+)*")
 

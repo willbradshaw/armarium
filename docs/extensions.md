@@ -80,6 +80,34 @@ this local registration leaves the custom schema file intact.
 
 Put files in `extensions/NAME/` and declare rules in `extension.json`; see the
 [example declaration](../extensions/example/extension.json). Each rule requires
-`type` and `schema`. Optional `subtype` limits its scope; optional `template` selects
-a template. Source declaration paths are relative to the extension directory.
-Schemas and templates belong in their respective subdirectories.
+`type` and `schema`. Optional `subtype` limits its scope to an existing subtype;
+optional `template` selects a template. Source declaration paths are relative to
+the extension directory. Schemas and templates belong in their respective
+subdirectories.
+
+### Declaring subtypes
+
+An extension can add Content subtypes not present in the base package. List them
+under `subtypes`, keyed by type, and give each a rule in the same extension that
+supplies a template:
+
+```json
+{
+  "my-system": {
+    "subtypes": {"Content": ["Spell"]},
+    "rules": [
+      {
+        "type": "Content",
+        "subtype": "Spell",
+        "schema": "schemas/spell.schema.json",
+        "template": "templates/Spell.md"
+      }
+    ]
+  }
+}
+```
+
+Content is the only type with subtypes. Names start with a letter and contain
+only letters and digits, and may not repeat a core subtype or one another
+enabled extension declares. Records of a declared subtype meet the core Content
+requirements and the extension's schema.

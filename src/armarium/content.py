@@ -16,10 +16,9 @@ from armarium.add import (
     select_vault,
     write_record,
 )
+from armarium.extensions import content_subtypes
 from armarium.lib import CAMPAIGN_NAME
 from armarium.parse import Record
-
-SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear")
 
 
 def _content_frontmatter(
@@ -32,7 +31,7 @@ def _content_frontmatter(
 
     Args:
         template: Parsed local Content template.
-        subtype: Selected built-in subtype.
+        subtype: Selected core or extension subtype.
         campaign: Campaign number, or None for shared content.
         frontmatter: Fields applied after campaign adaptation.
 
@@ -99,7 +98,8 @@ def add_content(
 
     Args:
         name: Record filename without .md; spaces are permitted.
-        subtype: NPC, PC, Location, Faction, Object, Lore, Date or Gear.
+        subtype: NPC, PC, Location, Faction, Object, Lore, Date, Gear, or a
+            subtype declared by an extension enabled in the vault.
         vault: Vault root, or None to discover it from the working directory.
         campaign: Existing campaign number. When omitted, infer from the working
             directory inside the selected vault, otherwise create shared content.
@@ -116,11 +116,12 @@ def add_content(
         KeyboardInterrupt: The partial file is removed before propagating.
     """
     check_name(name)
-    if subtype not in SUBTYPES:
-        raise ValueError(f"subtype must be one of {', '.join(SUBTYPES)}")
     if campaign is not None and campaign < 1:
         raise ValueError("campaign number must be positive")
     root = select_vault(vault)
+    subtypes = content_subtypes(root)
+    if subtype not in subtypes:
+        raise ValueError(f"subtype must be one of {', '.join(subtypes)}")
     campaign = infer_campaign(root, campaign)
     directory = record_directory(root, "Content", campaign)
     destination = directory / f"{name}.md"

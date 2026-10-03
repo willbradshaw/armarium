@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -10,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from armarium.cli import main, parse_args
-from armarium.lib import Diagnostic, Result, VaultNotFoundError
+from armarium.cli import _subtype_choices, main, parse_args
+from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
 
 
@@ -29,6 +30,29 @@ def vault(tmp_path: Path) -> Path:
             f'---\ntype: "[[Type]]"\ndirectories: {{shared: {directory}}}\n---\n'
         )
     (root / "reference/schemas/type.schema.json").write_text("true")
+    return root
+
+
+@pytest.fixture
+def relic_vault(tmp_path: Path) -> Path:
+    """A starter vault with a local registration declaring a Relic subtype."""
+    root = tmp_path / "relics"
+    shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/starter", root)
+    (root / "reference/schemas/relic.schema.json").write_text("true")
+    (root / "reference/templates/Relic.md").write_text(
+        (root / "reference/templates/Content.md")
+        .read_text()
+        .replace("subtype:\n", "subtype: Relic\n")
+    )
+    rule = {
+        "type": "Content",
+        "subtype": "Relic",
+        "schema": "schemas/relic.schema.json",
+        "template": "templates/Relic.md",
+    }
+    (root / "reference/extensions.json").write_text(
+        json.dumps({"relics": {"subtypes": {"Content": ["Relic"]}, "rules": [rule]}})
+    )
     return root
 
 
@@ -1088,6 +1112,43 @@ class TestParseArgs:
         assert args.vault == Path("my-vault")
 
     @pytest.mark.parametrize("explicit", [False, True])
+    def test_add_content_declared_subtype(
+        self,
+        relic_vault: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        monkeypatch.chdir(tmp_path if explicit else relic_vault / "content")
+        vault = ["--vault", str(relic_vault)] if explicit else []
+        args = parse_args(["add", "content", "Crown", "--subtype", "Relic", *vault])
+        assert args.subtype == "Relic"
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["add", "content", "--help", *vault])
+        assert exc.value.code == 0
+        assert ",Gear,Relic}" in capsys.readouterr().out
+
+    def test_add_content_undeclared_subtype(
+        self, relic_vault: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        (relic_vault / "reference/extensions.json").unlink()
+        with pytest.raises(SystemExit) as exc:
+            parse_args(
+                [
+                    "add",
+                    "content",
+                    "Crown",
+                    "--subtype",
+                    "Relic",
+                    "--vault",
+                    str(relic_vault),
+                ]
+            )
+        assert exc.value.code == 2
+        assert "invalid choice: 'Relic'" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("explicit", [False, True])
     def test_add_campaign_options(self, explicit: bool) -> None:
         args = parse_args(
             ["add", "campaign"]
@@ -1185,6 +1246,57 @@ class TestParseArgs:
         output = capsys.readouterr()
         assert "usage: armarium" in output.out
         assert output.err == ""
+
+
+class TestSubtypeChoices:
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["validate", "."],
+            ["add", "note", "Name"],
+            ["add", "content", "Name", "--vault"],
+            ["add", "content", "Name", "--vault", "missing"],
+        ],
+    )
+    def test_core(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str]
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        choices, origin = _subtype_choices(argv)
+        assert choices == SUBTYPES
+        assert origin == (
+            ""
+            if argv[:2] != ["add", "content"]
+            else "; enabled extensions may add others"
+        )
+
+    @pytest.mark.parametrize("explicit", [False, True])
+    @pytest.mark.parametrize("from_sys_argv", [False, True])
+    def test_vault_extensions(
+        self,
+        relic_vault: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        explicit: bool,
+        from_sys_argv: bool,
+    ) -> None:
+        monkeypatch.chdir(tmp_path if explicit else relic_vault)
+        argv = ["add", "content", "Name"] + (
+            [f"--vault={relic_vault}"] if explicit else []
+        )
+        if from_sys_argv:
+            monkeypatch.setattr(sys, "argv", ["armarium", *argv])
+        choices, origin = _subtype_choices(None if from_sys_argv else argv)
+        assert choices == (*SUBTYPES, "Relic")
+        assert origin == " (core subtypes and enabled extensions)"
+
+    def test_unreadable_extensions(self, relic_vault: Path) -> None:
+        (relic_vault / "reference/templates/Relic.md").unlink()
+        choices, origin = _subtype_choices(
+            ["add", "content", "Name", "--vault", str(relic_vault)]
+        )
+        assert choices is None
+        assert origin.startswith("; cannot read the vault's extensions: ")
 
 
 class TestExtensionCommand:

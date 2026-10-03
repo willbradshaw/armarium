@@ -8,7 +8,13 @@ from typing import overload
 
 from jsonschema.exceptions import SchemaError
 
-from armarium.extensions import CONFIG, is_template, load_extensions
+from armarium.extensions import (
+    CONFIG,
+    ExtensionSet,
+    is_template,
+    load_extension_set,
+    load_extensions,
+)
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
@@ -234,15 +240,31 @@ def validate_markdown(
     schema, diagnostics = select_schema(record, root)
     if schema is not None:
         diagnostics.extend(schema.validate(record))
+    subtype = record.frontmatter.get("subtype")
+    extensions: ExtensionSet | None = None
     try:
-        for rule in load_extensions(root):
-            if rule.matches(record.frontmatter.type, record.frontmatter.get("subtype")):
+        extensions = load_extension_set(root)
+        for rule in extensions.rules:
+            if rule.matches(record.frontmatter.type, subtype):
                 diagnostics.extend(rule.schema.validate(record))
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         diagnostics.append(Diagnostic(relative, "extension.invalid", str(exc)))
     findings += Findings(relative, diagnostics)
+    # The core schema checks only the subtype's form; enabled extensions
+    # determine which subtypes exist.
+    if (
+        extensions is not None
+        and record.frontmatter.type == "Content"
+        and isinstance(subtype, str)
+        and subtype not in extensions.subtypes
+    ):
+        findings.add(
+            "record.subtype",
+            f"subtype must be one of {', '.join(extensions.subtypes)}",
+            "subtype",
+        )
     unsupported = int(any(d.rule == "schema.unsupported" for d in diagnostics))
-    if any(d.severity == "error" for d in diagnostics):
+    if any(d.severity == "error" for d in findings.diagnostics):
         return Result(
             diagnostics=sorted(findings.diagnostics), checked=1, unsupported=unsupported
         )

@@ -11,15 +11,19 @@ from armarium.content import add_content
 from armarium.extensions import (
     CONFIG,
     ExtensionRule,
+    ExtensionSet,
     _declarations,
     _extension,
     _local_path,
     _write_config,
+    content_subtypes,
     enable_extension,
     is_template,
+    load_extension_set,
     load_extensions,
     remove_extension,
 )
+from armarium.lib import SUBTYPES
 from armarium.parse import Record
 from armarium.validate import validate
 
@@ -35,6 +39,42 @@ def vault(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def enabled(vault: Path) -> Path:
+    enable_extension("example", vault)
+    return vault
+
+
+@pytest.fixture
+def relics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The example extension, extended to declare a Relic Content subtype."""
+    import armarium.extensions as extensions
+
+    source = tmp_path / "relics"
+    shutil.copytree(ROOT / "extensions/example", source)
+    declaration = _declarations(source / "extension.json")
+    declaration["example"]["subtypes"] = {"Content": ["Relic"]}
+    declaration["example"]["rules"].append(
+        {
+            "type": "Content",
+            "subtype": "Relic",
+            "schema": "schemas/relic.schema.json",
+            "template": "templates/Relic.md",
+        }
+    )
+    (source / "extension.json").write_text(json.dumps(declaration))
+    (source / "schemas/relic.schema.json").write_text(
+        json.dumps({"properties": {"frontmatter": {"required": ["origin"]}}})
+    )
+    (source / "templates/Relic.md").write_text(
+        (ROOT / "vaults/starter/reference/templates/Content.md")
+        .read_text()
+        .replace("subtype:\n", "subtype: Relic\norigin:\n")
+    )
+    monkeypatch.setattr(extensions, "_extension", lambda name: source)
+    return source
+
+
+@pytest.fixture
+def declared(vault: Path, relics: Path) -> Path:
     enable_extension("example", vault)
     return vault
 
@@ -87,6 +127,10 @@ class TestDeclarations:
             == "Location"
         )
 
+    def test_subtypes(self, relics: Path) -> None:
+        declaration = _declarations(relics / "extension.json")["example"]
+        assert declaration["subtypes"] == {"Content": ["Relic"]}
+
     @pytest.mark.parametrize(
         "data",
         [
@@ -104,6 +148,25 @@ class TestDeclarations:
             },
             {"custom": [{"type": "Content"}]},
             {"custom": [{"type": "Content", "schema": "x", "typo": True}]},
+            *[
+                {
+                    "custom": {
+                        "rules": [{"type": "Content", "schema": "x"}],
+                        "subtypes": subtypes,
+                    }
+                }
+                for subtypes in (
+                    [],
+                    {"Note": ["Relic"]},
+                    {"Content": []},
+                    {"Content": "Relic"},
+                    {"Content": ["Relic", "Relic"]},
+                    {"Content": [""]},
+                    {"Content": ["Holy relic"]},
+                    {"Content": ["1st"]},
+                    {"Content": [42]},
+                )
+            ],
         ],
     )
     def test_invalid(self, tmp_path: Path, data: object) -> None:
@@ -200,6 +263,86 @@ class TestLoadExtensions:
         assert not (enabled / "content/Harbor.md").exists()
         path = add_content("Harbor", "Location", enabled, frontmatter={"rating": 3})
         assert not validate(path, enabled).failed
+
+
+class TestExtensionSet:
+    def test_holds_rules_and_subtypes(self, enabled: Path) -> None:
+        rules = load_extensions(enabled)
+        extensions = ExtensionSet(rules, ("Lore",))
+        assert extensions.rules == rules and extensions.subtypes == ("Lore",)
+        with pytest.raises(AttributeError):
+            extensions.subtypes = ()  # type: ignore[misc]
+
+
+class TestLoadExtensionSet:
+    def test_absent(self, vault: Path) -> None:
+        assert load_extension_set(vault) == ExtensionSet([], SUBTYPES)
+
+    def test_without_declared_subtypes(self, enabled: Path) -> None:
+        extensions = load_extension_set(enabled)
+        assert extensions.rules == load_extensions(enabled)
+        assert extensions.subtypes == SUBTYPES
+
+    def test_declared_subtypes(self, declared: Path) -> None:
+        extensions = load_extension_set(declared)
+        assert extensions.subtypes == (*SUBTYPES, "Relic")
+        assert [r.subtype for r in extensions.rules] == ["Location", "Relic"]
+
+    @pytest.mark.parametrize(
+        ("scenario", "message"),
+        [
+            ("core", "declares core Content subtype Lore"),
+            ("duplicate", "both declare Content subtype Relic"),
+            ("no-template", "without a template"),
+            ("foreign-template", "without a template"),
+            ("unknown-rule", "selects unknown Content subtype Relik"),
+        ],
+    )
+    def test_invalid_subtypes(
+        self, declared: Path, scenario: str, message: str
+    ) -> None:
+        config = declared / CONFIG
+        data = json.loads(config.read_text())
+        relic = data["example"]["rules"][1]
+        if scenario == "core":
+            data["example"]["subtypes"]["Content"].append("Lore")
+        elif scenario == "duplicate":
+            data["local"] = {"subtypes": {"Content": ["Relic"]}, "rules": [relic]}
+        elif scenario == "no-template":
+            relic.pop("template")
+        elif scenario == "foreign-template":
+            data["example"]["rules"].remove(relic)
+            data["local"] = {"rules": [relic]}
+        else:
+            data["local"] = {"rules": [{**relic, "subtype": "Relik"}]}
+            data["local"]["rules"][0].pop("template")
+        config.write_text(json.dumps(data))
+        with pytest.raises(ValueError, match=message):
+            load_extension_set(declared)
+        assert validate(declared).failed
+
+    def test_local_rule_for_declared_subtype(self, declared: Path) -> None:
+        config = declared / CONFIG
+        data = json.loads(config.read_text())
+        data["house-rules"] = {
+            "rules": [
+                {
+                    "type": "Content",
+                    "subtype": "Relic",
+                    "schema": "extensions/example/schemas/relic.schema.json",
+                }
+            ]
+        }
+        config.write_text(json.dumps(data))
+        assert len(load_extension_set(declared).rules) == 3
+
+
+class TestContentSubtypes:
+    def test_core(self, vault: Path) -> None:
+        assert content_subtypes(vault) == SUBTYPES
+
+    def test_declared(self, declared: Path) -> None:
+        assert content_subtypes(declared) == (*SUBTYPES, "Relic")
 
 
 class TestExtension:
@@ -310,6 +453,36 @@ class TestEnableExtension:
         lore = add_content("Legend", "Lore", vault)
         assert not validate(lore, vault).failed
 
+    def test_declared_subtype(self, declared: Path) -> None:
+        assert _declarations(declared / CONFIG)["example"]["subtypes"] == {
+            "Content": ["Relic"]
+        }
+        path = add_content("Crown", "Relic", declared)
+        record, _ = Record.parse(path, declared)
+        assert record is not None
+        assert record.frontmatter["subtype"] == "Relic"
+        assert record.frontmatter["origin"] is None
+        assert not validate(declared).failed
+
+    def test_declared_subtype_conflict(self, vault: Path, relics: Path) -> None:
+        (vault / "reference/schemas/relic.schema.json").write_text("true")
+        shutil.copy(relics / "templates/Relic.md", vault / "reference/templates")
+        rule = {
+            "type": "Content",
+            "subtype": "Relic",
+            "schema": "schemas/relic.schema.json",
+            "template": "templates/Relic.md",
+        }
+        (vault / CONFIG).write_text(
+            json.dumps({"local": {"subtypes": {"Content": ["Relic"]}, "rules": [rule]}})
+        )
+        before = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
+        entries = set(vault.rglob("*"))
+        with pytest.raises(ValueError, match="both declare"):
+            enable_extension("example", vault)
+        assert set(vault.rglob("*")) == entries
+        assert before == {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
+
     def test_portable(self, enabled: Path, tmp_path: Path) -> None:
         moved = enabled.rename(tmp_path / "moved")
         add_content("Harbor", "Location", moved)
@@ -395,6 +568,18 @@ class TestRemoveExtension:
         enable_extension("example", enabled)
         assert validate(new, enabled).failed
         assert not validate(record, enabled).failed
+
+    def test_declared_subtype_records_remain(self, declared: Path) -> None:
+        path = add_content("Crown", "Relic", declared)
+        original = path.read_bytes()
+        remove_extension("example", declared)
+        assert path.read_bytes() == original
+        result = validate(declared)
+        assert [
+            (d.path, d.rule) for d in result.diagnostics if d.severity == "error"
+        ] == [("content/Crown.md", "record.subtype")]
+        enable_extension("example", declared)
+        assert not validate(declared).failed
 
     @pytest.mark.parametrize(
         "file",
