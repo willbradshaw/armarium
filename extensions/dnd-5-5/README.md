@@ -4,8 +4,9 @@ type: "[[Reference]]"
 # D&D 5.5 (2024 rules)
 
 The `dnd-5-5` extension adapts Armarium vaults for Dungeons & Dragons' 2024 rules.
-It currently provides a schema and template for recording equipment, so items
-can be described consistently and filtered by their game properties.
+It provides schemas and templates for recording equipment and spells, so they
+can be described consistently and filtered by their game properties. Spell is a
+Content subtype this extension adds.
 
 Its fields represent concepts from the
 [2024 magic item rules](https://www.dndbeyond.com/sources/dnd/br-2024/magic-items):
@@ -56,3 +57,35 @@ in the rules callout.
 
 See the [Gear schema](schemas/gear.schema.json) and
 [Gear template](templates/Gear.md).
+
+## Spell fields
+
+Spell fields follow the
+[2024 spell description format](https://www.dndbeyond.com/sources/dnd/br-2024/spells).
+They apply in addition to the core fields in [[types/Content#Fields]].
+
+| Field | Required | Values |
+| --- | --- | --- |
+| `source` | Yes | Publication or homebrew attribution, or null when unrecorded. |
+| `level` | Yes | Integer from 0 (cantrip) to 9. |
+| `school` | Yes | Abjuration, Conjuration, Divination, Enchantment, Evocation, Illusion, Necromancy, or Transmutation. |
+| `casting_time` | Yes | Nonblank text, such as `1 Action` or `1 Reaction, which you take when you fall`. |
+| `ritual` | Yes | Boolean: whether the spell can be cast as a ritual. |
+| `range` | Yes | Nonblank text, such as `Self`, `Touch` or `60 feet`. |
+| `components` | Yes | List of unique values from Verbal, Somatic and Material. |
+| `material` | With Material | Nonblank description of the material component; null or omitted otherwise. |
+| `duration` | Yes | Nonblank text, such as `Instantaneous` or `1 minute`. |
+| `concentration` | Yes | Boolean: whether the spell requires concentration. |
+| `content_tags` | Yes | A list, not null; `[]` for no tags. |
+| `image`, `url` | No | As for Gear: an image path or URL, and an HTTP/HTTPS source URL. |
+
+Like Gear, the body starts with a `> [!rules]` callout holding the spell's text,
+and the template provides no assumed values:
+
+```sh
+armarium add content "Salt Ward" --subtype Spell \
+  --frontmatter '{"source":"Homebrew","level":1,"school":"Abjuration","casting_time":"1 Action","ritual":true,"range":"Touch","components":["Verbal","Material"],"material":"a pinch of sea salt","duration":"8 hours","concentration":false,"content_tags":[]}'
+```
+
+See the [Spell schema](schemas/spell.schema.json) and
+[Spell template](templates/Spell.md).

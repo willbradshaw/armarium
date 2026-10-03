@@ -1013,7 +1013,11 @@ class TestInstalledExtensions:
     @pytest.mark.parametrize("at_init", [False, True])
     @pytest.mark.parametrize(
         "extension,subtype,field",
-        [("example", "Location", "climate"), ("dnd-5-5", "Gear", "rarity")],
+        [
+            ("example", "Location", "climate"),
+            ("dnd-5-5", "Gear", "rarity"),
+            ("dnd-5-5", "Spell", "school"),
+        ],
     )
     def test_enable_create_and_validate(
         self,
@@ -1031,8 +1035,9 @@ class TestInstalledExtensions:
             for key, value in os.environ.items()
             if key not in {"PYTHONPATH", "PYTHONHOME"}
         }
-        fields = (
-            {
+        fields = {
+            "Location": {},
+            "Gear": {
                 "item_type": "Equipment",
                 "rarity": "Mundane",
                 "attunement": False,
@@ -1040,10 +1045,19 @@ class TestInstalledExtensions:
                 "cursed": False,
                 "sentient": False,
                 "content_tags": [],
-            }
-            if extension == "dnd-5-5"
-            else {}
-        )
+            },
+            "Spell": {
+                "level": 0,
+                "school": "Evocation",
+                "casting_time": "1 Action",
+                "ritual": False,
+                "range": "Touch",
+                "components": ["Verbal"],
+                "duration": "Instantaneous",
+                "concentration": False,
+                "content_tags": [],
+            },
+        }[subtype]
         setup = (
             [("init", str(root), "--extension", extension)]
             if at_init
@@ -1099,7 +1113,7 @@ class TestInstalledExtensions:
             == expected_version
         )
         path = root / "content/Harbor.md"
-        initial = "Mundane" if extension == "dnd-5-5" else "null"
+        initial = {"Location": "null", "Gear": "Mundane", "Spell": "Evocation"}[subtype]
         assert f"{field}: {initial}" in path.read_text()
         path.write_text(path.read_text().replace(f"{field}: {initial}", f"{field}: 42"))
         result = subprocess.run(
@@ -1120,7 +1134,11 @@ class TestInstalledExtensions:
             capture_output=True,
             text=True,
         )
-        assert result.returncode == 0, result.stderr
+        # Removal keeps records; a Spell then has a subtype the vault lacks.
+        if subtype == "Spell":
+            assert result.returncode == 1 and "record.subtype" in result.stderr
+        else:
+            assert result.returncode == 0, result.stderr
         assert path.read_bytes() == original
         assert not (installed_extension / "README.md").exists()
 

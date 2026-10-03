@@ -1,11 +1,22 @@
 {
   "dnd-5-5": {
+    "subtypes": {
+      "Content": [
+        "Spell"
+      ]
+    },
     "rules": [
       {
         "type": "Content",
         "subtype": "Gear",
         "schema": "schemas/gear.schema.json",
         "template": "templates/Gear.md"
+      },
+      {
+        "type": "Content",
+        "subtype": "Spell",
+        "schema": "schemas/spell.schema.json",
+        "template": "templates/Spell.md"
       }
     ]
   }
