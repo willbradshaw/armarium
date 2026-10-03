@@ -10,6 +10,34 @@
   },
   "cases": [
     {
+      "name": "extension subtype form",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Relic2"
+      }
+    },
+    {
+      "name": "blank subtype",
+      "valid": false,
+      "frontmatter": {
+        "subtype": ""
+      }
+    },
+    {
+      "name": "subtype with a space",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Holy relic"
+      }
+    },
+    {
+      "name": "subtype starting with a digit",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "2Relic"
+      }
+    },
+    {
       "name": "HTTP statistics",
       "valid": true,
       "frontmatter": {

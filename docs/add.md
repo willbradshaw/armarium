@@ -109,7 +109,10 @@ armarium add content "Mira" --subtype PC --campaign 1 --frontmatter '{"player":"
 ```
 
 Use `--subtype NPC|PC|Location|Faction|Object|Lore|Date|Gear` to select the [Content
-subtype](type.md#content). PCs require a `player` link to an existing [Player](#players).
+subtype](type.md#content), or a subtype an enabled [extension](extensions.md#declaring-subtypes)
+declares. `armarium add content --help` lists the subtypes the selected vault
+permits: the one named by `--vault`, otherwise the one containing the current
+directory. PCs require a `player` link to an existing [Player](#players).
 Dates require `reckoning`, a link to a Lore record describing the calendar, and
 `scale`, such as day or year. Supply these through frontmatter or template defaults.
 

@@ -203,6 +203,59 @@ class TestValidateMarkdown:
         assert path.read_bytes() == before
 
     @pytest.mark.parametrize(
+        ("subtype", "extension", "expected"),
+        [
+            ("Lore", None, []),
+            ("Relic", None, ["record.subtype"]),
+            ("Relic", "declared", []),
+            ("Relic", "broken", ["extension.invalid"]),
+            (42, None, []),
+        ],
+    )
+    def test_content_subtype(
+        self,
+        vault: Path,
+        write_record: Callable[..., Path],
+        subtype: object,
+        extension: str | None,
+        expected: list[str],
+    ) -> None:
+        (vault / "reference/types/Content.md").write_text(
+            f"---\n{type_record('Content')}\n---\n"
+        )
+        (vault / "reference/schemas/content.schema.json").write_text("true")
+        if extension is not None:
+            (vault / "reference/schemas/relic.schema.json").write_text("true")
+            (vault / "reference/templates").mkdir()
+            (vault / "reference/templates/Relic.md").write_text(
+                '---\ntype: "[[Content]]"\nsubtype: Relic\n---\n'
+            )
+            rule = {
+                "type": "Content",
+                "subtype": "Relic",
+                "schema": "schemas/relic.schema.json",
+            }
+            if extension == "declared":
+                rule["template"] = "templates/Relic.md"
+            (vault / "reference/extensions.json").write_text(
+                json.dumps(
+                    {"relics": {"subtypes": {"Content": ["Relic"]}, "rules": [rule]}}
+                )
+            )
+        path = write_record({"type": "[[Content]]", "subtype": subtype})
+        result = validate_markdown(path)
+        found = [
+            d
+            for d in result.diagnostics
+            if d.rule in {"record.subtype", "extension.invalid"}
+        ]
+        assert [d.rule for d in found] == expected
+        if expected == ["record.subtype"]:
+            # An unknown subtype ends the checks, as a schema failure does.
+            assert result.diagnostics == found and found[0].field == "subtype"
+            assert "Gear" in found[0].message and "Relic" not in found[0].message
+
+    @pytest.mark.parametrize(
         "kind", [None, 42, "Widget", "[[Widget|Alias]]", "[[Widget#Heading]]"]
     )
     @pytest.mark.parametrize(

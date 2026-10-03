@@ -14,7 +14,8 @@ and add its required fields.
 ## Fields
 
 Every Content record requires `type`, `subtype`, and `summary`. The template sets
-`type`; choose subtype NPC, PC, Location, Faction, Object, Lore, Date or Gear. Write a short
+`type`; choose subtype NPC, PC, Location, Faction, Object, Lore, Date or Gear, or one
+an enabled extension adds, as listed in its README under `reference/extensions/`. Write a short
 summary of stable identity, or leave it empty for a stub. `aliases` is optional:
 use a list of alternate names, or omit it or leave it empty when there are none.
 

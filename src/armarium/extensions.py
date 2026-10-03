@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from packaging.version import Version
 
+from armarium.lib import SUBTYPES
 from armarium.parse import Record
 from armarium.schemas import Schema
 
@@ -26,6 +27,7 @@ class ExtensionDeclaration(TypedDict):
     """Rules and installation state for one locally registered extension."""
 
     rules: list[dict[str, str]]
+    subtypes: NotRequired[dict[str, list[str]]]
     installed: NotRequired[bool]
     armarium_version: NotRequired[str]
 
@@ -54,6 +56,21 @@ DECLARATION = {
                         },
                         "additionalProperties": False,
                     },
+                },
+                "subtypes": {
+                    "type": "object",
+                    "properties": {
+                        "Content": {
+                            "type": "array",
+                            "minItems": 1,
+                            "uniqueItems": True,
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+                            },
+                        }
+                    },
+                    "additionalProperties": False,
                 },
                 "installed": {"type": "boolean"},
                 "armarium_version": {"type": "string", "pattern": "\\S"},
@@ -104,19 +121,41 @@ def _declarations(path: Path) -> dict[str, ExtensionDeclaration]:
     return cast(dict[str, ExtensionDeclaration], data)
 
 
-def load_extensions(root: Path) -> list[ExtensionRule]:
-    """Load enabled rules and check every declared schema and template.
+@dataclass(frozen=True)
+class ExtensionSet:
+    """A vault's enabled extension rules and the Content subtypes it permits."""
 
-    Missing configuration means no extensions. Paths are relative to reference/.
-    Conflicting template selectors are errors;
-    additional schema constraints can be combined freely. Invalid or missing
-    files raise ValueError or OSError, never silently disabling an extension.
+    rules: list[ExtensionRule]
+    subtypes: tuple[str, ...]
+
+
+def load_extension_set(root: Path) -> ExtensionSet:
+    """Load enabled rules and subtypes, checking every declared schema and template.
+
+    Missing configuration means no extensions and only the core subtypes. Paths
+    are relative to reference/. Conflicting template selectors are errors;
+    additional schema constraints can be combined freely. A declared Content
+    subtype must be new to the vault and have a template from its own extension;
+    a Content rule must select a permitted subtype. Invalid or missing files
+    raise ValueError or OSError, never silently disabling an extension.
     """
     config = _local_path(root, "reference", "extensions.json")
     if not config.exists():
-        return []
+        return ExtensionSet([], SUBTYPES)
     rules: list[ExtensionRule] = []
+    declared: dict[str, str] = {}
     for extension, declarations in _declarations(config).items():
+        for name in declarations.get("subtypes", {}).get("Content", []):
+            if name in SUBTYPES:
+                raise ValueError(
+                    f"extension {extension} declares core Content subtype {name}"
+                )
+            if name in declared:
+                raise ValueError(
+                    f"extensions {declared[name]} and {extension} both declare "
+                    f"Content subtype {name}"
+                )
+            declared[name] = extension
         for declaration in declarations["rules"]:
             kind, subtype = declaration["type"], declaration.get("subtype")
             try:
@@ -153,7 +192,32 @@ def load_extensions(root: Path) -> list[ExtensionRule]:
                         f"conflicting extension templates for {kind}/{subtype}"
                     )
             rules.append(ExtensionRule(extension, kind, subtype, schema, template))
-    return rules
+    subtypes = (*SUBTYPES, *declared)
+    for rule in rules:
+        if rule.kind == "Content" and rule.subtype not in (None, *subtypes):
+            raise ValueError(
+                f"extension {rule.extension} selects unknown Content subtype {rule.subtype}"
+            )
+    for subtype, extension in declared.items():
+        if not any(
+            r.extension == extension and r.matches("Content", subtype) and r.template
+            for r in rules
+        ):
+            raise ValueError(
+                f"extension {extension} declares Content subtype {subtype} "
+                "without a template for it"
+            )
+    return ExtensionSet(rules, subtypes)
+
+
+def load_extensions(root: Path) -> list[ExtensionRule]:
+    """Load enabled rules; see load_extension_set for the checks applied."""
+    return load_extension_set(root).rules
+
+
+def content_subtypes(root: Path) -> tuple[str, ...]:
+    """Return the core Content subtypes followed by those enabled extensions declare."""
+    return load_extension_set(root).subtypes
 
 
 def _extension(name: str) -> Traversable:

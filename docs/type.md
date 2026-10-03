@@ -51,7 +51,7 @@ A character, place, group, object, date or piece of setting lore.
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[types/Content]]` |
-| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`, `Date` or `Gear` |
+| `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`, `Date` or `Gear`, or a subtype declared by an enabled [extension](extensions.md#declaring-subtypes) |
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
