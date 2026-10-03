@@ -130,7 +130,7 @@ See the [Monster schema](schemas/monster.schema.json) and
 
 ## Rules reference
 
-The extension installs Reference pages for D&D rules terms, so records can link
+The extension installs Reference pages for D&D rules terms and class features, so records can link
 to them by name, for example `[[Short Rest]]` or `[[Sentinel]]`. The pages hold
 no text yet.
 
@@ -139,6 +139,7 @@ no text yet.
 | `rules/` | Blindsight, Heroic Inspiration, Long Rest, Origin Feat, Proficiency, Short Rest, Skill, Species |
 | `conditions/` | Exhaustion |
 | `feats/` | Ability Score Improvement, Durable, Heavy Armor Master, Mage Slayer, Sentinel, Spell Sniper |
+| `features/` | Divine Sense |
 
 Like every installed extension file, these pages are replaced on update and
 removed with the extension, so keep vault notes about a rule elsewhere. A vault
