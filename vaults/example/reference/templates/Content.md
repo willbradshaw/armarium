@@ -3,6 +3,7 @@ type: "[[types/Content]]"
 subtype:
 summary:
 aliases:
+content_tags:
 campaign_1:
   first_session:
   last_session:

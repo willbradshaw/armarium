@@ -18,6 +18,8 @@ Every Content record requires `type`, `subtype`, and `summary`. The template set
 an enabled extension adds, as listed in its README under `reference/extensions/`. Write a short
 summary of stable identity, or leave it empty for a stub. `aliases` is optional:
 use a list of alternate names, or omit it or leave it empty when there are none.
+`content_tags` is optional too: a list of freeform labels for filtering Content,
+such as `Healing` or `Warding`.
 
 | Subtype | Additional required fields |
 | --- | --- |

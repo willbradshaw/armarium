@@ -10,8 +10,8 @@ can be described consistently and filtered by their game properties.
 Its fields represent concepts from the
 [2024 magic item rules](https://www.dndbeyond.com/sources/dnd/br-2024/magic-items):
 item category, rarity, attunement requirements, consumability, curses and sentience.
-Armarium expresses these as frontmatter fields with validation rules. `item_tags`
-adds freeform labels for organizing the collection.
+Armarium expresses these as frontmatter fields with validation rules. Gear also
+requires the core `content_tags` field, for freeform labels.
 
 ## Gear fields
 
@@ -27,7 +27,7 @@ in addition to the definition and core fields in [[types/Content#Fields]].
 | `cursed` | Yes | Boolean: whether the item is cursed. |
 | `attunement_restrictions` | No | Nonblank prerequisite description, or null. A description requires `attunement: true`. |
 | `sentient` | Yes | Boolean: whether the item is sentient. |
-| `item_tags` | Yes | List of unique, nonblank strings; `[]` for no tags. |
+| `content_tags` | Yes | A list, not null; `[]` for no tags. |
 
 ## Creating Gear
 
@@ -37,7 +37,7 @@ provides no assumed defaults. Supply them through frontmatter:
 
 ```sh
 armarium add content "Rope" --subtype Gear \
-  --frontmatter '{"item_type":"Equipment","rarity":"Mundane","attunement":false,"consumable":false,"cursed":false,"sentient":false,"item_tags":[]}'
+  --frontmatter '{"item_type":"Equipment","rarity":"Mundane","attunement":false,"consumable":false,"cursed":false,"sentient":false,"content_tags":[]}'
 ```
 
 `--frontmatter-file PATH` accepts a JSON object file instead. These fields record

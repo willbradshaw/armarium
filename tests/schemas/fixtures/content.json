@@ -10,6 +10,55 @@
   },
   "cases": [
     {
+      "name": "null content tags",
+      "valid": true,
+      "frontmatter": {
+        "content_tags": null
+      }
+    },
+    {
+      "name": "empty content tags",
+      "valid": true,
+      "frontmatter": {
+        "content_tags": []
+      }
+    },
+    {
+      "name": "content tags",
+      "valid": true,
+      "frontmatter": {
+        "content_tags": ["Healing", "Heavy Armor"]
+      }
+    },
+    {
+      "name": "repeated content tag",
+      "valid": false,
+      "frontmatter": {
+        "content_tags": ["Healing", "Healing"]
+      }
+    },
+    {
+      "name": "blank content tag",
+      "valid": false,
+      "frontmatter": {
+        "content_tags": [" "]
+      }
+    },
+    {
+      "name": "non-string content tag",
+      "valid": false,
+      "frontmatter": {
+        "content_tags": [42]
+      }
+    },
+    {
+      "name": "content tags as text",
+      "valid": false,
+      "frontmatter": {
+        "content_tags": "Healing"
+      }
+    },
+    {
       "name": "extension subtype form",
       "valid": true,
       "frontmatter": {

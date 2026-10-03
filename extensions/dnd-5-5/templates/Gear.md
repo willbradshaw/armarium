@@ -10,7 +10,7 @@ attunement_restrictions:
 consumable:
 cursed:
 sentient:
-item_tags:
+content_tags:
 image:
 url:
 aliases:
