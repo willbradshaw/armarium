@@ -1511,7 +1511,7 @@ class TestDndMonsterSchema:
 
 
 class TestDndRulesReference:
-    FOLDERS = ("rules", "conditions", "feats")
+    FOLDERS = ("rules", "conditions", "feats", "features")
     PAGES = sorted(
         path.relative_to(ROOT / "extensions/dnd-5-5")
         for folder in FOLDERS
@@ -1519,7 +1519,7 @@ class TestDndRulesReference:
     )
 
     def test_pages_are_bare_references(self) -> None:
-        assert len(self.PAGES) == 15
+        assert len(self.PAGES) == 16
         readme = (ROOT / "extensions/dnd-5-5/README.md").read_text()
         for page in self.PAGES:
             text = (ROOT / "extensions/dnd-5-5" / page).read_text()
