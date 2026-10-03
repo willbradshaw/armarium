@@ -4,9 +4,11 @@ type: "[[Reference]]"
 # D&D 5.5 (2024 rules)
 
 The `dnd-5-5` extension adapts Armarium vaults for Dungeons & Dragons' 2024 rules.
-It provides schemas and templates for recording equipment and spells, so they
-can be described consistently and filtered by their game properties. Spell is a
-Content subtype this extension adds.
+It provides schemas and templates for recording equipment, spells and monsters,
+so they can be described consistently and filtered by their game properties.
+Spell and Monster are Content subtypes this extension adds. Monster stat blocks
+render with the [Fantasy Statblocks](https://github.com/javalent/fantasy-statblocks)
+Obsidian plugin.
 
 Its fields represent concepts from the
 [2024 magic item rules](https://www.dndbeyond.com/sources/dnd/br-2024/magic-items):
@@ -91,3 +93,36 @@ armarium add content "Salt Ward" --subtype Spell \
 
 See the [Spell schema](schemas/spell.schema.json) and
 [Spell template](templates/Spell.md).
+
+## Monster fields
+
+Monster fields record what a creature is for filtering and sorting; its full
+statistics live in the stat block. They apply in addition to the core fields in
+[[types/Content#Fields]].
+
+| Field | Required | Values |
+| --- | --- | --- |
+| `source` | Yes | Publication or homebrew attribution, or null when unrecorded. |
+| `cr` | Yes | Challenge rating as text: `0`, `1/8`, `1/4`, `1/2`, or `1` to `30`. |
+| `cr_sort` | Yes | The challenge rating as a number (`0.125` for `1/8`), for sorting and comparison. |
+| `xp` | Yes | Integer experience points. |
+| `size` | Yes | Tiny, Small, Medium, Large, Huge, or Gargantuan. |
+| `creature_type` | Yes | Aberration, Beast, Celestial, Construct, Dragon, Elemental, Fey, Fiend, Giant, Humanoid, Monstrosity, Ooze, Plant, or Undead. A swarm uses the type of its members. |
+| `creature_subtypes` | No | List of unique, nonblank tags, such as `Demon` or `Elf`, or null. |
+| `alignment` | No | Nonblank text, such as `Chaotic Evil` or `Unaligned`, or null. |
+| `spells` | No | List of unique links to the Spell records the creature can cast, or null. |
+| `content_tags` | Yes | A list, not null; `[]` for no tags. |
+| `image`, `url` | No | As for Gear: an image path or URL, and an HTTP/HTTPS source URL. |
+
+The body starts with `## Statblock` holding one `statblock` code block: the
+Fantasy Statblocks plugin's YAML. Validation reports a `statblock` block that is
+not a YAML mapping. The template's block holds only `name:`; fill it in after
+creating the record:
+
+```sh
+armarium add content "Reef Shark" --subtype Monster \
+  --frontmatter '{"source":"Monster Manual","cr":"1/2","cr_sort":0.5,"xp":100,"size":"Medium","creature_type":"Beast","content_tags":[]}'
+```
+
+See the [Monster schema](schemas/monster.schema.json) and
+[Monster template](templates/Monster.md).

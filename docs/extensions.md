@@ -6,7 +6,7 @@ are not supported; use separate vaults for different systems.
 
 | Extension | Content |
 | --- | --- |
-| [`dnd-5-5`](../extensions/dnd-5-5/README.md) | D&D 2024 Gear fields and template, and a Spell subtype. |
+| [`dnd-5-5`](../extensions/dnd-5-5/README.md) | D&D 2024 Gear fields and template, and Spell and Monster subtypes. |
 | [`example`](../extensions/example/README.md) | A Location `climate` field, demonstrated in [the example vault](../vaults/example/). |
 
 ## Enabling
@@ -81,9 +81,11 @@ this local registration leaves the custom schema file intact.
 Put files in `extensions/NAME/` and declare rules in `extension.json`; see the
 [example declaration](../extensions/example/extension.json). Each rule requires
 `type` and `schema`. Optional `subtype` limits its scope to an existing subtype;
-optional `template` selects a template. Source declaration paths are relative to
-the extension directory. Schemas and templates belong in their respective
-subdirectories.
+optional `template` selects a template. Optional `yaml_blocks` lists code block
+info strings, such as `statblock`, whose fenced blocks must hold a YAML mapping
+in matching records; validation reports `extension.yaml` otherwise. Source
+declaration paths are relative to the extension directory. Schemas and templates
+belong in their respective subdirectories.
 
 ### Declaring subtypes
 

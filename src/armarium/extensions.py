@@ -10,7 +10,7 @@ from importlib.metadata import version
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
-from typing import NotRequired, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
@@ -26,7 +26,7 @@ CONFIG = Path("reference/extensions.json")
 class ExtensionDeclaration(TypedDict):
     """Rules and installation state for one locally registered extension."""
 
-    rules: list[dict[str, str]]
+    rules: list[dict[str, Any]]
     subtypes: NotRequired[dict[str, list[str]]]
     installed: NotRequired[bool]
     armarium_version: NotRequired[str]
@@ -53,6 +53,12 @@ DECLARATION = {
                             "subtype": {"type": "string", "minLength": 1},
                             "schema": {"type": "string", "minLength": 1},
                             "template": {"type": "string", "minLength": 1},
+                            "yaml_blocks": {
+                                "type": "array",
+                                "minItems": 1,
+                                "uniqueItems": True,
+                                "items": {"type": "string", "pattern": "^[^\\s`~]+$"},
+                            },
                         },
                         "additionalProperties": False,
                     },
@@ -84,13 +90,18 @@ DECLARATION = {
 
 @dataclass(frozen=True)
 class ExtensionRule:
-    """An additional schema and optional template for one type/subtype selector."""
+    """An additional schema and optional template for one type/subtype selector.
+
+    yaml_blocks names fenced code block info strings, such as ``statblock``,
+    whose contents must parse as a YAML mapping in matching records.
+    """
 
     extension: str
     kind: str
     subtype: str | None
     schema: Schema
     template: Path | None
+    yaml_blocks: tuple[str, ...] = ()
 
     def matches(self, kind: str, subtype: str | None) -> bool:
         """Return whether this rule applies to the requested record."""
@@ -191,7 +202,16 @@ def load_extension_set(root: Path) -> ExtensionSet:
                     raise ValueError(
                         f"conflicting extension templates for {kind}/{subtype}"
                     )
-            rules.append(ExtensionRule(extension, kind, subtype, schema, template))
+            rules.append(
+                ExtensionRule(
+                    extension,
+                    kind,
+                    subtype,
+                    schema,
+                    template,
+                    tuple(declaration.get("yaml_blocks", ())),
+                )
+            )
     subtypes = (*SUBTYPES, *declared)
     for rule in rules:
         if rule.kind == "Content" and rule.subtype not in (None, *subtypes):

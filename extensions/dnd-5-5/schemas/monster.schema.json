@@ -1,0 +1,839 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "D&D 5.5 Monster fields",
+  "type": "object",
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "source",
+        "cr",
+        "cr_sort",
+        "xp",
+        "size",
+        "creature_type",
+        "content_tags"
+      ],
+      "properties": {
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "cr": {
+          "enum": [
+            "0",
+            "1/8",
+            "1/4",
+            "1/2",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30"
+          ]
+        },
+        "cr_sort": {
+          "enum": [
+            0,
+            0.125,
+            0.25,
+            0.5,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30
+          ]
+        },
+        "xp": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size": {
+          "enum": [
+            "Tiny",
+            "Small",
+            "Medium",
+            "Large",
+            "Huge",
+            "Gargantuan"
+          ]
+        },
+        "creature_type": {
+          "enum": [
+            "Aberration",
+            "Beast",
+            "Celestial",
+            "Construct",
+            "Dragon",
+            "Elemental",
+            "Fey",
+            "Fiend",
+            "Giant",
+            "Humanoid",
+            "Monstrosity",
+            "Ooze",
+            "Plant",
+            "Undead"
+          ]
+        },
+        "creature_subtypes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "alignment": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "spells": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string",
+            "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\]$"
+          },
+          "uniqueItems": true
+        },
+        "image": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[^/?#\\s]+(?:[/?#]|$)"
+            }
+          ]
+        },
+        "content_tags": {
+          "type": "array"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "0"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "1/8"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 0.125
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "1/4"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 0.25
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "1/2"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 0.5
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "1"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "2"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 2
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "3"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 3
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "4"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 4
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "5"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 5
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "6"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 6
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "7"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 7
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "8"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 8
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "9"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 9
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "10"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 10
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "11"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 11
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "12"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 12
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "13"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 13
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "14"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 14
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "15"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 15
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "16"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 16
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "17"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 17
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "18"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 18
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "19"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 19
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "20"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 20
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "21"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 21
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "22"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 22
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "23"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 23
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "24"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 24
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "25"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 25
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "26"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 26
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "27"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 27
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "28"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 28
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "29"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 29
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "cr"
+            ],
+            "properties": {
+              "cr": {
+                "const": "30"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cr_sort": {
+                "const": 30
+              }
+            }
+          }
+        }
+      ]
+    },
+    "body": {
+      "type": "string",
+      "pattern": "^(?:[ \\t]*\\r?\\n)*## Statblock[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)*```statblock[ \\t]*\\r?\\n"
+    }
+  }
+}

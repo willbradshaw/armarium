@@ -1,11 +1,12 @@
 """Read-only entry points coordinating parsing and record validation."""
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Set
 from dataclasses import dataclass
 from pathlib import Path
 from typing import overload
 
+import yaml
 from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import (
@@ -250,6 +251,15 @@ def validate_markdown(
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         diagnostics.append(Diagnostic(relative, "extension.invalid", str(exc)))
     findings += Findings(relative, diagnostics)
+    if extensions is not None:
+        infos = {
+            info
+            for rule in extensions.rules
+            if rule.matches(record.frontmatter.type, subtype)
+            for info in rule.yaml_blocks
+        }
+        if infos:
+            findings += validate_yaml_blocks(record, relative, infos)
     # The core schema checks only the subtype's form; enabled extensions
     # determine which subtypes exist.
     if (
@@ -276,6 +286,44 @@ def validate_markdown(
     return Result(
         diagnostics=sorted(findings.diagnostics), checked=1, unsupported=unsupported
     )
+
+
+def validate_yaml_blocks(record: Record, relative: str, infos: Set[str]) -> Findings:
+    """Require fenced blocks with the given info strings to hold YAML mappings.
+
+    Extensions name these info strings, such as ``statblock``, in a rule's
+    ``yaml_blocks``; other code blocks are not read.
+
+    Args:
+        record: Parsed record whose body is searched, nested blocks included.
+        relative: Record path relative to the vault, for diagnostics.
+        infos: Info strings whose blocks must parse.
+
+    Returns:
+        Findings: An ``extension.yaml`` error at each block that is not valid
+            YAML or does not hold a mapping.
+    """
+    findings = Findings(relative)
+    for block in record.body.iter_blocks():
+        if block.kind != "code" or block.info not in infos:
+            continue
+        try:
+            data = yaml.safe_load(block.text)
+        except yaml.YAMLError as exc:
+            problem = getattr(exc, "problem", None) or str(exc).splitlines()[0]
+            findings.add(
+                "extension.yaml",
+                f"{block.info} block is not valid YAML: {problem}",
+                line=block.line,
+            )
+            continue
+        if not isinstance(data, dict):
+            findings.add(
+                "extension.yaml",
+                f"{block.info} block must hold a YAML mapping",
+                line=block.line,
+            )
+    return findings
 
 
 def validate_directory(path: Path, vault: Path | None = None) -> Result:

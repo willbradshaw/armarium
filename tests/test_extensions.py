@@ -95,6 +95,11 @@ class TestExtensionRule:
             kind == "Content" and (selector is None or selector == subtype)
         )
 
+    def test_yaml_blocks(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        blocks = {r.subtype: r.yaml_blocks for r in load_extensions(vault)}
+        assert blocks == {"Gear": (), "Spell": (), "Monster": ("statblock",)}
+
 
 class TestLocalPath:
     def test_relative(self, vault: Path) -> None:
@@ -165,6 +170,23 @@ class TestDeclarations:
                     {"Content": ["Holy relic"]},
                     {"Content": ["1st"]},
                     {"Content": [42]},
+                )
+            ],
+            *[
+                {
+                    "custom": {
+                        "rules": [
+                            {"type": "Content", "schema": "x", "yaml_blocks": blocks}
+                        ]
+                    }
+                }
+                for blocks in (
+                    [],
+                    "statblock",
+                    ["statblock", "statblock"],
+                    ["two words"],
+                    [""],
+                    [3],
                 )
             ],
         ],
@@ -1305,6 +1327,183 @@ class TestDndSpellSchema:
     def test_removal(self, vault: Path) -> None:
         enable_extension("dnd-5-5", vault)
         path = add_content("Salt Ward", "Spell", vault, frontmatter=self.FIELDS)
+        before = path.read_bytes()
+        remove_extension("dnd-5-5", vault)
+        assert path.read_bytes() == before
+        assert [d.rule for d in validate(path, vault).diagnostics] == ["record.subtype"]
+
+
+class TestDndMonsterSchema:
+    FIELDS = {
+        "source": "Monster Manual",
+        "cr": "1/2",
+        "cr_sort": 0.5,
+        "xp": 100,
+        "size": "Medium",
+        "creature_type": "Beast",
+        "content_tags": [],
+    }
+    MISSING = object()
+    STATBLOCK = "```statblock\nname: Reef Shark\nac: 12\n```\n"
+
+    def monster(self, vault: Path, body: str | None = None, **fields: object) -> Path:
+        """Create a valid Monster, then rewrite fields (MISSING deletes) and the statblock."""
+        from armarium.add import record_text
+
+        path = add_content("Reef Shark", "Monster", vault, frontmatter=self.FIELDS)
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        data = dict(record.frontmatter)
+        for field, value in fields.items():
+            if value is self.MISSING:
+                data.pop(field, None)
+            else:
+                data[field] = value
+        text = record.body.text.replace(
+            "```statblock\nname:\n```\n", body or self.STATBLOCK
+        )
+        path.write_text(record_text(data, text))
+        return path
+
+    @pytest.mark.parametrize("campaign", [None, 1])
+    def test_template_and_scope(self, vault: Path, campaign: int | None) -> None:
+        enable_extension("dnd-5-5", vault)
+        assert "Monster" in content_subtypes(vault)
+        path = add_content(
+            "Reef Shark", "Monster", vault, campaign=campaign, frontmatter=self.FIELDS
+        )
+        record, _ = Record.parse(path, vault)
+        assert record is not None
+        for field, value in self.FIELDS.items():
+            assert record.frontmatter[field] == value
+        assert record.body.text.startswith("## Statblock\n```statblock\nname:\n```\n")
+        if campaign is not None:
+            assert "held_by" not in record.frontmatter[f"campaign_{campaign}"]
+        assert not validate(vault).failed
+
+    @pytest.mark.parametrize("field", [*FIELDS, "summary"])
+    def test_required_fields(self, vault: Path, field: str) -> None:
+        enable_extension("dnd-5-5", vault)
+        assert validate(self.monster(vault, **{field: self.MISSING}), vault).failed
+
+    @pytest.mark.parametrize(
+        "field,value,valid",
+        [
+            # Valid challenge ratings are tested with their cr_sort below.
+            *[("cr", v, False) for v in ("31", "1/3", 1, "", None)],
+            *[("cr_sort", v, False) for v in (1, "0.5", 0.25, None)],
+            ("xp", 0, True),
+            ("xp", 25000, True),
+            *[("xp", v, False) for v in (-1, 1.5, "100", None)],
+            *[
+                ("size", s, True)
+                for s in ("Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan")
+            ],
+            *[("size", s, False) for s in ("medium", "Colossal", None)],
+            *[
+                ("creature_type", t, True)
+                for t in (
+                    "Aberration",
+                    "Beast",
+                    "Celestial",
+                    "Construct",
+                    "Dragon",
+                    "Elemental",
+                    "Fey",
+                    "Fiend",
+                    "Giant",
+                    "Humanoid",
+                    "Monstrosity",
+                    "Ooze",
+                    "Plant",
+                    "Undead",
+                )
+            ],
+            *[
+                ("creature_type", t, False)
+                for t in ("beast", "Swarm of Tiny Beasts", None)
+            ],
+            ("creature_subtypes", ["Demon", "Shapechanger"], True),
+            ("creature_subtypes", None, True),
+            ("creature_subtypes", ["Demon", "Demon"], False),
+            ("creature_subtypes", [" "], False),
+            ("creature_subtypes", "Demon", False),
+            ("alignment", "Chaotic Evil", True),
+            ("alignment", None, True),
+            ("alignment", "", False),
+            ("spells", ["[[Feather Fall]]"], False),
+            ("spells", None, True),
+            ("spells", ["Feather Fall"], False),
+            ("spells", ["[[Feather Fall|Alias]]"], False),
+            ("source", None, True),
+            ("source", "", False),
+            ("content_tags", ["Nightkin", "Warrior"], True),
+            ("content_tags", None, False),
+            ("image", "assets/reef-shark.webp", True),
+            ("url", "https://example.org/reef-shark", True),
+            ("url", "ftp://example.org/reef-shark", False),
+            ("provider_id", 1234, True),
+        ],
+    )
+    def test_values(self, vault: Path, field: str, value: object, valid: bool) -> None:
+        enable_extension("dnd-5-5", vault)
+        assert validate(self.monster(vault, **{field: value}), vault).failed != valid
+
+    @pytest.mark.parametrize(
+        "cr,cr_sort,valid",
+        [
+            ("0", 0, True),
+            ("1/8", 0.125, True),
+            ("1/4", 0.25, True),
+            ("1/2", 0.5, True),
+            *[(str(n), n, True) for n in range(1, 31)],
+            ("1/8", 0.25, False),
+            ("7", 8, False),
+        ],
+    )
+    def test_cr_sort_matches_cr(
+        self, vault: Path, cr: str, cr_sort: float, valid: bool
+    ) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = self.monster(vault, cr=cr, cr_sort=cr_sort)
+        assert validate(path, vault).failed != valid
+
+    def test_spell_links_resolve(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = self.monster(vault, spells=["[[Feather Fall]]"])
+        assert "link.missing" in {d.rule for d in validate(path, vault).diagnostics}
+        add_content(
+            "Feather Fall", "Spell", vault, frontmatter=TestDndSpellSchema.FIELDS
+        )
+        assert not validate(path, vault).failed
+
+    @pytest.mark.parametrize(
+        "body,rule",
+        [
+            ("```statblock\nname: X\n```\n", None),
+            ("```statblock\nname: [unclosed\n```\n", "extension.yaml"),
+            ("```statblock\n- x\n```\n", "extension.yaml"),
+            ("```yaml\nname: X\n```\n", "schema.instance"),
+        ],
+    )
+    def test_statblock(self, vault: Path, body: str, rule: str | None) -> None:
+        enable_extension("dnd-5-5", vault)
+        rules = {
+            d.rule for d in validate(self.monster(vault, body=body), vault).diagnostics
+        }
+        assert (rule in rules) if rule else not rules
+
+    @pytest.mark.parametrize("missing", [f for f in FIELDS if f != "source"])
+    def test_creation_requires_fields(self, vault: Path, missing: str) -> None:
+        enable_extension("dnd-5-5", vault)
+        fields = {k: v for k, v in self.FIELDS.items() if k != missing}
+        with pytest.raises(ValueError, match="failed validation"):
+            add_content("Reef Shark", "Monster", vault, frontmatter=fields)
+        assert not (vault / "content/Reef Shark.md").exists()
+
+    def test_removal(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        path = add_content("Reef Shark", "Monster", vault, frontmatter=self.FIELDS)
         before = path.read_bytes()
         remove_extension("dnd-5-5", vault)
         assert path.read_bytes() == before
