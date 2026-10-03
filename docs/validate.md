@@ -5,7 +5,7 @@
 ## Usage
 
 ```text
-armarium validate [--vault VAULT] PATH
+armarium validate [--vault VAULT] [--jobs N] PATH
 ```
 
 `PATH` is a record, a directory or a vault; [Scope](#scope) says what each
@@ -14,13 +14,17 @@ directories, so a vault missing either is not found: a directory run passes
 over it as not a vault and reports nothing checked, and a single record
 inside it is refused. `--vault VAULT` names the vault directory explicitly so
 that such a vault is validated anyway and what it lacks is reported.
-`--help` prints the usage.
+`--jobs N` validates a directory's records with `N` worker processes; the
+findings and their order are the same as with one. It helps on vaults of
+thousands of records and slows small runs, since every worker indexes the
+vault. `--help` prints the usage.
 
 ```sh
 armarium validate .                                    # the vault in the current directory
 armarium validate campaigns/campaign_1/clues           # every Clue of one campaign
 armarium validate content/Port\ Briselle.md            # one record
 armarium validate . --vault .                          # a vault missing part of its skeleton
+armarium validate . --jobs 8                           # a large vault, on eight processes
 ```
 
 ## Scope

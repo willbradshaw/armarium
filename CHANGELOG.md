@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium validate --jobs N` to validate a directory's records with several processes.
 - Require PyYAML built with libyaml and parse YAML with it, keeping the Python parser's error messages.
 - Speed up directory validation: read declared directories once, skip inline Markdown parsing and sort findings once.
 - Add a bare Divine Sense class feature page to the `dnd-5-5` rules reference.

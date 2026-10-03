@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Callable, Set
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import overload
@@ -161,23 +162,27 @@ RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
 }
 
 
-def validate(path: Path, vault: Path | None = None) -> Result:
+def validate(path: Path, vault: Path | None = None, *, jobs: int = 1) -> Result:
     """Validate a Markdown file or directory using the appropriate checks.
 
     Args:
         path: File or directory to validate.
         vault: Optional explicit vault boundary, passed to the selected validator.
+        jobs: Worker processes for directory validation; a single file is
+            always validated in this process.
 
     Returns:
         Result: Findings and counts from file or recursive directory validation.
 
     Raises:
-        ValueError: The target or explicit vault is invalid, or a file has no
-            inferable vault context.
+        ValueError: The target or explicit vault is invalid, a file has no
+            inferable vault context, or jobs is less than 1.
         OSError: Directory traversal fails.
     """
+    if jobs < 1:
+        raise ValueError("jobs must be at least 1")
     if path.is_dir():
-        return validate_directory(path, vault)
+        return validate_directory(path, vault, jobs=jobs)
     return validate_markdown(path, vault)
 
 
@@ -331,7 +336,9 @@ def validate_yaml_blocks(record: Record, relative: str, infos: Set[str]) -> Find
     return findings
 
 
-def validate_directory(path: Path, vault: Path | None = None) -> Result:
+def validate_directory(
+    path: Path, vault: Path | None = None, *, jobs: int = 1
+) -> Result:
     """Validate visible Markdown descendants, discovering vaults as needed.
 
     Args:
@@ -341,6 +348,9 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         vault: Optional explicit vault containing the entire selected directory.
             Otherwise try the selected directory, then descend until a vault
             is found. A selected vault applies to its entire subtree.
+        jobs: Worker processes validating each vault's records. With more than
+            one, every worker indexes the vault itself; the result is the same
+            as with one, which validates in this process.
 
     Returns:
         Result: Aggregated findings and counts, with diagnostic paths relative
@@ -351,18 +361,20 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
             also receives the validate_vault infrastructure checks.
 
     Raises:
-        ValueError: The target is not a real directory, or the explicit vault
-            does not contain it.
+        ValueError: The target is not a real directory, the explicit vault
+            does not contain it, or jobs is less than 1.
         OSError: Directory traversal fails. The scan does not claim completeness
             when part of the directory cannot be read.
     """
+    if jobs < 1:
+        raise ValueError("jobs must be at least 1")
     if path.is_symlink() or not path.is_dir():
         raise ValueError("directory validation requires a real directory")
     try:
         context = check_vault(path, vault) if vault is not None else find_vault(path)
     except VaultNotFoundError:
         results = [
-            validate_directory(child).add_context(child.name)
+            validate_directory(child, jobs=jobs).add_context(child.name)
             for child in find_children(path)
             if child.is_dir()
         ]
@@ -373,15 +385,59 @@ def validate_directory(path: Path, vault: Path | None = None) -> Result:
         if file.suffix.lower() == ".md"
         and not file.resolve().is_relative_to(context / "scripts")
     ]
-    index = VaultIndex(context)
-    result = Result.combine(
-        validate_markdown(file, context, index=index) for file in files
-    )
+    index: VaultIndex | None = None
+    if jobs > 1 and len(files) > 1:
+        # Each worker builds its own index; the files keep their order, and
+        # combining sorts the findings, so the result matches a serial run.
+        with ProcessPoolExecutor(
+            min(jobs, len(files)), initializer=_start_worker, initargs=(context,)
+        ) as pool:
+            chunk = max(1, len(files) // (jobs * 8))
+            result = Result.combine(
+                pool.map(_validate_in_worker, files, chunksize=chunk)
+            )
+    else:
+        index = VaultIndex(context)
+        result = Result.combine(
+            validate_markdown(file, context, index=index) for file in files
+        )
     # A vault root, whether named directly or found by recursion, must also
     # carry the shared infrastructure; a directory inside a vault need not.
     if path.resolve() == context:
         result += Result(diagnostics=validate_vault(context, index).diagnostics)
     return result.add_context(context, relative_to=path.resolve())
+
+
+# The index of the vault a worker process validates, built when it starts.
+_WORKER_INDEX: VaultIndex | None = None
+
+
+def _start_worker(context: Path) -> None:
+    """Build this worker process's own index of the vault being validated.
+
+    Args:
+        context: Resolved vault directory whose files the worker will receive.
+    """
+    global _WORKER_INDEX
+    _WORKER_INDEX = VaultIndex(context)
+
+
+def _validate_in_worker(file: Path) -> Result:
+    """Validate one Markdown file against the worker's index.
+
+    Args:
+        file: Markdown file inside the vault given to _start_worker.
+
+    Returns:
+        Result: What validate_markdown returns for the file with a shared index.
+
+    Raises:
+        RuntimeError: The process was not started by _start_worker.
+        ValueError: As validate_markdown.
+    """
+    if _WORKER_INDEX is None:
+        raise RuntimeError("worker process has no vault index")
+    return validate_markdown(file, _WORKER_INDEX.root, index=_WORKER_INDEX)
 
 
 def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:

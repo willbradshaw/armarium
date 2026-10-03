@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 import yaml
 
+import armarium.validate
 from armarium.extensions import load_extension_set
 from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
@@ -31,6 +32,8 @@ from armarium.validate import (
     _heading_key,
     _link_targets,
     _read_appearances,
+    _start_worker,
+    _validate_in_worker,
     _validate_wikilink_status,
     linked_record,
     validate,
@@ -669,6 +672,80 @@ class TestValidateDirectory:
         # are added: the diagnostics are not sorted again for every file.
         assert combine.call_count == 2
 
+    @pytest.fixture(scope="class")
+    @classmethod
+    def damaged(cls, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        """A directory holding the starter vault and a damaged example vault."""
+        parent = tmp_path_factory.mktemp("vaults")
+        shutil.copytree(ROOT / "vaults/starter", parent / "starter")
+        root = parent / "example"
+        shutil.copytree(ROOT / "vaults/example", root)
+        files = [f for f in find_files(root / "campaigns") if f.suffix == ".md"]
+        for number, file in enumerate(files):
+            text = file.read_text()
+            if number % 3 == 0:
+                text = text.replace("[[", "[[Missing ", 1)
+            elif number % 3 == 1:
+                text = text.replace("\n---\n", "\nextra: [unclosed\n---\n", 1)
+            file.write_text(text + "\n[[broken\n")
+        return parent
+
+    @pytest.mark.parametrize("jobs", [2, 3])
+    @pytest.mark.parametrize(
+        "target", [".", "example", "example/campaigns", "example/content"]
+    )
+    def test_jobs_give_the_serial_result(
+        self, damaged: Path, target: str, jobs: int
+    ) -> None:
+        serial = validate_directory(damaged / target)
+        assert serial.checked > 5
+        parallel = validate_directory(damaged / target, jobs=jobs)
+        assert parallel == serial
+        assert parallel.diagnostics == sorted(parallel.diagnostics)
+        if target != "example/content":
+            assert len(serial.diagnostics) > 20
+
+    def test_jobs_with_explicit_vault(self, damaged: Path) -> None:
+        root = damaged / "example"
+        assert validate_directory(root / "campaigns", root, jobs=2) == (
+            validate_directory(root / "campaigns", root)
+        )
+
+    @pytest.mark.parametrize(
+        ("jobs", "files", "workers"),
+        [(1, 3, None), (4, 1, None), (4, 0, None), (2, 3, 2), (8, 3, 3)],
+    )
+    def test_worker_processes(
+        self, tmp_path: Path, jobs: int, files: int, workers: int | None
+    ) -> None:
+        from concurrent.futures import ProcessPoolExecutor
+        from unittest.mock import patch
+
+        make_vault(tmp_path)
+        records = tmp_path / "content/records"
+        records.mkdir()
+        for number in range(files):
+            (records / f"{number}.md").write_text("Untyped")
+        with patch(
+            "armarium.validate.ProcessPoolExecutor", wraps=ProcessPoolExecutor
+        ) as pool:
+            result = validate_directory(records, jobs=jobs)
+        assert result.checked == files
+        assert [d.path for d in result.diagnostics] == [
+            f"{number}.md" for number in range(files)
+        ]
+        # One job, or a single file, is validated in this process.
+        if workers is None:
+            pool.assert_not_called()
+        else:
+            assert pool.call_args.args == (workers,)
+            assert pool.call_args.kwargs["initargs"] == (tmp_path.resolve(),)
+
+    @pytest.mark.parametrize("jobs", [0, -2])
+    def test_invalid_jobs(self, tmp_path: Path, jobs: int) -> None:
+        with pytest.raises(ValueError, match="jobs must be at least 1"):
+            validate_directory(tmp_path, jobs=jobs)
+
     @pytest.mark.parametrize("target", [".", "scripts", "scripts/tests"])
     def test_scripts_are_not_records(self, tmp_path: Path, target: str) -> None:
         make_vault(tmp_path)
@@ -938,6 +1015,40 @@ class TestValidateDirectory:
         assert inferred == expected
 
 
+class TestStartWorker:
+    def test_builds_the_worker_index(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(armarium.validate, "_WORKER_INDEX", None)
+        _start_worker(vault)
+        index = armarium.validate._WORKER_INDEX
+        assert isinstance(index, VaultIndex) and index.root == vault.resolve()
+
+
+class TestValidateInWorker:
+    def test_validates_with_the_worker_index(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from unittest.mock import patch
+
+        path = vault / "first.md"
+        path.write_text("Untyped")
+        index = VaultIndex(vault)
+        monkeypatch.setattr(armarium.validate, "_WORKER_INDEX", index)
+        with patch.object(VaultIndex, "__init__") as build:
+            result = _validate_in_worker(path)
+        build.assert_not_called()
+        assert result == validate_markdown(path, vault)
+        assert path in index.records
+
+    def test_requires_a_started_worker(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(armarium.validate, "_WORKER_INDEX", None)
+        with pytest.raises(RuntimeError, match="no vault index"):
+            _validate_in_worker(vault / "first.md")
+
+
 class TestValidate:
     @pytest.mark.parametrize("directory", [False, True])
     @pytest.mark.parametrize("explicit", [False, True])
@@ -961,6 +1072,30 @@ class TestValidate:
         )
         assert {d.rule for d in records} == {"record.type"}
         assert any(d.path == "." for d in result.diagnostics) is directory
+
+    @pytest.mark.parametrize("directory", [False, True])
+    def test_jobs_apply_to_directories(self, vault: Path, directory: bool) -> None:
+        from unittest.mock import patch
+
+        (vault / "first.md").write_text("Untyped")
+        target = vault if directory else vault / "first.md"
+        with (
+            patch("armarium.validate.validate_directory") as scan,
+            patch("armarium.validate.validate_markdown") as single,
+        ):
+            validate(target, None, jobs=3)
+        if directory:
+            scan.assert_called_once_with(target, None, jobs=3)
+        else:
+            single.assert_called_once_with(target, None)
+        assert scan.called is directory and single.called is not directory
+
+    @pytest.mark.parametrize("jobs", [0, -1])
+    def test_invalid_jobs(self, vault: Path, jobs: int) -> None:
+        (vault / "first.md").write_text("Untyped")
+        for target in (vault, vault / "first.md"):
+            with pytest.raises(ValueError, match="jobs must be at least 1"):
+                validate(target, jobs=jobs)
 
     @pytest.mark.parametrize("kind", ["missing", "text", "file-link", "directory-link"])
     def test_invalid_target(self, tmp_path: Path, kind: str) -> None:

@@ -51,6 +51,17 @@ def _frontmatter_json(value: str) -> dict[str, object]:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
+def _jobs(value: str) -> int:
+    """Parse a worker-process count of at least one."""
+    try:
+        jobs = int(value)
+    except ValueError:
+        jobs = 0
+    if jobs < 1:
+        raise argparse.ArgumentTypeError("jobs must be a whole number of at least 1")
+    return jobs
+
+
 def _subtype_choices(argv: Sequence[str] | None) -> tuple[tuple[str, ...] | None, str]:
     """Select Content subtypes for `add content` from the vault it targets.
 
@@ -227,6 +238,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "path", type=Path, help="Markdown file or directory to validate"
     )
     command.add_argument("--vault", type=Path, help="explicit vault directory")
+    command.add_argument(
+        "--jobs",
+        type=_jobs,
+        default=1,
+        help="worker processes for validating a directory (default: 1)",
+    )
     args = parser.parse_args(argv)
     if args.command == "add":
         path = vars(args).pop("frontmatter_file", None)
@@ -312,7 +329,7 @@ def main() -> None:
         logger.info("New %s successfully created; validating", args.addition)
         result = validate(find_vault(destination))
     else:
-        result = validate(args.path, args.vault)
+        result = validate(args.path, args.vault, jobs=args.jobs)
         result.report()
     if args.command in {"init", "add", "extension"}:
         for diagnostic in result.diagnostics:

@@ -1,5 +1,6 @@
 """Command parsing, diagnostics, exit status and process entry point."""
 
+import argparse
 import json
 import os
 import re
@@ -11,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from armarium.cli import _subtype_choices, main, parse_args
+from armarium.cli import _jobs, _subtype_choices, main, parse_args
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
 
@@ -827,6 +828,18 @@ class TestMain:
         output = capsys.readouterr()
         assert output.out == output.err == ""
 
+    @pytest.mark.parametrize(("options", "jobs"), [([], 1), (["--jobs", "3"], 3)])
+    def test_validate_receives_jobs(
+        self, monkeypatch: pytest.MonkeyPatch, options: list[str], jobs: int
+    ) -> None:
+        from unittest.mock import Mock
+
+        run = Mock(return_value=Result(checked=1))
+        monkeypatch.setattr("armarium.cli.validate", run)
+        monkeypatch.setattr(sys, "argv", ["armarium", "validate", "vault", *options])
+        main()
+        run.assert_called_once_with(Path("vault"), None, jobs=jobs)
+
     @pytest.mark.parametrize("files", [1, 2])
     def test_failure_counts_distinct_files(
         self,
@@ -1171,6 +1184,17 @@ class TestParseArgs:
         args = parse_args(argv)
         assert args.command == "validate" and args.path == Path("record.md")
         assert args.vault == (Path("vault") if explicit else None)
+        assert args.jobs == 1
+
+    def test_jobs(self) -> None:
+        assert parse_args(["validate", ".", "--jobs", "4"]).jobs == 4
+
+    @pytest.mark.parametrize("value", ["0", "-1", "1.5", "many"])
+    def test_invalid_jobs(self, capsys: pytest.CaptureFixture[str], value: str) -> None:
+        with pytest.raises(SystemExit) as exit_status:
+            parse_args(["validate", ".", f"--jobs={value}"])
+        assert exit_status.value.code == 2
+        assert "jobs must be a whole number of at least 1" in capsys.readouterr().err
 
     @pytest.mark.parametrize(
         "argv",
@@ -1539,6 +1563,17 @@ class TestDowngradeOption:
         assert json.loads(config.read_text())["example"]["armarium_version"] == (
             "1.0.0" if allow else "2.0.0"
         )
+
+
+class TestJobs:
+    @pytest.mark.parametrize(("value", "expected"), [("1", 1), ("12", 12)])
+    def test_count(self, value: str, expected: int) -> None:
+        assert _jobs(value) == expected
+
+    @pytest.mark.parametrize("value", ["0", "-3", "2.0", "", "all"])
+    def test_invalid_count(self, value: str) -> None:
+        with pytest.raises(argparse.ArgumentTypeError, match="at least 1"):
+            _jobs(value)
 
 
 class TestFrontmatterJson:
