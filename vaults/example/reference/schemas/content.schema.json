@@ -50,6 +50,22 @@
               }
             }
           ]
+        },
+        "content_tags": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            }
+          ],
+          "description": "Optional freeform labels for filtering Content; null or an empty list means none."
         }
       },
       "patternProperties": {

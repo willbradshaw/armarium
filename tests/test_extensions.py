@@ -984,7 +984,7 @@ class TestDndGearSchema:
         "consumable": False,
         "cursed": False,
         "sentient": False,
-        "item_tags": [],
+        "content_tags": [],
     }
 
     @pytest.mark.parametrize("campaign", [None, 1])
@@ -1061,15 +1061,15 @@ class TestDndGearSchema:
             ("item_type", "armor", False),
             ("rarity", "rare", False),
             ("rarity", "", False),
-            ("item_tags", ["Warding", "Utility"], True),
-            ("item_tags", [], True),
-            ("item_tags", ["Warding", "Warding"], False),
-            ("item_tags", ["Custom tag"], True),
-            ("item_tags", ["warding"], True),
-            ("item_tags", [""], False),
-            ("item_tags", [" "], False),
-            ("item_tags", "Armor", False),
-            ("item_tags", [42], False),
+            ("content_tags", ["Warding", "Utility"], True),
+            ("content_tags", [], True),
+            ("content_tags", ["Warding", "Warding"], False),
+            ("content_tags", ["Custom tag"], True),
+            ("content_tags", ["warding"], True),
+            ("content_tags", [""], False),
+            ("content_tags", [" "], False),
+            ("content_tags", "Armor", False),
+            ("content_tags", [42], False),
             ("attunement_restrictions", None, True),
             ("attunement_restrictions", "", False),
             ("attunement_restrictions", " ", False),
@@ -1126,8 +1126,8 @@ class TestDndGearSchema:
         enable_extension("dnd-5-5", vault)
         tags = ["Local tradition", "Artisan-made"]
         path = add_content(
-            "Compass", "Gear", vault, frontmatter={**self.FIELDS, "item_tags": tags}
+            "Compass", "Gear", vault, frontmatter={**self.FIELDS, "content_tags": tags}
         )
         record, _ = Record.parse(path, vault)
-        assert record is not None and record.frontmatter["item_tags"] == tags
+        assert record is not None and record.frontmatter["content_tags"] == tags
         assert not validate(path, vault).failed

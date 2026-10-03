@@ -5,6 +5,7 @@ summary:
 parent_location:
 climate:
 aliases:
+content_tags:
 campaign_1:
   first_session:
   last_session:

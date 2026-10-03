@@ -12,7 +12,7 @@
         "consumable",
         "cursed",
         "sentient",
-        "item_tags"
+        "content_tags"
       ],
       "properties": {
         "item_type": {
@@ -60,13 +60,8 @@
           ],
           "pattern": "\\S"
         },
-        "item_tags": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "\\S"
-          },
-          "uniqueItems": true
+        "content_tags": {
+          "type": "array"
         }
       },
       "allOf": [

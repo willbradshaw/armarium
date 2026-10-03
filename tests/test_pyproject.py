@@ -1039,7 +1039,7 @@ class TestInstalledExtensions:
                 "consumable": False,
                 "cursed": False,
                 "sentient": False,
-                "item_tags": [],
+                "content_tags": [],
             }
             if extension == "dnd-5-5"
             else {}

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add optional `content_tags` to Content, replacing Gear's `item_tags` in `dnd-5-5`.
 - Let extensions declare new Content subtypes, each with a template.
 - Allow an optional vault `scripts/` directory for tooling and tests, excluding
   its contents from record validation during directory scans.

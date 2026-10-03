@@ -54,6 +54,7 @@ A character, place, group, object, date or piece of setting lore.
 | `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`, `Date` or `Gear`, or a subtype declared by an enabled [extension](extensions.md#declaring-subtypes) |
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
+| `content_tags` | optional | null, `[]` or a list of unique, non-blank strings: freeform labels for filtering Content |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
