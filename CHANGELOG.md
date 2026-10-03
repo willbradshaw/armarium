@@ -2,13 +2,7 @@
 
 ## Unreleased
 
-- Let extensions declare new Content subtypes, each with a required template.
-  The Content schema now checks only a subtype's form; validation reports
-  `record.subtype` for a subtype that neither core nor an enabled extension
-  declares, and `armarium add content --subtype` offers the selected vault's
-  subtypes. Existing vaults must copy the new `content.schema.json` from the
-  starter vault before using declared subtypes. Extension rules that select an
-  undeclared Content subtype are now invalid.
+- Let extensions declare new Content subtypes, each with a template.
 - Allow an optional vault `scripts/` directory for tooling and tests, excluding
   its contents from record validation during directory scans.
 - Add the `dnd-5-5` extension with D&D 2024 Gear fields and a Gear template.

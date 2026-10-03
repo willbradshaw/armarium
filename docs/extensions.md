@@ -87,8 +87,9 @@ subdirectories.
 
 ### Declaring subtypes
 
-An extension can add Content subtypes for kinds of record that only its game
-system has, such as spells. List them under `subtypes`, keyed by type:
+An extension can add Content subtypes not present in the base package. List them
+under `subtypes`, keyed by type, and give each a rule in the same extension that
+supplies a template:
 
 ```json
 {
@@ -106,20 +107,7 @@ system has, such as spells. List them under `subtypes`, keyed by type:
 }
 ```
 
-Only Content subtypes can be declared. A name starts with a letter and contains
-only letters and digits. Each declared subtype needs a rule in the same
-extension that selects it and supplies a template, so `armarium add content`
-can create it. Its records also meet the core Content requirements that apply
-to every subtype. The extension's schema adds anything else, including body
-rules. Document new subtypes in the extension's README.
-
-An extension cannot declare a core subtype or one another enabled extension
-declares, and no rule may select a Content subtype that neither core nor an
-enabled extension declares. Any of these makes the vault's extensions invalid.
-Removing an extension leaves its records in place; validation then reports their
-subtype until the records are changed or the extension is enabled again.
-
-Vaults created before Armarium supported declared subtypes have a closed list of
-subtypes in `reference/schemas/content.schema.json`. Copy that file from the
-starter vault of the current release before enabling an extension that
-declares subtypes.
+Content is the only type with subtypes. Names start with a letter and contain
+only letters and digits, and may not repeat a core subtype or one another
+enabled extension declares. Records of a declared subtype meet the core Content
+requirements and the extension's schema.

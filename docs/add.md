@@ -108,13 +108,11 @@ armarium add content "Port Briselle" --subtype Location --vault ../my-vault
 armarium add content "Mira" --subtype PC --campaign 1 --frontmatter '{"player":"[[Alex]]"}' --vault ../my-vault
 ```
 
-Use `--subtype NPC|PC|Location|Faction|Object|Lore|Date|Gear` to select the [Content
-subtype](type.md#content), or a subtype an enabled [extension](extensions.md#declaring-subtypes)
-declares. `armarium add content --help` lists the subtypes the selected vault
-permits: the one named by `--vault`, otherwise the one containing the current
-directory. PCs require a `player` link to an existing [Player](#players).
-Dates require `reckoning`, a link to a Lore record describing the calendar, and
-`scale`, such as day or year. Supply these through frontmatter or template defaults.
+Use `--subtype` to select the [Content subtype](type.md#content): a core subtype,
+or one an enabled [extension](extensions.md#declaring-subtypes) declares.
+`armarium add content --help` lists those the vault permits. Supply each
+subtype's required fields, such as a PC's `player`, through
+[frontmatter](#supplying-frontmatter).
 
 ```sh
 armarium add content "Year 42" --subtype Date --frontmatter '{"reckoning":"[[Royal Calendar]]","scale":"year"}' --vault ../my-vault
