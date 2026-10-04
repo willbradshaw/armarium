@@ -1,6 +1,7 @@
 """Shared syntax and vault-discovery utilities."""
 
 import logging
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Literal
 from unittest.mock import patch
@@ -12,6 +13,7 @@ from armarium.lib import (
     Diagnostic,
     Findings,
     Result,
+    Target,
     VaultNotFoundError,
     _find_wikilink_candidates,
     check_vault,
@@ -705,3 +707,10 @@ class TestParseDirectories:
     def test_unusable(self, value: object, message: str) -> None:
         with pytest.raises(ValueError, match=f"^{message}$"):
             parse_directories(value)
+
+
+class TestTarget:
+    def test_defaults(self) -> None:
+        assert Target("Content") == Target("Content", frozenset(), None, False)
+        with pytest.raises(FrozenInstanceError):
+            setattr(Target("Content"), "campaign", "campaign_1")

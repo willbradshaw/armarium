@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let extension rules declare the records a field's links must name.
 - Meta-validate each distinct schema text once per process, not on every load.
 - Add `armarium validate --jobs N` to validate a directory's records with several processes.
 - Require PyYAML built with libyaml and parse YAML with it, keeping the Python parser's error messages.

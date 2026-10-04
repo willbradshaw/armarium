@@ -1,9 +1,8 @@
 """Read-only entry points coordinating parsing and record validation."""
 
 import re
-from collections.abc import Callable, Set
+from collections.abc import Callable, Iterable, Set
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
 from pathlib import Path
 from typing import overload
 
@@ -12,6 +11,7 @@ from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import (
     CONFIG,
+    ExtensionRule,
     ExtensionSet,
     is_template,
     load_extension_set,
@@ -20,10 +20,13 @@ from armarium.extensions import (
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
+    LINK_TARGETS,
+    RECORD_LINK_TARGETS,
     WIKILINK,
     Diagnostic,
     Findings,
     Result,
+    Target,
     VaultNotFoundError,
     check_vault,
     find_campaign,
@@ -36,28 +39,6 @@ from armarium.lib import (
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
-
-
-@dataclass(frozen=True)
-class Target:
-    """Requirements on the record that a type-bound field links to.
-
-    Attributes:
-        record_type: Required declared type of the target.
-        subtypes: Permitted Content subtypes, or empty for any subtype.
-        campaign: Campaign directory name (campaign_N) the target must belong
-            to, or None for no fixed campaign.
-        local: Whether the target must belong to the campaign containing the
-            linking record; no restriction applies when that record is outside
-            every campaign. Shared Content outside every campaign satisfies
-            either campaign requirement.
-    """
-
-    record_type: str
-    subtypes: frozenset[str] = frozenset()
-    campaign: str | None = None
-    local: bool = False
-
 
 # Infrastructure every vault must contain. Together with the directories Type
 # records declare, these bound where every entry in the vault may live. The
@@ -124,42 +105,6 @@ SPEECH = re.compile(r"\[[^\[\]]+\] \S")
 
 # Fields that link a record to its predecessor, followed record to record.
 CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
-
-# Top-level frontmatter fields whose links must target a record of a given type:
-# on every record, then by the record's (type, subtype), where entries under
-# (type, None) apply to every record of that type.
-LINK_TARGETS = {"type": Target("Type"), "status": Target("Status")}
-RECORD_LINK_TARGETS: dict[tuple[str, str | None], dict[str, Target]] = {
-    ("Status", None): {"applies_to": Target("Type")},
-    ("Content", "Date"): {
-        "reckoning": Target("Content", frozenset({"Lore"}), local=True)
-    },
-    ("Content", "PC"): {"player": Target("Player", local=True)},
-    ("Content", "Location"): {
-        "parent_location": Target("Content", frozenset({"Location"}), local=True)
-    },
-    ("Content", "Faction"): {
-        "members": Target("Content", frozenset({"PC", "NPC"}), local=True)
-    },
-    ("Player", None): {"plays": Target("Content", frozenset({"PC"}), local=True)},
-    ("Transcript", None): {"session": Target("Session", local=True)},
-    ("Clue", None): {
-        "text": Target("Content", local=True),
-        "subjects": Target("Content", local=True),
-        "first_session": Target("Session", local=True),
-        "last_session": Target("Session", local=True),
-        "superseded_by": Target("Clue", local=True),
-    },
-    ("Session", None): {
-        "in_game_start_date": Target("Content", frozenset({"Date"}), local=True),
-        "in_game_end_date": Target("Content", frozenset({"Date"}), local=True),
-        "campaign": Target("Reference", local=True),
-        "players_absent": Target("Player", local=True),
-        "prepared_clues": Target("Clue", local=True),
-        "prepared_locations": Target("Content", frozenset({"Location"}), local=True),
-        "prepared_npcs": Target("Content", frozenset({"NPC"}), local=True),
-    },
-}
 
 
 def validate(path: Path, vault: Path | None = None, *, jobs: int = 1) -> Result:
@@ -1015,7 +960,8 @@ def validate_wikilinks(record: Record, index: VaultIndex) -> Findings:
 
     Args:
         record: Selected record inside the indexed vault.
-        index: Whole-vault file index and lazy record cache for this run.
+        index: Whole-vault file index and lazy record cache for this run; its
+            enabled extensions supply further type-bound fields.
 
     Returns:
         Findings: Problems attributed to the selected record, with metadata
@@ -1025,9 +971,13 @@ def validate_wikilinks(record: Record, index: VaultIndex) -> Findings:
             earlier entry (link.duplicate), and links that an unescaped ``|``
             splits across table cells. Unrelated records are not parsed. Query
             execution and ordinary URLs are excluded.
+
+    Raises:
+        OSError, ValueError, SchemaError, RecursionError: The vault's extension
+            set is invalid; validate_markdown reports that before this check.
     """
     findings = Findings.from_record(record, index)
-    targets = _link_targets(record)
+    targets = _link_targets(record, index.extension_set().rules)
     seen: dict[str, set[Path]] = {}
     for link in record.links:
         # 1. Check the link as written
@@ -1073,23 +1023,34 @@ def validate_wikilinks(record: Record, index: VaultIndex) -> Findings:
     return findings
 
 
-def _link_targets(record: Record) -> dict[str, Target]:
+def _link_targets(
+    record: Record, rules: Iterable[ExtensionRule] = ()
+) -> dict[str, Target]:
     """Collect the Target requirements for a record's type-bound fields.
 
     Args:
         record: Selected record whose type, subtype and campaign blocks select
             the requirements.
+        rules: Enabled extension rules; those matching the record add the
+            fields they declare. Loading rejects a rule that redeclares a field
+            bound here, so the core requirements always stand.
 
     Returns:
         dict[str, Target]: Requirements keyed by frontmatter location: the
-            universal fields, those for the record's (type, subtype), and
-            campaign_N block fields bound to campaign_N. Custom fields are not
-            interpreted by name. A Clue's superseded_by is bound regardless of
-            status; the Clue schema forbids it outside Superseded.
+            universal fields, those for the record's (type, subtype), those
+            matching extension rules declare, and campaign_N block fields
+            bound to campaign_N. Other custom fields are not interpreted by
+            name. A Clue's superseded_by is bound regardless of status; the
+            Clue schema forbids it outside Superseded.
     """
     kind = record.frontmatter.type or ""
     subtype = record.frontmatter.get("subtype")
-    targets = LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
+    selected = subtype if isinstance(subtype, str) else None
+    targets: dict[str, Target] = {}
+    for rule in rules:
+        if rule.matches(kind, selected):
+            targets |= rule.links
+    targets |= LINK_TARGETS | RECORD_LINK_TARGETS.get((kind, None), {})
     if isinstance(subtype, str):
         targets |= RECORD_LINK_TARGETS.get((kind, subtype), {})
     if kind == "Content":

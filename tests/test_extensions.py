@@ -12,6 +12,7 @@ from armarium.extensions import (
     CONFIG,
     ExtensionRule,
     ExtensionSet,
+    _core_link_fields,
     _declarations,
     _extension,
     _local_path,
@@ -23,7 +24,7 @@ from armarium.extensions import (
     load_extensions,
     remove_extension,
 )
-from armarium.lib import SUBTYPES
+from armarium.lib import LINK_TARGETS, SUBTYPES, Target
 from armarium.parse import Record
 from armarium.validate import validate
 
@@ -99,6 +100,57 @@ class TestExtensionRule:
         enable_extension("dnd-5-5", vault)
         blocks = {r.subtype: r.yaml_blocks for r in load_extensions(vault)}
         assert blocks == {"Gear": (), "Spell": (), "Monster": ("statblock",)}
+
+    @pytest.mark.parametrize("selector", [None, "Location"])
+    @pytest.mark.parametrize(
+        "kind,subtype",
+        [("Content", "Location"), ("Content", None), ("Content", "Lore")],
+    )
+    def test_overlaps(
+        self, enabled: Path, selector: str | None, kind: str, subtype: str | None
+    ) -> None:
+        rule = load_extensions(enabled)[0]
+        rule = ExtensionRule(
+            rule.extension, "Content", selector, rule.schema, rule.template
+        )
+        assert rule.overlaps(kind, subtype) == (
+            selector is None or subtype is None or selector == subtype
+        )
+        assert not rule.overlaps("Note", subtype)
+
+    def test_links(self, enabled: Path) -> None:
+        (rule,) = load_extensions(enabled)
+        assert rule.links == {}
+        config = enabled / CONFIG
+        data = json.loads(config.read_text())
+        data["example"]["rules"][0]["links"] = {
+            "region": {"type": "Content", "subtypes": ["Location", "Lore"]},
+            "warden": {"type": "Player"},
+        }
+        config.write_text(json.dumps(data))
+        (rule,) = load_extensions(enabled)
+        assert rule.links == {
+            "region": Target("Content", frozenset({"Location", "Lore"}), local=True),
+            "warden": Target("Player", local=True),
+        }
+
+
+class TestCoreLinkFields:
+    @pytest.mark.parametrize(
+        ("kind", "subtype", "bound", "free"),
+        [
+            ("Content", "Location", {"parent_location"}, {"members", "stats"}),
+            ("Content", None, {"parent_location", "members", "player"}, {"stats"}),
+            ("Clue", None, {"subjects", "superseded_by"}, {"parent_location"}),
+            ("Widget", None, set(), {"subjects", "parent_location"}),
+        ],
+    )
+    def test_fields(
+        self, kind: str, subtype: str | None, bound: set[str], free: set[str]
+    ) -> None:
+        fields = _core_link_fields(kind, subtype)
+        assert set(LINK_TARGETS) | bound <= fields
+        assert not free & fields
 
 
 class TestLocalPath:
@@ -187,6 +239,27 @@ class TestDeclarations:
                     ["two words"],
                     [""],
                     [3],
+                )
+            ],
+            *[
+                {
+                    "custom": {
+                        "rules": [{"type": "Content", "schema": "x", "links": links}]
+                    }
+                }
+                for links in (
+                    {},
+                    ["stats"],
+                    {"stats": "Content"},
+                    {"stats": {}},
+                    {"stats": {"subtypes": ["Monster"]}},
+                    {"stats": {"type": "two words"}},
+                    {"stats": {"type": "Content", "subtypes": []}},
+                    {"stats": {"type": "Content", "subtypes": "Monster"}},
+                    {"stats": {"type": "Content", "subtypes": ["Monster", "Monster"]}},
+                    {"stats": {"type": "Content", "local": False}},
+                    {"campaign_1.held_by": {"type": "Content"}},
+                    {"": {"type": "Content"}},
                 )
             ],
         ],
@@ -342,6 +415,68 @@ class TestLoadExtensionSet:
         with pytest.raises(ValueError, match=message):
             load_extension_set(declared)
         assert validate(declared).failed
+
+    @pytest.mark.parametrize(
+        ("links", "other", "message"),
+        [
+            (
+                {"parent_location": {"type": "Content"}},
+                None,
+                "core field parent_location",
+            ),
+            ({"type": {"type": "Type"}}, None, "core field type"),
+            ({"campaign_2": {"type": "Session"}}, None, "core field campaign_2"),
+            (
+                {"region": {"type": "Player", "subtypes": ["PC"]}},
+                None,
+                "only Content has subtypes",
+            ),
+            (
+                {"region": {"type": "Content", "subtypes": ["Relik"]}},
+                None,
+                "unknown Content subtype Relik for field region",
+            ),
+            (
+                {"region": {"type": "Content"}},
+                {"type": "Content", "links": {"region": {"type": "Content"}}},
+                "conflicting extension link targets for Content/None field region",
+            ),
+            (
+                {"region": {"type": "Content"}},
+                {"type": "Content", "links": {"members": {"type": "Content"}}},
+                "core field members",
+            ),
+        ],
+    )
+    def test_invalid_links(
+        self,
+        declared: Path,
+        links: dict[str, object],
+        other: dict[str, object] | None,
+        message: str,
+    ) -> None:
+        config = declared / CONFIG
+        data = json.loads(config.read_text())
+        location = data["example"]["rules"][0]
+        location["links"] = links
+        if other is not None:
+            data["local"] = {"rules": [{"schema": location["schema"], **other}]}
+        config.write_text(json.dumps(data))
+        with pytest.raises(ValueError, match=message):
+            load_extension_set(declared)
+        assert validate(declared).failed
+
+    def test_links_to_declared_subtype(self, declared: Path) -> None:
+        config = declared / CONFIG
+        data = json.loads(config.read_text())
+        location, relic = data["example"]["rules"]
+        location["links"] = {"relics": {"type": "Content", "subtypes": ["Relic"]}}
+        relic["links"] = {"relics": {"type": "Content", "subtypes": ["Relic"]}}
+        config.write_text(json.dumps(data))
+        rules = load_extension_set(declared).rules
+        assert [r.links for r in rules] == [
+            {"relics": Target("Content", frozenset({"Relic"}), local=True)}
+        ] * 2
 
     def test_local_rule_for_declared_subtype(self, declared: Path) -> None:
         config = declared / CONFIG
