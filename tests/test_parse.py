@@ -525,6 +525,28 @@ class TestBodyLinks:
         assert body.links is body.links
 
 
+class TestBodyScanLinks:
+    @pytest.mark.parametrize(
+        ("text", "start"),
+        [
+            (
+                f"[[broken [[Other]]\n\n{FENCE}\n[[#^block]] ![[image.png]]\n{FENCE}\n",
+                8,
+            ),
+            ("# Notes\n[[Mara|the pilot]] and [[Quay Nine#Notes]]\n", 1),
+            ("No links.\n", 3),
+            ("", 1),
+        ],
+    )
+    def test_matches_a_parsed_body(self, text: str, start: int) -> None:
+        assert Body.scan_links(text, start) == Body(text, start).links
+
+    def test_structure_is_not_parsed(self) -> None:
+        with patch.object(Body, "__init__") as body:
+            assert Body.scan_links("[[Mara]]\n", 4) == (Link("Mara", "", 4),)
+        assert not body.called
+
+
 class TestBlockWalk:
     def test_order(self) -> None:
         inner = Block("paragraph", 3, "deep")
@@ -633,6 +655,52 @@ class TestSectionIterBlocks:
 
     def test_empty(self) -> None:
         assert list(Section("A", 1, 1).iter_blocks()) == []
+
+
+class TestSectionHeadingsAt:
+    BODY = Body(
+        "Opening.\n"  # 4
+        "# Preparation\n"  # 5
+        "Plan.\n"  # 6
+        "## Locations\n"  # 7
+        "Quay.\n"  # 8
+        "### Approach\n"  # 9
+        "By sea.\n"  # 10
+        "## Clues\n"  # 11
+        "# Notes\n"  # 12
+        "#### Aside\n"  # 13
+        "Rain.\n",  # 14
+        4,
+    )
+
+    @pytest.mark.parametrize(
+        ("line", "expected"),
+        [
+            (1, ()),
+            (4, ()),
+            (5, ("Preparation",)),
+            (6, ("Preparation",)),
+            (7, ("Preparation", "Locations")),
+            (8, ("Preparation", "Locations")),
+            (10, ("Preparation", "Locations", "Approach")),
+            (11, ("Preparation", "Clues")),
+            (12, ("Notes",)),
+            (14, ("Notes", "Aside")),
+            (99, ("Notes", "Aside")),
+        ],
+    )
+    def test_body(self, line: int, expected: tuple[str, ...]) -> None:
+        assert self.BODY.headings_at(line) == expected
+
+    @pytest.mark.parametrize(
+        ("line", "expected"),
+        [(6, ()), (8, ("Locations",)), (10, ("Locations", "Approach"))],
+    )
+    def test_subsection(self, line: int, expected: tuple[str, ...]) -> None:
+        assert self.BODY.children[0].headings_at(line) == expected
+
+    def test_without_headings(self) -> None:
+        assert Body("Text.\n").headings_at(1) == ()
 
 
 class TestSectionNest:

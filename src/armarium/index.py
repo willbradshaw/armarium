@@ -1,6 +1,7 @@
 """Index vault files and lazily parse referenced Markdown records."""
 
 import unicodedata
+from collections.abc import Iterable
 from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
@@ -23,7 +24,7 @@ LOAD_ERRORS = (OSError, ValueError, SchemaError, RecursionError)
 class VaultIndex:
     """Hold one validation run's file targets and parsed records for a vault."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, files: Iterable[Path] | None = None) -> None:
         """Map possible link targets to files without reading their contents.
 
         Each file contributes its vault-relative path and every trailing path.
@@ -41,6 +42,9 @@ class VaultIndex:
 
         Args:
             root: Vault directory; hidden files and symlinks are excluded.
+            files: Files below the resolved root to index in place of every
+                visible file. A target then resolves as in the whole vault
+                only if every file that could match it is among them.
         """
         self.root = root.resolve()
         self.targets: dict[str, set[Path]] = {}
@@ -49,7 +53,7 @@ class VaultIndex:
         self._schemas: dict[Path, Schema | Exception] = {}
         self._declarations: dict[str, dict[str, str]] | None = None
         self._subtype_directories: dict[str, str] | None = None
-        for path in find_files(self.root):
+        for path in find_files(self.root) if files is None else files:
             relative = path.relative_to(self.root)
             # Markdown links may include or omit .md; asset extensions matter.
             names = [relative.as_posix()]

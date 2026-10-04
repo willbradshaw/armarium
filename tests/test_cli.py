@@ -1665,6 +1665,150 @@ class TestFindCommand:
         assert args.vault == tmp_path
 
 
+class TestTraceCommand:
+    LINES = [
+        "content/Quay Nine.md\tkeeper\t",
+        "content/Quay Nine.md\tNotes > Events\t6",
+    ]
+
+    @pytest.fixture
+    def records(self, vault: Path) -> Path:
+        (vault / "content/Mara.md").write_text("---\naliases: [The Pilot]\n---\n")
+        (vault / "content/Quay Nine.md").write_text(
+            '---\nkeeper: "[[Mara]]"\n---\n# Notes\n## Events\n[[Mara]] waits.\n'
+        )
+        return vault
+
+    @pytest.mark.parametrize(
+        ("directory", "path", "explicit", "lines", "message"),
+        [
+            ("..", "content/Mara.md", True, LINES, "2 links to content/Mara.md"),
+            ("content", "content/Mara.md", True, LINES, "2 links to content/Mara.md"),
+            ("content", "Mara.md", False, LINES, "2 links to content/Mara.md"),
+            ("", "content/Mara.md", False, LINES, "2 links to content/Mara.md"),
+            (
+                "..",
+                "{vault}/content/Mara.md",
+                False,
+                LINES,
+                "2 links to content/Mara.md",
+            ),
+            (
+                "..",
+                "{vault}/content/Mara.md",
+                True,
+                LINES,
+                "2 links to content/Mara.md",
+            ),
+            ("", "content/Quay Nine.md", False, [], "0 links to content/Quay Nine.md"),
+            (
+                "..",
+                "reference/types/Widget.md",
+                True,
+                [],
+                "0 links to reference/types/Widget.md",
+            ),
+        ],
+    )
+    def test_lists_links(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        directory: str,
+        path: str,
+        explicit: bool,
+        lines: list[str],
+        message: str,
+    ) -> None:
+        monkeypatch.chdir(records / directory)
+        arguments = [path.format(vault=records)]
+        arguments += ["--vault", str(records)] if explicit else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "trace", *arguments])
+        before = {p: p.read_bytes() for p in records.rglob("*") if p.is_file()}
+        main()
+        output = capsys.readouterr()
+        assert output.out.splitlines() == lines
+        assert output.err.strip().endswith(f"INFO: {message}")
+        assert len(output.err.splitlines()) == 1
+        assert all(p.read_bytes() == content for p, content in before.items())
+
+    def test_counts_one_link(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        (records / "content/Quay Nine.md").write_text("[[Mara]]\n")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "trace", "content/Mara.md", "--vault", str(records)],
+        )
+        main()
+        assert (
+            capsys.readouterr().err.strip().endswith("INFO: 1 link to content/Mara.md")
+        )
+
+    @pytest.mark.parametrize(
+        ("path", "explicit", "message"),
+        [
+            ("content/Gull.md", True, "content/Gull.md does not exist"),
+            ("content/Gull.md", False, "content/Gull.md does not exist"),
+            ("Mara", False, "Mara does not exist"),
+            ("content", True, "content is a directory, not a file"),
+            ("content/.Hidden.md", True, "is not part of the vault: hidden entries"),
+            ("content/Linked.md", False, "content/Linked.md is a symlink"),
+            ("../Loose.md", False, "cannot infer vault; supply --vault PATH"),
+            ("../Loose.md", True, "target must be inside the selected vault directory"),
+        ],
+    )
+    def test_exits_with_one(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        path: str,
+        explicit: bool,
+        message: str,
+    ) -> None:
+        (records / "content/.Hidden.md").write_text("")
+        (records / "content/Linked.md").symlink_to(records / "content/Mara.md")
+        (records.parent / "Loose.md").write_text("")
+        monkeypatch.chdir(records)
+        arguments = [path, *(["--vault", str(records)] if explicit else [])]
+        monkeypatch.setattr(sys, "argv", ["armarium", "trace", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert len(output.err.splitlines()) == 1
+        assert f"ERROR: Cannot trace {path}: " in output.err and message in output.err
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["content/Mara.md", "content/Quay Nine.md"],
+            ["content/Mara.md", "--jobs", "2"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["trace", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["trace", "content/Mara Vey.md"])
+        assert (args.path, args.vault) == (Path("content/Mara Vey.md"), None)
+        args = parse_args(["trace", "content/Mara.md", "--vault", str(tmp_path)])
+        assert args.vault == tmp_path
+
+
 class TestJobs:
     @pytest.mark.parametrize(("value", "expected"), [("1", 1), ("12", 12)])
     def test_count(self, value: str, expected: int) -> None:

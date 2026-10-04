@@ -42,3 +42,6 @@ is left out rather than reported; [`armarium validate`](validate.md) reports it.
 The command exits with `0` when a record has the name or alias, `1` when none
 does or the vault cannot be read, and `2` for a usage error. Messages go to
 standard error, so standard output holds only matches.
+
+Pass a listed path to [`armarium trace`](trace.md) to see which records link
+to that record.
