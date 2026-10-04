@@ -83,6 +83,10 @@ order without repeats, and each campaign that appears must have a
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
 
+What belongs in Notes, and what counts as an appearance for each subtype, is
+set out in the vault's own
+[Content Type record](../vaults/starter/reference/types/Content.md).
+
 Date Content represents a particular day or period. Recurring calendar concepts,
 such as a named month or weekday, are Lore.
 

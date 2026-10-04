@@ -6,8 +6,9 @@ Transcript records contain cleaned, attributed speech from a session, grouped un
 content headings. They live under the campaign's `sessions/transcripts/` directory
 and link to their Session through the `session` field.
 
-Use [[templates/Transcript]]. Name the file `S-1-001 Transcript.md` for
-session `S-1-001`. Speaker labels can identify the GM, a character, or the table;
+Create a Transcript with `armarium add transcript SESSION --body-file FILE`,
+which follows the structure of [[templates/Transcript]] and names the file
+`S-1-001 Transcript.md` for session `S-1-001`. Speaker labels can identify the GM, a character, or the table;
 use `[Player?]` or `[?]` when attribution or hearing is uncertain.
 
 ## Schema

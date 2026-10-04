@@ -40,8 +40,8 @@ enabled.
 | `reference/` | Templates, type descriptions, schemas, statuses, and shared reference material. |
 | `assets/` | Maps, images, and handouts. |
 
-Use [`armarium add`](docs/add.md#adding-a-record) or copy a file from
-`reference/templates/` to create a record. [Records](docs/record.md)
+Use [`armarium add`](docs/add.md#adding-a-record) to create a record from the
+vault's templates in `reference/templates/`. [Records](docs/record.md)
 describes what every record shares and [Types](docs/type.md) the fields, body
 and rules of each type.
 
