@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium trace` to list the records that link to a record, and where.
 - Add `armarium find` to list the records with a given name or alias.
 - Let the Content Type record declare `subtype_directories`: a subfolder per subtype that `armarium add content` files into and validation enforces.
 - Define appearances per Content subtype and what belongs in Notes; Type records point to `armarium add`.

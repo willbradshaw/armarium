@@ -635,6 +635,52 @@ class TestSectionIterBlocks:
         assert list(Section("A", 1, 1).iter_blocks()) == []
 
 
+class TestSectionHeadingsAt:
+    BODY = Body(
+        "Opening.\n"  # 4
+        "# Preparation\n"  # 5
+        "Plan.\n"  # 6
+        "## Locations\n"  # 7
+        "Quay.\n"  # 8
+        "### Approach\n"  # 9
+        "By sea.\n"  # 10
+        "## Clues\n"  # 11
+        "# Notes\n"  # 12
+        "#### Aside\n"  # 13
+        "Rain.\n",  # 14
+        4,
+    )
+
+    @pytest.mark.parametrize(
+        ("line", "expected"),
+        [
+            (1, ()),
+            (4, ()),
+            (5, ("Preparation",)),
+            (6, ("Preparation",)),
+            (7, ("Preparation", "Locations")),
+            (8, ("Preparation", "Locations")),
+            (10, ("Preparation", "Locations", "Approach")),
+            (11, ("Preparation", "Clues")),
+            (12, ("Notes",)),
+            (14, ("Notes", "Aside")),
+            (99, ("Notes", "Aside")),
+        ],
+    )
+    def test_body(self, line: int, expected: tuple[str, ...]) -> None:
+        assert self.BODY.headings_at(line) == expected
+
+    @pytest.mark.parametrize(
+        ("line", "expected"),
+        [(6, ()), (8, ("Locations",)), (10, ("Locations", "Approach"))],
+    )
+    def test_subsection(self, line: int, expected: tuple[str, ...]) -> None:
+        assert self.BODY.children[0].headings_at(line) == expected
+
+    def test_without_headings(self) -> None:
+        assert Body("Text.\n").headings_at(1) == ()
+
+
 class TestSectionNest:
     def test_levels(self) -> None:
         a, b, c, d, e = (

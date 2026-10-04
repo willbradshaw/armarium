@@ -1665,6 +1665,130 @@ class TestFindCommand:
         assert args.vault == tmp_path
 
 
+class TestTraceCommand:
+    @pytest.fixture
+    def records(self, vault: Path) -> Path:
+        (vault / "content/Mara.md").write_text("---\naliases: [The Pilot]\n---\n")
+        (vault / "content/Quay Nine.md").write_text(
+            '---\nkeeper: "[[Mara]]"\n---\n# Notes\n## Events\n[[Mara]] waits.\n'
+        )
+        return vault
+
+    @pytest.mark.parametrize(
+        ("name", "lines", "message"),
+        [
+            (
+                "mara",
+                [
+                    "content/Quay Nine.md\tkeeper\t",
+                    "content/Quay Nine.md\tNotes > Events\t6",
+                ],
+                "INFO: 2 links to content/Mara.md",
+            ),
+            (
+                "the pilot",
+                [
+                    "content/Quay Nine.md\tkeeper\t",
+                    "content/Quay Nine.md\tNotes > Events\t6",
+                ],
+                "INFO: 2 links to content/Mara.md",
+            ),
+            ("Quay Nine", [], "INFO: 0 links to content/Quay Nine.md"),
+            (
+                "types/Widget",
+                [],
+                "INFO: 0 links to reference/types/Widget.md",
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_lists_links(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        name: str,
+        lines: list[str],
+        message: str,
+        explicit: bool,
+    ) -> None:
+        monkeypatch.chdir(records.parent if explicit else records / "content")
+        vault_option = ["--vault", str(records)] if explicit else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "trace", name, *vault_option])
+        before = {p: p.read_bytes() for p in records.rglob("*") if p.is_file()}
+        main()
+        output = capsys.readouterr()
+        assert output.out.splitlines() == lines
+        assert output.err.strip().endswith(message)
+        assert len(output.err.splitlines()) == 1
+        assert all(p.read_bytes() == content for p, content in before.items())
+
+    def test_counts_one_link(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        (records / "content/Quay Nine.md").write_text("[[Mara]]\n")
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "trace", "Mara", "--vault", str(records)]
+        )
+        main()
+        assert (
+            capsys.readouterr().err.strip().endswith("INFO: 1 link to content/Mara.md")
+        )
+
+    @pytest.mark.parametrize(
+        ("name", "inside", "message"),
+        [
+            ("gull", True, "ERROR: Cannot trace gull: no record is named gull"),
+            (
+                "Type",
+                True,
+                "ERROR: Cannot trace Type: several files are named Type: "
+                "content/Type.md, reference/types/Type.md; use a vault-relative path",
+            ),
+            (" ", True, "ERROR: Cannot trace  : name must not be blank"),
+            ("mara", False, "ERROR: Cannot trace mara: "),
+        ],
+    )
+    def test_exits_with_one(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        name: str,
+        inside: bool,
+        message: str,
+    ) -> None:
+        (records / "content/Type.md").write_text("")
+        monkeypatch.chdir(records if inside else records.parent)
+        monkeypatch.setattr(sys, "argv", ["armarium", "trace", name])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert message in output.err
+
+    @pytest.mark.parametrize(
+        "arguments", [[], ["mara", "vey"], ["mara", "--jobs", "2"]]
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["trace", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["trace", "Mara Vey"])
+        assert (args.name, args.vault) == ("Mara Vey", None)
+        args = parse_args(["trace", "Mara", "--vault", str(tmp_path)])
+        assert args.vault == tmp_path
+
+
 class TestJobs:
     @pytest.mark.parametrize(("value", "expected"), [("1", 1), ("12", 12)])
     def test_count(self, value: str, expected: int) -> None:

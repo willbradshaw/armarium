@@ -25,7 +25,8 @@ for details.
 
 Add campaigns and records with `armarium add`; see
 [Adding to a vault](docs/add.md). Look a record up by name or alias with
-`armarium find`; see [Finding records](docs/find.md). Optional
+`armarium find`, and list the records that link to it with `armarium trace`; see
+[Finding records](docs/find.md). Optional
 [extensions](docs/extensions.md) add additional conventions.
 
 Requires Obsidian **1.13.7+** with **Bases** and

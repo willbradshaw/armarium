@@ -1,7 +1,9 @@
 # Finding records
 
-`armarium find` looks a [record](record.md) up by name or alias in an existing
-[vault](vault.md). It only reads: nothing is validated or changed.
+Two commands look things up in an existing [vault](vault.md):
+[`armarium find`](#finding-a-record-by-name) lists the [records](record.md) with
+a given name or alias, and [`armarium trace`](#tracing-links-to-a-record) lists
+the records that link to one. Both only read: nothing is validated or changed.
 
 ## Finding a record by name
 
@@ -42,3 +44,53 @@ is left out rather than reported; [`armarium validate`](validate.md) reports it.
 The command exits with `0` when a record has the name or alias, `1` when none
 does or the vault cannot be read, and `2` for a usage error. Messages go to
 standard error, so standard output holds only matches.
+
+## Tracing links to a record
+
+```sh
+armarium trace "Quay Nine" --vault ../my-vault
+```
+
+`armarium trace NAME` lists every [link](record.md#links) to one record from the
+vault's other records, with where each link sits. Use it after changing a record,
+to see which records refer to it and may need a matching change.
+
+`NAME` is the record's name or a trailing part of its path, exactly as a link
+would spell it; if no file has that name, the record that
+[`armarium find`](#finding-a-record-by-name) lists for it is used, such as one
+declaring it as an alias. `NAME` must identify one file. When no record has the
+name, the command says so and exits with `1`. When several share it, the command
+lists them and exits with `1`; spell enough of the path to tell them apart, such
+as `types/Content`. An asset can be traced by its filename with its extension.
+
+`--vault PATH` names the vault's root directory. Omit it to use the vault
+containing the current directory.
+
+Each link is one line on standard output, with three tab-separated fields:
+
+```text
+campaigns/campaign_1/clues/C-1-0001.md	subjects
+campaigns/campaign_1/sessions/S-1-002.md	prepared_locations
+campaigns/campaign_1/sessions/S-1-002.md	Preparation > Scene notes	42
+campaigns/campaign_1/sessions/S-1-002.md	Notes > Events	65
+content/Captain Mara Vey.md	Appearances	22
+```
+
+1. The linking record's path, relative to the vault root.
+2. Where the link sits. For a frontmatter link, the field, with nested fields
+   joined by dots: `campaign_1.held_by`. For a body link, the headings above
+   it, outermost first and joined by ` > `; empty for text before the first
+   heading.
+3. The link's line number in the file, for a body link; empty for frontmatter.
+
+Lines are sorted by path, then line number. Links are followed as
+[validation](validate.md) resolves them, whatever their spelling, alias or
+anchor; embeds count as links, and a link written inside code counts too. Several
+links to the record on one line, or in one field, are listed once. The record's
+links to itself are left out, as are links from templates, hidden entries, the
+`scripts/` directory and files that cannot be parsed.
+
+The command reports the traced record and the number of links on standard error.
+It exits with `0` whether or not anything links to the record, `1` when the name
+does not identify one file or the vault cannot be read, and `2` for a usage
+error.

@@ -512,6 +512,26 @@ class Section:
             for block in section.blocks:
                 yield from block.walk()
 
+    def headings_at(self, line: int) -> tuple[str, ...]:
+        """Name the headings that a source line sits beneath.
+
+        Args:
+            line: One-based source line inside this section.
+
+        Returns:
+            tuple[str, ...]: Titles of the subsections containing the line,
+                outermost first, ending with the nearest heading above or on
+                it. Empty when the line precedes this section's subsections.
+        """
+        titles: list[str] = []
+        section = self
+        while True:
+            started = [child for child in section.children if child.line <= line]
+            if not started:
+                return tuple(titles)
+            section = started[-1]
+            titles.append(section.title)
+
     @classmethod
     def nest(cls, entries: list["Section | Block"]) -> tuple["Section", ...]:
         """Arrange a flat run of headings and blocks into a tree by level.
