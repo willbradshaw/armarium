@@ -8,9 +8,10 @@ Create a Clue with `armarium add clue --campaign N`, which starts from
 [[templates/Clue]]. Clue text belongs in the `text` property. The body contains only the Sessions heading and its embedded view, with no
 additional commentary.
 
-Store records under `campaigns/campaign_1/clues/`, named `C-1-0001.md`,
-`C-1-0002.md`, etc. Another campaign's number appears in its path and filenames;
-the Sessions view derives its scope from the containing campaign folder.
+Campaign 1's Clues live under `campaigns/campaign_1/clues/`, named `C-1-0001.md`,
+`C-1-0002.md`, etc.; campaign 2's live under `campaigns/campaign_2/clues/`, named
+`C-2-0001.md`, and so on. The Sessions view derives its scope from the containing
+campaign folder.
 
 ## Schema
 

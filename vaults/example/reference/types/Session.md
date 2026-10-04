@@ -7,9 +7,9 @@ Records with `type: "[[types/Session]]"` are play-session records containing pre
 Create a Session with `armarium add session --campaign N`, which starts from
 [[templates/Session]] and fills in `session_number` and the campaign link.
 
-Records live under `campaigns/campaign_1/sessions/`, named `S-1-001.md`,
-`S-1-002.md`, etc. Another campaign's number appears in its path, campaign link
-and filenames.
+Campaign 1's Sessions live under `campaigns/campaign_1/sessions/`, named
+`S-1-001.md`, `S-1-002.md`, etc.; campaign 2's live under
+`campaigns/campaign_2/sessions/`, named `S-2-001.md`, and so on.
 
 `prepared_clues`, `prepared_locations` and `prepared_npcs` are ordered link lists
 (use `[]` for none; omitted lists also select nothing). Clues must belong to this
