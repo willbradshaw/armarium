@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Check PC `class`, `subclass` and `level` in the `dnd-5-5` extension.
+- Require Monster `spells` to link Spells and NPC `stats` links to name a Monster in `dnd-5-5`.
 - Let extension rules declare which record types the wikilinks in a field must target.
 - Meta-validate each distinct schema text once per process, not on every load.
 - Add `armarium validate --jobs N` to validate a directory's records with several processes.

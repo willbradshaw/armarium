@@ -26,7 +26,33 @@
         "template": "templates/Monster.md",
         "yaml_blocks": [
           "statblock"
-        ]
+        ],
+        "links": {
+          "spells": {
+            "type": "Content",
+            "subtypes": [
+              "Spell"
+            ]
+          }
+        }
+      },
+      {
+        "type": "Content",
+        "subtype": "NPC",
+        "schema": "schemas/npc.schema.json",
+        "links": {
+          "stats": {
+            "type": "Content",
+            "subtypes": [
+              "Monster"
+            ]
+          }
+        }
+      },
+      {
+        "type": "Content",
+        "subtype": "PC",
+        "schema": "schemas/pc.schema.json"
       }
     ]
   }

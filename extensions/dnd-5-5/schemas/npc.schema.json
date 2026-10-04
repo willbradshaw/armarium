@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "D&D 5.5 NPC fields",
+  "description": "Adds no field constraints. The extension declares that a stats link names a Monster record; a stats URL remains allowed.",
+  "type": "object"
+}
