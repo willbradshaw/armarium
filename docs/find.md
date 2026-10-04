@@ -15,11 +15,8 @@ equivalent Unicode spellings are ignored, as is extra whitespace. The whole name
 must match; a record whose name only contains `NAME` is not listed. Use it before
 creating a record, to see whether the entity already has one.
 
-| Option | Effect |
-| --- | --- |
-| `--type TYPE` | Only list records of this [type](type.md), such as `Content`. |
-| `--subtype SUBTYPE` | Only list records of this subtype, such as `NPC`. |
-| `--vault PATH` | The vault's root directory. Omit it to use the vault containing the current directory. |
+`--vault PATH` names the vault's root directory. Omit it to use the vault
+containing the current directory.
 
 Each match is one line on standard output, with four tab-separated fields:
 
@@ -29,7 +26,7 @@ campaigns/campaign_1/content/Quay Nine.md	Content/Location	alias
 ```
 
 1. The record's path, relative to the vault root.
-2. Its type, followed by `/` and its subtype when it has one. Empty for a file
+2. Its [type](type.md), followed by `/` and its subtype when it has one. Empty for a file
    without a usable `type`.
 3. How it matched: `name` when the filename is the name sought, `alias` when
    one of its aliases is.

@@ -1587,7 +1587,7 @@ class TestFindCommand:
                 ],
             ),
             (
-                ["quay nine", "--type", "widget", "--subtype", "location"],
+                ["quay nine"],
                 ["content/Quay Nine.md\tWidget/Location\tname\t"],
             ),
         ],
@@ -1619,7 +1619,6 @@ class TestFindCommand:
         [
             (["gull"], True, "INFO: No records match gull"),
             (["quay"], True, "INFO: No records match quay"),
-            (["mara", "--type", "Session"], True, "INFO: No records match mara"),
             ([" "], True, "ERROR: Cannot find  : name must not be blank"),
             (["mara"], False, "ERROR: Cannot find mara: "),
         ],
@@ -1643,7 +1642,13 @@ class TestFindCommand:
         assert message in output.err
 
     @pytest.mark.parametrize(
-        "arguments", [[], ["mara", "vey"], ["mara", "--jobs", "2"]]
+        "arguments",
+        [
+            [],
+            ["mara", "vey"],
+            ["mara", "--type", "Content"],
+            ["mara", "--subtype", "NPC"],
+        ],
     )
     def test_usage_errors(
         self, arguments: list[str], capsys: pytest.CaptureFixture[str]
@@ -1655,17 +1660,9 @@ class TestFindCommand:
 
     def test_options(self, tmp_path: Path) -> None:
         args = parse_args(["find", "Mara Vey"])
-        assert (args.name, args.type, args.subtype, args.vault) == (
-            "Mara Vey",
-            None,
-            None,
-            None,
-        )
-        args = parse_args(
-            ["find", "Mara", "--type", "Content", "--subtype", "NPC"]
-            + ["--vault", str(tmp_path)]
-        )
-        assert (args.type, args.subtype, args.vault) == ("Content", "NPC", tmp_path)
+        assert (args.name, args.vault) == ("Mara Vey", None)
+        args = parse_args(["find", "Mara", "--vault", str(tmp_path)])
+        assert args.vault == tmp_path
 
 
 class TestJobs:

@@ -151,11 +151,10 @@ class TestAliasList:
 
 class TestFindRecords:
     @pytest.mark.parametrize(
-        ("name", "options", "expected"),
+        ("name", "expected"),
         [
             (
                 "mara",
-                {},
                 [
                     ("content/Mara.md", "Content/NPC", "name", "Harbour pilot."),
                     ("notes/Mara.md", "Note", "name", ""),
@@ -169,7 +168,6 @@ class TestFindRecords:
             ),
             (
                 "captain  MARA vey",
-                {},
                 [
                     (
                         "content/Captain Mara Vey.md",
@@ -181,45 +179,23 @@ class TestFindRecords:
             ),
             (
                 " THE   pilot ",
-                {},
                 [("content/Mara.md", "Content/NPC", "alias", "Harbour pilot.")],
             ),
-            (
-                "mara",
-                {"kind": "content", "subtype": "npc"},
-                [("content/Mara.md", "Content/NPC", "name", "Harbour pilot.")],
-            ),
-            (
-                "mara",
-                {"subtype": "location"},
-                [
-                    (
-                        "campaigns/campaign_1/content/Quay Nine.md",
-                        "Content/Location",
-                        "alias",
-                        "",
-                    )
-                ],
-            ),
-            ("the ninth quay", {}, []),
-            ("captain", {}, []),
-            ("mar", {}, []),
-            ("mara's", {}, []),
-            ("mara", {"kind": "Note"}, [("notes/Mara.md", "Note", "name", "")]),
-            ("mara", {"kind": "Note", "subtype": "NPC"}, []),
-            ("mara", {"kind": "Session"}, []),
-            ("wake-lark", {"subtype": "Location"}, []),
-            ("gull", {}, []),
+            ("the ninth quay", []),
+            ("captain", []),
+            ("mar", []),
+            ("mara's", []),
+            ("wake-lark", [("content/Wake-lark.md", "Content/Object", "name", "")]),
+            ("gull", []),
         ],
     )
     def test_matches(
         self,
         vault: Path,
         name: str,
-        options: dict[str, str],
         expected: list[tuple[str, str, str, str]],
     ) -> None:
-        matches = find_records(name, vault, **options)
+        matches = find_records(name, vault)
         assert [(m.relative, m.kind, m.match, m.summary) for m in matches] == expected
         assert all(m.path == vault.resolve() / m.relative for m in matches)
 
@@ -274,7 +250,6 @@ class TestFindRecords:
             ("content/Gull.md", "", "name"),
             ("content/Tern.md", "", "alias"),
         ]
-        assert find_records("gull", vault, kind="Content") == []
 
     def test_parses_only_possible_matches(self, vault: Path) -> None:
         with patch("armarium.find._read_frontmatter", wraps=_read_frontmatter) as read:

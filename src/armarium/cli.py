@@ -237,8 +237,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     find.add_argument("name", help="record name or alias, without a path or .md")
-    find.add_argument("--type", help="only list records of this type")
-    find.add_argument("--subtype", help="only list records of this subtype")
     find.add_argument(
         "--vault",
         type=Path,
@@ -298,9 +296,7 @@ def main() -> None:
     configure_logging()
     if args.command == "find":
         try:
-            matches = find_records(
-                args.name, args.vault, kind=args.type, subtype=args.subtype
-            )
+            matches = find_records(args.name, args.vault)
         except (OSError, ValueError) as exc:
             logger.error("Cannot find %s: %s", args.name, exc)
             sys.exit(1)

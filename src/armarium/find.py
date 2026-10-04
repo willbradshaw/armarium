@@ -98,13 +98,7 @@ def _aliases(frontmatter: Frontmatter) -> list[str]:
     return []
 
 
-def find_records(
-    name: str,
-    vault: Path | None = None,
-    *,
-    kind: str | None = None,
-    subtype: str | None = None,
-) -> list[Match]:
+def find_records(name: str, vault: Path | None = None) -> list[Match]:
     """List the records whose filename or one of whose aliases is a name.
 
     Names compare as link targets do: ignoring case and Unicode spelling.
@@ -115,8 +109,6 @@ def find_records(
     Args:
         name: Name to look for, without a path or .md.
         vault: Vault root, or None to discover it from the working directory.
-        kind: Only list records of this type, such as Content.
-        subtype: Only list records of this subtype, such as NPC.
 
     Returns:
         list[Match]: Records with that name, then records with that alias,
@@ -132,11 +124,6 @@ def find_records(
     if not query:
         raise ValueError("name must not be blank")
     root = select_vault(vault)
-    wanted = {
-        field: value.strip().casefold()
-        for field, value in (("type", kind), ("subtype", subtype))
-        if value is not None
-    }
     matches: list[Match] = []
     for path in record_files(root):
         named = _name_key(path.stem) == query
@@ -155,15 +142,10 @@ def find_records(
             match = "alias"
         else:
             continue
-        found = {"type": frontmatter.type, "subtype": frontmatter.get("subtype")}
-        names = {
-            field: value for field, value in found.items() if isinstance(value, str)
-        }
-        if any(
-            names.get(field, "").casefold() != value for field, value in wanted.items()
-        ):
-            continue
-        label = "/".join(names.values()) if "type" in names else ""
+        label = frontmatter.type or ""
+        subtype = frontmatter.get("subtype")
+        if label and isinstance(subtype, str):
+            label += f"/{subtype}"
         summary = frontmatter.get("summary")
         matches.append(
             Match(
