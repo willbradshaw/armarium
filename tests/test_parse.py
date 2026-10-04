@@ -355,6 +355,43 @@ class TestFrontmatter:
         assert repr(Frontmatter({"a": 1})) == "Frontmatter({'a': 1})"
 
 
+class TestFrontmatterParse:
+    @pytest.mark.parametrize(
+        ("text", "metadata", "length"),
+        [
+            ("", {}, 0),
+            ("## Notes\n", {}, 0),
+            ("---\nname: Example\n---\n## Notes\n", {"name": "Example"}, 3),
+            ("---\r\nname: Example\r\n---\r\nBody", {"name": "Example"}, 3),
+            ("---\n---\n", {}, 2),
+            ("---\nnull\n---", {}, 3),
+            ("---\ndate: 2026-01-02\n---\nBody", {"date": "2026-01-02"}, 3),
+        ],
+    )
+    def test_frontmatter_and_length(
+        self, text: str, metadata: dict[str, object], length: int
+    ) -> None:
+        assert Frontmatter.parse(text) == (metadata, length)
+
+    @pytest.mark.parametrize(
+        ("text", "error"),
+        [
+            ("---\nname: Example\n", ValueError),
+            ("---\n- item\n---\n", ValueError),
+            ("---\nname: [\n---\n", yaml.YAMLError),
+            ("---\nname: a\nname: b\n---\n", yaml.YAMLError),
+        ],
+    )
+    def test_invalid(self, text: str, error: type[Exception]) -> None:
+        with pytest.raises(error):
+            Frontmatter.parse(text)
+
+    def test_body_is_not_parsed(self) -> None:
+        with patch.object(Body, "__init__") as body:
+            Frontmatter.parse("---\nname: Example\n---\n## Notes\n")
+        assert not body.called
+
+
 class TestFrontmatterType:
     @pytest.mark.parametrize(
         ("metadata", "expected"),

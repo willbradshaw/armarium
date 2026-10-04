@@ -17,6 +17,7 @@ from armarium.extensions import (
     remove_extension,
     update_extension,
 )
+from armarium.find import find_records
 from armarium.init import init_vault
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
@@ -225,6 +226,22 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         required=True,
         help="UTF-8 Markdown file containing transcript body",
     )
+    find = commands.add_parser(
+        "find",
+        help="find records by name or alias",
+        description=(
+            "List the records whose filename or one of whose aliases is a name, "
+            "ignoring case: records with that name, then records with that alias. "
+            "Each line holds the record's path, type, match kind and summary, "
+            "separated by tabs. Exits with 1 when no record has the name or alias."
+        ),
+    )
+    find.add_argument("name", help="record name or alias, without a path or .md")
+    find.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -269,13 +286,26 @@ def main() -> None:
     """Run the selected command and log its result.
 
     Raises:
-        SystemExit: Status 1 when creation fails or files fail validation.
+        SystemExit: Status 1 when creation fails, files fail validation or
+            find matches nothing.
             Creation reports validation warnings and errors; validate also reports
             informational diagnostics and coverage counts. Argument parsing
             exits with 0 for help or 2 for usage errors.
     """
     args = parse_args()
     configure_logging()
+    if args.command == "find":
+        try:
+            matches = find_records(args.name, args.vault)
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot find %s: %s", args.name, exc)
+            sys.exit(1)
+        for match in matches:
+            print(match.line)
+        if not matches:
+            logger.info("No records match %s", args.name)
+            sys.exit(1)
+        return
     if args.command == "init":
         try:
             logger.info(

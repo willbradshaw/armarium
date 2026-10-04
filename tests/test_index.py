@@ -7,7 +7,7 @@ import pytest
 from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import ExtensionSet
-from armarium.index import VaultIndex, _key
+from armarium.index import VaultIndex, link_key
 from armarium.lib import find_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
@@ -442,7 +442,7 @@ class TestVaultIndexContainingDirectories:
             VaultIndex(tmp_path).containing_directories(tmp_path.parent / "a.md")
 
 
-class TestKey:
+class TestLinkKey:
     @pytest.mark.parametrize(
         "name, expected",
         [
@@ -454,4 +454,4 @@ class TestKey:
         ],
     )
     def test_key(self, name: str, expected: str) -> None:
-        assert _key(name) == expected
+        assert link_key(name) == expected

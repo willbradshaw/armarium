@@ -1565,6 +1565,106 @@ class TestDowngradeOption:
         )
 
 
+class TestFindCommand:
+    @pytest.fixture
+    def records(self, vault: Path) -> Path:
+        (vault / "content/Mara.md").write_text(
+            '---\ntype: "[[Widget]]"\nsummary: Harbour pilot.\n---\n'
+        )
+        (vault / "content/Quay Nine.md").write_text(
+            '---\ntype: "[[Widget]]"\nsubtype: Location\naliases: [Mara]\n---\n'
+        )
+        return vault
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
+            (
+                ["mara"],
+                [
+                    "content/Mara.md\tWidget\tname\tHarbour pilot.",
+                    "content/Quay Nine.md\tWidget/Location\talias\t",
+                ],
+            ),
+            (
+                ["quay nine"],
+                ["content/Quay Nine.md\tWidget/Location\tname\t"],
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_lists_matches(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        arguments: list[str],
+        expected: list[str],
+        explicit: bool,
+    ) -> None:
+        monkeypatch.chdir(records.parent if explicit else records / "content")
+        vault_option = ["--vault", str(records)] if explicit else []
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "find", *arguments, *vault_option]
+        )
+        before = {p: p.read_bytes() for p in records.rglob("*") if p.is_file()}
+        main()
+        output = capsys.readouterr()
+        assert output.out.splitlines() == expected
+        assert output.err == ""
+        assert all(p.read_bytes() == content for p, content in before.items())
+
+    @pytest.mark.parametrize(
+        ("arguments", "inside", "message"),
+        [
+            (["gull"], True, "INFO: No records match gull"),
+            (["quay"], True, "INFO: No records match quay"),
+            ([" "], True, "ERROR: Cannot find  : name must not be blank"),
+            (["mara"], False, "ERROR: Cannot find mara: "),
+        ],
+    )
+    def test_exits_with_one(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        arguments: list[str],
+        inside: bool,
+        message: str,
+    ) -> None:
+        monkeypatch.chdir(records if inside else records.parent)
+        monkeypatch.setattr(sys, "argv", ["armarium", "find", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert message in output.err
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["mara", "vey"],
+            ["mara", "--type", "Content"],
+            ["mara", "--subtype", "NPC"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["find", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["find", "Mara Vey"])
+        assert (args.name, args.vault) == ("Mara Vey", None)
+        args = parse_args(["find", "Mara", "--vault", str(tmp_path)])
+        assert args.vault == tmp_path
+
+
 class TestJobs:
     @pytest.mark.parametrize(("value", "expected"), [("1", 1), ("12", 12)])
     def test_count(self, value: str, expected: int) -> None:

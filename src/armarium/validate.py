@@ -33,6 +33,7 @@ from armarium.lib import (
     parse_directories,
     parse_subtype_directories,
     parse_wikilink,
+    record_files,
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
@@ -285,9 +286,9 @@ def validate_directory(
     """Validate visible Markdown descendants, discovering vaults as needed.
 
     Args:
-        path: Directory to scan recursively. Hidden entries, caches,
-            node_modules and symlinks are excluded by find_files. Markdown under
-            the vault's optional scripts/ directory is not record-validated.
+        path: Directory to scan recursively. record_files selects the
+            Markdown to validate: hidden entries, caches, node_modules,
+            symlinks and the vault's optional scripts/ directory are excluded.
         vault: Optional explicit vault containing the entire selected directory.
             Otherwise try the selected directory, then descend until a vault
             is found. A selected vault applies to its entire subtree.
@@ -322,12 +323,7 @@ def validate_directory(
             if child.is_dir()
         ]
         return Result.combine(results)
-    files = [
-        file
-        for file in find_files(path)
-        if file.suffix.lower() == ".md"
-        and not file.resolve().is_relative_to(context / "scripts")
-    ]
+    files = record_files(path, context)
     index: VaultIndex | None = None
     if jobs > 1 and len(files) > 1:
         # Each worker builds its own index; the files keep their order, and
