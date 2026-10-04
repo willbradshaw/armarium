@@ -7,7 +7,9 @@ from pathlib import Path
 import yaml
 
 from armarium.add import select_vault
-from armarium.index import link_key, record_files
+from armarium.extensions import is_template
+from armarium.index import link_key
+from armarium.lib import record_files
 from armarium.parse import Frontmatter
 
 # An aliases field that may hold a value: text after the colon, or a block
@@ -125,7 +127,10 @@ def find_records(name: str, vault: Path | None = None) -> list[Match]:
         raise ValueError("name must not be blank")
     root = select_vault(vault)
     matches: list[Match] = []
-    for path in record_files(root):
+    for path in record_files(root, root):
+        # Validation scans templates too; they are not records to find.
+        if "templates" in path.parts and is_template(path, root):
+            continue
         named = _name_key(path.stem) == query
         try:
             data = path.read_bytes()

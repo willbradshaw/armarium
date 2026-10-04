@@ -1,6 +1,7 @@
 """Shared utilities and data types for Armarium."""
 
 import logging
+import os
 import re
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
@@ -424,29 +425,63 @@ def check_vault(path: Path, vault: Path) -> Path:
     return root
 
 
-def find_files(root: Path) -> list[Path]:
+# Directories that traversal skips wherever they occur.
+SKIPPED_DIRECTORIES = frozenset({"__pycache__", "node_modules"})
+
+
+def _visible(directory: str | Path) -> list[os.DirEntry[str]]:
+    """List the entries of a directory that traversal keeps, in any order.
+
+    Args:
+        directory: Directory to read.
+
+    Returns:
+        list[os.DirEntry[str]]: Its entries without hidden names, symlinks
+            and the __pycache__ and node_modules directories.
+
+    Raises:
+        OSError: The directory cannot be read.
+    """
+    with os.scandir(directory) as entries:
+        return [
+            entry
+            for entry in entries
+            if not entry.name.startswith(".")
+            and not entry.is_symlink()
+            and not (entry.name in SKIPPED_DIRECTORIES and entry.is_dir())
+        ]
+
+
+def find_files(root: Path, suffix: str | None = None) -> list[Path]:
     """List visible regular files below a directory in deterministic path order.
 
     Args:
         root: Directory to traverse. A symlink as the starting root is rejected.
+        suffix: Only list files whose name ends with this lowercase extension,
+            such as ``.md``, compared without regard to case; None lists
+            every file.
 
     Returns:
         list[Path]: Sorted file paths retaining the root's absolute or relative
-            form. Includes all file extensions. Hidden entries, __pycache__,
-            node_modules and all descendant symlinks are excluded.
+            form. Hidden entries, __pycache__, node_modules and all descendant
+            symlinks are excluded.
 
     Raises:
         ValueError: The root is a symlink or is not a directory.
         OSError: A directory cannot be read.
     """
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("file discovery requires a real directory")
     found: list[Path] = []
-    pending = [root]
+    pending = [os.fspath(root)]
     while pending:
-        for path in find_children(pending.pop()):
-            if path.is_dir():
-                pending.append(path)
-            elif path.is_file():
-                found.append(path)
+        for entry in _visible(pending.pop()):
+            if entry.is_dir():
+                pending.append(entry.path)
+            elif entry.is_file() and (
+                suffix is None or entry.name.lower().endswith(suffix)
+            ):
+                found.append(Path(entry.path))
     return sorted(found)
 
 
@@ -466,13 +501,41 @@ def find_children(root: Path) -> list[Path]:
     """
     if root.is_symlink() or not root.is_dir():
         raise ValueError("file discovery requires a real directory")
-    return sorted(
-        path
-        for path in root.iterdir()
-        if not path.name.startswith(".")
-        and not path.is_symlink()
-        and not (path.is_dir() and path.name in {"__pycache__", "node_modules"})
-    )
+    return sorted(root / entry.name for entry in _visible(root))
+
+
+def record_files(directory: Path, vault: Path) -> list[Path]:
+    """List the Markdown files that a scan of a vault directory treats as records.
+
+    This is the one rule for which files a scan reads: validation and lookup
+    both use it. Templates are included, since validation parses them; a
+    caller that wants only completed records excludes them itself.
+
+    Args:
+        directory: Directory to scan, the vault root or one inside it. A
+            symlink as the directory is rejected.
+        vault: Resolved vault root containing the directory.
+
+    Returns:
+        list[Path]: Sorted Markdown paths retaining the directory's absolute
+            or relative form, without hidden entries, symlinks, __pycache__ and
+            node_modules, or anything in the vault's optional scripts/
+            directory.
+
+    Raises:
+        ValueError: The directory is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    files = find_files(directory, ".md")
+    # No listed file is reached through a symlink below the directory, so only
+    # the directory itself needs resolving to locate scripts/ within the scan.
+    base = directory.resolve()
+    if base.is_relative_to(vault / "scripts"):
+        return []
+    if base == vault:
+        scripts = os.fspath(directory / "scripts") + os.sep
+        return [file for file in files if not os.fspath(file).startswith(scripts)]
+    return files
 
 
 # Name of a campaign directory directly under campaigns/.

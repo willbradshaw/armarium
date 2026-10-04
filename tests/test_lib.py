@@ -15,6 +15,7 @@ from armarium.lib import (
     Result,
     VaultNotFoundError,
     _find_wikilink_candidates,
+    _visible,
     check_vault,
     find_campaign,
     find_children,
@@ -24,6 +25,7 @@ from armarium.lib import (
     parse_directories,
     parse_subtype_directories,
     parse_wikilink,
+    record_files,
     split_wikilink,
 )
 from armarium.parse import Body, Frontmatter, Record
@@ -317,6 +319,154 @@ class TestFindFiles:
             root.symlink_to(tmp_path, target_is_directory=True)
         with pytest.raises(ValueError, match="real directory"):
             find_files(root)
+
+    def test_suffix_lists_only_matching_names(self, tmp_path: Path) -> None:
+        names = ["z.md", "nested/Café.MD", "nested/a.b.Md"]
+        others = ["map.png", "nested/md", "nested/notes.md.txt", "nested/xmd"]
+        for name in names + others:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name)
+        (tmp_path / "folder.md").mkdir()
+        (tmp_path / "folder.md/inner.txt").write_text("inner")
+        assert find_files(tmp_path, ".md") == sorted(tmp_path / n for n in names)
+        assert find_files(tmp_path, ".png") == [tmp_path / "map.png"]
+        assert find_files(tmp_path, ".base") == []
+
+    def test_suffix_matches_the_unfiltered_listing(self, tmp_path: Path) -> None:
+        for name in ("a.md", "b.MD", "c.txt", "d/e.md", "d/f.json"):
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name)
+        assert find_files(tmp_path, ".md") == [
+            path for path in find_files(tmp_path) if path.suffix.lower() == ".md"
+        ]
+
+
+class TestVisible:
+    def test_keeps_visible_entries(self, tmp_path: Path) -> None:
+        for name in ("folder", ".git", "__pycache__", "node_modules"):
+            (tmp_path / name).mkdir()
+        for name in ("a.md", ".hidden.md", "__pycache__.md", "node_modules.txt"):
+            (tmp_path / name).write_text(name)
+        (tmp_path / "link").symlink_to(tmp_path / "folder", target_is_directory=True)
+        (tmp_path / "broken").symlink_to(tmp_path / "missing")
+        assert sorted(entry.name for entry in _visible(tmp_path)) == [
+            "__pycache__.md",
+            "a.md",
+            "folder",
+            "node_modules.txt",
+        ]
+        assert sorted(entry.name for entry in _visible(str(tmp_path))) == [
+            "__pycache__.md",
+            "a.md",
+            "folder",
+            "node_modules.txt",
+        ]
+
+    def test_skipped_names_apply_to_directories_only(self, tmp_path: Path) -> None:
+        (tmp_path / "node_modules").write_text("a file, not a directory")
+        assert [entry.name for entry in _visible(tmp_path)] == ["node_modules"]
+
+    def test_unreadable_directory(self, tmp_path: Path) -> None:
+        with pytest.raises(OSError):
+            _visible(tmp_path / "missing")
+
+
+class TestRecordFiles:
+    RECORDS = ["campaigns/campaign_1/content/Quay Nine.MD", "content/Mara.md"]
+    TEMPLATES = [
+        "reference/extensions/example/templates/Location.md",
+        "reference/templates/Content.md",
+    ]
+    OTHERS = [
+        "content/map.png",
+        "content/.Hidden.md",
+        ".scratch/Mara.md",
+        "node_modules/package/README.md",
+        "scripts/README.md",
+        "scripts/tests/Fixture.md",
+    ]
+
+    @pytest.fixture
+    def vault(self, tmp_path: Path) -> Path:
+        root = (tmp_path / "vault with spaces").resolve()
+        for relative in self.RECORDS + self.TEMPLATES + self.OTHERS:
+            (root / relative).parent.mkdir(parents=True, exist_ok=True)
+            (root / relative).write_text("")
+        (root / "content/Linked.md").symlink_to(root / "content/Mara.md")
+        return root
+
+    def test_vault_scan(self, vault: Path) -> None:
+        assert record_files(vault, vault) == [
+            vault / name for name in self.RECORDS + self.TEMPLATES
+        ]
+
+    @pytest.mark.parametrize(
+        ("directory", "expected"),
+        [
+            ("content", ["content/Mara.md"]),
+            ("reference", TEMPLATES),
+            ("campaigns/campaign_1", ["campaigns/campaign_1/content/Quay Nine.MD"]),
+            ("scripts", []),
+            ("scripts/tests", []),
+        ],
+    )
+    def test_directory_scan(
+        self, vault: Path, directory: str, expected: list[str]
+    ) -> None:
+        assert record_files(vault / directory, vault) == [
+            vault / name for name in expected
+        ]
+
+    def test_scripts_named_directories_elsewhere_are_scanned(self, vault: Path) -> None:
+        for relative in ("content/scripts/Play.md", "scripts-old/Draft.md"):
+            (vault / relative).parent.mkdir(parents=True)
+            (vault / relative).write_text("")
+        listed = record_files(vault, vault)
+        assert vault / "content/scripts/Play.md" in listed
+        assert vault / "scripts-old/Draft.md" in listed
+        assert record_files(vault / "content/scripts", vault) == [
+            vault / "content/scripts/Play.md"
+        ]
+
+    @pytest.mark.parametrize("directory", ["", "content", "scripts"])
+    def test_keeps_the_directory_form(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch, directory: str
+    ) -> None:
+        monkeypatch.chdir(vault)
+        relative = Path(directory)
+        assert record_files(relative, vault) == [
+            path.relative_to(vault) for path in record_files(vault / directory, vault)
+        ]
+
+    def test_scan_through_a_symlinked_parent(self, vault: Path, tmp_path: Path) -> None:
+        (tmp_path / "link").symlink_to(vault.parent, target_is_directory=True)
+        seen = tmp_path / "link" / vault.name
+        assert record_files(seen, vault) == [
+            seen / name for name in self.RECORDS + self.TEMPLATES
+        ]
+        assert record_files(seen / "scripts", vault) == []
+
+    def test_matches_the_per_file_rule(self, vault: Path) -> None:
+        # The rule validation applied before the scan had one home.
+        for directory in (vault, vault / "content", vault / "scripts"):
+            assert record_files(directory, vault) == [
+                file
+                for file in find_files(directory)
+                if file.suffix.lower() == ".md"
+                and not file.resolve().is_relative_to(vault / "scripts")
+            ]
+
+    @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
+    def test_invalid_directory(self, vault: Path, kind: str) -> None:
+        directory = vault / "target"
+        if kind == "file":
+            directory.write_text("file")
+        elif kind == "symlink":
+            directory.symlink_to(vault / "content", target_is_directory=True)
+        with pytest.raises(ValueError, match="real directory"):
+            record_files(directory, vault)
 
 
 class TestDiagnosticReport:

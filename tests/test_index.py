@@ -7,7 +7,7 @@ import pytest
 from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import ExtensionSet
-from armarium.index import VaultIndex, link_key, record_files
+from armarium.index import VaultIndex, link_key
 from armarium.lib import find_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
@@ -455,26 +455,3 @@ class TestLinkKey:
     )
     def test_key(self, name: str, expected: str) -> None:
         assert link_key(name) == expected
-
-
-class TestRecordFiles:
-    def test_lists_records_only(self, tmp_path: Path) -> None:
-        records = ["campaigns/campaign_1/content/Quay Nine.MD", "content/Mara.md"]
-        others = [
-            "content/map.png",
-            "content/.Hidden.md",
-            ".scratch/Mara.md",
-            "scripts/README.md",
-            "scripts/tests/Fixture.md",
-            "reference/templates/Content.md",
-            "reference/extensions/example/templates/Location.md",
-        ]
-        for relative in records + others:
-            (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
-            (tmp_path / relative).write_text("")
-        (tmp_path / "content/Linked.md").symlink_to(tmp_path / "content/Mara.md")
-        assert record_files(tmp_path) == [tmp_path / name for name in records]
-
-    def test_requires_a_real_directory(self, tmp_path: Path) -> None:
-        with pytest.raises(ValueError):
-            record_files(tmp_path / "missing")

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
 
-from armarium.extensions import ExtensionSet, is_template, load_extension_set
+from armarium.extensions import ExtensionSet, load_extension_set
 from armarium.lib import (
     Diagnostic,
     find_campaign,
@@ -300,28 +300,3 @@ def link_key(name: str) -> str:
             spellings and case variants share one entry.
     """
     return unicodedata.normalize("NFC", name).casefold()
-
-
-def record_files(root: Path) -> list[Path]:
-    """List the Markdown files that a vault scan treats as records.
-
-    Args:
-        root: Resolved vault directory.
-
-    Returns:
-        list[Path]: Sorted Markdown paths below the root, without hidden
-            entries or symlinks, the optional scripts/ directory, or core and
-            extension templates.
-
-    Raises:
-        ValueError: The root is a symlink or is not a directory.
-        OSError: A directory cannot be read.
-    """
-    scripts = root / "scripts"
-    return [
-        path
-        for path in find_files(root)
-        if path.suffix.lower() == ".md"
-        and not path.is_relative_to(scripts)
-        and not is_template(path, root)
-    ]
