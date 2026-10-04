@@ -108,8 +108,8 @@ there are no appearances.
 | Date | the Session's played events occur within that day or period. |
 
 A mention is not an appearance: an entity only spoken of, reported or narrated
-is found through its backlinks. Nor is preparation: a Session that prepares an
-entity records nothing on it until play reaches it. Historical information about
+is found through its backlinks, which `armarium trace` lists. Nor is preparation:
+a Session that prepares an entity records nothing on it until play reaches it. Historical information about
 a Date belongs in Notes. Keep acquisition and transfer history in Session
 records when current possession changes.
 
