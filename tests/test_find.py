@@ -228,12 +228,17 @@ class TestFindRecords:
         "text",
         ["---\naliases: [Gull\n---\n", "---\naliases: [Gull]\n", "---\n- Gull\n---\n"],
     )
-    def test_skips_unparseable_records(self, vault: Path, text: str) -> None:
+    def test_lists_unparseable_records_by_name_only(
+        self, vault: Path, text: str
+    ) -> None:
         (vault / "content/Gull.md").write_text(text)
         (vault / "content/Bad.md").write_bytes(b"---\naliases: [Gull, \xff]\n---\n")
-        assert find_records("gull", vault) == []
+        matches = find_records("gull", vault)
+        assert [(m.relative, m.kind, m.match, m.summary) for m in matches] == [
+            ("content/Gull.md", "", "name", "")
+        ]
 
-    def test_skips_unreadable_records(self, vault: Path) -> None:
+    def test_lists_unreadable_records_by_name_only(self, vault: Path) -> None:
         mara = (vault / "content/Mara.md").resolve()
         read = Path.read_bytes
 
@@ -244,8 +249,10 @@ class TestFindRecords:
 
         with patch.object(Path, "read_bytes", read_bytes):
             matches = find_records("mara", vault)
-        assert "content/Mara.md" not in [m.relative for m in matches]
-        assert matches
+        assert [(m.relative, m.kind, m.match, m.summary) for m in matches][:2] == [
+            ("content/Mara.md", "", "name", ""),
+            ("notes/Mara.md", "Note", "name", ""),
+        ]
 
     def test_untyped_record(self, vault: Path) -> None:
         write(vault, "content/Gull.md", body="No frontmatter.\n")

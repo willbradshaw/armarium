@@ -37,7 +37,9 @@ path order. A record with both is listed once, as `name`.
 
 [Templates](record.md#anatomy), hidden entries, symlinks and the optional
 `scripts/` directory are not searched. A file whose frontmatter cannot be parsed
-is left out rather than reported; [`armarium validate`](validate.md) reports it.
+is still listed when its filename is the name sought, with no type or summary;
+its aliases cannot be read, so it is never an `alias` match.
+[`armarium validate`](validate.md) reports what is wrong with it.
 
 The command exits with `0` when a record has the name or alias, `1` when none
 does or the vault cannot be read, and `2` for a usage error. Messages go to
