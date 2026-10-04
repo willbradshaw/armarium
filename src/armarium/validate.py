@@ -20,13 +20,10 @@ from armarium.extensions import (
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
-    LINK_TARGETS,
-    RECORD_LINK_TARGETS,
     WIKILINK,
     Diagnostic,
     Findings,
     Result,
-    Target,
     VaultNotFoundError,
     check_vault,
     find_campaign,
@@ -39,6 +36,7 @@ from armarium.lib import (
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
+from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 # Infrastructure every vault must contain. Together with the directories Type
 # records declare, these bound where every entry in the vault may live. The

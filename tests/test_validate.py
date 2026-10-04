@@ -13,16 +13,10 @@ import yaml
 import armarium.validate
 from armarium.extensions import ExtensionRule, load_extension_set
 from armarium.index import VaultIndex
-from armarium.lib import (
-    LINK_TARGETS,
-    Result,
-    Target,
-    check_vault,
-    find_files,
-    find_vault,
-)
+from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
+from armarium.targets import LINK_TARGETS, Target
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,

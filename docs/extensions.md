@@ -117,9 +117,10 @@ requirements and the extension's schema.
 
 ### Declaring link targets
 
-A rule's `links` maps top-level frontmatter fields to the records their links
-must name. Each entry gives a `type` and, for Content, optionally the
-`subtypes` allowed:
+A rule's `links` restricts which records the wikilinks in a frontmatter field
+may point to. Each key is a top-level field; its value gives the record `type`
+a link in that field must target and, when that type is Content, optionally
+the `subtypes` allowed:
 
 ```json
 {

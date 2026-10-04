@@ -24,8 +24,9 @@ from armarium.extensions import (
     load_extensions,
     remove_extension,
 )
-from armarium.lib import LINK_TARGETS, SUBTYPES, Target
+from armarium.lib import SUBTYPES
 from armarium.parse import Record
+from armarium.targets import LINK_TARGETS, Target
 from armarium.validate import validate
 
 ROOT = Path(__file__).resolve().parents[1]

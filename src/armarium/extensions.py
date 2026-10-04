@@ -17,15 +17,10 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from packaging.version import Version
 
-from armarium.lib import (
-    CAMPAIGN_NAME,
-    LINK_TARGETS,
-    RECORD_LINK_TARGETS,
-    SUBTYPES,
-    Target,
-)
+from armarium.lib import CAMPAIGN_NAME, SUBTYPES
 from armarium.parse import Record
 from armarium.schemas import Schema
+from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 CONFIG = Path("reference/extensions.json")
 
@@ -39,85 +34,10 @@ class ExtensionDeclaration(TypedDict):
     armarium_version: NotRequired[str]
 
 
-DECLARATION = {
-    "type": "object",
-    "patternProperties": {
-        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-            "type": "object",
-            "required": ["rules"],
-            "properties": {
-                "rules": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "object",
-                        "required": ["type", "schema"],
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-                            },
-                            "subtype": {"type": "string", "minLength": 1},
-                            "schema": {"type": "string", "minLength": 1},
-                            "template": {"type": "string", "minLength": 1},
-                            "yaml_blocks": {
-                                "type": "array",
-                                "minItems": 1,
-                                "uniqueItems": True,
-                                "items": {"type": "string", "pattern": "^[^\\s`~]+$"},
-                            },
-                            "links": {
-                                "type": "object",
-                                "minProperties": 1,
-                                "propertyNames": {"pattern": "^[A-Za-z][A-Za-z0-9_]*$"},
-                                "additionalProperties": {
-                                    "type": "object",
-                                    "required": ["type"],
-                                    "properties": {
-                                        "type": {
-                                            "type": "string",
-                                            "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-                                        },
-                                        "subtypes": {
-                                            "type": "array",
-                                            "minItems": 1,
-                                            "uniqueItems": True,
-                                            "items": {
-                                                "type": "string",
-                                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-                                            },
-                                        },
-                                    },
-                                    "additionalProperties": False,
-                                },
-                            },
-                        },
-                        "additionalProperties": False,
-                    },
-                },
-                "subtypes": {
-                    "type": "object",
-                    "properties": {
-                        "Content": {
-                            "type": "array",
-                            "minItems": 1,
-                            "uniqueItems": True,
-                            "items": {
-                                "type": "string",
-                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-                            },
-                        }
-                    },
-                    "additionalProperties": False,
-                },
-                "installed": {"type": "boolean"},
-                "armarium_version": {"type": "string", "pattern": "\\S"},
-            },
-            "additionalProperties": False,
-        }
-    },
-    "additionalProperties": False,
-}
+# The form of reference/extensions.json and of an extension's extension.json.
+DECLARATION = json.loads(
+    files("armarium").joinpath("extensions.schema.json").read_text(encoding="utf-8")
+)
 
 
 @dataclass(frozen=True)

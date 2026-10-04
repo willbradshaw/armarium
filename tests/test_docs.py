@@ -9,7 +9,7 @@ import pytest
 
 from armarium.cli import parse_args
 from armarium.index import VaultIndex
-from armarium.lib import LINK_TARGETS, RECORD_LINK_TARGETS
+from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
