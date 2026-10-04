@@ -3,7 +3,7 @@
 Two commands look things up in an existing [vault](vault.md):
 [`armarium find`](#finding-a-record-by-name) lists the [records](record.md) with
 a given name or alias, and [`armarium trace`](#tracing-links-to-a-record) lists
-the records that link to one. Both only read: nothing is validated or changed.
+the records that link to a file. Both only read: nothing is validated or changed.
 
 ## Finding a record by name
 
@@ -48,23 +48,28 @@ standard error, so standard output holds only matches.
 ## Tracing links to a record
 
 ```sh
-armarium trace "Quay Nine" --vault ../my-vault
+armarium trace "content/Quay Nine.md" --vault ../my-vault
 ```
 
-`armarium trace NAME` lists every [link](record.md#links) to one record from the
-vault's other records, with where each link sits. Use it after changing a record,
-to see which records refer to it and may need a matching change.
+`armarium trace PATH` lists every [link](record.md#links) to one file from the
+vault's records, with where each link sits. Use it after changing a record, to
+see which records refer to it and may need a matching change.
 
-`NAME` is the record's name or a trailing part of its path, exactly as a link
-would spell it; if no file has that name, the record that
-[`armarium find`](#finding-a-record-by-name) lists for it is used, such as one
-declaring it as an alias. `NAME` must identify one file. When no record has the
-name, the command says so and exits with `1`. When several share it, the command
-lists them and exits with `1`; spell enough of the path to tell them apart, such
-as `types/Content`. An asset can be traced by its filename with its extension.
+`PATH` is the path of the file to trace: a record, or an asset such as an image.
+It is a file path, not a name; `armarium find` gives the path for a name:
 
-`--vault PATH` names the vault's root directory. Omit it to use the vault
-containing the current directory.
+```sh
+$ armarium find "Quay Nine" --vault ../my-vault
+campaigns/campaign_1/content/Quay Nine.md	Content/Location	name	A cramped customs quay.
+$ armarium trace "campaigns/campaign_1/content/Quay Nine.md" --vault ../my-vault
+```
+
+Without `--vault`, `PATH` is absolute or relative to the current directory, and
+the vault is the one containing the file, as for
+[`armarium validate PATH`](validate.md#scope). With `--vault VAULT`, a relative
+`PATH` is taken from the vault's root directory, so a path printed by
+`armarium find` can be passed as it is; an absolute `PATH` must lie inside that
+vault.
 
 Each link is one line on standard output, with three tab-separated fields:
 
@@ -90,7 +95,8 @@ links to the record on one line, or in one field, are listed once. The record's
 links to itself are left out, as are links from templates, hidden entries, the
 `scripts/` directory and files that cannot be parsed.
 
-The command reports the traced record and the number of links on standard error.
-It exits with `0` whether or not anything links to the record, `1` when the name
-does not identify one file or the vault cannot be read, and `2` for a usage
-error.
+The command reports the traced file and the number of links on standard error.
+It exits with `0` whether or not anything links to the file, and `2` for a usage
+error. It exits with `1`, with a one-line message, when `PATH` does not exist, is
+a directory or a symlink, is a hidden entry or lies in a directory that vault
+scans skip, or is not inside a vault or the vault given.

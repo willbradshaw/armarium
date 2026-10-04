@@ -1666,6 +1666,11 @@ class TestFindCommand:
 
 
 class TestTraceCommand:
+    LINES = [
+        "content/Quay Nine.md\tkeeper\t",
+        "content/Quay Nine.md\tNotes > Events\t6",
+    ]
+
     @pytest.fixture
     def records(self, vault: Path) -> Path:
         (vault / "content/Mara.md").write_text("---\naliases: [The Pilot]\n---\n")
@@ -1675,51 +1680,56 @@ class TestTraceCommand:
         return vault
 
     @pytest.mark.parametrize(
-        ("name", "lines", "message"),
+        ("directory", "path", "explicit", "lines", "message"),
         [
+            ("..", "content/Mara.md", True, LINES, "2 links to content/Mara.md"),
+            ("content", "content/Mara.md", True, LINES, "2 links to content/Mara.md"),
+            ("content", "Mara.md", False, LINES, "2 links to content/Mara.md"),
+            ("", "content/Mara.md", False, LINES, "2 links to content/Mara.md"),
             (
-                "mara",
-                [
-                    "content/Quay Nine.md\tkeeper\t",
-                    "content/Quay Nine.md\tNotes > Events\t6",
-                ],
-                "INFO: 2 links to content/Mara.md",
+                "..",
+                "{vault}/content/Mara.md",
+                False,
+                LINES,
+                "2 links to content/Mara.md",
             ),
             (
-                "the pilot",
-                [
-                    "content/Quay Nine.md\tkeeper\t",
-                    "content/Quay Nine.md\tNotes > Events\t6",
-                ],
-                "INFO: 2 links to content/Mara.md",
+                "..",
+                "{vault}/content/Mara.md",
+                True,
+                LINES,
+                "2 links to content/Mara.md",
             ),
-            ("Quay Nine", [], "INFO: 0 links to content/Quay Nine.md"),
+            ("", "content/Quay Nine.md", False, [], "0 links to content/Quay Nine.md"),
             (
-                "types/Widget",
+                "..",
+                "reference/types/Widget.md",
+                True,
                 [],
-                "INFO: 0 links to reference/types/Widget.md",
+                "0 links to reference/types/Widget.md",
             ),
         ],
     )
-    @pytest.mark.parametrize("explicit", [False, True])
     def test_lists_links(
         self,
         records: Path,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
-        name: str,
+        directory: str,
+        path: str,
+        explicit: bool,
         lines: list[str],
         message: str,
-        explicit: bool,
     ) -> None:
-        monkeypatch.chdir(records.parent if explicit else records / "content")
-        vault_option = ["--vault", str(records)] if explicit else []
-        monkeypatch.setattr(sys, "argv", ["armarium", "trace", name, *vault_option])
+        monkeypatch.chdir(records / directory)
+        arguments = [path.format(vault=records)]
+        arguments += ["--vault", str(records)] if explicit else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "trace", *arguments])
         before = {p: p.read_bytes() for p in records.rglob("*") if p.is_file()}
         main()
         output = capsys.readouterr()
         assert output.out.splitlines() == lines
-        assert output.err.strip().endswith(message)
+        assert output.err.strip().endswith(f"INFO: {message}")
         assert len(output.err.splitlines()) == 1
         assert all(p.read_bytes() == content for p, content in before.items())
 
@@ -1731,7 +1741,9 @@ class TestTraceCommand:
     ) -> None:
         (records / "content/Quay Nine.md").write_text("[[Mara]]\n")
         monkeypatch.setattr(
-            sys, "argv", ["armarium", "trace", "Mara", "--vault", str(records)]
+            sys,
+            "argv",
+            ["armarium", "trace", "content/Mara.md", "--vault", str(records)],
         )
         main()
         assert (
@@ -1739,17 +1751,16 @@ class TestTraceCommand:
         )
 
     @pytest.mark.parametrize(
-        ("name", "inside", "message"),
+        ("path", "explicit", "message"),
         [
-            ("gull", True, "ERROR: Cannot trace gull: no record is named gull"),
-            (
-                "Type",
-                True,
-                "ERROR: Cannot trace Type: several files are named Type: "
-                "content/Type.md, reference/types/Type.md; use a vault-relative path",
-            ),
-            (" ", True, "ERROR: Cannot trace  : name must not be blank"),
-            ("mara", False, "ERROR: Cannot trace mara: "),
+            ("content/Gull.md", True, "content/Gull.md does not exist"),
+            ("content/Gull.md", False, "content/Gull.md does not exist"),
+            ("Mara", False, "Mara does not exist"),
+            ("content", True, "content is a directory, not a file"),
+            ("content/.Hidden.md", True, "is not part of the vault: hidden entries"),
+            ("content/Linked.md", False, "content/Linked.md is a symlink"),
+            ("../Loose.md", False, "cannot infer vault; supply --vault PATH"),
+            ("../Loose.md", True, "target must be inside the selected vault directory"),
         ],
     )
     def test_exits_with_one(
@@ -1757,22 +1768,31 @@ class TestTraceCommand:
         records: Path,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
-        name: str,
-        inside: bool,
+        path: str,
+        explicit: bool,
         message: str,
     ) -> None:
-        (records / "content/Type.md").write_text("")
-        monkeypatch.chdir(records if inside else records.parent)
-        monkeypatch.setattr(sys, "argv", ["armarium", "trace", name])
+        (records / "content/.Hidden.md").write_text("")
+        (records / "content/Linked.md").symlink_to(records / "content/Mara.md")
+        (records.parent / "Loose.md").write_text("")
+        monkeypatch.chdir(records)
+        arguments = [path, *(["--vault", str(records)] if explicit else [])]
+        monkeypatch.setattr(sys, "argv", ["armarium", "trace", *arguments])
         with pytest.raises(SystemExit) as exc:
             main()
         assert exc.value.code == 1
         output = capsys.readouterr()
         assert output.out == ""
-        assert message in output.err
+        assert len(output.err.splitlines()) == 1
+        assert f"ERROR: Cannot trace {path}: " in output.err and message in output.err
 
     @pytest.mark.parametrize(
-        "arguments", [[], ["mara", "vey"], ["mara", "--jobs", "2"]]
+        "arguments",
+        [
+            [],
+            ["content/Mara.md", "content/Quay Nine.md"],
+            ["content/Mara.md", "--jobs", "2"],
+        ],
     )
     def test_usage_errors(
         self, arguments: list[str], capsys: pytest.CaptureFixture[str]
@@ -1783,9 +1803,9 @@ class TestTraceCommand:
         assert "usage: armarium" in capsys.readouterr().err
 
     def test_options(self, tmp_path: Path) -> None:
-        args = parse_args(["trace", "Mara Vey"])
-        assert (args.name, args.vault) == ("Mara Vey", None)
-        args = parse_args(["trace", "Mara", "--vault", str(tmp_path)])
+        args = parse_args(["trace", "content/Mara Vey.md"])
+        assert (args.path, args.vault) == (Path("content/Mara Vey.md"), None)
+        args = parse_args(["trace", "content/Mara.md", "--vault", str(tmp_path)])
         assert args.vault == tmp_path
 
 

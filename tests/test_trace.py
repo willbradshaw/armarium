@@ -10,13 +10,13 @@ from armarium.lib import record_files
 from armarium.parse import Body
 from armarium.trace import (
     Reference,
-    _by_spelling,
     _final_segment,
+    _locate,
     _mentions,
     _references,
+    _sharing,
     _spelling,
     _spellings,
-    _target,
     trace_record,
 )
 
@@ -100,24 +100,34 @@ class TestSpellings:
         assert _spellings(Path("content") / name) == expected
 
 
-class TestBySpelling:
-    def test_groups_files(self) -> None:
-        files = [
-            Path("content/Mara.md"),
-            Path("notes/MARA.md"),
-            Path("assets/Mara"),
-            Path("assets/Mara.png"),
-            Path("content/Mara.md.md"),
-        ]
-        assert _by_spelling(files) == {
-            "mara.md": [files[0], files[1], files[4]],
-            "mara": [files[0], files[1], files[2]],
-            "mara.png": [files[3]],
-            "mara.md.md": [files[4]],
-        }
+class TestSharing:
+    FILES = [
+        Path("content/Mara.md"),
+        Path("notes/MARA.md"),
+        Path("assets/Mara"),
+        Path("assets/Mara.png"),
+        Path("content/Mara.md.md"),
+        Path("content/Quay Nine.md"),
+    ]
+
+    @pytest.mark.parametrize(
+        ("spellings", "expected"),
+        [
+            ({"mara.md", "mara"}, [0, 1, 2, 4]),
+            ({"mara.png"}, [3]),
+            ({"mara.md.md", "mara.md"}, [0, 1, 4]),
+            ({"quay nine"}, [5]),
+            ({"gull"}, []),
+            (set(), []),
+        ],
+    )
+    def test_files_with_a_spelling(
+        self, spellings: set[str], expected: list[int]
+    ) -> None:
+        assert _sharing(self.FILES, spellings) == [self.FILES[i] for i in expected]
 
     def test_no_files(self) -> None:
-        assert _by_spelling([]) == {}
+        assert _sharing([], {"mara"}) == []
 
 
 class TestFinalSegment:
@@ -136,65 +146,88 @@ class TestFinalSegment:
         assert _final_segment(target) == expected
 
 
-class TestTarget:
+class TestLocate:
     @pytest.mark.parametrize(
-        ("name", "expected"),
-        [
-            ("Quay Nine", "content/Quay Nine.md"),
-            ("  quay nine.md ", "content/Quay Nine.md"),
-            ("content/Quay Nine", "content/Quay Nine.md"),
-            ("/content/Quay Nine", "content/Quay Nine.md"),
-            ("the ninth", "content/Quay Nine.md"),
-            ("Quay Nine.png", "assets/Quay Nine.png"),
-            ("S-1-001", "campaigns/campaign_1/sessions/S-1-001.md"),
-            ("Quay   Nine", "content/Quay Nine.md"),
-            ("the  NINTH", "content/Quay Nine.md"),
-        ],
+        "relative",
+        ["content/Quay Nine.md", "assets/Quay Nine.png", "content/.Hidden.md"],
     )
-    def test_resolves_name_path_or_alias(
-        self, vault: Path, name: str, expected: str
+    @pytest.mark.parametrize("form", ["vault", "vault_absolute", "cwd", "absolute"])
+    def test_finds_file_and_vault(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch, relative: str, form: str
     ) -> None:
-        index = VaultIndex(vault)
-        assert _target(index, name) == index.root / expected
+        write(vault, "content/.Hidden.md")
+        root = vault.resolve()
+        if form == "vault":
+            monkeypatch.chdir(vault.parent)
+            located = _locate(Path(relative), vault)
+        elif form == "vault_absolute":
+            located = _locate(vault / relative, vault)
+        elif form == "cwd":
+            monkeypatch.chdir(vault / "content")
+            located = _locate(Path("..") / relative, None)
+        else:
+            located = _locate(vault / relative, None)
+        assert located == (root, root / relative)
+
+    def test_vault_relative_path_ignores_the_working_directory(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(vault / "content")
+        with pytest.raises(ValueError, match="does not exist"):
+            _locate(Path("Quay Nine.md"), vault)
+        assert _locate(Path("Quay Nine.md"), None)[1].name == "Quay Nine.md"
 
     @pytest.mark.parametrize(
-        ("name", "message"),
+        ("relative", "message"),
         [
-            ("", "name must not be blank"),
-            ("   ", "name must not be blank"),
-            ("Gull", "no record is named Gull$"),
-            ("Quay Nin", "no record is named Quay Nin$"),
-            ("Quay", "no record is named Quay$"),
             (
-                "Mara",
-                "several files are named Mara: content/Mara.md, notes/Mara.md; "
-                "use a vault-relative path",
+                "content/Gull.md",
+                "content/Gull.md does not exist; give a file path, which armarium "
+                "find lists for a name$",
             ),
-            (
-                "Old Quay",
-                "several records have the name or alias Old Quay: content/Mara.md, "
-                "notes/Mara.md$",
-            ),
-            (
-                "Old  Harbour",
-                "several records have the name or alias Old  Harbour: "
-                "content/Old Harbour.md, notes/Mara.md$",
-            ),
+            ("content", "content is a directory, not a file$"),
+            ("", "is a directory, not a file$"),
+            ("content/Linked.md", "content/Linked.md is a symlink$"),
+            ("content/Dangling.md", "content/Dangling.md is a symlink$"),
         ],
     )
-    def test_rejects_missing_or_ambiguous(
-        self, vault: Path, name: str, message: str
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_rejects_what_is_not_a_file(
+        self, vault: Path, relative: str, message: str, explicit: bool
     ) -> None:
-        write(vault, "notes/Mara.md", "---\naliases: [Old Quay, Old Harbour]\n---\n")
-        write(vault, "content/Mara.md", "---\naliases: [Old Quay]\n---\n")
-        write(vault, "content/Old Harbour.md")
+        (vault / "content/Linked.md").symlink_to(vault / "content/Quay Nine.md")
+        (vault / "content/Dangling.md").symlink_to(vault / "content/Missing.md")
         with pytest.raises(ValueError, match=message):
-            _target(VaultIndex(vault), name)
+            if explicit:
+                _locate(Path(relative), vault)
+            else:
+                _locate(vault / relative, None)
 
-    def test_name_precedes_alias(self, vault: Path) -> None:
-        write(vault, "content/The Ninth.md")
-        index = VaultIndex(vault)
-        assert _target(index, "The Ninth") == index.root / "content/The Ninth.md"
+    def test_rejects_file_outside_any_vault(self, tmp_path: Path) -> None:
+        outside = write(tmp_path, "Loose.md")
+        with pytest.raises(ValueError, match="cannot infer vault"):
+            _locate(outside, None)
+
+    @pytest.mark.parametrize("escape", ["absolute", "relative"])
+    def test_rejects_file_outside_the_given_vault(
+        self, vault: Path, tmp_path: Path, escape: str
+    ) -> None:
+        outside = write(tmp_path, "Loose.md")
+        path = outside if escape == "absolute" else Path("../Loose.md")
+        with pytest.raises(ValueError, match="inside the selected vault"):
+            _locate(path, vault)
+
+    @pytest.mark.parametrize("kind", ["missing", "inside", "plain"])
+    def test_rejects_vault_that_is_not_a_vault_root(
+        self, vault: Path, tmp_path: Path, kind: str
+    ) -> None:
+        given = {
+            "missing": tmp_path / "nowhere",
+            "inside": vault / "content",
+            "plain": tmp_path,
+        }[kind]
+        with pytest.raises(ValueError):
+            _locate(Path("content/Quay Nine.md"), given)
 
 
 class TestSpelling:
@@ -323,8 +356,8 @@ class TestReferences:
 
 class TestTraceRecord:
     def test_lists_links_with_locations(self, vault: Path) -> None:
-        target, references = trace_record("Quay Nine", vault)
-        assert target == vault.resolve() / "content/Quay Nine.md"
+        target, references = trace_record(Path("content/Quay Nine.md"), vault)
+        assert target == "content/Quay Nine.md"
         session = "campaigns/campaign_1/sessions/S-1-001.md"
         assert [(r.relative, r.where, r.line) for r in references] == [
             (session, "prepared_locations", 0),
@@ -337,38 +370,54 @@ class TestTraceRecord:
             ("content/Shoal Chart.md", "", 6),
         ]
 
-    @pytest.mark.parametrize(
-        ("name", "expected"),
-        [
-            ("the ninth", "content/Quay Nine.md"),
-            ("content/Port Briselle.md", "content/Port Briselle.md"),
-        ],
-    )
-    def test_resolves_the_name(self, vault: Path, name: str, expected: str) -> None:
-        target, references = trace_record(name, vault)
-        assert target == vault.resolve() / expected
-        assert references
+    @pytest.mark.parametrize("form", ["vault", "vault_absolute", "cwd", "absolute"])
+    def test_path_forms_agree(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch, form: str
+    ) -> None:
+        expected = trace_record(Path("content/Port Briselle.md"), vault)
+        if form == "vault":
+            monkeypatch.chdir(vault.parent)
+            traced = trace_record(Path("content/Port Briselle.md"), vault)
+        elif form == "vault_absolute":
+            traced = trace_record(vault / "content/Port Briselle.md", vault)
+        elif form == "cwd":
+            monkeypatch.chdir(vault / "campaigns")
+            traced = trace_record(Path("../content/Port Briselle.md"))
+        else:
+            traced = trace_record(vault / "content/Port Briselle.md")
+        assert traced == expected
+        assert traced[0] == "content/Port Briselle.md" and len(traced[1]) == 2
 
     def test_no_links(self, vault: Path) -> None:
-        target, references = trace_record("Shoal Chart", vault)
-        assert target == vault.resolve() / "content/Shoal Chart.md"
-        assert references == []
+        assert trace_record(Path("content/Shoal Chart.md"), vault) == (
+            "content/Shoal Chart.md",
+            [],
+        )
 
     def test_traces_an_asset(self, vault: Path) -> None:
         write(vault, "content/Map.md", "## Notes\n![[Quay Nine.png]]\n")
-        target, references = trace_record("Quay Nine.png", vault)
-        assert target == vault.resolve() / "assets/Quay Nine.png"
-        assert references == [Reference("content/Map.md", "Notes", 2)]
+        assert trace_record(Path("assets/Quay Nine.png"), vault) == (
+            "assets/Quay Nine.png",
+            [Reference("content/Map.md", "Notes", 2)],
+        )
 
     def test_follows_resolution_not_spelling(self, vault: Path) -> None:
         # A second Quay Nine makes the bare name ambiguous, so only links
         # spelling the path still resolve to the first.
         write(vault, "notes/Quay Nine.md", "[[content/Quay Nine]]\n")
-        _, references = trace_record("content/Quay Nine", vault)
+        _, references = trace_record(Path("content/Quay Nine.md"), vault)
         assert [(r.relative, r.line) for r in references] == [
             ("campaigns/campaign_1/sessions/S-1-001.md", 8),
             ("notes/Quay Nine.md", 1),
         ]
+
+    def test_reports_the_path_as_the_scan_spells_it(self, vault: Path) -> None:
+        # A case-insensitive filesystem opens the file under another spelling.
+        spelled = vault / "content/quay nine.md"
+        if not spelled.exists():
+            pytest.skip("filesystem is case-sensitive")
+        target, references = trace_record(spelled)
+        assert target == "content/Quay Nine.md" and len(references) == 8
 
     def test_skips_non_records(self, vault: Path) -> None:
         for relative in (
@@ -381,7 +430,7 @@ class TestTraceRecord:
         ):
             write(vault, relative, "[[Shoal Chart]]\n")
         (vault / "content/Linked.md").symlink_to(vault / "content/Shoal Chart.md")
-        assert trace_record("Shoal Chart", vault)[1] == []
+        assert trace_record(Path("content/Shoal Chart.md"), vault)[1] == []
 
     def test_skips_unparseable_and_unreadable_records(self, vault: Path) -> None:
         write(vault, "content/Broken.md", "---\nx: [\n---\n[[Shoal Chart]]\n")
@@ -395,11 +444,11 @@ class TestTraceRecord:
             return read(path)
 
         with patch.object(Path, "read_bytes", read_bytes):
-            assert trace_record("Shoal Chart", vault)[1] == []
+            assert trace_record(Path("content/Shoal Chart.md"), vault)[1] == []
 
     def test_parses_only_records_naming_the_target(self, vault: Path) -> None:
         with patch("armarium.trace._references", wraps=_references) as references:
-            trace_record("Port Briselle", vault)
+            trace_record(Path("content/Port Briselle.md"), vault)
         assert [call.args[0].name for call in references.call_args_list] == [
             "S-1-001.md"
         ]
@@ -407,16 +456,10 @@ class TestTraceRecord:
     def test_indexes_only_files_sharing_the_name(self, vault: Path) -> None:
         write(vault, "notes/Quay Nine.md")
         with patch("armarium.trace.VaultIndex", wraps=VaultIndex) as index:
-            trace_record("content/Quay Nine", vault)
+            trace_record(Path("content/Quay Nine.md"), vault)
         root = vault.resolve()
-        named = {
-            root / "content/Quay Nine.md",
-            root / "notes/Quay Nine.md",
-            root / "assets/Quay Nine.png",
-        }
-        assert [set(call.args[1]) for call in index.call_args_list] == [
-            named - {root / "assets/Quay Nine.png"},
-            named - {root / "assets/Quay Nine.png"},
+        assert [sorted(call.args[1]) for call in index.call_args_list] == [
+            [root / "content/Quay Nine.md", root / "notes/Quay Nine.md"]
         ]
 
     def test_matches_the_whole_vault_index(self, vault: Path) -> None:
@@ -424,32 +467,56 @@ class TestTraceRecord:
         write(vault, "notes/Quay Nine.md", "[[content/Quay Nine]] [[Quay Nine]]\n")
         write(vault, "content/Quay Nine.md.md", "[[Quay Nine.md]] [[Quay Nine]]\n")
         index = VaultIndex(vault)
-        for name in ("content/Quay Nine", "notes/Quay Nine", "Quay Nine.md.md"):
-            target, references = trace_record(name, vault)
+        for relative in (
+            "content/Quay Nine.md",
+            "notes/Quay Nine.md",
+            "content/Quay Nine.md.md",
+        ):
+            target, references = trace_record(Path(relative), vault)
+            assert target == relative
             expected = set()
             for path in record_files(index.root, index.root):
                 record, _ = index.parse(path)
-                if record is None or path == target:
+                if record is None or path == index.root / relative:
                     continue
                 for link in record.links:
                     if link.target and not link.error:
-                        if index.resolve(link.target, path)[0] == target:
+                        if index.resolve(link.target, path)[0] == index.root / relative:
                             expected.add(
                                 (path.relative_to(index.root).as_posix(), link.line)
                             )
             assert {(r.relative, r.line) for r in references} == expected
 
-    def test_discovers_the_vault(
-        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            "content/.Hidden.md",
+            ".scratch/Draft.md",
+            "node_modules/package/README.md",
+            "content/__pycache__/Cached.md",
+        ],
+    )
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_rejects_entries_the_scan_skips(
+        self, vault: Path, relative: str, explicit: bool
     ) -> None:
-        monkeypatch.chdir(vault / "content")
-        assert len(trace_record("Port Briselle")[1]) == 2
+        write(vault, relative)
+        with pytest.raises(ValueError, match="is not part of the vault: hidden"):
+            if explicit:
+                trace_record(Path(relative), vault)
+            else:
+                trace_record(vault / relative)
 
-    @pytest.mark.parametrize("name", ["", "Gull"])
-    def test_rejects_unknown_name(self, vault: Path, name: str) -> None:
-        with pytest.raises(ValueError):
-            trace_record(name, vault)
+    def test_traces_through_a_symlinked_directory_to_a_vault_file(
+        self, vault: Path
+    ) -> None:
+        (vault / "shortcut").symlink_to(vault / "content", target_is_directory=True)
+        assert trace_record(vault / "shortcut/Port Briselle.md") == trace_record(
+            vault / "content/Port Briselle.md"
+        )
 
-    def test_rejects_missing_vault(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("relative", ["content/Gull.md", "content", "../Loose.md"])
+    def test_rejects_unusable_path(self, vault: Path, relative: str) -> None:
+        write(vault.parent, "Loose.md")
         with pytest.raises(ValueError):
-            trace_record("Quay Nine", tmp_path)
+            trace_record(Path(relative), vault)

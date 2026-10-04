@@ -1,4 +1,4 @@
-"""List the records that link to a record, and where each link sits."""
+"""List the records that link to a file, and where each link sits."""
 
 import re
 from collections.abc import Iterable
@@ -10,9 +10,8 @@ import yaml
 
 from armarium.add import select_vault
 from armarium.extensions import is_template
-from armarium.find import find_records
 from armarium.index import VaultIndex, link_key
-from armarium.lib import find_files, record_files
+from armarium.lib import check_vault, find_files, find_vault, record_files
 from armarium.parse import Body, Frontmatter
 
 
@@ -62,23 +61,20 @@ def _spellings(path: Path) -> set[str]:
     return spellings
 
 
-def _by_spelling(files: Iterable[Path]) -> dict[str, list[Path]]:
-    """Group files by the final target segments that can name them.
+def _sharing(files: Iterable[Path], spellings: set[str]) -> list[Path]:
+    """List the files that a link's final target segment can name.
 
     A link resolves among the files sharing its target's final segment, so
-    indexing one group resolves such links exactly as the whole vault would.
+    indexing these files resolves such links exactly as the whole vault would.
 
     Args:
         files: Files in the vault.
+        spellings: Final target segments, as _spellings returns them.
 
     Returns:
-        dict[str, list[Path]]: Each spelling to the files it can name.
+        list[Path]: The files with any of the spellings, in the given order.
     """
-    named: dict[str, list[Path]] = {}
-    for path in files:
-        for spelling in _spellings(path):
-            named.setdefault(spelling, []).append(path)
-    return named
+    return [path for path in files if not spellings.isdisjoint(_spellings(path))]
 
 
 def _final_segment(target: str) -> str:
@@ -86,49 +82,37 @@ def _final_segment(target: str) -> str:
     return link_key(target).rsplit("/", 1)[-1]
 
 
-def _target(index: VaultIndex, name: str) -> Path:
-    """Find the one file a name refers to, as a link target or else as find does.
+def _locate(path: Path, vault: Path | None) -> tuple[Path, Path]:
+    """Find the file to trace and the vault it belongs to.
 
     Args:
-        index: Index holding at least every file the name's final segment
-            can name.
-        name: Record name or trailing path, as written in a link, or an alias.
+        path: File path. With a vault, a relative path is taken from the vault
+            root; without one, from the working directory.
+        vault: Vault root, or None to discover the vault from the file's
+            location, as validating the file would.
 
     Returns:
-        Path: The file a link with this target resolves to. When no link
-            would resolve, the single record armarium find lists for the
-            name: one declaring it as an alias, or one whose filename differs
-            from it only in whitespace.
+        tuple[Path, Path]: The resolved vault root and the resolved file.
 
     Raises:
-        ValueError: The name is blank or names no file, or it names several,
-            which the message lists.
-        OSError: A directory cannot be read.
+        ValueError: The path is a symlink, does not exist or is a directory;
+            no vault encloses it; or it lies outside the given vault.
     """
-    target = name.strip()
-    if not target:
-        raise ValueError("name must not be blank")
-    path, rule = index.resolve(target, index.root)
-    if path is not None:
-        return path
-    if rule == "link.ambiguous":
-        candidates = [
-            file.relative_to(index.root).as_posix()
-            for file in sorted(index.targets[link_key(target.removeprefix("/"))])
-        ]
+    if vault is not None:
+        path = select_vault(vault) / path
+    if path.is_symlink():
+        raise ValueError(f"{path} is a symlink")
+    if not path.exists():
         raise ValueError(
-            f"several files are named {target}: {', '.join(candidates)}; "
-            "use a vault-relative path"
+            f"{path} does not exist; give a file path, which armarium find lists "
+            "for a name"
         )
-    matches = find_records(target, index.root)
-    if not matches:
-        raise ValueError(f"no record is named {target}")
-    if len(matches) > 1:
-        candidates = [match.relative for match in matches]
-        raise ValueError(
-            f"several records have the name or alias {target}: {', '.join(candidates)}"
-        )
-    return matches[0].path
+    if path.is_dir():
+        raise ValueError(f"{path} is a directory, not a file")
+    # Resolve the directory first, so that .. and symlinked directories do not
+    # select a vault the file is not in.
+    path = path.parent.resolve() / path.name
+    return (find_vault(path) if vault is None else check_vault(path, vault)), path
 
 
 @lru_cache(maxsize=8)
@@ -222,8 +206,8 @@ def _references(
     return references
 
 
-def trace_record(name: str, vault: Path | None = None) -> tuple[Path, list[Reference]]:
-    """List every link to one record from the vault's other records.
+def trace_record(path: Path, vault: Path | None = None) -> tuple[str, list[Reference]]:
+    """List every link to one file from the vault's records.
 
     Links resolve as validation resolves them, so a link counts however it
     spells the target; embeds count as links. Only the files that share a
@@ -231,38 +215,48 @@ def trace_record(name: str, vault: Path | None = None) -> tuple[Path, list[Refer
     a link to it are parsed.
 
     Args:
-        name: Name, trailing path or alias of the record to trace.
-        vault: Vault root, or None to discover it from the working directory.
+        path: The record or asset to trace. With a vault, a relative path is
+            taken from the vault root; without one, from the working directory.
+        vault: Vault root, or None to discover the vault from the file's
+            location.
 
     Returns:
-        tuple[Path, list[Reference]]: The traced file and its references, in
-            order of linking record, line and location. Links repeated at one
+        tuple[str, list[Reference]]: The traced file's vault-relative path,
+            with forward slashes, and its references in order of linking
+            record, line and location. Links repeated at one
             location are listed once. The file's links to itself are left out,
             as are links from templates, hidden entries, the scripts/
             directory and files that cannot be read or parsed.
 
     Raises:
-        ValueError: The vault cannot be identified, or the name is blank or
-            names no file or several.
+        ValueError: The path is not a file, lies in no vault or outside the
+            given one, or is an entry that vault scans skip.
         OSError: A directory cannot be read.
     """
-    root = select_vault(vault)
-    named = _by_spelling(find_files(root))
-    sought = named.get(_final_segment(name.strip()), [])
-    target = _target(VaultIndex(root, sought), name)
-    index = VaultIndex(
-        root, {file for spelling in _spellings(target) for file in named[spelling]}
-    )
+    root, located = _locate(path, vault)
+    sharing = _sharing(find_files(root), _spellings(located))
+    # The scan's own path for the file, however the given path spelled it.
+    target = next((file for file in sharing if file.samefile(located)), None)
+    if target is None:
+        raise ValueError(
+            f"{located} is not part of the vault: hidden entries, symlinks and "
+            "cache directories are skipped"
+        )
+    index = VaultIndex(root, sharing)
     needle = link_key(target.stem if target.suffix.lower() == ".md" else target.name)
     references: set[Reference] = set()
-    for path in record_files(root, root):
+    for record in record_files(root, root):
         # Validation scans templates too; they are not records that link.
-        if path == target or ("templates" in path.parts and is_template(path, root)):
+        if record == target or (
+            "templates" in record.parts and is_template(record, root)
+        ):
             continue
         try:
-            data = path.read_bytes()
+            data = record.read_bytes()
         except OSError:
             continue
         if _mentions(data, needle):
-            references.update(_references(path, data, index, target))
-    return target, sorted(references, key=lambda r: (r.relative, r.line, r.where))
+            references.update(_references(record, data, index, target))
+    return target.relative_to(root).as_posix(), sorted(
+        references, key=lambda r: (r.relative, r.line, r.where)
+    )

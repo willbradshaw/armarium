@@ -247,18 +247,21 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "trace",
         help="list the records that link to a record",
         description=(
-            "List every link to one record from the vault's other records. Each "
-            "line holds the linking record's path, the frontmatter field or body "
-            "headings where the link sits, and its line number, separated by tabs."
+            "List every link to one file from the vault's records. Each line "
+            "holds the linking record's path, the frontmatter field or body "
+            "headings where the link sits, and its line number, separated by tabs. "
+            "Use armarium find to get a record's path from its name."
         ),
     )
     trace.add_argument(
-        "name", help="name, alias or vault-relative path of the record to trace"
+        "path",
+        type=Path,
+        help="record or asset to trace; with --vault, relative to the vault root",
     )
     trace.add_argument(
         "--vault",
         type=Path,
-        help="vault root (default: discovered from the current directory)",
+        help="vault root (default: discovered from the path)",
     )
     command = commands.add_parser(
         "validate",
@@ -305,7 +308,7 @@ def main() -> None:
 
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
-            find matches nothing or trace cannot identify its record.
+            find matches nothing or trace cannot locate its file.
             Creation reports validation warnings and errors; validate also reports
             informational diagnostics and coverage counts. Argument parsing
             exits with 0 for help or 2 for usage errors.
@@ -326,9 +329,9 @@ def main() -> None:
         return
     if args.command == "trace":
         try:
-            target, references = trace_record(args.name, args.vault)
+            target, references = trace_record(args.path, args.vault)
         except (OSError, ValueError) as exc:
-            logger.error("Cannot trace %s: %s", args.name, exc)
+            logger.error("Cannot trace %s: %s", args.path, exc)
             sys.exit(1)
         for reference in references:
             print(reference.text)
@@ -336,7 +339,7 @@ def main() -> None:
             "%s %s to %s",
             len(references),
             "link" if len(references) == 1 else "links",
-            target.relative_to(find_vault(target)).as_posix(),
+            target,
         )
         return
     if args.command == "init":
