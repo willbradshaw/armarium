@@ -136,8 +136,9 @@ def find_records(name: str, vault: Path | None = None) -> list[Match]:
     Returns:
         list[Match]: Records with that name, then records with that alias,
             each group in path order. Templates, hidden entries and the
-            scripts/ directory are not searched; files that cannot be read or
-            parsed are left out.
+            scripts/ directory are not searched. A file that cannot be read or
+            parsed is listed by its name, without type or summary, since its
+            aliases are unknown.
 
     Raises:
         ValueError: The name is blank or the vault cannot be identified.
@@ -156,12 +157,11 @@ def find_records(name: str, vault: Path | None = None) -> list[Match]:
         try:
             data = path.read_bytes()
         except OSError:
-            continue
+            data = b""
         if not named and not _may_declare_aliases(data):
             continue
-        frontmatter = _read_frontmatter(data)
-        if frontmatter is None:
-            continue
+        # A file with the name exists whether or not its metadata can be read.
+        frontmatter = _read_frontmatter(data) or Frontmatter()
         if named:
             match = "name"
         elif query in {_name_key(alias) for alias in _aliases(frontmatter)}:
