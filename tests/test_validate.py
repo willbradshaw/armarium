@@ -3,7 +3,6 @@
 import json
 import shutil
 from collections.abc import Callable
-from dataclasses import FrozenInstanceError
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -12,21 +11,21 @@ import pytest
 import yaml
 
 import armarium.validate
-from armarium.extensions import load_extension_set
+from armarium.extensions import ExtensionRule, load_extension_set
 from armarium.index import VaultIndex
 from armarium.lib import Result, check_vault, find_files, find_vault
 from armarium.parse import Body, Frontmatter, Record
+from armarium.schemas import Schema
+from armarium.targets import LINK_TARGETS, Target
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
-    LINK_TARGETS,
     RECORD_CHECKS,
     VAULT_DIRECTORIES,
     VAULT_FILES,
     VAULT_STATUSES,
     VAULT_TEMPLATES,
     VAULT_TYPES,
-    Target,
     _check_anchor,
     _check_campaign_history,
     _heading_key,
@@ -1228,13 +1227,6 @@ class TestValidateWikilinks:
         result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == expected
 
-
-class TestTarget:
-    def test_defaults(self) -> None:
-        assert Target("Content") == Target("Content", frozenset(), None, False)
-        with pytest.raises(FrozenInstanceError):
-            setattr(Target("Content"), "campaign", "campaign_1")
-
     @pytest.mark.parametrize(
         "relative, metadata, expected",
         [
@@ -1287,6 +1279,85 @@ class TestTarget:
         record = Record(tmp_path / relative, Frontmatter(metadata), Body("", 1))
         result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
         assert [(d.rule, d.field) for d in result] == expected
+
+    @pytest.mark.parametrize(
+        "relative, subtype, fields, expected",
+        [
+            ("content/N.md", "NPC", {"stats": "[[Shared]]"}, []),
+            ("content/N.md", "NPC", {"stats": "[[PC1]]"}, [("link.type", "stats")]),
+            ("content/N.md", "NPC", {"stats": "[[P]]"}, [("link.type", "stats")]),
+            ("content/N.md", "NPC", {"stats": "https://example.com"}, []),
+            (
+                "content/N.md",
+                "NPC",
+                {"stats": ["[[Shared]]", "[[content/Shared]]"]},
+                [("link.duplicate", "stats.1")],
+            ),
+            ("content/N.md", "NPC", {"patron": "[[P]]"}, []),
+            ("content/N.md", "NPC", {"patron": "[[Far]]"}, [("link.type", "patron")]),
+            (
+                "campaigns/campaign_7/content/N.md",
+                "NPC",
+                {"patron": "[[P]]"},
+                [("campaign.mismatch", "patron")],
+            ),
+            ("content/N.md", "Lore", {"stats": "[[PC1]]", "patron": "[[P]]"}, []),
+            (
+                "content/N.md",
+                "Lore",
+                {"stats": "[[PC1]]", "patron": "[[Far]]"},
+                [("link.type", "patron")],
+            ),
+        ],
+    )
+    def test_extension_links(
+        self,
+        tmp_path: Path,
+        relative: str,
+        subtype: str,
+        fields: dict[str, object],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "campaigns/campaign_42/content/PC1.md": 'type: "[[Content]]"\nsubtype: PC',
+                "campaigns/campaign_42/reference/players/P.md": 'type: "[[Player]]"',
+                "content/Shared.md": 'type: "[[Content]]"\nsubtype: Lore',
+                "campaigns/campaign_7/content/Far.md": 'type: "[[Content]]"\nsubtype: Lore',
+            },
+        )
+        (tmp_path / "reference/schemas").mkdir()
+        (tmp_path / "reference/schemas/open.schema.json").write_text("true")
+        rules = [
+            {
+                "type": "Content",
+                "subtype": "NPC",
+                "schema": "schemas/open.schema.json",
+                "links": {"stats": {"type": "Content", "subtypes": ["Lore"]}},
+            },
+            {
+                "type": "Content",
+                "schema": "schemas/open.schema.json",
+                "links": {"patron": {"type": "Player"}},
+            },
+        ]
+        (tmp_path / "reference/extensions.json").write_text(
+            json.dumps({"house": {"rules": rules}})
+        )
+        metadata = {"type": "[[Content]]", "subtype": subtype, **fields}
+        record = Record(tmp_path / relative, Frontmatter(metadata), Body("", 1))
+        result = validate_wikilinks(record, VaultIndex(tmp_path)).diagnostics
+        assert [(d.rule, d.field) for d in result] == expected
+
+    def test_invalid_extensions(self, tmp_path: Path) -> None:
+        write_records(tmp_path, {})
+        (tmp_path / "reference/extensions.json").write_text("{")
+        record = Record(
+            tmp_path / "content/N.md", Frontmatter({"type": "[[Content]]"}), Body("", 1)
+        )
+        with pytest.raises(ValueError):
+            validate_wikilinks(record, VaultIndex(tmp_path))
 
 
 class TestLinkedRecord:
@@ -1932,6 +2003,44 @@ class TestLinkTargets:
     ) -> None:
         record = Record(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
         assert _link_targets(record) == LINK_TARGETS | expected
+
+    @pytest.mark.parametrize(
+        "subtype, expected",
+        [
+            ("NPC", {"stats": Target("Widget"), "patron": Target("Player")}),
+            ("Lore", {"patron": Target("Player")}),
+            (None, {"patron": Target("Player")}),
+            (["NPC"], {"patron": Target("Player")}),
+        ],
+    )
+    def test_extension_rules(
+        self, tmp_path: Path, subtype: object, expected: dict[str, Target]
+    ) -> None:
+        schema = Schema(tmp_path / "open.schema.json", tmp_path, True)
+        rules = [
+            ExtensionRule(
+                "house", "Content", "NPC", schema, None, (), {"stats": Target("Widget")}
+            ),
+            ExtensionRule(
+                "house", "Content", None, schema, None, (), {"patron": Target("Player")}
+            ),
+            ExtensionRule(
+                "house", "Note", None, schema, None, (), {"about": Target("Content")}
+            ),
+            ExtensionRule(
+                # Loading rejects this declaration; the core target stands anyway.
+                "house",
+                "Content",
+                None,
+                schema,
+                None,
+                (),
+                {"type": Target("Widget")},
+            ),
+        ]
+        metadata = {"type": "[[Content]]", "subtype": subtype}
+        record = Record(tmp_path / "selected.md", Frontmatter(metadata), Body("", 1))
+        assert _link_targets(record, rules) == LINK_TARGETS | expected
 
 
 class TestValidateCampaigns:

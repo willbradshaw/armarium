@@ -83,7 +83,8 @@ Put files in `extensions/NAME/` and declare rules in `extension.json`; see the
 `type` and `schema`. Optional `subtype` limits its scope to an existing subtype;
 optional `template` selects a template. Optional `yaml_blocks` lists code block
 info strings, such as `statblock`, whose fenced blocks must hold a YAML mapping
-in matching records; validation reports `extension.yaml` otherwise. Source
+in matching records; validation reports `extension.yaml` otherwise. Optional
+`links` [declares link targets](#declaring-link-targets). Source
 declaration paths are relative to the extension directory. Schemas and templates
 belong in their respective subdirectories.
 
@@ -113,3 +114,33 @@ Content is the only type with subtypes. Names start with a letter and contain
 only letters and digits, and may not repeat a core subtype or one another
 enabled extension declares. Records of a declared subtype meet the core Content
 requirements and the extension's schema.
+
+### Declaring link targets
+
+A rule's `links` restricts which records the wikilinks in a frontmatter field
+may point to. Each key is a top-level field; its value gives the record `type`
+a link in that field must target and, when that type is Content, optionally
+the `subtypes` allowed:
+
+```json
+{
+  "type": "Content",
+  "subtype": "Location",
+  "schema": "schemas/location.schema.json",
+  "links": {
+    "ruler": {"type": "Content", "subtypes": ["NPC", "PC"]},
+    "surveyed_by": {"type": "Player"}
+  }
+}
+```
+
+In matching records, every link in a declared field must resolve to a
+correctly placed record of that type and subtype, in the same campaign as the
+linking record or, for Content, shared; a list may not name the same record
+twice. Validation reports `link.type`, `campaign.mismatch` and
+`link.duplicate` as it does for [built-in fields](type.md). A value without
+links, such as null or a URL, is left to the schema.
+
+A rule may not declare a field whose target the core already fixes for its
+records, such as `parent_location` on a Location, nor one that another rule
+declares for the same records.

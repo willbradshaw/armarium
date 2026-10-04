@@ -9,11 +9,10 @@ import pytest
 
 from armarium.cli import parse_args
 from armarium.index import VaultIndex
+from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
-    LINK_TARGETS,
-    RECORD_LINK_TARGETS,
     VAULT_DIRECTORIES,
     VAULT_STATUSES,
     VAULT_TEMPLATES,

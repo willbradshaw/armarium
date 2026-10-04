@@ -5,7 +5,8 @@ import re
 import shutil
 import tempfile
 import tomllib
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from importlib.metadata import version
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
@@ -16,9 +17,10 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from packaging.version import Version
 
-from armarium.lib import SUBTYPES
+from armarium.lib import CAMPAIGN_NAME, SUBTYPES
 from armarium.parse import Record
 from armarium.schemas import Schema
+from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 CONFIG = Path("reference/extensions.json")
 
@@ -32,60 +34,10 @@ class ExtensionDeclaration(TypedDict):
     armarium_version: NotRequired[str]
 
 
-DECLARATION = {
-    "type": "object",
-    "patternProperties": {
-        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-            "type": "object",
-            "required": ["rules"],
-            "properties": {
-                "rules": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "object",
-                        "required": ["type", "schema"],
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-                            },
-                            "subtype": {"type": "string", "minLength": 1},
-                            "schema": {"type": "string", "minLength": 1},
-                            "template": {"type": "string", "minLength": 1},
-                            "yaml_blocks": {
-                                "type": "array",
-                                "minItems": 1,
-                                "uniqueItems": True,
-                                "items": {"type": "string", "pattern": "^[^\\s`~]+$"},
-                            },
-                        },
-                        "additionalProperties": False,
-                    },
-                },
-                "subtypes": {
-                    "type": "object",
-                    "properties": {
-                        "Content": {
-                            "type": "array",
-                            "minItems": 1,
-                            "uniqueItems": True,
-                            "items": {
-                                "type": "string",
-                                "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-                            },
-                        }
-                    },
-                    "additionalProperties": False,
-                },
-                "installed": {"type": "boolean"},
-                "armarium_version": {"type": "string", "pattern": "\\S"},
-            },
-            "additionalProperties": False,
-        }
-    },
-    "additionalProperties": False,
-}
+# The form of reference/extensions.json and of an extension's extension.json.
+DECLARATION = json.loads(
+    files("armarium").joinpath("extensions.schema.json").read_text(encoding="utf-8")
+)
 
 
 @dataclass(frozen=True)
@@ -93,7 +45,8 @@ class ExtensionRule:
     """An additional schema and optional template for one type/subtype selector.
 
     yaml_blocks names fenced code block info strings, such as ``statblock``,
-    whose contents must parse as a YAML mapping in matching records.
+    whose contents must parse as a YAML mapping in matching records. links
+    maps top-level frontmatter fields to the records their links must name.
     """
 
     extension: str
@@ -102,10 +55,35 @@ class ExtensionRule:
     schema: Schema
     template: Path | None
     yaml_blocks: tuple[str, ...] = ()
+    links: Mapping[str, Target] = field(default_factory=dict)
 
     def matches(self, kind: str, subtype: str | None) -> bool:
         """Return whether this rule applies to the requested record."""
         return self.kind == kind and (self.subtype is None or self.subtype == subtype)
+
+    def overlaps(self, kind: str, subtype: str | None) -> bool:
+        """Return whether some record could match both this rule and the selector."""
+        return self.kind == kind and (
+            self.subtype is None or subtype is None or self.subtype == subtype
+        )
+
+
+def _core_link_fields(kind: str, subtype: str | None) -> set[str]:
+    """Name the fields whose link targets the core fixes for a rule's records.
+
+    Args:
+        kind: Record type the rule selects.
+        subtype: Subtype the rule selects, or None for every subtype.
+
+    Returns:
+        set[str]: Fields bound on every record, on the type, and on the
+            selected subtype; on every subtype of the type when none is selected.
+    """
+    fields = set(LINK_TARGETS)
+    for (bound, selector), targets in RECORD_LINK_TARGETS.items():
+        if bound == kind and (selector is None or subtype in (None, selector)):
+            fields |= set(targets)
+    return fields
 
 
 def _local_path(root: Path, directory: str, name: str) -> Path:
@@ -147,7 +125,10 @@ def load_extension_set(root: Path) -> ExtensionSet:
     are relative to reference/. Conflicting template selectors are errors;
     additional schema constraints can be combined freely. A declared Content
     subtype must be new to the vault and have a template from its own extension;
-    a Content rule must select a permitted subtype. Invalid or missing files
+    a Content rule must select a permitted subtype. A declared link target must
+    bind a field that neither the core nor another rule binds for the same
+    records, never a Content campaign_N block, and may name subtypes only of
+    Content. Invalid or missing files
     raise ValueError or OSError, never silently disabling an extension.
     """
     config = _local_path(root, "reference", "extensions.json")
@@ -194,14 +175,33 @@ def load_extension_set(root: Path) -> ExtensionSet:
                         f"extension template {template} has the wrong type/subtype"
                     )
                 if any(
-                    r.template is not None
-                    and r.kind == kind
-                    and (r.subtype is None or subtype is None or r.subtype == subtype)
-                    for r in rules
+                    r.template is not None and r.overlaps(kind, subtype) for r in rules
                 ):
                     raise ValueError(
                         f"conflicting extension templates for {kind}/{subtype}"
                     )
+            links: dict[str, Target] = {}
+            for name, link in declaration.get("links", {}).items():
+                if name in _core_link_fields(kind, subtype) or (
+                    kind == "Content" and CAMPAIGN_NAME.fullmatch(name)
+                ):
+                    raise ValueError(
+                        f"extension {extension} declares a link target for core "
+                        f"field {name}"
+                    )
+                if any(name in r.links and r.overlaps(kind, subtype) for r in rules):
+                    raise ValueError(
+                        f"conflicting extension link targets for {kind}/{subtype} "
+                        f"field {name}"
+                    )
+                if "subtypes" in link and link["type"] != "Content":
+                    raise ValueError(
+                        f"extension {extension} names subtypes of {link['type']} "
+                        f"for field {name}; only Content has subtypes"
+                    )
+                links[name] = Target(
+                    link["type"], frozenset(link.get("subtypes", ())), local=True
+                )
             rules.append(
                 ExtensionRule(
                     extension,
@@ -210,10 +210,18 @@ def load_extension_set(root: Path) -> ExtensionSet:
                     schema,
                     template,
                     tuple(declaration.get("yaml_blocks", ())),
+                    links,
                 )
             )
     subtypes = (*SUBTYPES, *declared)
     for rule in rules:
+        for name, target in rule.links.items():
+            unknown = sorted(target.subtypes - set(subtypes))
+            if unknown:
+                raise ValueError(
+                    f"extension {rule.extension} names unknown Content subtype "
+                    f"{unknown[0]} for field {name}"
+                )
         if rule.kind == "Content" and rule.subtype not in (None, *subtypes):
             raise ValueError(
                 f"extension {rule.extension} selects unknown Content subtype {rule.subtype}"
