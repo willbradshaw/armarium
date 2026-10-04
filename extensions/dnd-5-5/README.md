@@ -5,6 +5,7 @@ type: "[[Reference]]"
 
 The `dnd-5-5` extension adapts Armarium vaults for Dungeons & Dragons' 2024 rules.
 It provides schemas and templates for recording equipment, spells and monsters,
+checks on characters' game statistics,
 so they can be described consistently and filtered by their game properties, and
 reference pages for rules terms.
 Spell and Monster are Content subtypes this extension adds. Monster stat blocks
@@ -111,7 +112,7 @@ statistics live in the stat block. They apply in addition to the core fields in
 | `creature_type` | Yes | Aberration, Beast, Celestial, Construct, Dragon, Elemental, Fey, Fiend, Giant, Humanoid, Monstrosity, Ooze, Plant, or Undead. A swarm uses the type of its members. |
 | `creature_subtypes` | No | List of unique, nonblank tags, such as `Demon` or `Elf`, or null. |
 | `alignment` | No | Nonblank text, such as `Chaotic Evil` or `Unaligned`, or null. |
-| `spells` | No | List of unique links to the Spell records the creature can cast, or null. |
+| `spells` | No | List of unique links to the Spell records the creature can cast, or null. Each link must name a Spell. |
 | `content_tags` | Yes | A list, not null; `[]` for no tags. |
 | `image`, `url` | No | As for Gear: an image path or URL, and an HTTP/HTTPS source URL. |
 
@@ -127,6 +128,23 @@ armarium add content "Reef Shark" --subtype Monster \
 
 See the [Monster schema](schemas/monster.schema.json) and
 [Monster template](templates/Monster.md).
+
+## Characters
+
+A PC's game statistics are optional fields, checked when present, in addition
+to the core fields in [[types/Content#Fields]]:
+
+| Field | Required | Values |
+| --- | --- | --- |
+| `class` | No | Nonblank text, such as `Ranger`. |
+| `subclass` | No | Nonblank text, such as `Way of Shadow`, or null. |
+| `level` | No | Integer from 1 to 20. |
+
+An NPC's core `stats` field, when it holds a link, must name a Monster: the
+creature whose stat block the NPC uses. A URL or null remains valid.
+
+See the [PC schema](schemas/pc.schema.json) and
+[NPC schema](schemas/npc.schema.json).
 
 ## Rules reference
 

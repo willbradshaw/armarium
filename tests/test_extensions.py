@@ -100,7 +100,13 @@ class TestExtensionRule:
     def test_yaml_blocks(self, vault: Path) -> None:
         enable_extension("dnd-5-5", vault)
         blocks = {r.subtype: r.yaml_blocks for r in load_extensions(vault)}
-        assert blocks == {"Gear": (), "Spell": (), "Monster": ("statblock",)}
+        assert blocks == {
+            "Gear": (),
+            "Spell": (),
+            "Monster": ("statblock",),
+            "NPC": (),
+            "PC": (),
+        }
 
     @pytest.mark.parametrize("selector", [None, "Location"])
     @pytest.mark.parametrize(
@@ -1644,6 +1650,94 @@ class TestDndMonsterSchema:
         remove_extension("dnd-5-5", vault)
         assert path.read_bytes() == before
         assert [d.rule for d in validate(path, vault).diagnostics] == ["record.subtype"]
+
+
+class TestDndLinks:
+    MONSTER = TestDndMonsterSchema.FIELDS
+    SPELL = TestDndSpellSchema.FIELDS
+
+    @pytest.fixture
+    def records(self, vault: Path) -> Path:
+        enable_extension("dnd-5-5", vault)
+        add_content("Reef Shark", "Monster", vault, frontmatter=self.MONSTER)
+        add_content("Salt Ward", "Spell", vault, frontmatter=self.SPELL)
+        add_content("Old Tide", "Lore", vault)
+        return vault
+
+    @pytest.mark.parametrize(
+        ("subtype", "name", "field", "value", "rules"),
+        [
+            ("NPC", "Harbour Pilot", "stats", "[[Reef Shark]]", []),
+            ("NPC", "Harbour Pilot", "stats", None, []),
+            ("NPC", "Harbour Pilot", "stats", "https://example.com/pilot", []),
+            ("NPC", "Harbour Pilot", "stats", "[[Old Tide]]", ["link.type"]),
+            ("NPC", "Harbour Pilot", "stats", "[[Salt Ward]]", ["link.type"]),
+            ("Lore", "Tide Lore", "stats", "[[Old Tide]]", []),
+            ("Monster", "Sea Hag", "spells", ["[[Salt Ward]]"], []),
+            ("Monster", "Sea Hag", "spells", ["[[Old Tide]]"], ["link.type"]),
+            ("Monster", "Sea Hag", "spells", ["[[Reef Shark]]"], ["link.type"]),
+        ],
+    )
+    def test_targets(
+        self,
+        records: Path,
+        subtype: str,
+        name: str,
+        field: str,
+        value: object,
+        rules: list[str],
+    ) -> None:
+        from armarium.add import record_text
+
+        fields = self.MONSTER if subtype == "Monster" else None
+        path = add_content(name, subtype, records, frontmatter=fields)
+        record, _ = Record.parse(path, records)
+        assert record is not None
+        path.write_text(
+            record_text({**record.frontmatter, field: value}, record.body.text)
+        )
+        result = validate(path, records)
+        assert [(d.rule, d.field.split(".")[0]) for d in result.diagnostics] == [
+            (rule, field) for rule in rules
+        ]
+
+
+class TestDndPcSchema:
+    @pytest.fixture
+    def pc(self, vault: Path) -> Path:
+        from armarium.player import add_player
+
+        enable_extension("dnd-5-5", vault)
+        add_player("Ellis", vault, campaign=1)
+        return add_content(
+            "Esme", "PC", vault, campaign=1, frontmatter={"player": "[[Ellis]]"}
+        )
+
+    def test_fields_are_optional(self, vault: Path, pc: Path) -> None:
+        assert not validate(pc, vault).failed
+
+    @pytest.mark.parametrize(
+        "field,value,valid",
+        [
+            *[("level", v, True) for v in (1, 20)],
+            *[("level", v, False) for v in (0, 21, 1.5, "3", True, None)],
+            ("class", "Ranger", True),
+            *[("class", v, False) for v in ("", " ", 3, None, ["Ranger"])],
+            *[("subclass", v, True) for v in ("Way of Shadow", None)],
+            *[("subclass", v, False) for v in ("", " ", 3)],
+        ],
+    )
+    def test_values(
+        self, vault: Path, pc: Path, field: str, value: object, valid: bool
+    ) -> None:
+        from armarium.add import record_text
+
+        record, _ = Record.parse(pc, vault)
+        assert record is not None
+        pc.write_text(
+            record_text({**record.frontmatter, field: value}, record.body.text)
+        )
+        assert validate(pc, vault).failed is not valid
 
 
 class TestDndRulesReference:

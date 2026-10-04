@@ -6,7 +6,7 @@ are not supported; use separate vaults for different systems.
 
 | Extension | Content |
 | --- | --- |
-| [`dnd-5-5`](../extensions/dnd-5-5/README.md) | D&D 2024 Gear fields and template, Spell and Monster subtypes, and rules reference pages. |
+| [`dnd-5-5`](../extensions/dnd-5-5/README.md) | D&D 2024 Gear fields and template, Spell and Monster subtypes, character checks, and rules reference pages. |
 | [`example`](../extensions/example/README.md) | A Location `climate` field, demonstrated in [the example vault](../vaults/example/). |
 
 ## Enabling
