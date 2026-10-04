@@ -320,6 +320,30 @@ class TestFindFiles:
         with pytest.raises(ValueError, match="real directory"):
             find_files(root)
 
+    def test_path_order(self, tmp_path: Path) -> None:
+        names = [
+            "a/b.md",
+            "a.md",
+            "a b/c.md",
+            "a-b/c.md",
+            "a/b/c/d.md",
+            "a/b c.md",
+            "B.md",
+            "b/A.md",
+            "é.md",
+            "z",
+            "a/z",
+        ]
+        for name in names:
+            path = tmp_path / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name)
+        listed = find_files(tmp_path)
+        assert listed == sorted(tmp_path / name for name in names)
+        assert find_files(tmp_path, ".md") == sorted(
+            path for path in listed if path.suffix == ".md"
+        )
+
     def test_suffix_lists_only_matching_names(self, tmp_path: Path) -> None:
         names = ["z.md", "nested/Café.MD", "nested/a.b.Md"]
         others = ["map.png", "nested/md", "nested/notes.md.txt", "nested/xmd"]
@@ -351,13 +375,13 @@ class TestVisible:
             (tmp_path / name).write_text(name)
         (tmp_path / "link").symlink_to(tmp_path / "folder", target_is_directory=True)
         (tmp_path / "broken").symlink_to(tmp_path / "missing")
-        assert sorted(entry.name for entry in _visible(tmp_path)) == [
+        assert [entry.name for entry in _visible(tmp_path)] == [
             "__pycache__.md",
             "a.md",
             "folder",
             "node_modules.txt",
         ]
-        assert sorted(entry.name for entry in _visible(str(tmp_path))) == [
+        assert [entry.name for entry in _visible(str(tmp_path))] == [
             "__pycache__.md",
             "a.md",
             "folder",

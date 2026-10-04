@@ -6,9 +6,9 @@ from unittest.mock import patch
 import pytest
 
 from armarium.find import (
-    ALIASES,
     Match,
     _aliases,
+    _may_declare_aliases,
     _name_key,
     _read_frontmatter,
     find_records,
@@ -54,7 +54,7 @@ def vault(tmp_path: Path) -> Path:
     return root
 
 
-class TestAliases:
+class TestMayDeclareAliases:
     @pytest.mark.parametrize(
         ("text", "expected"),
         [
@@ -73,11 +73,15 @@ class TestAliases:
             ("aliases:   \ncontent_tags:\n  - Healing\n", False),
             ("old_aliases: [Mara]\n", False),
             ("summary: no aliases: here\n", False),
+            ("summary: aliases\naliases: [Mara]\n", True),
+            ("aliases:\nnote: the aliases: [x]\naliases : Mara\n", True),
+            ("aliases:\n## Notes\nNo aliases: none - yet\n", False),
+            ("type: x\r\naliases: [Mara]\r\n", True),
             ("", False),
         ],
     )
     def test_detects_possible_values(self, text: str, expected: bool) -> None:
-        assert bool(ALIASES.search(text.encode())) is expected
+        assert _may_declare_aliases(text.encode()) is expected
 
 
 class TestMatchLine:

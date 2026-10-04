@@ -12,11 +12,9 @@ from armarium.index import link_key
 from armarium.lib import record_files
 from armarium.parse import Frontmatter
 
-# An aliases field that may hold a value: text after the colon, or a block
-# list on the lines below. Empty fields are told apart without parsing YAML.
-ALIASES = re.compile(
-    rb"^[\"']?aliases[\"']?[ \t]*:[ \t]*(?:\S|(?:\s|#[^\n]*)*-\s)", re.M
-)
+# From the start of a line, an aliases field that may hold a value: text
+# after the colon, or a block list on the lines below.
+ALIASES = re.compile(rb"[\"']?aliases[\"']?[ \t]*:[ \t]*(?:\S|(?:\s|#[^\n]*)*-\s)")
 
 # Match kinds in the order they are listed.
 KINDS = ("name", "alias")
@@ -66,6 +64,29 @@ def _name_key(name: str) -> str:
     return link_key(" ".join(name.split()))
 
 
+def _may_declare_aliases(data: bytes) -> bool:
+    """Tell cheaply whether a record's aliases field could hold a value.
+
+    Empty fields are told apart without parsing YAML, so most records are
+    never parsed. Only lines containing the field's name are examined.
+
+    Args:
+        data: Contents of a Markdown file.
+
+    Returns:
+        bool: Whether some line opens with an aliases field followed by a
+            value or a block list. A record whose field is absent or empty
+            gives False; text that merely resembles a filled field gives
+            True, and parsing then decides.
+    """
+    found = data.find(b"aliases")
+    while found >= 0:
+        if ALIASES.match(data, data.rfind(b"\n", 0, found) + 1):
+            return True
+        found = data.find(b"aliases", found + 1)
+    return False
+
+
 def _read_frontmatter(data: bytes) -> Frontmatter | None:
     """Parse the frontmatter of a record's bytes, leaving its body unread.
 
@@ -104,8 +125,8 @@ def find_records(name: str, vault: Path | None = None) -> list[Match]:
     """List the records whose filename or one of whose aliases is a name.
 
     Names compare as link targets do: ignoring case and Unicode spelling.
-    Every Markdown file is read, but only those whose filename matches or
-    whose aliases field may hold a value are parsed, and then only their
+    Every record is read, but only those whose filename matches or whose
+    aliases field may hold a value are parsed, and then only their
     frontmatter.
 
     Args:
@@ -136,7 +157,7 @@ def find_records(name: str, vault: Path | None = None) -> list[Match]:
             data = path.read_bytes()
         except OSError:
             continue
-        if not named and not ALIASES.search(data):
+        if not named and not _may_declare_aliases(data):
             continue
         frontmatter = _read_frontmatter(data)
         if frontmatter is None:

@@ -430,26 +430,30 @@ SKIPPED_DIRECTORIES = frozenset({"__pycache__", "node_modules"})
 
 
 def _visible(directory: str | Path) -> list[os.DirEntry[str]]:
-    """List the entries of a directory that traversal keeps, in any order.
+    """List the entries of a directory that traversal keeps, in name order.
 
     Args:
         directory: Directory to read.
 
     Returns:
         list[os.DirEntry[str]]: Its entries without hidden names, symlinks
-            and the __pycache__ and node_modules directories.
+            and the __pycache__ and node_modules directories, ordered as
+            their paths compare.
 
     Raises:
         OSError: The directory cannot be read.
     """
     with os.scandir(directory) as entries:
-        return [
-            entry
-            for entry in entries
-            if not entry.name.startswith(".")
-            and not entry.is_symlink()
-            and not (entry.name in SKIPPED_DIRECTORIES and entry.is_dir())
-        ]
+        return sorted(
+            (
+                entry
+                for entry in entries
+                if not entry.name.startswith(".")
+                and not entry.is_symlink()
+                and not (entry.name in SKIPPED_DIRECTORIES and entry.is_dir())
+            ),
+            key=lambda entry: os.path.normcase(entry.name),
+        )
 
 
 def find_files(root: Path, suffix: str | None = None) -> list[Path]:
@@ -472,17 +476,22 @@ def find_files(root: Path, suffix: str | None = None) -> list[Path]:
     """
     if root.is_symlink() or not root.is_dir():
         raise ValueError("file discovery requires a real directory")
+    # Visiting each directory's entries in name order, descending as they are
+    # met, yields the files in path order without sorting the whole listing.
     found: list[Path] = []
-    pending = [os.fspath(root)]
+    pending = [iter(_visible(root))]
     while pending:
-        for entry in _visible(pending.pop()):
+        for entry in pending[-1]:
             if entry.is_dir():
-                pending.append(entry.path)
-            elif entry.is_file() and (
+                pending.append(iter(_visible(entry.path)))
+                break
+            if entry.is_file() and (
                 suffix is None or entry.name.lower().endswith(suffix)
             ):
                 found.append(Path(entry.path))
-    return sorted(found)
+        else:
+            pending.pop()
+    return found
 
 
 def find_children(root: Path) -> list[Path]:
@@ -501,7 +510,7 @@ def find_children(root: Path) -> list[Path]:
     """
     if root.is_symlink() or not root.is_dir():
         raise ValueError("file discovery requires a real directory")
-    return sorted(root / entry.name for entry in _visible(root))
+    return [root / entry.name for entry in _visible(root)]
 
 
 def record_files(directory: Path, vault: Path) -> list[Path]:
