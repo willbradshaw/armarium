@@ -176,6 +176,66 @@
         }
       },
       "valid": true
+    },
+    {
+      "name": "subtype directories",
+      "frontmatter": {
+        "subtype_directories": {
+          "NPC": "npcs",
+          "Location": "places/locations"
+        }
+      },
+      "valid": true
+    },
+    {
+      "name": "null subtype directories",
+      "frontmatter": {
+        "subtype_directories": null
+      },
+      "valid": true
+    },
+    {
+      "name": "empty subtype directories",
+      "frontmatter": {
+        "subtype_directories": {}
+      },
+      "valid": true
+    },
+    {
+      "name": "list subtype directories",
+      "frontmatter": {
+        "subtype_directories": [
+          "npcs"
+        ]
+      },
+      "valid": false
+    },
+    {
+      "name": "non-string subtype directory",
+      "frontmatter": {
+        "subtype_directories": {
+          "NPC": 7
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "parent subtype directory",
+      "frontmatter": {
+        "subtype_directories": {
+          "NPC": "../npcs"
+        }
+      },
+      "valid": false
+    },
+    {
+      "name": "malformed subtype name",
+      "frontmatter": {
+        "subtype_directories": {
+          "Non player": "npcs"
+        }
+      },
+      "valid": false
     }
   ]
 }

@@ -32,6 +32,19 @@
             }
           },
           "additionalProperties": false
+        },
+        "subtype_directories": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "On the Content Type record, the subfolder of each Content directory that holds records of a subtype. Subtypes left out may sit anywhere in the Content directory.",
+          "propertyNames": {
+            "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/directory"
+          }
         }
       },
       "additionalProperties": true

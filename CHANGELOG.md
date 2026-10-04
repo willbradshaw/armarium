@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let the Content Type record declare `subtype_directories`: a subfolder per subtype that `armarium add content` files into and validation enforces.
 - Define appearances per Content subtype and what belongs in Notes; Type records point to `armarium add`.
 - Check PC `class`, `subclass` and `level` in the `dnd-5-5` extension.
 - Require Monster `spells` to link Spells and NPC `stats` links to name a Monster in `dnd-5-5`.

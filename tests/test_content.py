@@ -8,7 +8,14 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from armarium.add import add_campaign
-from armarium.content import _content_body, _content_frontmatter, add_content
+from armarium.content import (
+    _content_body,
+    _content_frontmatter,
+    _create_directories,
+    _remove_directories,
+    _subtype_directory,
+    add_content,
+)
 from armarium.lib import SUBTYPES
 from armarium.parse import Record
 from armarium.validate import validate
@@ -89,7 +96,206 @@ class TestContentBody:
             assert result == body
 
 
+def declare_subtype_directories(vault: Path, declared: str) -> None:
+    """Add a subtype_directories declaration to the vault's Content Type record."""
+    definition = vault / "reference/types/Content.md"
+    definition.write_text(
+        definition.read_text().replace(
+            "\n---\n", f"\nsubtype_directories: {declared}\n---\n", 1
+        )
+    )
+
+
+class TestSubtypeDirectory:
+    @pytest.mark.parametrize(
+        ("declared", "subtype", "relative"),
+        [
+            (None, "NPC", ""),
+            ("", "NPC", ""),
+            ("{}", "NPC", ""),
+            ("{NPC: npcs, Location: places/locations}", "NPC", "npcs"),
+            ("{NPC: npcs, Location: places/locations}", "Location", "places/locations"),
+            ("{NPC: npcs, Location: places/locations}", "Object", ""),
+        ],
+    )
+    def test_selection(
+        self, vault: Path, declared: str | None, subtype: str, relative: str
+    ) -> None:
+        if declared is not None:
+            declare_subtype_directories(vault, declared)
+        directory = vault / "campaigns/campaign_1/content"
+        selected = _subtype_directory(vault, directory, subtype, SUBTYPES)
+        assert selected == directory / relative
+        assert not (vault / "campaigns/campaign_1/content/npcs").exists()
+
+    @pytest.mark.parametrize(
+        ("declared", "message"),
+        [
+            ("[npcs]", "must map Content subtypes to relative paths"),
+            ("{Spell: spells}", "names Spell, which is not a Content subtype"),
+            ("{NPC: ../npcs}", "subtype_directories.NPC must be a relative path"),
+            ("{NPC: [", "cannot read Content Type"),
+        ],
+    )
+    def test_invalid_declaration(
+        self, vault: Path, declared: str, message: str
+    ) -> None:
+        declare_subtype_directories(vault, declared)
+        with pytest.raises(ValueError, match=message):
+            _subtype_directory(vault, vault / "content", "Lore", SUBTYPES)
+
+    def test_extension_subtype(self, vault: Path) -> None:
+        declare_subtype_directories(vault, "{Spell: spells}")
+        selected = _subtype_directory(
+            vault, vault / "content", "Spell", (*SUBTYPES, "Spell")
+        )
+        assert selected == vault / "content/spells"
+
+
+class TestCreateDirectories:
+    @pytest.mark.parametrize(
+        ("existing", "relative", "created"),
+        [
+            ([], "", []),
+            ([], "npcs", ["npcs"]),
+            ([], "places/locations", ["places", "places/locations"]),
+            (["places"], "places/locations", ["places/locations"]),
+            (["places/locations"], "places/locations", []),
+        ],
+    )
+    def test_creates_missing(
+        self, tmp_path: Path, existing: list[str], relative: str, created: list[str]
+    ) -> None:
+        for name in existing:
+            (tmp_path / name).mkdir(parents=True)
+        assert _create_directories(tmp_path / relative, tmp_path) == [
+            tmp_path / name for name in created
+        ]
+        assert (tmp_path / relative).is_dir()
+
+    @pytest.mark.parametrize("kind", ["file", "symlink", "case", "unicode"])
+    def test_conflict(self, tmp_path: Path, kind: str) -> None:
+        base = tmp_path / "content"
+        base.mkdir()
+        # The conflicting entry is second on the way, so a folder is made first.
+        declared = "places/cafés"
+        conflict = (
+            tmp_path
+            / "content/places"
+            / ("CAFÉS" if kind == "case" else "cafés" if kind == "unicode" else "cafés")
+        )
+        original_mkdir = Path.mkdir
+
+        def mkdir(path: Path, *args: object, **kwargs: object) -> None:
+            original_mkdir(path, *args, **kwargs)  # type: ignore[arg-type]
+            if path == base / "places":
+                if kind == "file":
+                    conflict.write_text("")
+                elif kind == "symlink":
+                    conflict.symlink_to(tmp_path, target_is_directory=True)
+                else:
+                    original_mkdir(conflict)
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(Path, "mkdir", mkdir)
+            with pytest.raises(ValueError, match="must be a real directory; found"):
+                _create_directories(base / declared, base)
+        # The folder made before the failure holds the conflict, so it remains.
+        assert [path.name for path in (base / "places").iterdir()] == [conflict.name]
+
+    def test_failure_removes_created(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        original_mkdir = Path.mkdir
+
+        def mkdir(path: Path, *args: object, **kwargs: object) -> None:
+            if path.name == "locations":
+                raise OSError("mkdir failed")
+            original_mkdir(path, *args, **kwargs)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(Path, "mkdir", mkdir)
+        with pytest.raises(OSError, match="mkdir failed"):
+            _create_directories(tmp_path / "places/locations", tmp_path)
+        assert list(tmp_path.iterdir()) == []
+
+
+class TestRemoveDirectories:
+    def test_removes_innermost_first(self, tmp_path: Path) -> None:
+        created = [tmp_path / "places", tmp_path / "places/locations"]
+        created[1].mkdir(parents=True)
+        _remove_directories(created)
+        assert list(tmp_path.iterdir()) == []
+
+    def test_keeps_folders_holding_entries(self, tmp_path: Path) -> None:
+        created = [tmp_path / "places", tmp_path / "places/locations"]
+        created[1].mkdir(parents=True)
+        (tmp_path / "places/Other.md").write_text("")
+        _remove_directories([*created, tmp_path / "missing"])
+        assert [path.name for path in (tmp_path / "places").iterdir()] == ["Other.md"]
+
+
 class TestAddContent:
+    DECLARED = "{NPC: npcs, Location: locations}"
+
+    @pytest.mark.parametrize(
+        ("name", "subtype", "campaign", "relative"),
+        [
+            ("Mara", "NPC", 1, "campaigns/campaign_1/content/npcs/Mara.md"),
+            ("Port Briselle", "Location", None, "content/locations/Port Briselle.md"),
+            ("Shoal Chart", "Object", 1, "campaigns/campaign_1/content/Shoal Chart.md"),
+        ],
+    )
+    def test_subtype_directory(
+        self, vault: Path, name: str, subtype: str, campaign: int | None, relative: str
+    ) -> None:
+        declare_subtype_directories(vault, self.DECLARED)
+        destination = add_content(name, subtype, vault, campaign=campaign)
+        assert destination == vault / relative
+        # A second record joins the subfolder the first one created.
+        assert add_content("Another", subtype, vault, campaign=campaign).parent == (
+            destination.parent
+        )
+        assert not validate(vault).failed
+
+    def test_subtype_directory_collision(self, vault: Path) -> None:
+        declare_subtype_directories(vault, self.DECLARED)
+        add_content("Mara", "NPC", vault)
+        with pytest.raises(FileExistsError):
+            add_content("mara", "NPC", vault)
+        assert [p.name for p in (vault / "content/npcs").iterdir()] == ["Mara.md"]
+
+    @pytest.mark.parametrize("existing", [False, True])
+    def test_subtype_directory_cleanup(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch, existing: bool
+    ) -> None:
+        declare_subtype_directories(vault, self.DECLARED)
+        directory = vault / "content/npcs"
+        if existing:
+            directory.mkdir()
+        with monkeypatch.context() as patch:
+            patch.setattr("armarium.add.validate", Mock(side_effect=OSError("failed")))
+            with pytest.raises(OSError, match="failed"):
+                add_content("Mara", "NPC", vault)
+        # Only a subfolder this call created is removed with the record.
+        assert directory.exists() == existing
+        assert not list(vault.rglob("Mara.md"))
+
+    @pytest.mark.parametrize(
+        "declared", ["[npcs]", "{Spell: spells}", "{NPC: ../npcs}"]
+    )
+    def test_invalid_subtype_directories(self, vault: Path, declared: str) -> None:
+        declare_subtype_directories(vault, declared)
+        with pytest.raises(ValueError, match="subtype_directories"):
+            add_content("Entity", "Lore", vault)
+        assert not list(vault.rglob("Entity.md"))
+
+    def test_misplaced_subtype_directory(self, vault: Path) -> None:
+        declare_subtype_directories(vault, self.DECLARED)
+        (vault / "content/npcs").write_text("")
+        with pytest.raises(ValueError, match="must be a real directory"):
+            add_content("Mara", "NPC", vault)
+        assert (vault / "content/npcs").read_text() == ""
+
     def test_gear_template_fields_and_rules(self, vault: Path) -> None:
         template = vault / "reference/templates/Content.md"
         original = (

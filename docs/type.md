@@ -44,7 +44,9 @@ A character, place, group, object, date or piece of setting lore.
 ### Location
 
 `content/` when shared by every [campaign](campaign.md), or
-`campaigns/campaign_N/content/` when specific to one.
+`campaigns/campaign_N/content/` when specific to one. Where the Content Type
+record declares [`subtype_directories`](vault.md#where-records-live), a record
+of a declared subtype sits in that subfolder of its Content directory.
 
 ### Frontmatter
 
@@ -264,6 +266,7 @@ Type records.
 | --- | --- | --- |
 | `type` | required | `[[Type]]` |
 | `directories` | required | a mapping of `shared` and/or `campaign` to a relative path without `..` or a leading `/`; every declared directory must exist |
+| `subtype_directories` | optional, on the Content Type record only | null, or a mapping of Content subtype to a relative path below each Content directory, [where records of that subtype live](vault.md#where-records-live); each subtype must be one the vault permits |
 
 ### Body
 

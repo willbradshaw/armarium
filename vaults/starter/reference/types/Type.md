@@ -22,6 +22,12 @@ directory declared inside another type's, such as Transcript's
 `sessions/transcripts` inside Session's `sessions`, belongs to the type declaring
 the longest match. Every declared directory must exist.
 
+The Content Type record may also declare `subtype_directories`, a subfolder of
+each Content directory per subtype, for example `{ NPC: npcs, Location: locations }`.
+A record of a declared subtype must sit in that subfolder or below it, and
+`armarium add content` files new records there. Subtypes left out may sit
+anywhere in the Content directory.
+
 `Type.md` is itself a Type record, as is `Status.md`. A Type record does not need
 to duplicate its JSON schema in frontmatter. Schema selection uses the lowercase
 type name, for example `type.schema.json` for Type records.
