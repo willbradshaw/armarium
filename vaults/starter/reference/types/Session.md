@@ -4,11 +4,12 @@ directories: { campaign: sessions }
 ---
 Records with `type: "[[types/Session]]"` are play-session records containing preparation and actual play notes, including events, interactions, and rewards.
 
-Use [[templates/Session]] for the record structure.
+Create a Session with `armarium add session --campaign N`, which starts from
+[[templates/Session]] and fills in `session_number` and the campaign link.
 
-Store records under `campaigns/campaign_1/sessions/`, named `S-1-001.md`,
-`S-1-002.md`, etc. Set `session_number` and the campaign link. For another campaign,
-update the path, campaign link and campaign number in the filename.
+Records live under `campaigns/campaign_1/sessions/`, named `S-1-001.md`,
+`S-1-002.md`, etc. Another campaign's number appears in its path, campaign link
+and filenames.
 
 `prepared_clues`, `prepared_locations` and `prepared_npcs` are ordered link lists
 (use `[]` for none; omitted lists also select nothing). Clues must belong to this
@@ -19,8 +20,7 @@ in Scene notes and actual play under Events. Secrets & Clues, Locations and
 Important NPCs each contain exactly one Base embed and no additional text.
 
 Always qualify campaign overview links, for example
-`[[campaign_1/reference/Campaign]]`. Set the template’s campaign link to the
-intended campaign when creating each Session.
+`[[campaign_1/reference/Campaign]]`.
 
 ## Schema
 

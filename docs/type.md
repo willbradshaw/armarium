@@ -44,7 +44,10 @@ A character, place, group, object, date or piece of setting lore.
 ### Location
 
 `content/` when shared by every [campaign](campaign.md), or
-`campaigns/campaign_N/content/` when specific to one.
+`campaigns/campaign_N/content/` when specific to one. Share an entity that
+keeps its identity outside any one campaign, such as a city, a people or a
+calendar; keep it with its campaign when it matters only through that
+campaign's story.
 
 ### Frontmatter
 
@@ -52,7 +55,7 @@ A character, place, group, object, date or piece of setting lore.
 | --- | --- | --- |
 | `type` | required | `[[types/Content]]` |
 | `subtype` | required | `NPC`, `PC`, `Location`, `Faction`, `Object`, `Lore`, `Date` or `Gear`, or a subtype declared by an enabled [extension](extensions.md#declaring-subtypes) |
-| `summary` | required | null for a stub, or short text describing stable identity |
+| `summary` | required | null for a stub, or short text describing stable identity: what the entity is, not its present situation |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `content_tags` | optional | null, `[]` or a list of unique, non-blank strings: freeform labels for filtering Content |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
@@ -83,13 +86,36 @@ order without repeats, and each campaign that appears must have a
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
 
-Date Content represents a particular day or period. Recurring calendar concepts,
-such as a named month or weekday, are Lore.
+Notes hold established, lasting information, read without the context of any
+one Session:
 
-For Date Content, Appearances records Sessions whose played events occur during
-that day or period. Historical content belongs in Notes; mentions alone do not
-count as appearances. Calendar-specific frontmatter fields are permitted as custom
-fields, with no built-in calendar arithmetic or session-date reconciliation.
+- Record only what play or the GM's own material states, or `- N/A` while
+  nothing is established.
+- Describe the entity in absolute terms, not the scene in which it was met.
+- Leave single incidents to that Session's appearance, and changing state to
+  the [campaign block](campaign.md#state).
+- Add a [Clue](#clue)'s content only once the Clue is Revealed, and link it.
+
+Appearances gives each Session in which the entity appeared one item, saying in
+a clause what happened to it or through it:
+
+| Subtype | Appears in a Session when |
+| --- | --- |
+| NPC | on stage in a scene: speaking, acting or dealing directly with those present |
+| PC | doing something noteworthy; attendance alone is not an appearance |
+| Location | the party is physically there |
+| Faction | acting as a body; a member acting alone appears on their own record |
+| Object, Gear | handled: acquired, put to use, transferred or accessed |
+| Lore | its particular identity shapes events; background colour is not an appearance |
+| Date | the Session's played events occur within that day or period |
+
+A mention is not an appearance, and nor is preparation that play does not
+reach. Historical information about a Date belongs in Notes.
+
+Date Content represents a particular day or period. Recurring calendar concepts,
+such as a named month or weekday, are Lore. Calendar-specific frontmatter fields
+are permitted as custom fields, with no built-in calendar arithmetic or
+session-date reconciliation.
 
 ## Note
 

@@ -36,7 +36,8 @@ paragraph or list item may end in an Obsidian block id (`^seat`). Each type
 fixes which headings its body must have; the rest is free Markdown.
 
 **Templates** in `reference/templates/` are starting points, not records:
-their placeholder values need not follow the rules. Copy one to start a record.
+their placeholder values need not follow the rules. [`armarium add`](add.md)
+starts each new record from one.
 
 ## Links
 

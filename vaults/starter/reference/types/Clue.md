@@ -4,13 +4,13 @@ directories: { campaign: clues }
 ---
 Records with `type: "[[types/Clue]]"` are persistent GM-known candidate facts not fully known to the players. A clue may be abandoned without revelation and never become canon. Its status tracks its lifecycle, and its subjects link to relevant entities.
 
-Use [[templates/Clue]] for the record structure. Clue text belongs in the `text`
-property. The body contains only the Sessions heading and its embedded view, with no
+Create a Clue with `armarium add clue --campaign N`, which starts from
+[[templates/Clue]]. Clue text belongs in the `text` property. The body contains only the Sessions heading and its embedded view, with no
 additional commentary.
 
 Store records under `campaigns/campaign_1/clues/`, named `C-1-0001.md`,
-`C-1-0002.md`, etc. For another campaign, update the path and campaign number in the
-filename; the Sessions view derives its scope from the containing campaign folder.
+`C-1-0002.md`, etc. Another campaign's number appears in its path and filenames;
+the Sessions view derives its scope from the containing campaign folder.
 
 ## Schema
 
