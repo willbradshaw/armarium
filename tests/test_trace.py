@@ -11,6 +11,7 @@ from armarium.parse import Body
 from armarium.trace import (
     Reference,
     _final_segment,
+    _frontmatter_text,
     _locate,
     _mentions,
     _references,
@@ -262,10 +263,40 @@ class TestSpelling:
         assert pattern.search("[[café]]") and ascii_bytes is None
 
 
+class TestFrontmatterText:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("---\nat: '[[Mara''s Rest]]'\n---\n", "--- at: '[[mara's rest]]'"),
+            (
+                "---\ntext: Seen at [[Quay\n  Nine]].\n---\n",
+                "--- text: seen at [[quay nine]].",
+            ),
+            ("---\nat: \"[[CAFÉ]]\"\n---\nBody ''\n", '--- at: "[[café]]"'),
+            ("﻿---\na: 1\n---\n", "--- a: 1"),
+            ("---\na: 1\n", ""),
+            ("No frontmatter ''\n---\n", ""),
+            ("", ""),
+        ],
+    )
+    def test_text(self, text: str, expected: str) -> None:
+        assert _frontmatter_text(text.encode()) == expected
+
+    def test_undecodable(self) -> None:
+        with pytest.raises(UnicodeError):
+            _frontmatter_text(b"---\na: \xff\n---\n")
+
+
 class TestMentions:
     @pytest.mark.parametrize(
         ("text", "needle", "expected"),
         [
+            ("---\nat: '[[Mara''s Rest]]'\n---\n", "mara's rest", True),
+            ("---\nat: '[[Mara''s Rest]]'\n---\n", "mara's nest", False),
+            ("---\ntext: Seen at [[Quay\n  Nine]].\n---\n", "quay nine", True),
+            ('---\nat: "[[Caf\\xE9]]"\n---\n', "café", True),
+            ("Body, at '[[Mara''s Rest]]'\n", "mara's rest", False),
+            ("---\na: 1\n---\nA table cell \\| here.\n", "quay nine", False),
             ("See [[Quay Nine]].", "quay nine", True),
             ("See [[content/QUAY NINE.md|the quay]].", "quay nine", True),
             ("See [[Quay Eight]].", "quay nine", False),
@@ -400,6 +431,23 @@ class TestTraceRecord:
             "assets/Quay Nine.png",
             [Reference("content/Map.md", "Notes", 2)],
         )
+
+    @pytest.mark.parametrize(
+        ("frontmatter", "where"),
+        [
+            ("at: '[[Mara''s Rest]]'", "at"),
+            ("text: Last seen at [[Mara's\n  Rest]] before the hearing.", "text"),
+            ('at: "[[Mara\\u0027s Rest]]"', "at"),
+        ],
+    )
+    def test_finds_links_as_yaml_reads_them(
+        self, vault: Path, frontmatter: str, where: str
+    ) -> None:
+        write(vault, "content/Mara's Rest.md")
+        write(vault, "content/Pier.md", f"---\n{frontmatter}\n---\n")
+        assert trace_record(Path("content/Mara's Rest.md"), vault)[1] == [
+            Reference("content/Pier.md", where, 0)
+        ]
 
     def test_follows_resolution_not_spelling(self, vault: Path) -> None:
         # A second Quay Nine makes the bare name ambiguous, so only links

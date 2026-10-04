@@ -137,12 +137,36 @@ def _spelling(needle: str) -> tuple[re.Pattern[str], re.Pattern[bytes] | None]:
     )
 
 
+def _frontmatter_text(data: bytes) -> str:
+    """Give a file's frontmatter as YAML reads its text, for a cheap search.
+
+    YAML may write a link other than as it reads it: a single-quoted string
+    doubles an apostrophe, and a long string folds onto further lines.
+
+    Args:
+        data: Contents of a Markdown file.
+
+    Returns:
+        str: The source of the frontmatter as link_key returns it, with
+            doubled apostrophes halved and each run of whitespace, line
+            breaks included, made one space. Empty without frontmatter.
+
+    Raises:
+        UnicodeError: The frontmatter cannot be decoded.
+    """
+    text = data[: max(data.find(b"\n---", 3), 0)].decode("utf-8-sig")
+    if not text.startswith("---"):
+        return ""
+    return " ".join(link_key(text).replace("''", "'").split())
+
+
 def _mentions(data: bytes, needle: str) -> bool:
     """Tell cheaply whether a file's text could hold a link to a target.
 
     Every link to a file ends its target with the file's name, so a file
     whose text never spells the name that way cannot link to it and need not
-    be parsed.
+    be parsed. The text is searched as written, then its frontmatter as YAML
+    reads it.
 
     Args:
         data: Contents of a Markdown file.
@@ -150,16 +174,21 @@ def _mentions(data: bytes, needle: str) -> bool:
 
     Returns:
         bool: Whether the text spells the name as a link target would,
-            ignoring case and Unicode spelling. False for text that cannot be
-            decoded.
+            ignoring case and Unicode spelling, or its frontmatter holds a
+            backslash, whose escapes only parsing can read. False for text
+            that cannot be decoded.
     """
     text, ascii_bytes = _spelling(needle)
-    if data.isascii():
-        return ascii_bytes is not None and bool(ascii_bytes.search(data.lower()))
     try:
-        return bool(text.search(link_key(data.decode("utf-8-sig"))))
+        if data.isascii():
+            if ascii_bytes is not None and ascii_bytes.search(data.lower()):
+                return True
+        elif text.search(link_key(data.decode("utf-8-sig"))):
+            return True
+        frontmatter = _frontmatter_text(data)
     except UnicodeError:
         return False
+    return "\\" in frontmatter or bool(text.search(frontmatter))
 
 
 def _references(
