@@ -355,7 +355,7 @@ class TestFrontmatter:
         assert repr(Frontmatter({"a": 1})) == "Frontmatter({'a': 1})"
 
 
-class TestFrontmatterSplit:
+class TestFrontmatterParse:
     @pytest.mark.parametrize(
         ("text", "metadata", "length"),
         [
@@ -371,7 +371,7 @@ class TestFrontmatterSplit:
     def test_frontmatter_and_length(
         self, text: str, metadata: dict[str, object], length: int
     ) -> None:
-        assert Frontmatter.split(text) == (metadata, length)
+        assert Frontmatter.parse(text) == (metadata, length)
 
     @pytest.mark.parametrize(
         ("text", "error"),
@@ -384,11 +384,11 @@ class TestFrontmatterSplit:
     )
     def test_invalid(self, text: str, error: type[Exception]) -> None:
         with pytest.raises(error):
-            Frontmatter.split(text)
+            Frontmatter.parse(text)
 
     def test_body_is_not_parsed(self) -> None:
         with patch.object(Body, "__init__") as body:
-            Frontmatter.split("---\nname: Example\n---\n## Notes\n")
+            Frontmatter.parse("---\nname: Example\n---\n## Notes\n")
         assert not body.called
 
 

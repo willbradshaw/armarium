@@ -75,7 +75,7 @@ def _read_frontmatter(data: bytes) -> Frontmatter | None:
             none, or None when the file cannot be decoded or parsed.
     """
     try:
-        return Frontmatter.split(data.decode("utf-8-sig"))[0]
+        return Frontmatter.parse(data.decode("utf-8-sig"))[0]
     except UnicodeError, yaml.YAMLError, ValueError, RecursionError:
         return None
 

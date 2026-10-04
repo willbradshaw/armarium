@@ -235,7 +235,7 @@ class Frontmatter(Mapping[str, Any]):
         return f"Frontmatter({self._data!r})"
 
     @classmethod
-    def split(cls, text: str) -> tuple["Frontmatter", int]:
+    def parse(cls, text: str) -> tuple["Frontmatter", int]:
         """Parse the frontmatter that opens a record's text, leaving its body unread.
 
         Args:
@@ -671,7 +671,7 @@ class Record:
             if not path.resolve().is_relative_to(root.resolve()):
                 raise ValueError("record escapes the vault boundary")
             text = path.read_text(encoding="utf-8-sig")
-            frontmatter, length = Frontmatter.split(text)
+            frontmatter, length = Frontmatter.parse(text)
             lines = text.splitlines(keepends=True)
             body = Body("".join(lines[length:]), length + 1)
             return cls(path, frontmatter, body), []
