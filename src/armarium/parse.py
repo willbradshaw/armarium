@@ -234,6 +234,36 @@ class Frontmatter(Mapping[str, Any]):
     def __repr__(self) -> str:
         return f"Frontmatter({self._data!r})"
 
+    @classmethod
+    def split(cls, text: str) -> tuple["Frontmatter", int]:
+        """Parse the frontmatter that opens a record's text, leaving its body unread.
+
+        Args:
+            text: Whole text of a Markdown record.
+
+        Returns:
+            tuple[Frontmatter, int]: The parsed metadata and the number of
+                lines it occupies, delimiters included. Text that does not
+                open with ``---`` has empty frontmatter occupying no lines.
+
+        Raises:
+            ValueError: The closing delimiter is missing, the YAML is not a
+                mapping or a value cannot be represented in JSON.
+            yaml.YAMLError: The YAML is invalid or repeats a key.
+        """
+        lines = text.splitlines(keepends=True)
+        if not lines or lines[0].strip() != "---":
+            return cls(), 0
+        end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+        if end is None:
+            raise ValueError("frontmatter has no closing --- delimiter")
+        data = load_yaml("".join(lines[1:end]), FrontmatterLoader)
+        if data is None:
+            data = {}
+        if not isinstance(data, dict):
+            raise ValueError("frontmatter must be a mapping")
+        return cls(data), end + 1
+
     @cached_property
     def type(self) -> str | None:
         """Return the declared record type name without resolving its target.
@@ -641,21 +671,10 @@ class Record:
             if not path.resolve().is_relative_to(root.resolve()):
                 raise ValueError("record escapes the vault boundary")
             text = path.read_text(encoding="utf-8-sig")
+            frontmatter, length = Frontmatter.split(text)
             lines = text.splitlines(keepends=True)
-            if not lines or lines[0].strip() != "---":
-                return cls(path, Frontmatter(), Body(text, 1)), []
-            end = next(
-                (i for i in range(1, len(lines)) if lines[i].strip() == "---"), None
-            )
-            if end is None:
-                raise ValueError("frontmatter has no closing --- delimiter")
-            data = load_yaml("".join(lines[1:end]), FrontmatterLoader)
-            if data is None:
-                data = {}
-            if not isinstance(data, dict):
-                raise ValueError("frontmatter must be a mapping")
-            body = Body("".join(lines[end + 1 :]), end + 2)
-            return cls(path, Frontmatter(data), body), []
+            body = Body("".join(lines[length:]), length + 1)
+            return cls(path, frontmatter, body), []
         except (
             OSError,
             UnicodeError,

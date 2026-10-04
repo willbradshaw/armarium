@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
 
-from armarium.extensions import ExtensionSet, load_extension_set
+from armarium.extensions import ExtensionSet, is_template, load_extension_set
 from armarium.lib import (
     Diagnostic,
     find_campaign,
@@ -59,7 +59,7 @@ class VaultIndex:
                 parts = name.split("/")
                 # Index each trailing path, from the full path to the filename.
                 for offset in range(len(parts)):
-                    key = _key("/".join(parts[offset:]))
+                    key = link_key("/".join(parts[offset:]))
                     self.targets.setdefault(key, set()).add(path)
 
     def extension_set(self) -> ExtensionSet:
@@ -139,7 +139,7 @@ class VaultIndex:
             raise ValueError("source must be inside the indexed vault")
         if not target:
             return source, None
-        candidates = self.targets.get(_key(target.removeprefix("/")), set())
+        candidates = self.targets.get(link_key(target.removeprefix("/")), set())
         if len(candidates) == 1:
             return next(iter(candidates)), None
         return None, "link.ambiguous" if candidates else "link.missing"
@@ -289,7 +289,7 @@ class VaultIndex:
         return [found[key] for key in sorted(found, key=len)]
 
 
-def _key(name: str) -> str:
+def link_key(name: str) -> str:
     """Normalise a link target or file path into a case-insensitive index key.
 
     Args:
@@ -300,3 +300,28 @@ def _key(name: str) -> str:
             spellings and case variants share one entry.
     """
     return unicodedata.normalize("NFC", name).casefold()
+
+
+def record_files(root: Path) -> list[Path]:
+    """List the Markdown files that a vault scan treats as records.
+
+    Args:
+        root: Resolved vault directory.
+
+    Returns:
+        list[Path]: Sorted Markdown paths below the root, without hidden
+            entries or symlinks, the optional scripts/ directory, or core and
+            extension templates.
+
+    Raises:
+        ValueError: The root is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    scripts = root / "scripts"
+    return [
+        path
+        for path in find_files(root)
+        if path.suffix.lower() == ".md"
+        and not path.is_relative_to(scripts)
+        and not is_template(path, root)
+    ]

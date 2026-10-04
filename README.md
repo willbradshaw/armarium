@@ -24,8 +24,9 @@ Open the new folder in Obsidian and edit
 for details.
 
 Add campaigns and records with `armarium add`; see
-[Adding to a vault](docs/add.md). Optional [extensions](docs/extensions.md) add
-additional conventions.
+[Adding to a vault](docs/add.md). Look a record up by name or alias with
+`armarium find`; see [Finding records](docs/find.md). Optional
+[extensions](docs/extensions.md) add additional conventions.
 
 Requires Obsidian **1.13.7+** with **Bases** and
 [Frontmatter Markdown Links](https://github.com/mnaoumov/obsidian-frontmatter-markdown-links)
