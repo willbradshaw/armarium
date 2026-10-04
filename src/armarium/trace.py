@@ -1,15 +1,19 @@
 """List the records that link to a record, and where each link sits."""
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+
+import yaml
 
 from armarium.add import select_vault
 from armarium.extensions import is_template
 from armarium.find import find_records
 from armarium.index import VaultIndex, link_key
-from armarium.lib import record_files
+from armarium.lib import find_files, record_files
+from armarium.parse import Body, Frontmatter
 
 
 @dataclass(frozen=True)
@@ -41,11 +45,53 @@ class Reference:
         return "\t".join((self.relative, self.where, str(self.line or "")))
 
 
+def _spellings(path: Path) -> set[str]:
+    """List the final target segments with which a link can name a file.
+
+    Args:
+        path: A file in the vault.
+
+    Returns:
+        set[str]: Its filename as link_key returns it and, for Markdown, the
+            filename without .md: the last path segments under which a
+            VaultIndex files it.
+    """
+    spellings = {link_key(path.name)}
+    if path.suffix.lower() == ".md":
+        spellings.add(link_key(path.stem))
+    return spellings
+
+
+def _by_spelling(files: Iterable[Path]) -> dict[str, list[Path]]:
+    """Group files by the final target segments that can name them.
+
+    A link resolves among the files sharing its target's final segment, so
+    indexing one group resolves such links exactly as the whole vault would.
+
+    Args:
+        files: Files in the vault.
+
+    Returns:
+        dict[str, list[Path]]: Each spelling to the files it can name.
+    """
+    named: dict[str, list[Path]] = {}
+    for path in files:
+        for spelling in _spellings(path):
+            named.setdefault(spelling, []).append(path)
+    return named
+
+
+def _final_segment(target: str) -> str:
+    """Give the last path segment of a link target, as link_key returns it."""
+    return link_key(target).rsplit("/", 1)[-1]
+
+
 def _target(index: VaultIndex, name: str) -> Path:
     """Find the one file a name refers to, as a link target or else as find does.
 
     Args:
-        index: Index of the vault to search.
+        index: Index holding at least every file the name's final segment
+            can name.
         name: Record name or trailing path, as written in a link, or an alias.
 
     Returns:
@@ -89,9 +135,9 @@ def _target(index: VaultIndex, name: str) -> Path:
 def _spelling(needle: str) -> tuple[re.Pattern[str], re.Pattern[bytes] | None]:
     """Build the patterns that find a filename where a link would end with it.
 
-    A link's target ends with the linked file's name: after ``[[`` or a path
-    separator, optionally followed by ``.md``, and before the closing
-    brackets, a display alias or an anchor.
+    A link's target ends with the linked file's name, optionally followed by
+    ``.md``, and then the closing brackets, a display alias or an anchor.
+    Starting with the literal name lets the search skip to its occurrences.
 
     Args:
         needle: The target's filename as link_key returns it, without .md.
@@ -101,7 +147,7 @@ def _spelling(needle: str) -> tuple[re.Pattern[str], re.Pattern[bytes] | None]:
             text passed through link_key, and its counterpart for lowercased
             ASCII bytes, or None when the name is not ASCII.
     """
-    source = r"(?:\[\[\s*|/)" + re.escape(needle) + r"(?:\.md)?\s*(?:\]\]|\\?\||#)"
+    source = re.escape(needle) + r"(?:\.md)?\s*(?:\]\]|\\?\||#)"
     return re.compile(source), (
         re.compile(source.encode()) if needle.isascii() else None
     )
@@ -132,12 +178,57 @@ def _mentions(data: bytes, needle: str) -> bool:
         return False
 
 
+def _references(
+    path: Path, data: bytes, index: VaultIndex, target: Path
+) -> list[Reference]:
+    """List one record's links to the traced file.
+
+    The frontmatter is parsed and the body's lines are scanned for links; the
+    body's structure is parsed only when a body link needs its headings.
+
+    Args:
+        path: The linking record, inside the index's vault.
+        data: Its contents.
+        index: Index holding at least every file that shares a spelling with
+            the target.
+        target: The traced file.
+
+    Returns:
+        list[Reference]: Each link that resolves to the target, in source
+            order. Empty when the record cannot be decoded or parsed.
+    """
+    try:
+        text = data.decode("utf-8-sig")
+        frontmatter, length = Frontmatter.parse(text)
+        body_text = "".join(text.splitlines(keepends=True)[length:])
+        links = frontmatter.links + Body.scan_links(body_text, length + 1)
+        spellings = _spellings(target)
+        relative = path.relative_to(index.root).as_posix()
+        references: list[Reference] = []
+        body: Body | None = None
+        for link in links:
+            if link.error or _final_segment(link.target) not in spellings:
+                continue
+            if index.resolve(link.target, path)[0] != target:
+                continue
+            if link.line:
+                body = body or Body(body_text, length + 1)
+                where = " > ".join(body.headings_at(link.line))
+            else:
+                where = link.field
+            references.append(Reference(relative, where, link.line))
+    except UnicodeError, yaml.YAMLError, ValueError, RecursionError:
+        return []
+    return references
+
+
 def trace_record(name: str, vault: Path | None = None) -> tuple[Path, list[Reference]]:
     """List every link to one record from the vault's other records.
 
     Links resolve as validation resolves them, so a link counts however it
-    spells the target; embeds count as links. Only records whose text could
-    hold such a link are parsed.
+    spells the target; embeds count as links. Only the files that share a
+    name with the target are indexed, and only records whose text could hold
+    a link to it are parsed.
 
     Args:
         name: Name, trailing path or alias of the record to trace.
@@ -156,8 +247,12 @@ def trace_record(name: str, vault: Path | None = None) -> tuple[Path, list[Refer
         OSError: A directory cannot be read.
     """
     root = select_vault(vault)
-    index = VaultIndex(root)
-    target = _target(index, name)
+    named = _by_spelling(find_files(root))
+    sought = named.get(_final_segment(name.strip()), [])
+    target = _target(VaultIndex(root, sought), name)
+    index = VaultIndex(
+        root, {file for spelling in _spellings(target) for file in named[spelling]}
+    )
     needle = link_key(target.stem if target.suffix.lower() == ".md" else target.name)
     references: set[Reference] = set()
     for path in record_files(root, root):
@@ -168,21 +263,6 @@ def trace_record(name: str, vault: Path | None = None) -> tuple[Path, list[Refer
             data = path.read_bytes()
         except OSError:
             continue
-        if not _mentions(data, needle):
-            continue
-        record, _ = index.parse(path)
-        if record is None:
-            continue
-        relative = path.relative_to(root).as_posix()
-        for link in record.links:
-            if link.error or not link.target:
-                continue
-            if index.resolve(link.target, path)[0] != target:
-                continue
-            where = (
-                " > ".join(record.body.headings_at(link.line))
-                if link.line
-                else link.field
-            )
-            references.add(Reference(relative, where, link.line))
+        if _mentions(data, needle):
+            references.update(_references(path, data, index, target))
     return target, sorted(references, key=lambda r: (r.relative, r.line, r.where))

@@ -6,8 +6,19 @@ from unittest.mock import patch
 import pytest
 
 from armarium.index import VaultIndex
-from armarium.parse import Record
-from armarium.trace import Reference, _mentions, _spelling, _target, trace_record
+from armarium.lib import record_files
+from armarium.parse import Body
+from armarium.trace import (
+    Reference,
+    _by_spelling,
+    _final_segment,
+    _mentions,
+    _references,
+    _spelling,
+    _spellings,
+    _target,
+    trace_record,
+)
 
 SESSION = """---
 type: "[[Session]]"
@@ -71,6 +82,58 @@ class TestReferenceText:
     )
     def test_tab_separated(self, reference: Reference, expected: str) -> None:
         assert reference.text == f"content/Mara.md\t{expected}"
+
+
+class TestSpellings:
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("Quay Nine.md", {"quay nine.md", "quay nine"}),
+            ("Café.MD", {"café.md", "café"}),
+            ("Cafe\u0301.md", {"café.md", "café"}),
+            ("Quay Nine.md.md", {"quay nine.md.md", "quay nine.md"}),
+            ("Map.PNG", {"map.png"}),
+            ("README", {"readme"}),
+        ],
+    )
+    def test_names(self, name: str, expected: set[str]) -> None:
+        assert _spellings(Path("content") / name) == expected
+
+
+class TestBySpelling:
+    def test_groups_files(self) -> None:
+        files = [
+            Path("content/Mara.md"),
+            Path("notes/MARA.md"),
+            Path("assets/Mara"),
+            Path("assets/Mara.png"),
+            Path("content/Mara.md.md"),
+        ]
+        assert _by_spelling(files) == {
+            "mara.md": [files[0], files[1], files[4]],
+            "mara": [files[0], files[1], files[2]],
+            "mara.png": [files[3]],
+            "mara.md.md": [files[4]],
+        }
+
+    def test_no_files(self) -> None:
+        assert _by_spelling([]) == {}
+
+
+class TestFinalSegment:
+    @pytest.mark.parametrize(
+        ("target", "expected"),
+        [
+            ("Quay Nine", "quay nine"),
+            ("content/Quay Nine.md", "quay nine.md"),
+            ("/content/CAFÉ", "café"),
+            ("campaigns/campaign_1/content/Cafe\u0301", "café"),
+            ("", ""),
+            ("content/", ""),
+        ],
+    )
+    def test_segment(self, target: str, expected: str) -> None:
+        assert _final_segment(target) == expected
 
 
 class TestTarget:
@@ -145,10 +208,12 @@ class TestSpelling:
             ("quay nine", "[[quay nine|the quay]]", True),
             ("quay nine", "| [[quay nine\\|the quay]] |", True),
             ("quay nine", "quay nine", False),
-            ("quay nine", "[[old quay nine]]", False),
+            ("quay nine", "[[old quay nine]]", True),
+            ("quay nine", "[[quay nine", False),
             ("quay nine", "[[quay ninety]]", False),
             ("quay nine", "[[quay nine/pier]]", False),
-            ("quay nine", "[[pier|quay nine]]", False),
+            ("quay nine", "[[pier|quay nine]]", True),
+            ("quay nine", "[[quay nine.png]]", False),
             ("c++ (draft)", "[[c++ (draft)]]", True),
             ("map.png", "![[assets/map.png]]", True),
         ],
@@ -193,6 +258,67 @@ class TestMentions:
     )
     def test_bytes(self, data: bytes, expected: bool) -> None:
         assert _mentions(data, "quay nine") is expected
+
+
+class TestReferences:
+    @pytest.fixture
+    def index(self, vault: Path) -> VaultIndex:
+        return VaultIndex(vault)
+
+    def references(self, index: VaultIndex, text: str) -> list[Reference]:
+        return _references(
+            index.root / "content/Shoal Chart.md",
+            text.encode(),
+            index,
+            index.root / "content/Quay Nine.md",
+        )
+
+    def test_frontmatter_and_body(self, index: VaultIndex) -> None:
+        text = (
+            '---\nseen: ["[[Mara]]", "[[Quay Nine]]"]\n---\n[[quay nine|here]]\n'
+            "# Notes\n## Events\n![[content/Quay Nine.md#Notes]] [[Port Briselle]]\n"
+        )
+        assert self.references(index, text) == [
+            Reference("content/Shoal Chart.md", "seen", 0),
+            Reference("content/Shoal Chart.md", "", 4),
+            Reference("content/Shoal Chart.md", "Notes > Events", 7),
+        ]
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            '---\nseen: "[[Quay Nine]]"\n---\n# Notes\n[[Port Briselle]] [[#Notes]]\n',
+            "# Notes\n[[Quay Ninety]] [[Old Quay Nine]] [[Quay Nine\n",
+            "",
+        ],
+    )
+    def test_body_structure_is_parsed_only_for_body_links(
+        self, index: VaultIndex, text: str
+    ) -> None:
+        with patch.object(Body, "__init__") as body:
+            self.references(index, text)
+        assert not body.called
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            b"---\nseen: [\n---\n[[Quay Nine]]\n",
+            b"---\nseen: x\n[[Quay Nine]]\n",
+            b"---\n- item\n---\n[[Quay Nine]]\n",
+            b"[[Quay Nine]] \xff",
+        ],
+    )
+    def test_unparseable_record(self, index: VaultIndex, data: bytes) -> None:
+        path, target = (
+            index.root / "content/Mara.md",
+            index.root / "content/Quay Nine.md",
+        )
+        assert _references(path, data, index, target) == []
+
+    def test_unparseable_body(self, index: VaultIndex) -> None:
+        with patch.object(Body, "__init__", side_effect=RecursionError):
+            assert self.references(index, '---\nseen: "[[Quay Nine]]"\n---\n') != []
+            assert self.references(index, "[[Quay Nine]]\n") == []
 
 
 class TestTraceRecord:
@@ -272,9 +398,46 @@ class TestTraceRecord:
             assert trace_record("Shoal Chart", vault)[1] == []
 
     def test_parses_only_records_naming_the_target(self, vault: Path) -> None:
-        with patch.object(Record, "parse", wraps=Record.parse) as parse:
+        with patch("armarium.trace._references", wraps=_references) as references:
             trace_record("Port Briselle", vault)
-        assert [call.args[0].name for call in parse.call_args_list] == ["S-1-001.md"]
+        assert [call.args[0].name for call in references.call_args_list] == [
+            "S-1-001.md"
+        ]
+
+    def test_indexes_only_files_sharing_the_name(self, vault: Path) -> None:
+        write(vault, "notes/Quay Nine.md")
+        with patch("armarium.trace.VaultIndex", wraps=VaultIndex) as index:
+            trace_record("content/Quay Nine", vault)
+        root = vault.resolve()
+        named = {
+            root / "content/Quay Nine.md",
+            root / "notes/Quay Nine.md",
+            root / "assets/Quay Nine.png",
+        }
+        assert [set(call.args[1]) for call in index.call_args_list] == [
+            named - {root / "assets/Quay Nine.png"},
+            named - {root / "assets/Quay Nine.png"},
+        ]
+
+    def test_matches_the_whole_vault_index(self, vault: Path) -> None:
+        # Every link the full index resolves to the target is listed, and no other.
+        write(vault, "notes/Quay Nine.md", "[[content/Quay Nine]] [[Quay Nine]]\n")
+        write(vault, "content/Quay Nine.md.md", "[[Quay Nine.md]] [[Quay Nine]]\n")
+        index = VaultIndex(vault)
+        for name in ("content/Quay Nine", "notes/Quay Nine", "Quay Nine.md.md"):
+            target, references = trace_record(name, vault)
+            expected = set()
+            for path in record_files(index.root, index.root):
+                record, _ = index.parse(path)
+                if record is None or path == target:
+                    continue
+                for link in record.links:
+                    if link.target and not link.error:
+                        if index.resolve(link.target, path)[0] == target:
+                            expected.add(
+                                (path.relative_to(index.root).as_posix(), link.line)
+                            )
+            assert {(r.relative, r.line) for r in references} == expected
 
     def test_discovers_the_vault(
         self, vault: Path, monkeypatch: pytest.MonkeyPatch

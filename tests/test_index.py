@@ -37,6 +37,22 @@ class TestVaultIndex:
         }
         assert index.root == tmp_path.resolve()
 
+    def test_chosen_files(self, tmp_path: Path) -> None:
+        for name in ("content/Mara.md", "notes/Mara.md", "content/Quay Nine.md"):
+            (tmp_path / name).parent.mkdir(exist_ok=True)
+            (tmp_path / name).write_text("")
+        root = tmp_path.resolve()
+        with patch("armarium.index.find_files") as find:
+            index = VaultIndex(tmp_path, [root / "content/Mara.md"])
+        assert not find.called
+        assert index.targets == {
+            key: {root / "content/Mara.md"}
+            for key in ("content/mara.md", "mara.md", "content/mara", "mara")
+        }
+        assert index.resolve("Mara", root) == (root / "content/Mara.md", None)
+        assert index.resolve("Quay Nine", root) == (None, "link.missing")
+        assert VaultIndex(tmp_path, []).targets == {}
+
     def test_case_only_pair(self, tmp_path: Path) -> None:
         paths = [tmp_path / name for name in CASE_PAIR]
         with patch("armarium.index.find_files", return_value=paths):

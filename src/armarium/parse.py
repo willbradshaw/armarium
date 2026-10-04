@@ -632,9 +632,23 @@ class Body(Section):
             tuple[Link, ...]: Links in source order with source line numbers;
                 malformed link text is included with its error.
         """
+        return self.scan_links(self.text, self.line)
+
+    @staticmethod
+    def scan_links(text: str, start_line: int = 1) -> tuple[Link, ...]:
+        """Find every wikilink in body text without parsing its structure.
+
+        Args:
+            text: Markdown after the frontmatter.
+            start_line: One-based source-file line at which text begins.
+
+        Returns:
+            tuple[Link, ...]: The links a Body of this text reports, at far
+                less cost than building one.
+        """
         links: list[Link] = []
-        for line, text in enumerate(self.text.splitlines(), self.line):
-            for parsed in iter_wikilinks(text):
+        for line, content in enumerate(text.splitlines(), start_line):
+            for parsed in iter_wikilinks(content):
                 if isinstance(parsed, ValueError):
                     links.append(Link("", "", line, str(parsed)))
                 else:

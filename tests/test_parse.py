@@ -525,6 +525,28 @@ class TestBodyLinks:
         assert body.links is body.links
 
 
+class TestBodyScanLinks:
+    @pytest.mark.parametrize(
+        ("text", "start"),
+        [
+            (
+                f"[[broken [[Other]]\n\n{FENCE}\n[[#^block]] ![[image.png]]\n{FENCE}\n",
+                8,
+            ),
+            ("# Notes\n[[Mara|the pilot]] and [[Quay Nine#Notes]]\n", 1),
+            ("No links.\n", 3),
+            ("", 1),
+        ],
+    )
+    def test_matches_a_parsed_body(self, text: str, start: int) -> None:
+        assert Body.scan_links(text, start) == Body(text, start).links
+
+    def test_structure_is_not_parsed(self) -> None:
+        with patch.object(Body, "__init__") as body:
+            assert Body.scan_links("[[Mara]]\n", 4) == (Link("Mara", "", 4),)
+        assert not body.called
+
+
 class TestBlockWalk:
     def test_order(self) -> None:
         inner = Block("paragraph", 3, "deep")
