@@ -14,6 +14,9 @@ that campaign's story, such as one inn, a minor character or a plot object.
 Create a record with `armarium add content NAME --subtype SUBTYPE`, adding
 `--campaign N` for a campaign-specific one. It starts from [[templates/Content]];
 name it for the entity and supply the subtype's required fields.
+To file each subtype in its own subfolder, such as `content/npcs/`, declare
+`subtype_directories` in this record's frontmatter (see [[Type]]); `armarium add`
+then files new records there.
 
 ## Fields
 
