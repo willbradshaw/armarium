@@ -15,7 +15,6 @@ from armarium.extensions import (
     ExtensionSet,
     is_template,
     load_extension_set,
-    load_extensions,
 )
 from armarium.index import VaultIndex
 from armarium.lib import (
@@ -32,6 +31,7 @@ from armarium.lib import (
     find_vault,
     iter_wikilinks,
     parse_directories,
+    parse_subtype_directories,
     parse_wikilink,
 )
 from armarium.parse import Record, Section, load_yaml
@@ -465,6 +465,8 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
             findings.add(rule, f"cannot check {subject}: reference/types is missing")
         return findings
     definitions = [file for file in find_files(types) if file.suffix.lower() == ".md"]
+    # Subfolders declared per Content subtype, checked once extensions are loaded.
+    subfolders: dict[str, tuple[str, object]] = {}
     for file in definitions:
         relative = file.relative_to(root).as_posix()
         record, failures = Record.parse(file, root)
@@ -474,6 +476,11 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
                 f"cannot check {relative} directories: {failures[0].message}",
             )
             continue
+        if record.frontmatter.get("subtype_directories") is not None:
+            subfolders[relative] = (
+                file.stem,
+                record.frontmatter["subtype_directories"],
+            )
         try:
             directories = parse_directories(record.frontmatter.get("directories"))
         except ValueError as exc:
@@ -490,13 +497,26 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
 
     # Extension declarations are optional, but every enabled rule must be usable.
     extension_schemas: set[Path] = set()
+    extensions: ExtensionSet | None = None
     try:
-        rules = (
-            index.extension_set().rules if index is not None else load_extensions(root)
+        extensions = (
+            index.extension_set() if index is not None else load_extension_set(root)
         )
-        extension_schemas = {r.schema.path for r in rules}
+        extension_schemas = {r.schema.path for r in extensions.rules}
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         findings.add("extension.invalid", str(exc))
+
+    # Only Content has subtypes; which exist depends on the enabled extensions.
+    for relative, (name, declared) in subfolders.items():
+        if name != "Content":
+            findings.add(
+                "vault.type", f"{relative}: only Content declares subtype_directories"
+            )
+        elif extensions is not None:
+            try:
+                parse_subtype_directories(declared, extensions.subtypes)
+            except ValueError as exc:
+                findings.add("vault.type", f"{relative}: {exc}")
 
     # 4. Report entries outside the vault skeleton
     named = {Path(relative) for relative, directory in required.items() if directory}
@@ -1299,6 +1319,47 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
     return findings
 
 
+def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
+    """Check a Content record against the subfolder declared for its subtype.
+
+    The Content Type record may declare subtype_directories, a subfolder per
+    subtype below each Content directory, shared or campaign. A record of a
+    declared subtype belongs in that subfolder or below it; other subtypes may
+    sit anywhere in the Content directory.
+
+    Args:
+        record: Selected record; templates are excluded by the caller.
+        index: Index supplying the vault boundary and the Type records.
+
+    Returns:
+        Findings: A record.subdirectory error when the record's subtype has a
+            declared subfolder and the record lies outside it. Records outside
+            every Content directory are left to validate_placement.
+    """
+    findings = Findings.from_record(record, index)
+    subtype = record.frontmatter.get("subtype")
+    if record.frontmatter.type != "Content" or not isinstance(subtype, str):
+        return findings
+    subdirectory = index.subtype_directories().get(subtype)
+    containing = index.containing_directories(record.path)
+    if subdirectory is None or not containing or "Content" not in containing[-1][2]:
+        return findings
+    scope, declared, _ = containing[-1]
+    base = (
+        Path(declared)
+        if scope == "shared"
+        else Path("campaigns", find_campaign(record.path, index.root) or "", declared)
+    )
+    expected = base / subdirectory
+    if not record.path.relative_to(index.root).is_relative_to(expected):
+        findings.add(
+            "record.subdirectory",
+            f"{subtype} Content belongs in {expected.as_posix()}",
+            "subtype",
+        )
+    return findings
+
+
 def validate_filename(record: Record, index: VaultIndex) -> Findings:
     """Check the record's filename and the Session ordinal it encodes.
 
@@ -1489,6 +1550,7 @@ def validate_chains(record: Record, index: VaultIndex) -> Findings:
 RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_wikilinks,
     validate_placement,
+    validate_subdirectory,
     validate_filename,
     validate_campaigns,
     validate_identity_links,

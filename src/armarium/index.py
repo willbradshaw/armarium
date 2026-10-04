@@ -6,7 +6,13 @@ from pathlib import Path
 from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import ExtensionSet, load_extension_set
-from armarium.lib import Diagnostic, find_campaign, find_files, parse_directories
+from armarium.lib import (
+    Diagnostic,
+    find_campaign,
+    find_files,
+    parse_directories,
+    parse_subtype_directories,
+)
 from armarium.parse import Record
 from armarium.schemas import Schema
 
@@ -42,6 +48,7 @@ class VaultIndex:
         self._extensions: ExtensionSet | Exception | None = None
         self._schemas: dict[Path, Schema | Exception] = {}
         self._declarations: dict[str, dict[str, str]] | None = None
+        self._subtype_directories: dict[str, str] | None = None
         for path in find_files(self.root):
             relative = path.relative_to(self.root)
             # Markdown links may include or omit .md; asset extensions matter.
@@ -214,6 +221,36 @@ class VaultIndex:
             except ValueError:
                 continue
         return declarations
+
+    def subtype_directories(self) -> dict[str, str]:
+        """Read the subfolder the Content Type record declares for each subtype.
+
+        Returns:
+            dict[str, str]: Content subtype to its declared subfolder below
+                each Content directory. Empty when reference/types/Content.md
+                declares none, cannot be read, or holds an unusable
+                declaration, which validate_vault reports. Read once per
+                validation run; callers must not modify the mapping.
+        """
+        if self._subtype_directories is None:
+            self._subtype_directories = self._read_subtype_directories()
+        return self._subtype_directories
+
+    def _read_subtype_directories(self) -> dict[str, str]:
+        """Parse the Content Type record for subtype_directories."""
+        path = self.root / "reference/types/Content.md"
+        if path.is_symlink() or not path.is_file():
+            return {}
+        record, _ = self.parse(path)
+        if record is None:
+            return {}
+        try:
+            return parse_subtype_directories(
+                record.frontmatter.get("subtype_directories"),
+                self.extension_set().subtypes,
+            )
+        except LOAD_ERRORS:
+            return {}
 
     def containing_directories(self, path: Path) -> list[tuple[str, str, set[str]]]:
         """Find the declared directories a path lies under, shallowest first.

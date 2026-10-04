@@ -118,6 +118,17 @@ subtype's required fields, such as a PC's `player`, through
 armarium add content "Year 42" --subtype Date --frontmatter '{"reckoning":"[[Royal Calendar]]","scale":"year"}' --vault ../my-vault
 ```
 
+Where the vault's Content Type record declares
+[`subtype_directories`](vault.md#where-records-live), the record goes in the
+subfolder declared for its subtype, which is created if missing:
+
+```sh
+armarium add content "Mara" --subtype NPC --campaign 1    # campaigns/campaign_1/content/npcs/Mara.md
+armarium add content "Port Briselle" --subtype Location   # content/locations/Port Briselle.md
+```
+
+Other subtypes go directly in the Content directory.
+
 Shared records start without [campaign state](campaign.md#state). Campaign-specific
 records get a `campaign_N` block, where `N` is the selected campaign number; Objects
 and Gear also get `held_by` in that block.

@@ -286,6 +286,91 @@ class TestVaultIndexReadDeclarations:
         assert VaultIndex(tmp_path)._read_declarations() == {}
 
 
+def write_content_type(root: Path, text: str) -> Path:
+    """Write reference/types/Content.md with the given frontmatter lines."""
+    path = root / "reference/types/Content.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"---\n{text}\n---\n")
+    return path
+
+
+class TestVaultIndexSubtypeDirectories:
+    def test_reads_once_per_run(self, tmp_path: Path) -> None:
+        write_content_type(tmp_path, "subtype_directories: {NPC: npcs}")
+        index = VaultIndex(tmp_path)
+        with patch.object(
+            VaultIndex,
+            "_read_subtype_directories",
+            autospec=True,
+            side_effect=VaultIndex._read_subtype_directories,
+        ) as read:
+            first = index.subtype_directories()
+            assert index.subtype_directories() is first
+        assert first == {"NPC": "npcs"}
+        read.assert_called_once_with(index)
+
+    def test_caches_an_empty_declaration(self, tmp_path: Path) -> None:
+        index = VaultIndex(tmp_path)
+        assert index.subtype_directories() is index.subtype_directories() == {}
+
+
+class TestVaultIndexReadSubtypeDirectories:
+    @pytest.mark.parametrize(
+        "text, expected",
+        [
+            ("subtype_directories: {NPC: npcs, Location: places/locations}", None),
+            ("subtype_directories:", {}),
+            ("subtype_directories: {}", {}),
+            ("directories: {shared: content}", {}),
+            # Unusable declarations select nothing; validate_vault reports them.
+            ("subtype_directories: {Spell: spells}", {}),
+            ("subtype_directories: {NPC: ../npcs}", {}),
+            ("subtype_directories: [npcs]", {}),
+            ("x: [", {}),
+        ],
+    )
+    def test_declaration(
+        self, tmp_path: Path, text: str, expected: dict[str, str] | None
+    ) -> None:
+        path = write_content_type(tmp_path, text)
+        index = VaultIndex(tmp_path)
+        assert index._read_subtype_directories() == (
+            {"NPC": "npcs", "Location": "places/locations"}
+            if expected is None
+            else expected
+        )
+        # The Type record is parsed through the cache.
+        assert set(index.records) == {path}
+
+    @pytest.mark.parametrize("kind", ["missing", "directory", "symlink"])
+    def test_unusable_type_record(self, tmp_path: Path, kind: str) -> None:
+        path = tmp_path / "reference/types/Content.md"
+        path.parent.mkdir(parents=True)
+        if kind == "directory":
+            path.mkdir()
+        elif kind == "symlink":
+            target = tmp_path / "Elsewhere.md"
+            target.write_text("---\nsubtype_directories: {NPC: npcs}\n---\n")
+            path.symlink_to(target)
+        index = VaultIndex(tmp_path)
+        assert index._read_subtype_directories() == {}
+        assert index.records == {}
+
+    def test_extension_subtypes(self, tmp_path: Path) -> None:
+        write_content_type(tmp_path, "subtype_directories: {Spell: spells}")
+        index = VaultIndex(tmp_path)
+        extensions = ExtensionSet([], ("NPC", "Spell"))
+        with patch("armarium.index.load_extension_set", return_value=extensions):
+            assert index._read_subtype_directories() == {"Spell": "spells"}
+
+    def test_unusable_extensions(self, tmp_path: Path) -> None:
+        write_content_type(tmp_path, "subtype_directories: {NPC: npcs}")
+        index = VaultIndex(tmp_path)
+        error = ValueError("invalid extension declaration")
+        with patch("armarium.index.load_extension_set", side_effect=error):
+            assert index._read_subtype_directories() == {}
+
+
 class TestVaultIndexContainingDirectories:
     DECLARATIONS = {
         "Content": "{shared: content, campaign: content}",

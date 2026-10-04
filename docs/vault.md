@@ -76,6 +76,13 @@ inside `sessions/`), the longer declaration claims its subtree.
 | Type | `{ shared: reference/types }` | the type's name | `reference/types/Clue.md` |
 | Status | `{ shared: reference/statuses }` | the status's name | `reference/statuses/Pending.md` |
 
+The Content Type record may also declare `subtype_directories`, a subfolder of
+each Content directory per subtype. With `{ NPC: npcs, Location: locations }`,
+an NPC must sit in `content/npcs/` or `campaigns/campaign_N/content/npcs/`, or
+in a subfolder of it, and [`armarium add content`](add.md#content) files new
+NPCs there. Subtypes left out may sit anywhere in the Content directory. The
+declaration is optional, and the starter vault makes none.
+
 A vault may add a type of its own: a Type record in `reference/types/` with a
 `directories` declaration and a matching schema in `reference/schemas/`. Its
 declared directories then join the skeleton and must exist.

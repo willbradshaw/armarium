@@ -11,9 +11,9 @@ import pytest
 import yaml
 
 import armarium.validate
-from armarium.extensions import ExtensionRule, load_extension_set
+from armarium.extensions import ExtensionRule, ExtensionSet, load_extension_set
 from armarium.index import VaultIndex
-from armarium.lib import Result, check_vault, find_files, find_vault
+from armarium.lib import SUBTYPES, Result, check_vault, find_files, find_vault
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
 from armarium.targets import LINK_TARGETS, Target
@@ -45,6 +45,7 @@ from armarium.validate import (
     validate_identity_links,
     validate_markdown,
     validate_placement,
+    validate_subdirectory,
     validate_transcript,
     validate_vault,
     validate_wikilink,
@@ -627,6 +628,7 @@ class TestRecordChecks:
             "validate_filename",
             "validate_identity_links",
             "validate_placement",
+            "validate_subdirectory",
             "validate_transcript",
             "validate_wikilinks",
         ]
@@ -1807,6 +1809,125 @@ class TestValidatePlacement:
         }
 
 
+class TestValidateSubdirectory:
+    DECLARED = "subtype_directories: {NPC: npcs, Location: places/locations}"
+
+    @pytest.mark.parametrize(
+        "subtype, relative, expected",
+        [
+            # A declared subtype sits in its subfolder or below it
+            ("NPC", "content/npcs/Mara.md", None),
+            ("NPC", "content/npcs/harbour/Mara.md", None),
+            ("NPC", "campaigns/campaign_2/content/npcs/Mara.md", None),
+            ("Location", "content/places/locations/Port Briselle.md", None),
+            ("NPC", "content/Mara.md", "content/npcs"),
+            ("NPC", "content/places/locations/Mara.md", "content/npcs"),
+            ("NPC", "content/npcs-retired/Mara.md", "content/npcs"),
+            ("NPC", "content/NPCs/Mara.md", "content/npcs"),
+            (
+                "NPC",
+                "campaigns/campaign_2/content/Mara.md",
+                "campaigns/campaign_2/content/npcs",
+            ),
+            (
+                "Location",
+                "campaigns/campaign_2/content/places/Port Briselle.md",
+                "campaigns/campaign_2/content/places/locations",
+            ),
+            # Undeclared subtypes may sit anywhere in the Content directory
+            ("Object", "content/Shoal Chart.md", None),
+            ("Object", "content/anything/Shoal Chart.md", None),
+            ("Object", "content/npcs/Shoal Chart.md", None),
+            # Outside every Content directory, placement reports the record
+            ("NPC", "notes/Mara.md", None),
+            ("NPC", "Mara.md", None),
+            # A record without a usable subtype is the schema's to report
+            (None, "content/Mara.md", None),
+            (7, "content/Mara.md", None),
+        ],
+    )
+    def test_subdirectory(
+        self, tmp_path: Path, subtype: object, relative: str, expected: str | None
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "reference/types/Content.md": (
+                    f"{type_record('Content')}\n{self.DECLARED}"
+                )
+            },
+        )
+        record = Record(
+            tmp_path / relative,
+            Frontmatter({"type": "[[Content]]", "subtype": subtype}),
+            Body("", 1),
+        )
+        result = validate_subdirectory(record, VaultIndex(tmp_path)).diagnostics
+        assert [(d.path, d.rule, d.field, d.message) for d in result] == (
+            [
+                (
+                    relative,
+                    "record.subdirectory",
+                    "subtype",
+                    f"{subtype} Content belongs in {expected}",
+                )
+            ]
+            if expected
+            else []
+        )
+
+    @pytest.mark.parametrize("declared", ["", "subtype_directories: {NPC: ../npcs}"])
+    def test_no_usable_declaration(self, tmp_path: Path, declared: str) -> None:
+        write_records(
+            tmp_path,
+            {"reference/types/Content.md": f"{type_record('Content')}\n{declared}"},
+        )
+        record = Record(
+            tmp_path / "content/Mara.md",
+            Frontmatter({"type": "[[Content]]", "subtype": "NPC"}),
+            Body("", 1),
+        )
+        assert validate_subdirectory(record, VaultIndex(tmp_path)).diagnostics == []
+
+    def test_other_types(self, tmp_path: Path) -> None:
+        write_records(
+            tmp_path,
+            {
+                "reference/types/Content.md": (
+                    f"{type_record('Content')}\n{self.DECLARED}"
+                )
+            },
+        )
+        index = VaultIndex(tmp_path)
+        record = Record(
+            tmp_path / "content/Mara.md",
+            Frontmatter({"type": "[[Note]]", "subtype": "NPC"}),
+            Body("", 1),
+        )
+        assert validate_subdirectory(record, index).diagnostics == []
+        # A record of another type never reads the declaration.
+        assert index.records == {}
+
+    def test_claimed_by_a_longer_declaration(self, tmp_path: Path) -> None:
+        write_records(
+            tmp_path,
+            {
+                "reference/types/Content.md": (
+                    f"{type_record('Content')}\n{self.DECLARED}"
+                ),
+                "reference/types/Widget.md": type_record(
+                    "Widget", shared="content/widgets"
+                ),
+            },
+        )
+        record = Record(
+            tmp_path / "content/widgets/Mara.md",
+            Frontmatter({"type": "[[Content]]", "subtype": "NPC"}),
+            Body("", 1),
+        )
+        assert validate_subdirectory(record, VaultIndex(tmp_path)).diagnostics == []
+
+
 class TestValidateFilename:
     @pytest.mark.parametrize(
         "kind, relative, ordinal, field",
@@ -2612,6 +2733,75 @@ class TestValidateVault:
         result = validate_vault(tmp_path).diagnostics
         assert [(d.rule, d.message[: len(message)]) for d in result] == [
             ("vault.type", message)
+        ]
+
+    @pytest.mark.parametrize(
+        "name, declared, extended, message",
+        [
+            ("Content", "{NPC: npcs, Location: places/locations}", False, None),
+            ("Content", "{}", False, None),
+            ("Content", "", False, None),
+            ("Content", "{Spell: spells}", True, None),
+            (
+                "Content",
+                "{Spell: spells}",
+                False,
+                "subtype_directories names Spell, which is not a Content subtype "
+                "this vault permits",
+            ),
+            (
+                "Content",
+                "{NPC: ../npcs}",
+                False,
+                "subtype_directories.NPC must be a relative path",
+            ),
+            (
+                "Content",
+                "[npcs]",
+                False,
+                "subtype_directories must map Content subtypes to relative paths",
+            ),
+            ("Note", "{NPC: npcs}", False, "only Content declares subtype_directories"),
+            ("Note", "", False, None),
+        ],
+    )
+    def test_subtype_directories(
+        self,
+        tmp_path: Path,
+        name: str,
+        declared: str,
+        extended: bool,
+        message: str | None,
+    ) -> None:
+        from unittest.mock import patch
+
+        make_vault(tmp_path)
+        text = f"---\n{type_record(name)}\nsubtype_directories: {declared}\n---\n"
+        (tmp_path / f"reference/types/{name}.md").write_text(text)
+        # An enabled extension may add the Spell subtype to the core ones.
+        subtypes = (*SUBTYPES, "Spell") if extended else SUBTYPES
+        with patch(
+            "armarium.validate.load_extension_set",
+            return_value=ExtensionSet([], subtypes),
+        ):
+            result = validate_vault(tmp_path).diagnostics
+        assert [(d.path, d.rule, d.message) for d in result] == (
+            [("", "vault.type", f"reference/types/{name}.md: {message}")]
+            if message
+            else []
+        )
+
+    def test_subtype_directories_await_usable_extensions(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        make_vault(tmp_path)
+        text = f"---\n{type_record('Content')}\nsubtype_directories: [npcs]\n---\n"
+        (tmp_path / "reference/types/Content.md").write_text(text)
+        error = ValueError("invalid extension declaration")
+        with patch("armarium.validate.load_extension_set", side_effect=error):
+            result = validate_vault(tmp_path).diagnostics
+        assert [(d.rule, d.message) for d in result] == [
+            ("extension.invalid", "invalid extension declaration")
         ]
 
     @pytest.mark.parametrize(

@@ -2,7 +2,7 @@
 
 import logging
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -536,3 +536,39 @@ def parse_directories(value: object) -> dict[str, str]:
         if not isinstance(path, str) or DIRECTORY.fullmatch(path) is None:
             raise ValueError(f"directories.{scope} must be a relative path")
     return {scope: value[scope] for scope in DIRECTORY_SCOPES if scope in value}
+
+
+def parse_subtype_directories(
+    value: object, subtypes: Collection[str]
+) -> dict[str, str]:
+    """Read the Content Type record's declaration of a subfolder per subtype.
+
+    Args:
+        value: The record's subtype_directories field: a mapping of Content
+            subtype to a relative path below each Content directory, or None
+            when the vault declares none.
+        subtypes: Content subtypes the vault permits.
+
+    Returns:
+        dict[str, str]: Subtype to declared subfolder, in declaration order;
+            empty when nothing is declared.
+
+    Raises:
+        ValueError: The declaration is not such a mapping, names a subtype the
+            vault does not permit, or names a path that is not relative.
+    """
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(
+            "subtype_directories must map Content subtypes to relative paths"
+        )
+    for subtype, path in value.items():
+        if subtype not in subtypes:
+            raise ValueError(
+                f"subtype_directories names {subtype}, which is not a Content "
+                "subtype this vault permits"
+            )
+        if not isinstance(path, str) or DIRECTORY.fullmatch(path) is None:
+            raise ValueError(f"subtype_directories.{subtype} must be a relative path")
+    return dict(value)

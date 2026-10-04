@@ -9,6 +9,7 @@ import pytest
 
 from armarium.index import VaultIndex
 from armarium.lib import (
+    SUBTYPES,
     Diagnostic,
     Findings,
     Result,
@@ -21,6 +22,7 @@ from armarium.lib import (
     find_vault,
     iter_wikilinks,
     parse_directories,
+    parse_subtype_directories,
     parse_wikilink,
     split_wikilink,
 )
@@ -705,3 +707,44 @@ class TestParseDirectories:
     def test_unusable(self, value: object, message: str) -> None:
         with pytest.raises(ValueError, match=f"^{message}$"):
             parse_directories(value)
+
+
+class TestParseSubtypeDirectories:
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            (None, {}),
+            ({}, {}),
+            ({"NPC": "npcs"}, {"NPC": "npcs"}),
+            (
+                {"Location": "places/locations", "NPC": "npcs"},
+                {"Location": "places/locations", "NPC": "npcs"},
+            ),
+            ({"Spell": "spells"}, {"Spell": "spells"}),
+        ],
+    )
+    def test_declaration(self, value: object, expected: dict[str, str]) -> None:
+        parsed = parse_subtype_directories(value, (*SUBTYPES, "Spell"))
+        assert parsed == expected
+        assert list(parsed) == list(expected)
+        assert parsed is not value
+
+    MAPPING = "subtype_directories must map Content subtypes to relative paths"
+    UNKNOWN = "which is not a Content subtype this vault permits"
+
+    @pytest.mark.parametrize(
+        "value, message",
+        [
+            ("npcs", MAPPING),
+            (["npcs"], MAPPING),
+            ({"Spell": "spells"}, f"subtype_directories names Spell, {UNKNOWN}"),
+            ({7: "npcs"}, f"subtype_directories names 7, {UNKNOWN}"),
+            *(
+                ({"NPC": path}, "subtype_directories.NPC must be a relative path")
+                for path in (7, None, "", "/npcs", "..", "./npcs", "npcs/", "a//b")
+            ),
+        ],
+    )
+    def test_unusable(self, value: object, message: str) -> None:
+        with pytest.raises(ValueError, match=f"^{message}$"):
+            parse_subtype_directories(value, SUBTYPES)
