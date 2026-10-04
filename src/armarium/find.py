@@ -17,7 +17,7 @@ ALIASES = re.compile(
 )
 
 # Match kinds in the order they are listed.
-KINDS = ("name", "alias", "similar")
+KINDS = ("name", "alias")
 
 
 @dataclass(frozen=True)
@@ -29,8 +29,8 @@ class Match:
         relative: Its vault-relative path, with forward slashes.
         kind: The record's type, followed by ``/`` and its subtype when it has
             one, such as ``Content/NPC``. Empty for an untyped record.
-        match: ``name`` when the filename is the query, ``alias`` when an
-            alias is, otherwise ``similar``.
+        match: ``name`` when the filename is the query, ``alias`` when one
+            of the record's aliases is.
         summary: The record's summary on one line, or empty.
     """
 
@@ -50,24 +50,18 @@ class Match:
         return "\t".join((self.relative, self.kind, self.match, self.summary))
 
 
-def _compare(query: str, name: str) -> str | None:
-    """Compare a record's name or alias to a query as link targets compare.
+def _name_key(name: str) -> str:
+    """Normalise a query, filename or alias so that equal names compare equal.
 
     Args:
-        query: The query as link_key returns it.
-        name: Filename stem or alias as written.
+        name: Name as written.
 
     Returns:
-        str | None: ``exact`` when they are equal ignoring case and Unicode
-            spelling, ``similar`` when either contains the other, otherwise
-            None. A blank name matches nothing.
+        str: The name as link_key returns it, with surrounding whitespace
+            removed and inner runs of whitespace collapsed. Empty for a blank
+            name.
     """
-    key = link_key(" ".join(name.split()))
-    if not key:
-        return None
-    if key == query:
-        return "exact"
-    return "similar" if query in key or key in query else None
+    return link_key(" ".join(name.split()))
 
 
 def _read_frontmatter(data: bytes) -> Frontmatter | None:
@@ -111,7 +105,7 @@ def find_records(
     kind: str | None = None,
     subtype: str | None = None,
 ) -> list[Match]:
-    """List the records whose filename or aliases match a name.
+    """List the records whose filename or one of whose aliases is a name.
 
     Names compare as link targets do: ignoring case and Unicode spelling.
     Every Markdown file is read, but only those whose filename matches or
@@ -125,16 +119,16 @@ def find_records(
         subtype: Only list records of this subtype, such as NPC.
 
     Returns:
-        list[Match]: Records named exactly, then those with an exact alias,
-            then similar ones, each group in path order. Templates, hidden
-            entries and the scripts/ directory are not searched; files that
-            cannot be read or parsed are left out.
+        list[Match]: Records with that name, then records with that alias,
+            each group in path order. Templates, hidden entries and the
+            scripts/ directory are not searched; files that cannot be read or
+            parsed are left out.
 
     Raises:
         ValueError: The name is blank or the vault cannot be identified.
         OSError: A directory cannot be read.
     """
-    query = link_key(" ".join(name.split()))
+    query = _name_key(name)
     if not query:
         raise ValueError("name must not be blank")
     root = select_vault(vault)
@@ -145,23 +139,20 @@ def find_records(
     }
     matches: list[Match] = []
     for path in record_files(root):
-        by_name = _compare(query, path.stem)
+        named = _name_key(path.stem) == query
         try:
             data = path.read_bytes()
         except OSError:
             continue
-        if by_name is None and not ALIASES.search(data):
+        if not named and not ALIASES.search(data):
             continue
         frontmatter = _read_frontmatter(data)
         if frontmatter is None:
             continue
-        by_alias = {_compare(query, alias) for alias in _aliases(frontmatter)}
-        if by_name == "exact":
+        if named:
             match = "name"
-        elif "exact" in by_alias:
+        elif query in {_name_key(alias) for alias in _aliases(frontmatter)}:
             match = "alias"
-        elif by_name or "similar" in by_alias:
-            match = "similar"
         else:
             continue
         found = {"type": frontmatter.type, "subtype": frontmatter.get("subtype")}

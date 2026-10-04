@@ -1587,8 +1587,8 @@ class TestFindCommand:
                 ],
             ),
             (
-                ["Quay", "--type", "widget", "--subtype", "location"],
-                ["content/Quay Nine.md\tWidget/Location\tsimilar\t"],
+                ["quay nine", "--type", "widget", "--subtype", "location"],
+                ["content/Quay Nine.md\tWidget/Location\tname\t"],
             ),
         ],
     )
@@ -1618,6 +1618,7 @@ class TestFindCommand:
         ("arguments", "inside", "message"),
         [
             (["gull"], True, "INFO: No records match gull"),
+            (["quay"], True, "INFO: No records match quay"),
             (["mara", "--type", "Session"], True, "INFO: No records match mara"),
             ([" "], True, "ERROR: Cannot find  : name must not be blank"),
             (["mara"], False, "ERROR: Cannot find mara: "),

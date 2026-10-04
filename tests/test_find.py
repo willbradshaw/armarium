@@ -9,7 +9,7 @@ from armarium.find import (
     ALIASES,
     Match,
     _aliases,
-    _compare,
+    _name_key,
     _read_frontmatter,
     find_records,
 )
@@ -86,25 +86,22 @@ class TestMatchLine:
         assert match.line == "content/Mara.md\t\tname\t"
 
 
-class TestCompare:
+class TestNameKey:
     @pytest.mark.parametrize(
-        ("query", "name", "expected"),
+        ("name", "expected"),
         [
-            ("mara", "Mara", "exact"),
-            ("mara", "MARA", "exact"),
-            ("mara", "  Mara ", "exact"),
-            ("mara vey", "Mara   Vey", "exact"),
-            ("café", "Café", "exact"),
-            ("strasse", "Straße", "exact"),
-            ("mara", "Captain Mara Vey", "similar"),
-            ("captain mara vey", "Mara", "similar"),
-            ("mara", "Quay Nine", None),
-            ("mara", "", None),
-            ("mara", "   ", None),
+            ("Mara", "mara"),
+            ("MARA", "mara"),
+            ("  Mara ", "mara"),
+            ("Mara \t  Vey", "mara vey"),
+            ("Cafe\u0301", "café"),
+            ("Straße", "strasse"),
+            ("", ""),
+            ("   ", ""),
         ],
     )
-    def test_relation(self, query: str, name: str, expected: str | None) -> None:
-        assert _compare(query, name) == expected
+    def test_key(self, name: str, expected: str) -> None:
+        assert _name_key(name) == expected
 
 
 class TestReadFrontmatter:
@@ -168,13 +165,18 @@ class TestFindRecords:
                         "alias",
                         "",
                     ),
+                ],
+            ),
+            (
+                "captain  MARA vey",
+                {},
+                [
                     (
                         "content/Captain Mara Vey.md",
                         "Content/NPC",
-                        "similar",
+                        "name",
                         "A captain who settles arguments.",
-                    ),
-                    ("content/Port Briselle.md", "Content/Location", "similar", ""),
+                    )
                 ],
             ),
             (
@@ -183,30 +185,26 @@ class TestFindRecords:
                 [("content/Mara.md", "Content/NPC", "alias", "Harbour pilot.")],
             ),
             (
-                "the ninth quay",
-                {},
+                "mara",
+                {"kind": "content", "subtype": "npc"},
+                [("content/Mara.md", "Content/NPC", "name", "Harbour pilot.")],
+            ),
+            (
+                "mara",
+                {"subtype": "location"},
                 [
                     (
                         "campaigns/campaign_1/content/Quay Nine.md",
                         "Content/Location",
-                        "similar",
+                        "alias",
                         "",
                     )
                 ],
             ),
-            (
-                "mara",
-                {"kind": "content", "subtype": "npc"},
-                [
-                    ("content/Mara.md", "Content/NPC", "name", "Harbour pilot."),
-                    (
-                        "content/Captain Mara Vey.md",
-                        "Content/NPC",
-                        "similar",
-                        "A captain who settles arguments.",
-                    ),
-                ],
-            ),
+            ("the ninth quay", {}, []),
+            ("captain", {}, []),
+            ("mar", {}, []),
+            ("mara's", {}, []),
             ("mara", {"kind": "Note"}, [("notes/Mara.md", "Note", "name", "")]),
             ("mara", {"kind": "Note", "subtype": "NPC"}, []),
             ("mara", {"kind": "Session"}, []),

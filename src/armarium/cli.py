@@ -230,10 +230,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "find",
         help="find records by name or alias",
         description=(
-            "List the records whose filename or aliases match a name, ignoring "
-            "case: exact names, then exact aliases, then similar ones. Each line "
-            "holds the record's path, type, match kind and summary, separated by "
-            "tabs. Exits with 1 when nothing matches."
+            "List the records whose filename or one of whose aliases is a name, "
+            "ignoring case: records with that name, then records with that alias. "
+            "Each line holds the record's path, type, match kind and summary, "
+            "separated by tabs. Exits with 1 when no record has the name or alias."
         ),
     )
     find.add_argument("name", help="record name or alias, without a path or .md")
