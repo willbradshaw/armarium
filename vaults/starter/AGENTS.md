@@ -5,9 +5,8 @@ covers the layout, the record types and the `armarium` commands.
 
 ## Before you change a record
 
-- Read its Type record in `reference/types/`. It says what the record must
-  hold and what belongs where, and it is the authority for this vault.
-- If a skill covers the task, follow it.
+Read its Type record in `reference/types/`. It says what the record must hold
+and what belongs where, and it is the authority for this vault.
 
 ## While you work
 
