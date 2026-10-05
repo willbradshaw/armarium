@@ -1,6 +1,6 @@
 ---
 name: update-record
-description: Create or change any record in this Armarium vault (Content, Session, Clue, Note, Player, Transcript or Reference). This is the base procedure every record change follows, and the one other skills in this vault build on - find the record, read its Type record, create or edit it, validate, resolve new links, and check the records that link to it. Use it whenever a task adds, edits, renames, merges or deletes a record.
+description: Create or edit a record in this Armarium vault. The base procedure for every record change, which other skills build on. Finds the record, reads its Type record, creates or edits it, validates it, resolves its links and checks the records that link to it.
 ---
 
 Read `.agents/skills/update-record/SKILL.md`, a path from the vault root, and

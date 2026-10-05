@@ -1,12 +1,12 @@
 ---
 name: update-record
-description: Create or change any record in this Armarium vault (Content, Session, Clue, Note, Player, Transcript or Reference). This is the base procedure every record change follows, and the one other skills in this vault build on - find the record, read its Type record, create or edit it, validate, resolve new links, and check the records that link to it. Use it whenever a task adds, edits, renames, merges or deletes a record.
+description: Create or edit a record in this Armarium vault. The base procedure for every record change, which other skills build on. Finds the record, reads its Type record, creates or edits it, validates it, resolves its links and checks the records that link to it.
 ---
 
 # Update a record
 
-Follow these steps for every record you create or change. Run the commands from
-the vault root, or add `--vault PATH`.
+Follow these steps to create or edit a record. Run the commands from the vault
+root, or add `--vault PATH`.
 
 ## 1. Find the record
 
@@ -20,12 +20,9 @@ This lists every record with that filename or alias, one per line: path, type,
 - **One match:** that is the record. Edit it; do not create another.
 - **Several matches:** read their summaries to pick the right one, and ask if
   it is not clear.
-- **No match:** the entity may be filed under another name. Before creating
-  anything, search the filenames for its most distinctive word, and try a
-  fuller or shorter form of the name. If you find the record, use it, and add
-  the name you were given to its `aliases` if people really use that name.
-
-If you cannot tell whether an existing record is the same entity, ask.
+- **No match:** stop and ask the user. The entity may have a record under
+  another name, and whether to create one, and what to call it, is their
+  decision. When several names have no match, ask about them together.
 
 ## 2. Read the Type record
 
@@ -46,8 +43,8 @@ defaults and validates the result.
 armarium add content "NAME" --subtype SUBTYPE --campaign N --frontmatter '{"summary": "..."}'
 ```
 
-`armarium add --help` lists the record kinds, and `--frontmatter-file PATH`
-takes the fields from a JSON file. Then edit the new record's body.
+`armarium add --help` lists the record kinds and their options. Then edit the
+new record's body.
 
 **To edit**, read the whole record first, then change only what the task needs:
 
@@ -56,33 +53,38 @@ takes the fields from a JSON file. Then edit the new record's body.
 - In frontmatter, quote links (`"[[Name]]"`) and leave an empty field bare
   (`field:`).
 
-Write only what your source states. Do not fill a record out with plausible
-detail.
+Write only what your source states. Where the source does not give a value,
+leave the field or section empty.
 
 ## 4. Validate
 
 ```sh
 armarium validate "PATH"
-armarium validate .
 ```
 
-Validate each record after you change it, and the whole vault once at the end.
-Fix every error your change introduced. If the vault had errors before you
+Validate each record after you change it, and fix every error your change
+introduced. A link you added that names no record is reported as
+`link.missing`; step 5 deals with those.
+
+Run `armarium validate .` once at the end. If the vault had errors before you
 started, report them; do not fix them unasked.
 
-## 5. Resolve new links
+## 5. Resolve links that have no record
 
-Every link must resolve to exactly one file. For each link you added that does
-not:
+For each `link.missing` that validation reports, look the name up as in step 1.
 
-1. Look for the record as in step 1. If it exists under another name, link to
-   that name and keep your wording as display text: `[[Real Name|name used]]`.
-2. Otherwise create a stub with `armarium add`, holding only what your source
-   states. A Content stub may have an empty summary.
-3. If two files share the name, spell enough of the path to tell them apart:
-   `[[campaign_1/content/Name]]`.
+- **It is another record's alias:** link to that record's filename and keep
+  your wording as display text: `[[Real Name|name used]]`.
+- **There is no record:** ask the user, together with any others, whether to
+  link to an existing record they name, create a record, or drop the link and
+  leave the name as plain text.
 
-Never leave a link unresolved, and never remove a link to avoid making a stub.
+When the user asks for a new record, follow this whole procedure for it, and
+give it what your source says about that entity. Do not create an empty record
+just to make a link resolve.
+
+For `link.ambiguous`, two files share the name: spell enough of the path to
+tell them apart, such as `[[campaign_1/content/Name]]`.
 
 ## 6. Check the records that link to it
 
@@ -93,25 +95,19 @@ armarium trace "PATH"
 This lists every link to the record, one per line: the linking record, the
 frontmatter field or body headings where the link sits, and the line number.
 
-Run it when your change could make other records wrong:
-
-- **Renamed or moved:** a rename outside Obsidian updates no links. Fix each
-  one listed.
-- **Merged or deleted:** repoint or remove every link before deleting the file.
-- **A fact other records repeat has changed:** read each place in context and
-  update the ones that are now wrong.
-
-A new record has nothing linking to it, so skip this step for one. Do not edit
-a record only because it links to yours.
+Run it when you changed something other records may repeat or depend on, such
+as a summary, who holds an object or where a place is. Read each listed place
+in context. Most will need no change; where a linking record now says something
+wrong, follow this procedure to correct it.
 
 ## 7. Ask, then report
 
 Ask the user when:
 
-- you cannot tell whether a record already exists for the entity;
 - it is unclear whether a record is shared or belongs to one campaign;
 - your source does not settle a fact the record needs;
 - your change would contradict what another record says.
 
-When you finish, say which records you created, which you changed, which stubs
-you made, and what you left for the user to decide.
+When you finish, say which records you created and which you changed, name any
+you created with little or no content, and list what is left for the user to
+decide.
