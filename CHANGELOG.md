@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Ship `AGENTS.md`, vault guides and the `update-record` agent skill in the starter and example vaults.
 - Allow an optional `docs/` directory and `AGENTS.md` at the vault root, neither holding records.
 - List a file with the name sought in `armarium find` even when its frontmatter cannot be parsed.
 - Add `armarium trace` to list the records that link to a record, and where.

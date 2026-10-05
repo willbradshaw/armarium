@@ -91,9 +91,9 @@ The vault root may also hold three entries that are not records:
 
 | Entry | Holds |
 | --- | --- |
-| `docs/` | documentation about the vault, for people and agents |
+| `docs/` | documentation about the vault, for people and [agents](agents.md) |
 | `scripts/` | maintenance scripts, their documentation and tests (under `scripts/tests/`) |
-| `AGENTS.md` | instructions that coding agents read when working in the vault |
+| `AGENTS.md` | [instructions that coding agents read](agents.md) when working in the vault |
 
 Their contents are excluded from record validation during vault and directory
 scans, and may be of any kind. An explicitly selected Markdown file still
@@ -102,7 +102,9 @@ receives single-record validation.
 Other than the required `.obsidian/` files above, hidden entries and symlinks
 are not part of the skeleton and are ignored during [validation](validate.md).
 This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
-`.obsidian/`, which are per-machine state, not settings.
+`.obsidian/`, which are per-machine state, not settings. It also includes
+`.agents/skills/` and `.claude/skills/`, which hold the vault's
+[agent skills](agents.md).
 
 Optional [extensions](extensions.md) are declared in `reference/extensions.json`;
 their schemas, templates and reference pages live in `reference/extensions/NAME/`.

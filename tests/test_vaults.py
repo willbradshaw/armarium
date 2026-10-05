@@ -1,12 +1,27 @@
-"""Parity between the shipped starter and example vaults outside their content."""
+"""Parity between the shipped starter and example vaults, and their agent files."""
 
 import json
 from pathlib import Path
+
+import pytest
+
+from armarium.parse import Frontmatter
+from armarium.validate import validate
 
 VAULTS = Path(__file__).resolve().parents[1] / "vaults"
 STARTER = VAULTS / "starter"
 EXAMPLE = VAULTS / "example"
 CONTENT_DIRECTORIES = frozenset({"content", "notes", "campaigns", "assets"})
+AGENT_SKILLS = sorted(
+    path.parent.name for path in (STARTER / ".agents/skills").glob("*/SKILL.md")
+)
+
+
+def skill_metadata(path: Path) -> tuple[dict[str, object], str]:
+    """Read a SKILL.md file's frontmatter and the text after it."""
+    text = path.read_text(encoding="utf-8")
+    frontmatter, length = Frontmatter.parse(text)
+    return dict(frontmatter), "".join(text.splitlines(keepends=True)[length:])
 
 
 def shared_files(vault: Path) -> dict[Path, Path]:
@@ -64,3 +79,53 @@ class TestVaultParity:
             assert starter[relative].read_bytes() == example[relative].read_bytes(), (
                 f"differs: {relative}"
             )
+
+
+class TestSkillMetadata:
+    def test_reads_frontmatter_and_body(self, tmp_path: Path) -> None:
+        path = tmp_path / "SKILL.md"
+        path.write_text("---\nname: demo\ndescription: Does it.\n---\n\nSteps.\n")
+        assert skill_metadata(path) == (
+            {"name": "demo", "description": "Does it."},
+            "\nSteps.\n",
+        )
+
+
+class TestAgentFiles:
+    def test_ships_skills(self) -> None:
+        assert AGENT_SKILLS
+
+    @pytest.mark.parametrize("skill", AGENT_SKILLS)
+    def test_skill_is_named_and_described(self, skill: str) -> None:
+        metadata, body = skill_metadata(STARTER / f".agents/skills/{skill}/SKILL.md")
+        assert metadata["name"] == skill
+        description = metadata["description"]
+        assert isinstance(description, str) and 0 < len(description) <= 1024
+        assert body.strip()
+
+    @pytest.mark.parametrize("skill", AGENT_SKILLS)
+    def test_stub_matches_its_skill(self, skill: str) -> None:
+        metadata, _ = skill_metadata(STARTER / f".agents/skills/{skill}/SKILL.md")
+        stub, body = skill_metadata(STARTER / f".claude/skills/{skill}/SKILL.md")
+        assert stub == metadata
+        assert f"`.agents/skills/{skill}/SKILL.md`" in body
+
+    def test_every_stub_has_a_skill(self) -> None:
+        stubs = sorted(p.name for p in (STARTER / ".claude/skills").iterdir())
+        assert stubs == AGENT_SKILLS
+
+    @pytest.mark.parametrize("skill", AGENT_SKILLS)
+    def test_agent_guide_lists_the_skill(self, skill: str) -> None:
+        guide = (STARTER / "docs/agents/armarium.md").read_text(encoding="utf-8")
+        assert f"| `{skill}` |" in guide
+
+    def test_agents_file_points_to_the_guides(self) -> None:
+        text = (STARTER / "AGENTS.md").read_text(encoding="utf-8")
+        assert "`docs/agents/armarium.md`" in text
+        guide = (STARTER / "docs/agents/armarium.md").read_text(encoding="utf-8")
+        assert "(../armarium.md)" in guide
+        assert (STARTER / "docs/armarium.md").is_file()
+
+    @pytest.mark.parametrize("vault", [STARTER, EXAMPLE], ids=["starter", "example"])
+    def test_vault_with_agent_files_validates(self, vault: Path) -> None:
+        assert not validate(vault).failed
