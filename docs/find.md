@@ -35,8 +35,8 @@ campaigns/campaign_1/content/Quay Nine.md	Content/Location	alias
 Records with the name come first, then records with the alias, each group in
 path order. A record with both is listed once, as `name`.
 
-[Templates](record.md#anatomy), hidden entries, symlinks and the optional
-`scripts/` directory are not searched. A file whose frontmatter cannot be parsed
+[Templates](record.md#anatomy), hidden entries, symlinks and the vault's
+[optional root entries](vault.md#other-entries) are not searched. A file whose frontmatter cannot be parsed
 is still listed when its filename is the name sought, with no type or summary;
 its aliases cannot be read, so it is never an `alias` match.
 [`armarium validate`](validate.md) reports what is wrong with it.

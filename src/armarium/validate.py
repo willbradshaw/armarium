@@ -19,6 +19,8 @@ from armarium.extensions import (
 from armarium.index import VaultIndex
 from armarium.lib import (
     CAMPAIGN_NAME,
+    UNSCANNED_DIRECTORIES,
+    UNSCANNED_FILES,
     WIKILINK,
     Diagnostic,
     Findings,
@@ -288,7 +290,8 @@ def validate_directory(
     Args:
         path: Directory to scan recursively. record_files selects the
             Markdown to validate: hidden entries, caches, node_modules,
-            symlinks and the vault's optional scripts/ directory are excluded.
+            symlinks and the vault's optional docs/, scripts/ and AGENTS.md
+            are excluded.
         vault: Optional explicit vault containing the entire selected directory.
             Otherwise try the selected directory, then descend until a vault
             is found. A selected vault applies to its entire subtree.
@@ -525,8 +528,11 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
         for child in find_children(directory):
             entry = child.relative_to(root)
             location = entry.as_posix()
-            if entry == Path("scripts") and child.is_dir():
-                # Optional maintenance tooling is outside the record skeleton.
+            if location in (
+                UNSCANNED_DIRECTORIES if child.is_dir() else UNSCANNED_FILES
+            ):
+                # Optional documentation, maintenance tooling and agent
+                # instructions are outside the record skeleton.
                 continue
             elif entry == Path("campaigns"):
                 # Phase 2 reports its entries; check the campaigns it found.

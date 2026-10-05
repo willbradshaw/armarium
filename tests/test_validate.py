@@ -747,15 +747,21 @@ class TestValidateDirectory:
         with pytest.raises(ValueError, match="jobs must be at least 1"):
             validate_directory(tmp_path, jobs=jobs)
 
-    @pytest.mark.parametrize("target", [".", "scripts", "scripts/tests"])
-    def test_scripts_are_not_records(self, tmp_path: Path, target: str) -> None:
+    @pytest.mark.parametrize(
+        "target", [".", "scripts", "scripts/tests", "docs", "docs/tests"]
+    )
+    def test_optional_root_entries_are_not_records(
+        self, tmp_path: Path, target: str
+    ) -> None:
         make_vault(tmp_path)
         baseline = validate_directory(tmp_path)
-        scripts = tmp_path / "scripts"
-        (scripts / "tests").mkdir(parents=True)
-        (scripts / "README.md").write_text("Tooling documentation without frontmatter")
-        (scripts / "tests/fixture.md").write_text("---\ninvalid: [\n---\n")
-        (scripts / "tests/test_tool.py").write_text("assert True\n")
+        for name in ("scripts", "docs"):
+            directory = tmp_path / name
+            (directory / "tests").mkdir(parents=True)
+            (directory / "README.md").write_text("Documentation without frontmatter")
+            (directory / "tests/fixture.md").write_text("---\ninvalid: [\n---\n")
+            (directory / "tests/test_tool.py").write_text("assert True\n")
+        (tmp_path / "AGENTS.md").write_text("Instructions without frontmatter")
         assert validate_directory(tmp_path / target) == (
             baseline if target == "." else Result()
         )
@@ -2511,6 +2517,23 @@ class TestValidateVault:
             ("scripts/tests/fixtures/input.json", False, None),
             ("scripts/README.md", False, None),
             ("scripts", False, "scripts is not in the vault skeleton"),
+            ("docs", True, None),
+            ("docs/agents/guide.md", False, None),
+            ("docs/diagram.png", False, None),
+            ("docs", False, "docs is not in the vault skeleton"),
+            (
+                "campaigns/campaign_1/docs",
+                True,
+                "campaigns/campaign_1/docs is not in the vault skeleton",
+            ),
+            ("AGENTS.md", False, None),
+            ("AGENTS.md", True, "AGENTS.md is not in the vault skeleton"),
+            ("NOTES.md", False, "NOTES.md is not in the vault skeleton"),
+            (
+                "campaigns/campaign_1/AGENTS.md",
+                False,
+                "campaigns/campaign_1/AGENTS.md is not in the vault skeleton",
+            ),
             (
                 "campaigns/campaign_1/scripts",
                 True,

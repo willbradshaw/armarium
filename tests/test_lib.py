@@ -410,6 +410,9 @@ class TestRecordFiles:
         "node_modules/package/README.md",
         "scripts/README.md",
         "scripts/tests/Fixture.md",
+        "docs/Guide.md",
+        "docs/agents/Guide.md",
+        "AGENTS.md",
     ]
 
     @pytest.fixture
@@ -434,6 +437,8 @@ class TestRecordFiles:
             ("campaigns/campaign_1", ["campaigns/campaign_1/content/Quay Nine.MD"]),
             ("scripts", []),
             ("scripts/tests", []),
+            ("docs", []),
+            ("docs/agents", []),
         ],
     )
     def test_directory_scan(
@@ -443,16 +448,27 @@ class TestRecordFiles:
             vault / name for name in expected
         ]
 
-    def test_scripts_named_directories_elsewhere_are_scanned(self, vault: Path) -> None:
-        for relative in ("content/scripts/Play.md", "scripts-old/Draft.md"):
-            (vault / relative).parent.mkdir(parents=True)
-            (vault / relative).write_text("")
-        listed = record_files(vault, vault)
-        assert vault / "content/scripts/Play.md" in listed
-        assert vault / "scripts-old/Draft.md" in listed
-        assert record_files(vault / "content/scripts", vault) == [
-            vault / "content/scripts/Play.md"
-        ]
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            "content/scripts/Play.md",
+            "scripts-old/Draft.md",
+            "content/docs/Charter.md",
+            "docs-old/Draft.md",
+            "content/AGENTS.md",
+            "AGENTS.md/Nested.md",
+            "Other AGENTS.md",
+        ],
+    )
+    def test_only_the_root_entries_are_skipped(
+        self, vault: Path, relative: str
+    ) -> None:
+        (vault / "AGENTS.md").unlink()
+        (vault / relative).parent.mkdir(parents=True, exist_ok=True)
+        (vault / relative).write_text("")
+        assert vault / relative in record_files(vault, vault)
+        if "/" in relative:
+            assert vault / relative in record_files((vault / relative).parent, vault)
 
     @pytest.mark.parametrize("directory", ["", "content", "scripts"])
     def test_keeps_the_directory_form(
@@ -474,12 +490,14 @@ class TestRecordFiles:
 
     def test_matches_the_per_file_rule(self, vault: Path) -> None:
         # The rule validation applied before the scan had one home.
-        for directory in (vault, vault / "content", vault / "scripts"):
+        for directory in (vault, vault / "content", vault / "scripts", vault / "docs"):
             assert record_files(directory, vault) == [
                 file
                 for file in find_files(directory)
                 if file.suffix.lower() == ".md"
                 and not file.resolve().is_relative_to(vault / "scripts")
+                and not file.resolve().is_relative_to(vault / "docs")
+                and file.resolve() != vault / "AGENTS.md"
             ]
 
     @pytest.mark.parametrize("kind", ["missing", "file", "symlink"])
