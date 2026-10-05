@@ -114,11 +114,6 @@ class TestAgentFiles:
         stubs = sorted(p.name for p in (STARTER / ".claude/skills").iterdir())
         assert stubs == AGENT_SKILLS
 
-    @pytest.mark.parametrize("skill", AGENT_SKILLS)
-    def test_agents_file_lists_the_skill(self, skill: str) -> None:
-        text = (STARTER / "AGENTS.md").read_text(encoding="utf-8")
-        assert f"| `{skill}` |" in text
-
     def test_agents_file_points_to_the_vault_guide(self) -> None:
         text = (STARTER / "AGENTS.md").read_text(encoding="utf-8")
         assert "(docs/armarium.md)" in text

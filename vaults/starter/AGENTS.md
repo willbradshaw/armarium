@@ -7,11 +7,8 @@ covers the layout, the record types and the `armarium` commands.
 
 - Read its Type record in `reference/types/`. It says what the record must
   hold and what belongs where, and it is the authority for this vault.
-- Follow the skill for the task. Skills live in `.agents/skills/`:
-
-  | Skill | Use it to |
-  | --- | --- |
-  | `update-record` | create or change any record |
+- Follow the skill for the task. Skills live in `.agents/skills/`, and each
+  one's description says when to use it.
 
 ## While you work
 
