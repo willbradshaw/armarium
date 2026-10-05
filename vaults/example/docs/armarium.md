@@ -44,11 +44,3 @@ Run these from the vault root, or add `--vault PATH`.
 - Validate before you commit; fix what it reports.
 - Do not edit the files under `reference/extensions/NAME/`. They are installed
   by Armarium and replaced by `armarium extension update`.
-
-## What came from Armarium
-
-`armarium init` copied the Type records, templates, schemas, views, these `docs/`
-pages, `AGENTS.md` and the agent skills in `.agents/skills/` and
-`.claude/skills/` from Armarium's starter vault. They belong to this vault now:
-edit them to suit it. A later Armarium version does not change them; to take a
-newer version of one, copy it from the starter vault.

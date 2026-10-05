@@ -1,9 +1,8 @@
 # Agent skills and guides
 
 A vault created by [`armarium init`](init.md) carries instructions for coding
-agents that work in it: a short `AGENTS.md`, two guides and a set of skills.
-They are plain files copied from the [starter vault](../vaults/starter/), and
-the vault owns them from then on.
+agents that work in it: a short `AGENTS.md`, two guides and a set of skills,
+copied from the [starter vault](../vaults/starter/).
 
 ## What a vault holds
 
@@ -29,15 +28,3 @@ of them as records.
 | Skill | Use |
 | --- | --- |
 | `update-record` | The base procedure for creating or changing any record: find it with [`armarium find`](find.md), read its [Type record](type.md), create it with [`armarium add`](add.md) or edit it, [validate](validate.md), resolve new links, and check the records that link to it with [`armarium trace`](trace.md). Other skills build on it. |
-
-## Changing and updating them
-
-Edit any of these files to suit the vault; add the vault's own rules to
-`AGENTS.md`. Upgrading Armarium does not change them. To take a newer version
-of a skill or guide, or to add them to a vault created without them, copy the
-files from the starter vault.
-
-## Tested hosts
-
-Discovery and use of `update-record` in a fresh vault were checked with Claude
-Code 2.1.289, through the stub, and Codex CLI 0.157.1, through `.agents/skills/`.

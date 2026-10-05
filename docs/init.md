@@ -22,8 +22,7 @@ The replacement, including any selected extension, is prepared before the old
 directory is removed, so a setup failure leaves the existing directory intact.
 
 The copy includes `AGENTS.md`, `docs/` and the
-[skills for coding agents](agents.md), which the new vault owns like its other
-files.
+[skills for coding agents](agents.md).
 
 `init` does not initialize Git or install Obsidian plugins. After completion,
 open the new vault in Obsidian and enable the plugins listed in
