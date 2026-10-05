@@ -20,9 +20,9 @@ This lists every record with that filename or alias, one per line: path, type,
 - **One match:** that is the record. Edit it; do not create another.
 - **Several matches:** read their summaries to pick the right one, and ask if
   it is not clear.
-- **No match:** stop and ask the user. The entity may have a record under
-  another name, and whether to create one, and what to call it, is their
-  decision. When several names have no match, ask about them together.
+- **No match:** if the task is to create this record, go on. If you expected
+  it to exist, stop and ask the user; do not pick a record with a similar name
+  yourself.
 
 ## 2. Read the Type record
 
@@ -69,19 +69,20 @@ introduced. A link you added that names no record is reported as
 Run `armarium validate .` once at the end. If the vault had errors before you
 started, report them; do not fix them unasked.
 
-## 5. Resolve links that have no record
+## 5. Create the records that links need
 
-For each `link.missing` that validation reports, look the name up as in step 1.
+For each `link.missing` that validation reports, run `armarium find` on the
+name.
 
 - **It is another record's alias:** link to that record's filename and keep
   your wording as display text: `[[Real Name|name used]]`.
-- **There is no record:** ask the user, together with any others, whether to
-  link to an existing record they name, create a record, or drop the link and
-  leave the name as plain text.
+- **There is no record:** create it, under the name the link uses. Follow this
+  whole procedure for the new record, so that it holds what your source says
+  about that entity and not just a name. Take its type and subtype from how the
+  source describes it, and ask only if that is unclear.
 
-When the user asks for a new record, follow this whole procedure for it, and
-give it what your source says about that entity. Do not create an empty record
-just to make a link resolve.
+A record whose entity the source only names stays nearly empty. That is
+allowed; list such records in your report.
 
 For `link.ambiguous`, two files share the name: spell enough of the path to
 tell them apart, such as `[[campaign_1/content/Name]]`.
