@@ -513,6 +513,12 @@ def find_children(root: Path) -> list[Path]:
     return [root / entry.name for entry in _visible(root)]
 
 
+# Optional entries of the vault root whose Markdown is not records: documentation
+# and maintenance tooling, and the instructions file that agents read.
+UNSCANNED_DIRECTORIES = ("docs", "scripts")
+UNSCANNED_FILES = ("AGENTS.md",)
+
+
 def record_files(directory: Path, vault: Path) -> list[Path]:
     """List the Markdown files that a scan of a vault directory treats as records.
 
@@ -528,8 +534,8 @@ def record_files(directory: Path, vault: Path) -> list[Path]:
     Returns:
         list[Path]: Sorted Markdown paths retaining the directory's absolute
             or relative form, without hidden entries, symlinks, __pycache__ and
-            node_modules, or anything in the vault's optional scripts/
-            directory.
+            node_modules, anything in the vault's optional docs/ and scripts/
+            directories, or its optional AGENTS.md.
 
     Raises:
         ValueError: The directory is a symlink or is not a directory.
@@ -537,13 +543,20 @@ def record_files(directory: Path, vault: Path) -> list[Path]:
     """
     files = find_files(directory, ".md")
     # No listed file is reached through a symlink below the directory, so only
-    # the directory itself needs resolving to locate scripts/ within the scan.
+    # the directory itself needs resolving to locate the root's entries.
     base = directory.resolve()
-    if base.is_relative_to(vault / "scripts"):
+    if any(base.is_relative_to(vault / name) for name in UNSCANNED_DIRECTORIES):
         return []
     if base == vault:
-        scripts = os.fspath(directory / "scripts") + os.sep
-        return [file for file in files if not os.fspath(file).startswith(scripts)]
+        skipped = tuple(
+            os.fspath(directory / name) + os.sep for name in UNSCANNED_DIRECTORIES
+        )
+        named = {os.fspath(directory / name) for name in UNSCANNED_FILES}
+        return [
+            file
+            for file in files
+            if not os.fspath(file).startswith(skipped) and os.fspath(file) not in named
+        ]
     return files
 
 

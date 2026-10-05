@@ -52,7 +52,8 @@ Lines are sorted by path, then line number. Links are followed as
 anchor; embeds count as links, and a link written inside code counts too. Several
 links to the file on one line, or in one field, are listed once. The file's
 links to itself are left out, as are links from templates, hidden entries, the
-`scripts/` directory and files that cannot be parsed.
+vault's [optional root entries](vault.md#other-entries) and files that cannot be
+parsed.
 
 The command reports the traced file and the number of links on standard error.
 It exits with `0` whether or not anything links to the file, and `2` for a usage

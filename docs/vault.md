@@ -41,16 +41,11 @@ reference/                    shared Reference records
 
 Every entry shown is required, as a real directory or file rather than a
 symlink. The vault root, `campaigns/`, each `campaign_N/` and each `reference/`
-hold the entries shown, plus Reference records in `reference/` and optional
-`scripts/` at the root. Other directories may hold subfolders. Markdown in the
-record directories must follow the [record rules](record.md). Outside `scripts/`,
-non-Markdown files belong in `assets/`, except views in `reference/views/` and
-schemas in `reference/schemas/`.
-
-An optional root-level `scripts/` directory holds maintenance scripts, their
-documentation and tests (under `scripts/tests/`). Its contents are excluded from
-record validation during vault and directory scans. An explicitly selected
-Markdown file still receives single-record validation.
+hold the entries shown, plus Reference records in `reference/` and the
+[optional root entries](#other-entries). Other directories may hold subfolders.
+Markdown in the record directories must follow the [record rules](record.md).
+Outside the optional root directories, non-Markdown files belong in `assets/`,
+except views in `reference/views/` and schemas in `reference/schemas/`.
 
 `reference/types/` and `reference/schemas/` correspond one to one: `Clue.md`
 has `clue.schema.json`, and so on, the schema named after the lowercased type.
@@ -91,6 +86,18 @@ No filename may have leading, trailing, doubled or non-space whitespace. Each
 file path must be unique when compared case-insensitively.
 
 ## Other entries
+
+The vault root may also hold three entries that are not records:
+
+| Entry | Holds |
+| --- | --- |
+| `docs/` | documentation about the vault, for people and agents |
+| `scripts/` | maintenance scripts, their documentation and tests (under `scripts/tests/`) |
+| `AGENTS.md` | instructions that coding agents read when working in the vault |
+
+Their contents are excluded from record validation during vault and directory
+scans, and may be of any kind. An explicitly selected Markdown file still
+receives single-record validation.
 
 Other than the required `.obsidian/` files above, hidden entries and symlinks
 are not part of the skeleton and are ignored during [validation](validate.md).

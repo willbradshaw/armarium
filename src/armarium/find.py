@@ -135,8 +135,8 @@ def find_records(name: str, vault: Path | None = None) -> list[Match]:
 
     Returns:
         list[Match]: Records with that name, then records with that alias,
-            each group in path order. Templates, hidden entries and the
-            scripts/ directory are not searched. A file that cannot be read or
+            each group in path order. Templates, hidden entries, the docs/
+            and scripts/ directories and AGENTS.md are not searched. A file that cannot be read or
             parsed is listed by its name, without type or summary, since its
             aliases are unknown.
 

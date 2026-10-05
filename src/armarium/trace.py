@@ -254,8 +254,9 @@ def trace_record(path: Path, vault: Path | None = None) -> tuple[str, list[Refer
             with forward slashes, and its references in order of linking
             record, line and location. Links repeated at one
             location are listed once. The file's links to itself are left out,
-            as are links from templates, hidden entries, the scripts/
-            directory and files that cannot be read or parsed.
+            as are links from templates, hidden entries, the docs/ and
+            scripts/ directories, AGENTS.md and files that cannot be read or
+            parsed.
 
     Raises:
         ValueError: The path is not a file, lies in no vault or outside the
