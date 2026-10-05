@@ -115,15 +115,13 @@ class TestAgentFiles:
         assert stubs == AGENT_SKILLS
 
     @pytest.mark.parametrize("skill", AGENT_SKILLS)
-    def test_agent_guide_lists_the_skill(self, skill: str) -> None:
-        guide = (STARTER / "docs/agents/armarium.md").read_text(encoding="utf-8")
-        assert f"| `{skill}` |" in guide
-
-    def test_agents_file_points_to_the_guides(self) -> None:
+    def test_agents_file_lists_the_skill(self, skill: str) -> None:
         text = (STARTER / "AGENTS.md").read_text(encoding="utf-8")
-        assert "`docs/agents/armarium.md`" in text
-        guide = (STARTER / "docs/agents/armarium.md").read_text(encoding="utf-8")
-        assert "(../armarium.md)" in guide
+        assert f"| `{skill}` |" in text
+
+    def test_agents_file_points_to_the_vault_guide(self) -> None:
+        text = (STARTER / "AGENTS.md").read_text(encoding="utf-8")
+        assert "(docs/armarium.md)" in text
         assert (STARTER / "docs/armarium.md").is_file()
 
     @pytest.mark.parametrize("vault", [STARTER, EXAMPLE], ids=["starter", "example"])

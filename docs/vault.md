@@ -91,7 +91,7 @@ The vault root may also hold three entries that are not records:
 
 | Entry | Holds |
 | --- | --- |
-| `docs/` | documentation about the vault, for people and [agents](agents.md) |
+| `docs/` | documentation about the vault |
 | `scripts/` | maintenance scripts, their documentation and tests (under `scripts/tests/`) |
 | `AGENTS.md` | [instructions that coding agents read](agents.md) when working in the vault |
 
