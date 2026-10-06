@@ -18,8 +18,7 @@ and what belongs where, and it is the authority for this vault.
 - **Keep kinds of knowledge apart.** A Clue is a candidate fact, not an
   established one. What a Session prepares has not happened until its Events
   say so.
-- **Leave every link resolving.** Where a link names no record, create the
-  record.
+- **Leave every link resolving.** Where a link names no record, create a stub.
 - **Change only what the task needs.** Do not reword or reformat the rest.
 
 ## Before you finish
