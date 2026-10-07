@@ -96,7 +96,7 @@ Rule identifiers group into families:
 | Family | Reports | Rules on |
 | --- | --- | --- |
 | `parse.` | a file that cannot be read as frontmatter and body | [Records](record.md#anatomy) |
-| `record.` | the `type` field, a Content `subtype` the vault does not permit, templates, placement, the subfolder declared for a Content subtype, and filename identity | [Records](record.md), [Types](type.md), [Extensions](extensions.md) |
+| `record.` | the `type` field, a Content `subtype` the vault does not permit, templates, placement, the subfolder declared for a Content subtype, filename identity, and a name or alias shared with another record | [Records](record.md), [Types](type.md), [Extensions](extensions.md) |
 | `schema.` | a record against its schema; missing, invalid or unmatched schemas | [Records](record.md#types-statuses-and-schemas) |
 | `link.` | links that do not resolve, are malformed or ambiguous, lack their anchor, target the wrong kind of record, repeat, or form a cycle | [Records](record.md#links), [Types](type.md) |
 | `campaign.` | campaign directories and `campaign_N` blocks, and a Session's campaign | [Campaigns](campaign.md) |

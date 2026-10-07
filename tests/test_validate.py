@@ -44,6 +44,7 @@ from armarium.validate import (
     validate_filename,
     validate_identity_links,
     validate_markdown,
+    validate_names,
     validate_placement,
     validate_subdirectory,
     validate_transcript,
@@ -627,6 +628,7 @@ class TestRecordChecks:
             "validate_clue",
             "validate_filename",
             "validate_identity_links",
+            "validate_names",
             "validate_placement",
             "validate_subdirectory",
             "validate_transcript",
@@ -951,8 +953,12 @@ class TestValidateDirectory:
             (root / "campaigns").mkdir()
             (root / "reference/schemas/widget.schema.json").write_text(schema)
             (root / "content").mkdir(exist_ok=True)
+            # Distinct names: once claimed by the outer vault, all four records
+            # are in one scope.
             for name in ("a.md", "b.md"):
-                (root / "content" / name).write_text('---\ntype: "[[Widget]]"\n---\n')
+                (root / "content" / f"{root.name} {name}").write_text(
+                    '---\ntype: "[[Widget]]"\n---\n'
+                )
         for name, text in (
             ("Widget", type_record("Widget", shared="content")),
             ("Type", type_record("Type")),
@@ -1932,6 +1938,173 @@ class TestValidateSubdirectory:
             Body("", 1),
         )
         assert validate_subdirectory(record, VaultIndex(tmp_path)).diagnostics == []
+
+
+class TestValidateNames:
+    CONTENT = 'type: "[[Content]]"'
+    C1 = "campaigns/campaign_1/content"
+    C2 = "campaigns/campaign_2/content"
+
+    @pytest.mark.parametrize(
+        "target, own, others, expected",
+        [
+            # A filename shared where one campaign can see both records
+            (
+                "content/Mara.md",
+                "",
+                {"notes/Mara.md": 'type: "[[Note]]"'},
+                [("name is shared with notes/Mara.md", "")],
+            ),
+            (
+                "content/Mara.md",
+                "",
+                {f"{C1}/mara.md": CONTENT},
+                [(f"name is shared with {C1}/mara.md", "")],
+            ),
+            (
+                f"{C1}/Mara.md",
+                "",
+                {"content/npcs/MARA.md": CONTENT},
+                [("name is shared with content/npcs/MARA.md", "")],
+            ),
+            (
+                f"{C1}/Mara.md",
+                "",
+                {f"{C1}/npcs/Mara.md": CONTENT},
+                [(f"name is shared with {C1}/npcs/Mara.md", "")],
+            ),
+            # Another record's alias
+            (
+                "content/Mara.md",
+                "",
+                {"content/Quay Nine.md": CONTENT + "\naliases: [Gull, ' mara ']"},
+                [("name is an alias of content/Quay Nine.md", "")],
+            ),
+            (
+                "content/Mara.md",
+                "aliases: [The  PILOT]",
+                {"notes/The Pilot.md": 'type: "[[Note]]"'},
+                [("alias The  PILOT is the name of notes/The Pilot.md", "aliases")],
+            ),
+            (
+                "content/Mara.md",
+                "aliases: [The Pilot, Gull]",
+                {f"{C2}/Tern.md": CONTENT + "\naliases: the pilot"},
+                [(f"alias The Pilot is also an alias of {C2}/Tern.md", "aliases")],
+            ),
+            # Every clash is reported, each once
+            (
+                "content/Mara.md",
+                "aliases: [The Pilot, the pilot]",
+                {
+                    "notes/Mara.md": 'type: "[[Note]]"\naliases: [The Pilot]',
+                    "content/The Pilot.md": CONTENT,
+                },
+                [
+                    ("name is shared with notes/Mara.md", ""),
+                    ("alias The Pilot is the name of content/The Pilot.md", "aliases"),
+                    ("alias The Pilot is also an alias of notes/Mara.md", "aliases"),
+                ],
+            ),
+            # A record that cannot be parsed still holds its filename
+            (
+                "content/Mara.md",
+                "",
+                {"notes/Mara.md": "aliases: ["},
+                [("name is shared with notes/Mara.md", "")],
+            ),
+            # Records of two different campaigns may share any name
+            (f"{C1}/Mara.md", "", {f"{C2}/Mara.md": CONTENT}, []),
+            (
+                f"{C1}/Mara.md",
+                "aliases: [The Pilot]",
+                {f"{C2}/Tern.md": CONTENT + "\naliases: [The Pilot, Mara]"},
+                [],
+            ),
+            # Structural records take no part, on either side
+            ("content/Mara.md", "", {"reference/Mara.md": 'type: "[[Reference]]"'}, []),
+            (
+                "content/Mara.md",
+                "",
+                {"reference/types/Mara.md": 'type: "[[Type]]"'},
+                [],
+            ),
+            (
+                "content/Mara.md",
+                "aliases: [Pending]",
+                {
+                    "reference/statuses/Pending.md": 'type: "[[Status]]"',
+                    "reference/Gull.md": 'type: "[[Reference]]"\naliases: [Mara]',
+                },
+                [],
+            ),
+            # Files that are not records hold no names
+            (
+                "content/Mara.md",
+                "",
+                {
+                    "reference/templates/Mara.md": CONTENT,
+                    "scripts/Mara.md": CONTENT,
+                    "docs/Mara.md": CONTENT,
+                },
+                [],
+            ),
+            # A record's own names do not clash with each other
+            ("content/Mara.md", "aliases: [Mara, mara, The Pilot, The Pilot]", {}, []),
+            ("content/Mara.md", "", {"content/Mara Vey.md": CONTENT}, []),
+        ],
+    )
+    def test_names(
+        self,
+        tmp_path: Path,
+        target: str,
+        own: str,
+        others: dict[str, str],
+        expected: list[tuple[str, str]],
+    ) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "campaigns/campaign_2").mkdir()
+        write_records(tmp_path, {target: f"{self.CONTENT}\n{own}", **others})
+        record, _ = Record.parse(tmp_path / target, tmp_path)
+        assert record is not None
+        diagnostics = validate_names(record, VaultIndex(tmp_path)).diagnostics
+        assert {d.rule for d in diagnostics} <= {"record.name"}
+        assert sorted((d.message, d.field) for d in diagnostics) == sorted(expected)
+
+    @pytest.mark.parametrize("kind", ["Reference", "Status", "Type"])
+    def test_structural_record_reports_nothing(self, tmp_path: Path, kind: str) -> None:
+        make_vault(tmp_path)
+        write_records(
+            tmp_path,
+            {
+                "reference/Mara.md": f'type: "[[{kind}]]"\naliases: [Gull]',
+                "content/Mara.md": self.CONTENT,
+                "content/Gull.md": self.CONTENT,
+            },
+        )
+        record, _ = Record.parse(tmp_path / "reference/Mara.md", tmp_path)
+        assert record is not None
+        assert validate_names(record, VaultIndex(tmp_path)).diagnostics == []
+
+    def test_untyped_record_is_checked(self, tmp_path: Path) -> None:
+        make_vault(tmp_path)
+        write_records(tmp_path, {"content/Mara.md": "x: 1", "notes/Mara.md": "x: 1"})
+        record, _ = Record.parse(tmp_path / "content/Mara.md", tmp_path)
+        assert record is not None
+        assert [
+            d.message for d in validate_names(record, VaultIndex(tmp_path)).diagnostics
+        ] == ["name is shared with notes/Mara.md"]
+
+    def test_both_records_of_a_pair_fail_validation(self, tmp_path: Path) -> None:
+        make_vault(tmp_path)
+        write_records(
+            tmp_path,
+            {"content/Mara.md": self.CONTENT, "notes/Mara.md": 'type: "[[Note]]"'},
+        )
+        named = {
+            d.path for d in validate(tmp_path).diagnostics if d.rule == "record.name"
+        }
+        assert named == {"content/Mara.md", "notes/Mara.md"}
 
 
 class TestValidateFilename:

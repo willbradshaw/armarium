@@ -1621,6 +1621,11 @@ class TestFindCommand:
             (["quay"], True, "INFO: No records match quay"),
             ([" "], True, "ERROR: Cannot find  : name must not be blank"),
             (["mara"], False, "ERROR: Cannot find mara: "),
+            (
+                ["mara", "--campaign", "7"],
+                True,
+                "ERROR: Cannot find mara: campaign 7 does not exist",
+            ),
         ],
     )
     def test_exits_with_one(
@@ -1648,6 +1653,8 @@ class TestFindCommand:
             ["mara", "vey"],
             ["mara", "--type", "Content"],
             ["mara", "--subtype", "NPC"],
+            ["mara", "--campaign"],
+            ["mara", "--campaign", "one"],
         ],
     )
     def test_usage_errors(
@@ -1660,9 +1667,30 @@ class TestFindCommand:
 
     def test_options(self, tmp_path: Path) -> None:
         args = parse_args(["find", "Mara Vey"])
-        assert (args.name, args.vault) == ("Mara Vey", None)
-        args = parse_args(["find", "Mara", "--vault", str(tmp_path)])
-        assert args.vault == tmp_path
+        assert (args.name, args.vault, args.campaign) == ("Mara Vey", None, None)
+        args = parse_args(["find", "Mara", "--vault", str(tmp_path), "--campaign", "2"])
+        assert (args.vault, args.campaign) == (tmp_path, 2)
+
+    def test_campaign_limits_the_listing(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        for number in (1, 2):
+            directory = records / f"campaigns/campaign_{number}/content"
+            directory.mkdir(parents=True)
+            (directory / "Mara.md").write_text("---\nsummary: Local.\n---\n")
+        monkeypatch.chdir(records)
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "find", "mara", "--campaign", "2"]
+        )
+        main()
+        assert capsys.readouterr().out.splitlines() == [
+            "campaigns/campaign_2/content/Mara.md\t\tname\tLocal.",
+            "content/Mara.md\tWidget\tname\tHarbour pilot.",
+            "content/Quay Nine.md\tWidget/Location\talias\t",
+        ]
 
 
 class TestTraceCommand:
