@@ -100,10 +100,12 @@ class TestAddTranscript:
         shutil.copyfile(session, archive / session.name)
         with pytest.raises(ValueError, match="uniquely"):
             add_transcript("S-1-001", body_file, vault)
-        destination = add_transcript(
-            "campaigns/campaign_1/sessions/archive/S-1-001", body_file, vault
-        )
-        assert not validate(destination).failed
+        # The path selects one of them, but two Sessions of a campaign may not
+        # share a name, so neither is a valid record to attach a Transcript to.
+        with pytest.raises(ValueError, match="selected Session failed validation"):
+            add_transcript(
+                "campaigns/campaign_1/sessions/archive/S-1-001", body_file, vault
+            )
 
     @pytest.mark.parametrize(
         "selection",

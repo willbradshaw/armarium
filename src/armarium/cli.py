@@ -239,6 +239,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     find.add_argument("name", help="record name or alias, without a path or .md")
     find.add_argument(
+        "--campaign",
+        type=int,
+        help=(
+            "only list shared records and this campaign's (default: the current "
+            "campaign directory, otherwise every campaign)"
+        ),
+    )
+    find.add_argument(
         "--vault",
         type=Path,
         help="vault root (default: discovered from the current directory)",
@@ -317,7 +325,7 @@ def main() -> None:
     configure_logging()
     if args.command == "find":
         try:
-            matches = find_records(args.name, args.vault)
+            matches = find_records(args.name, args.vault, campaign=args.campaign)
         except (OSError, ValueError) as exc:
             logger.error("Cannot find %s: %s", args.name, exc)
             sys.exit(1)

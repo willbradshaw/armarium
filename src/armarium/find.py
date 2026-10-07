@@ -1,20 +1,14 @@
 """Find a vault's records by name or alias without validating them."""
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
 
-from armarium.add import select_vault
-from armarium.extensions import is_template
-from armarium.index import link_key
-from armarium.lib import record_files
+from armarium.add import infer_campaign, select_vault
+from armarium.index import name_key, read_names
+from armarium.lib import find_campaign
 from armarium.parse import Frontmatter
-
-# From the start of a line, an aliases field that may hold a value: text
-# after the colon, or a block list on the lines below.
-ALIASES = re.compile(rb"[\"']?aliases[\"']?[ \t]*:[ \t]*(?:\S|(?:\s|#[^\n]*)*-\s)")
 
 # Match kinds in the order they are listed.
 KINDS = ("name", "alias")
@@ -50,43 +44,6 @@ class Match:
         return "\t".join((self.relative, self.kind, self.match, self.summary))
 
 
-def _name_key(name: str) -> str:
-    """Normalise a query, filename or alias so that equal names compare equal.
-
-    Args:
-        name: Name as written.
-
-    Returns:
-        str: The name as link_key returns it, with surrounding whitespace
-            removed and inner runs of whitespace collapsed. Empty for a blank
-            name.
-    """
-    return link_key(" ".join(name.split()))
-
-
-def _may_declare_aliases(data: bytes) -> bool:
-    """Tell cheaply whether a record's aliases field could hold a value.
-
-    Empty fields are told apart without parsing YAML, so most records are
-    never parsed. Only lines containing the field's name are examined.
-
-    Args:
-        data: Contents of a Markdown file.
-
-    Returns:
-        bool: Whether some line opens with an aliases field followed by a
-            value or a block list. A record whose field is absent or empty
-            gives False; text that merely resembles a filled field gives
-            True, and parsing then decides.
-    """
-    found = data.find(b"aliases")
-    while found >= 0:
-        if ALIASES.match(data, data.rfind(b"\n", 0, found) + 1):
-            return True
-        found = data.find(b"aliases", found + 1)
-    return False
-
-
 def _read_frontmatter(data: bytes) -> Frontmatter | None:
     """Parse the frontmatter of a record's bytes, leaving its body unread.
 
@@ -103,71 +60,53 @@ def _read_frontmatter(data: bytes) -> Frontmatter | None:
         return None
 
 
-def _aliases(frontmatter: Frontmatter) -> list[str]:
-    """List the alternate names a record declares.
-
-    Args:
-        frontmatter: Parsed metadata of the record.
-
-    Returns:
-        list[str]: The strings in its ``aliases`` list; a single string counts
-            as one alias, and any other value as none.
-    """
-    value = frontmatter.get("aliases")
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, list):
-        return [alias for alias in value if isinstance(alias, str)]
-    return []
-
-
-def find_records(name: str, vault: Path | None = None) -> list[Match]:
+def find_records(
+    name: str, vault: Path | None = None, *, campaign: int | None = None
+) -> list[Match]:
     """List the records whose filename or one of whose aliases is a name.
 
     Names compare as link targets do: ignoring case and Unicode spelling.
-    Every record is read, but only those whose filename matches or whose
-    aliases field may hold a value are parsed, and then only their
-    frontmatter.
 
     Args:
         name: Name to look for, without a path or .md.
         vault: Vault root, or None to discover it from the working directory.
+        campaign: Only list shared records and those of this campaign. When
+            omitted, the campaign is inferred from a working directory inside
+            one; anywhere else, every campaign's records are listed.
 
     Returns:
         list[Match]: Records with that name, then records with that alias,
-            each group in path order. Templates, hidden entries, the docs/
-            and scripts/ directories and AGENTS.md are not searched. A file that cannot be read or
-            parsed is listed by its name, without type or summary, since its
-            aliases are unknown.
+            each group in path order; a record with both is listed once, by
+            name. Templates, hidden entries and the vault's optional root
+            entries are not searched. A file that cannot be read or parsed is
+            listed by its name, without type or summary, since its aliases
+            are unknown.
 
     Raises:
-        ValueError: The name is blank or the vault cannot be identified.
+        ValueError: The name is blank, the vault cannot be identified or the
+            campaign does not exist.
         OSError: A directory cannot be read.
     """
-    query = _name_key(name)
+    query = name_key(name)
     if not query:
         raise ValueError("name must not be blank")
     root = select_vault(vault)
+    campaign = infer_campaign(root, campaign)
+    scope = None if campaign is None else f"campaign_{campaign}"
+    if scope is not None and not (root / "campaigns" / scope).is_dir():
+        raise ValueError(f"campaign {campaign} does not exist")
+    kinds: dict[Path, str] = {}
+    for found in read_names(root).get(query, []):
+        if scope is not None and find_campaign(found.path, root) not in (None, scope):
+            continue
+        if not found.alias or found.path not in kinds:
+            kinds[found.path] = "alias" if found.alias else "name"
     matches: list[Match] = []
-    for path in record_files(root, root):
-        # Validation scans templates too; they are not records to find.
-        if "templates" in path.parts and is_template(path, root):
-            continue
-        named = _name_key(path.stem) == query
+    for path, match in kinds.items():
         try:
-            data = path.read_bytes()
+            frontmatter = _read_frontmatter(path.read_bytes()) or Frontmatter()
         except OSError:
-            data = b""
-        if not named and not _may_declare_aliases(data):
-            continue
-        # A file with the name exists whether or not its metadata can be read.
-        frontmatter = _read_frontmatter(data) or Frontmatter()
-        if named:
-            match = "name"
-        elif query in {_name_key(alias) for alias in _aliases(frontmatter)}:
-            match = "alias"
-        else:
-            continue
+            frontmatter = Frontmatter()
         label = frontmatter.type or ""
         subtype = frontmatter.get("subtype")
         if label and isinstance(subtype, str):

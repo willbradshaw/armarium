@@ -26,7 +26,8 @@ directory when running anywhere inside it.
 
 Records go in the selected vault's [declared directory](vault.md#where-records-live) for
 their type and [campaign scope](#choosing-a-campaign), rather than directly in the
-current directory. Existing records and campaigns are never overwritten.
+current directory. Existing records and campaigns are never overwritten, and a
+record whose [name](record.md#names) another record already holds is not created.
 
 ### Choosing a campaign
 

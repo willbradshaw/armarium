@@ -7,7 +7,15 @@ import pytest
 from jsonschema.exceptions import SchemaError
 
 from armarium.extensions import ExtensionSet
-from armarium.index import VaultIndex, link_key
+from armarium.index import (
+    Name,
+    VaultIndex,
+    link_key,
+    may_declare_aliases,
+    name_key,
+    read_aliases,
+    read_names,
+)
 from armarium.lib import find_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
@@ -471,3 +479,158 @@ class TestLinkKey:
     )
     def test_key(self, name: str, expected: str) -> None:
         assert link_key(name) == expected
+
+
+class TestNameKey:
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("Mara", "mara"),
+            ("MARA", "mara"),
+            ("  Mara ", "mara"),
+            ("Mara \t  Vey", "mara vey"),
+            ("Cafe\u0301", "café"),
+            ("Straße", "strasse"),
+            ("", ""),
+            ("   ", ""),
+        ],
+    )
+    def test_key(self, name: str, expected: str) -> None:
+        assert name_key(name) == expected
+
+
+class TestMayDeclareAliases:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("aliases: [Mara]\n", True),
+            ("aliases: Mara\n", True),
+            ("aliases:\n  - Mara\n", True),
+            ("aliases:\n- Mara\n", True),
+            ("aliases:\r\n  - Mara\r\n", True),
+            ("aliases:\n\n  # known names\n  - Mara\n", True),
+            ('"aliases": [Mara]\n', True),
+            ("'aliases' : [Mara]\n", True),
+            ("type: x\naliases: []\n", True),
+            ("aliases:\n", False),
+            ("aliases:\n---\n## Notes\n", False),
+            ("aliases:\nsummary: A - B\n", False),
+            ("aliases:   \ncontent_tags:\n  - Healing\n", False),
+            ("old_aliases: [Mara]\n", False),
+            ("summary: no aliases: here\n", False),
+            ("summary: aliases\naliases: [Mara]\n", True),
+            ("aliases:\nnote: the aliases: [x]\naliases : Mara\n", True),
+            ("aliases:\n## Notes\nNo aliases: none - yet\n", False),
+            ("type: x\r\naliases: [Mara]\r\n", True),
+            ("", False),
+        ],
+    )
+    def test_detects_possible_values(self, text: str, expected: bool) -> None:
+        assert may_declare_aliases(text.encode()) is expected
+
+
+class TestReadAliases:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (["Mara", "The Pilot"], ["Mara", "The Pilot"]),
+            ("Mara", ["Mara"]),
+            (["Mara", 3, None, ["nested"]], ["Mara"]),
+            ([], []),
+            (None, []),
+            (7, []),
+            ({"name": "Mara"}, []),
+        ],
+    )
+    def test_strings_only(self, value: object, expected: list[str]) -> None:
+        assert read_aliases(Frontmatter({"aliases": value})) == expected
+
+    def test_absent(self) -> None:
+        assert read_aliases(Frontmatter()) == []
+
+
+def write_named(root: Path, relative: str, text: str = "") -> Path:
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return path
+
+
+class TestReadNames:
+    @pytest.fixture
+    def vault(self, tmp_path: Path) -> Path:
+        root = (tmp_path / "vault with spaces").resolve()
+        write_named(root, "content/Mara.md", "---\naliases: [The Pilot, Mara]\n---\n")
+        write_named(
+            root, "content/Quay  Nine.MD", "---\naliases:\n  - mara\n  - 7\n---\n"
+        )
+        write_named(root, "notes/The pilot.md", "---\naliases:\n---\n")
+        write_named(root, "content/Broken.md", "---\naliases: [Gull\n---\n")
+        write_named(root, "content/Blank.md", "---\naliases: ['  ']\n---\n")
+        for skipped in (
+            "reference/templates/Mara.md",
+            "reference/extensions/birds/templates/Mara.md",
+            "scripts/Mara.md",
+            "docs/Mara.md",
+            "AGENTS.md",
+            ".hidden/Mara.md",
+            "assets/Mara.png",
+        ):
+            write_named(root, skipped, "---\naliases: [Mara]\n---\n")
+        return root
+
+    def test_names_and_aliases(self, vault: Path) -> None:
+        mara, quay = vault / "content/Mara.md", vault / "content/Quay  Nine.MD"
+        assert read_names(vault) == {
+            "blank": [Name(vault / "content/Blank.md", False, "Blank")],
+            "broken": [Name(vault / "content/Broken.md", False, "Broken")],
+            "mara": [
+                Name(mara, False, "Mara"),
+                Name(mara, True, "Mara"),
+                Name(quay, True, "mara"),
+            ],
+            "the pilot": [
+                Name(mara, True, "The Pilot"),
+                Name(vault / "notes/The pilot.md", False, "The pilot"),
+            ],
+            "quay nine": [Name(quay, False, "Quay  Nine")],
+        }
+
+    def test_parses_only_records_that_may_declare_aliases(self, vault: Path) -> None:
+        with patch.object(Frontmatter, "parse", wraps=Frontmatter.parse) as parse:
+            read_names(vault)
+        assert parse.call_count == 4
+
+    def test_unreadable_record_keeps_its_filename(self, vault: Path) -> None:
+        mara = vault / "content/Mara.md"
+        read = Path.read_bytes
+
+        def read_bytes(path: Path) -> bytes:
+            if path == mara:
+                raise OSError("unreadable")
+            return read(path)
+
+        with patch.object(Path, "read_bytes", read_bytes):
+            names = read_names(vault)
+        assert names["mara"][0] == Name(mara, False, "Mara")
+        assert names["the pilot"] == [
+            Name(vault / "notes/The pilot.md", False, "The pilot")
+        ]
+
+    def test_leaves_bodies_unparsed(self, vault: Path) -> None:
+        with patch.object(Body, "__init__") as body:
+            read_names(vault)
+        assert not body.called
+
+
+class TestVaultIndexNames:
+    def test_reads_once(self, tmp_path: Path) -> None:
+        write_named(tmp_path, "content/Mara.md")
+        index = VaultIndex(tmp_path)
+        with patch("armarium.index.read_names", wraps=read_names) as read:
+            first = index.names()
+            assert index.names() is first
+        assert read.call_count == 1
+        assert first == {
+            "mara": [Name(tmp_path.resolve() / "content/Mara.md", False, "Mara")]
+        }

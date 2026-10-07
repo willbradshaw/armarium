@@ -1,20 +1,24 @@
 """Index vault files and lazily parse referenced Markdown records."""
 
+import re
 import unicodedata
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
+import yaml
 from jsonschema.exceptions import SchemaError
 
-from armarium.extensions import ExtensionSet, load_extension_set
+from armarium.extensions import ExtensionSet, is_template, load_extension_set
 from armarium.lib import (
     Diagnostic,
     find_campaign,
     find_files,
     parse_directories,
     parse_subtype_directories,
+    record_files,
 )
-from armarium.parse import Record
+from armarium.parse import Frontmatter, Record
 from armarium.schemas import Schema
 
 # Failures loading a schema or the extension set, kept to raise again for each record.
@@ -52,6 +56,7 @@ class VaultIndex:
         self._extensions: ExtensionSet | Exception | None = None
         self._schemas: dict[Path, Schema | Exception] = {}
         self._declarations: dict[str, dict[str, str]] | None = None
+        self._names: dict[str, list[Name]] | None = None
         self._subtype_directories: dict[str, str] | None = None
         for path in find_files(self.root) if files is None else files:
             relative = path.relative_to(self.root)
@@ -193,6 +198,21 @@ class VaultIndex:
             self.records[path] = Record.parse(path, self.root)
         return self.records[path]
 
+    def names(self) -> dict[str, list["Name"]]:
+        """Read the names the vault's records go by, once for this run.
+
+        Returns:
+            dict[str, list[Name]]: The mapping read_names returns for this
+                vault. Every call returns the same mapping, which callers
+                must not modify.
+
+        Raises:
+            OSError: A directory cannot be read.
+        """
+        if self._names is None:
+            self._names = read_names(self.root)
+        return self._names
+
     def declared_directories(self) -> dict[str, dict[str, str]]:
         """Read where each Type record declares that its records live.
 
@@ -304,3 +324,118 @@ def link_key(name: str) -> str:
             spellings and case variants share one entry.
     """
     return unicodedata.normalize("NFC", name).casefold()
+
+
+def name_key(name: str) -> str:
+    """Normalise a record name or alias so that equal names compare equal.
+
+    Args:
+        name: Name as written.
+
+    Returns:
+        str: The name as link_key returns it, with surrounding whitespace
+            removed and inner runs of whitespace collapsed. Empty for a blank
+            name.
+    """
+    return link_key(" ".join(name.split()))
+
+
+# From the start of a line, an aliases field that may hold a value: text
+# after the colon, or a block list on the lines below.
+ALIASES = re.compile(rb"[\"']?aliases[\"']?[ \t]*:[ \t]*(?:\S|(?:\s|#[^\n]*)*-\s)")
+
+
+def may_declare_aliases(data: bytes) -> bool:
+    """Tell cheaply whether a record's aliases field could hold a value.
+
+    Empty fields are told apart without parsing YAML, so most records are
+    never parsed. Only lines containing the field's name are examined.
+
+    Args:
+        data: Contents of a Markdown file.
+
+    Returns:
+        bool: Whether some line opens with an aliases field followed by a
+            value or a block list. A record whose field is absent or empty
+            gives False; text that merely resembles a filled field gives
+            True, and parsing then decides.
+    """
+    found = data.find(b"aliases")
+    while found >= 0:
+        if ALIASES.match(data, data.rfind(b"\n", 0, found) + 1):
+            return True
+        found = data.find(b"aliases", found + 1)
+    return False
+
+
+def read_aliases(frontmatter: Frontmatter) -> list[str]:
+    """List the alternate names a record declares.
+
+    Args:
+        frontmatter: Parsed metadata of the record.
+
+    Returns:
+        list[str]: The strings in its ``aliases`` list; a single string counts
+            as one alias, and any other value as none.
+    """
+    value = frontmatter.get("aliases")
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [alias for alias in value if isinstance(alias, str)]
+    return []
+
+
+@dataclass(frozen=True)
+class Name:
+    """One name a record goes by.
+
+    Attributes:
+        path: Absolute path of the record.
+        alias: Whether the name is one of the record's aliases; otherwise it
+            is the record's filename without .md.
+        text: The name as the filename or the alias writes it.
+    """
+
+    path: Path
+    alias: bool
+    text: str
+
+
+def read_names(root: Path) -> dict[str, list[Name]]:
+    """Read every name the vault's records go by: filenames and aliases.
+
+    Every record is read, but only those whose aliases field may hold a
+    value are parsed, and then only their frontmatter.
+
+    Args:
+        root: Resolved vault directory.
+
+    Returns:
+        dict[str, list[Name]]: Each name, as name_key returns it, to the
+            records that go by it, in path order with a record's filename
+            before its aliases. Templates and whatever record_files leaves
+            out are not read. A record that cannot be read or parsed
+            contributes its filename only, since its aliases are unknown.
+
+    Raises:
+        ValueError: The root is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    names: dict[str, list[Name]] = {}
+    for path in record_files(root, root):
+        # Validation scans templates too; they are not records with names.
+        if "templates" in path.parts and is_template(path, root):
+            continue
+        names.setdefault(name_key(path.stem), []).append(Name(path, False, path.stem))
+        try:
+            data = path.read_bytes()
+            if not may_declare_aliases(data):
+                continue
+            frontmatter = Frontmatter.parse(data.decode("utf-8-sig"))[0]
+        except OSError, UnicodeError, yaml.YAMLError, ValueError, RecursionError:
+            continue
+        for alias in read_aliases(frontmatter):
+            if key := name_key(alias):
+                names.setdefault(key, []).append(Name(path, True, alias))
+    return names

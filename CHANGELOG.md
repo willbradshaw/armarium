@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Require a record's filename and aliases to be its own among the records one campaign can see, and add `armarium find --campaign`.
 - Allow an optional `docs/` directory and `AGENTS.md` at the vault root, neither holding records.
 - List a file with the name sought in `armarium find` even when its frontmatter cannot be parsed.
 - Add `armarium trace` to list the records that link to a record, and where.

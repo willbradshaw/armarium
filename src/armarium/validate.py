@@ -16,7 +16,7 @@ from armarium.extensions import (
     is_template,
     load_extension_set,
 )
-from armarium.index import VaultIndex
+from armarium.index import VaultIndex, name_key, read_aliases
 from armarium.lib import (
     CAMPAIGN_NAME,
     UNSCANNED_DIRECTORIES,
@@ -1362,6 +1362,64 @@ def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
     return findings
 
 
+# Types whose records are structure, not things looked up by name: indexes,
+# overviews and the type system itself. Their names may repeat.
+STRUCTURAL_TYPES = frozenset({"Reference", "Status", "Type"})
+
+
+def validate_names(record: Record, index: VaultIndex) -> Findings:
+    """Check that the record's names identify it alone where it is visible.
+
+    A record's names are its filename and its aliases. Among the shared
+    records and those of one campaign, each name belongs to at most one
+    record, so a name looked up from a campaign finds one record. Records of
+    two different campaigns may share a name. Reference, Status and Type
+    records take no part.
+
+    Args:
+        record: Selected record; templates are excluded by the caller.
+        index: Index supplying the vault's names and its other records.
+
+    Returns:
+        Findings: A record.name error for each other record that shares this
+            record's filename or one of its aliases, as a filename or an
+            alias, unless the two belong to different campaigns or the other
+            is a structural record. A record that cannot be parsed counts,
+            since its type is unknown. Both records of a pair report it.
+    """
+    findings = Findings.from_record(record, index)
+    if record.frontmatter.type in STRUCTURAL_TYPES:
+        return findings
+    scope = find_campaign(record.path, index.root)
+    own = [(record.path.stem, False)]
+    own += [(alias, True) for alias in read_aliases(record.frontmatter)]
+    seen: set[tuple[str, bool, Path, bool]] = set()
+    for text, alias in own:
+        for other in index.names().get(name_key(text), []):
+            key = (name_key(text), alias, other.path, other.alias)
+            if other.path == record.path or key in seen:
+                continue
+            seen.add(key)
+            visible = find_campaign(other.path, index.root)
+            if scope is not None and visible is not None and scope != visible:
+                continue
+            parsed, _ = index.parse(other.path)
+            if parsed is not None and parsed.frontmatter.type in STRUCTURAL_TYPES:
+                continue
+            relative = other.path.relative_to(index.root).as_posix()
+            if alias:
+                relation = "also an alias" if other.alias else "the name"
+                findings.add(
+                    "record.name",
+                    f"alias {text} is {relation} of {relative}",
+                    "aliases",
+                )
+            else:
+                relation = "an alias of" if other.alias else "shared with"
+                findings.add("record.name", f"name is {relation} {relative}")
+    return findings
+
+
 def validate_filename(record: Record, index: VaultIndex) -> Findings:
     """Check the record's filename and the Session ordinal it encodes.
 
@@ -1554,6 +1612,7 @@ RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_placement,
     validate_subdirectory,
     validate_filename,
+    validate_names,
     validate_campaigns,
     validate_identity_links,
     validate_chains,

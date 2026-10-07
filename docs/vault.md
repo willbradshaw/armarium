@@ -83,7 +83,8 @@ A vault may add a type of its own: a Type record in `reference/types/` with a
 declared directories then join the skeleton and must exist.
 
 No filename may have leading, trailing, doubled or non-space whitespace. Each
-file path must be unique when compared case-insensitively.
+file path must be unique when compared case-insensitively, and a record's
+[names](record.md#names) must be its own among the records one campaign can see.
 
 ## Other entries
 

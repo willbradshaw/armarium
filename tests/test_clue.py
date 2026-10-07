@@ -356,8 +356,11 @@ class TestClueSubjects:
 
         text = "[[Missing]]"
         if scenario == "ambiguous":
-            add_content("Mira", "NPC", vault)
+            # Two campaigns may each have a Mira, which leaves the bare name
+            # ambiguous.
+            add_campaign(vault)
             add_content("Mira", "NPC", vault, campaign=1)
+            add_content("Mira", "NPC", vault, campaign=2)
             text = "[[Mira]]"
         elif scenario == "wrong_type":
             text = "[[types/Clue]]"

@@ -18,6 +18,12 @@ creating a record, to see whether the entity already has one.
 `--vault PATH` names the vault's root directory. Omit it to use the vault
 containing the current directory.
 
+`--campaign N` lists only the shared records and those of campaign `N`. Without
+it, the campaign is the one whose directory you are in; anywhere else, every
+campaign's records are listed. Within one campaign's view a
+[name belongs to at most one record](record.md#names), apart from Reference,
+Type and Status records, so a lookup there finds one record or none.
+
 Each match is one line on standard output, with four tab-separated fields:
 
 ```text

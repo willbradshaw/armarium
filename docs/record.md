@@ -58,6 +58,23 @@ Records link to each other with Obsidian
 - Inside a Markdown table, a `|` within a link is written `\|` to avoid
   splitting the link between cells.
 
+## Names
+
+A record's names are its filename, without `.md`, and its `aliases`. Among the
+records one [campaign](campaign.md) can see, which are the shared records and
+that campaign's own, a name belongs to at most one record:
+
+- no two records have the same filename;
+- no alias is another record's filename;
+- no two records have the same alias.
+
+Names compare as [links](#links) do, ignoring case, equivalent Unicode spellings
+and extra whitespace. Records of two different campaigns may share a name, as
+each campaign's `Campaign.md` does. Reference, Type and Status records are
+structure, not things looked up by name, and take no part.
+
+[`armarium find`](find.md) looks a record up by any of its names.
+
 ## Types, statuses and schemas
 
 The type system lives in `reference/`:
