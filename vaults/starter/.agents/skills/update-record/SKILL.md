@@ -30,10 +30,8 @@ It exits with 1 when there is none. A name belongs to one record there, so:
 - **A match:** edit that record.
 - **No match:** create the record.
 
-For a change that belongs to no campaign, leave `--campaign` out; every
-campaign's records are then listed too. A match outside `campaigns/` is the
-record. If the only matches are inside campaigns, stop and ask the user: a
-shared record cannot take a name that a campaign's record holds.
+For a change that belongs to no campaign, leave `--campaign` out and take the
+match outside `campaigns/`.
 
 ## 2. Read the Type record
 
