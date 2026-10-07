@@ -12,7 +12,8 @@ a people or a calendar. Keep it with its campaign when it matters only through
 that campaign's story, such as one inn, a minor character or a plot object.
 
 Before creating a record, check with `armarium find NAME` that the entity has none
-under its name or an alias. Create one with `armarium add content NAME --subtype
+under its name or an alias; within what one campaign can see, a name or alias
+belongs to one record only. Create one with `armarium add content NAME --subtype
 SUBTYPE`, adding `--campaign N` for a campaign-specific one. It starts from [[templates/Content]];
 name it for the entity and supply the subtype's required fields.
 To file each subtype in its own subfolder, such as `content/npcs/`, declare

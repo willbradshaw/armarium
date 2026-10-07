@@ -5,15 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from armarium.find import (
-    Match,
-    _aliases,
-    _may_declare_aliases,
-    _name_key,
-    _read_frontmatter,
-    find_records,
-)
-from armarium.parse import Body, Frontmatter
+from armarium.find import Match, _read_frontmatter, find_records
+from armarium.parse import Body
 
 
 def write(root: Path, relative: str, frontmatter: str = "", body: str = "") -> Path:
@@ -54,58 +47,10 @@ def vault(tmp_path: Path) -> Path:
     return root
 
 
-class TestMayDeclareAliases:
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("aliases: [Mara]\n", True),
-            ("aliases: Mara\n", True),
-            ("aliases:\n  - Mara\n", True),
-            ("aliases:\n- Mara\n", True),
-            ("aliases:\r\n  - Mara\r\n", True),
-            ("aliases:\n\n  # known names\n  - Mara\n", True),
-            ('"aliases": [Mara]\n', True),
-            ("'aliases' : [Mara]\n", True),
-            ("type: x\naliases: []\n", True),
-            ("aliases:\n", False),
-            ("aliases:\n---\n## Notes\n", False),
-            ("aliases:\nsummary: A - B\n", False),
-            ("aliases:   \ncontent_tags:\n  - Healing\n", False),
-            ("old_aliases: [Mara]\n", False),
-            ("summary: no aliases: here\n", False),
-            ("summary: aliases\naliases: [Mara]\n", True),
-            ("aliases:\nnote: the aliases: [x]\naliases : Mara\n", True),
-            ("aliases:\n## Notes\nNo aliases: none - yet\n", False),
-            ("type: x\r\naliases: [Mara]\r\n", True),
-            ("", False),
-        ],
-    )
-    def test_detects_possible_values(self, text: str, expected: bool) -> None:
-        assert _may_declare_aliases(text.encode()) is expected
-
-
 class TestMatchLine:
     def test_tab_separated(self, tmp_path: Path) -> None:
         match = Match(tmp_path / "content/Mara.md", "content/Mara.md", "", "name", "")
         assert match.line == "content/Mara.md\t\tname\t"
-
-
-class TestNameKey:
-    @pytest.mark.parametrize(
-        ("name", "expected"),
-        [
-            ("Mara", "mara"),
-            ("MARA", "mara"),
-            ("  Mara ", "mara"),
-            ("Mara \t  Vey", "mara vey"),
-            ("Cafe\u0301", "café"),
-            ("Straße", "strasse"),
-            ("", ""),
-            ("   ", ""),
-        ],
-    )
-    def test_key(self, name: str, expected: str) -> None:
-        assert _name_key(name) == expected
 
 
 class TestReadFrontmatter:
@@ -131,26 +76,6 @@ class TestReadFrontmatter:
         with patch.object(Body, "__init__") as body:
             assert _read_frontmatter(b"---\nsummary: Pilot.\n---\n## Notes\n")
         assert not body.called
-
-
-class TestAliasList:
-    @pytest.mark.parametrize(
-        ("value", "expected"),
-        [
-            (["Mara", "The Pilot"], ["Mara", "The Pilot"]),
-            ("Mara", ["Mara"]),
-            (["Mara", 3, None, ["nested"]], ["Mara"]),
-            ([], []),
-            (None, []),
-            (7, []),
-            ({"name": "Mara"}, []),
-        ],
-    )
-    def test_strings_only(self, value: object, expected: list[str]) -> None:
-        assert _aliases(Frontmatter({"aliases": value})) == expected
-
-    def test_absent(self) -> None:
-        assert _aliases(Frontmatter()) == []
 
 
 class TestFindRecords:
@@ -262,11 +187,54 @@ class TestFindRecords:
             ("content/Tern.md", "", "alias"),
         ]
 
-    def test_parses_only_possible_matches(self, vault: Path) -> None:
+    def test_reads_only_the_matches_for_their_summaries(self, vault: Path) -> None:
         with patch("armarium.find._read_frontmatter", wraps=_read_frontmatter) as read:
-            find_records("briselle", vault)
-        # The two records with empty aliases and unrelated names stay unparsed.
-        assert read.call_count == 4
+            find_records("mara", vault)
+        assert read.call_count == 3
+
+    @pytest.mark.parametrize(
+        ("campaign", "directory", "expected"),
+        [
+            (None, "", ["c1/Tern.md", "c2/Tern.md", "content/Tern.md", "c2/Gull.md"]),
+            (1, "", ["c1/Tern.md", "content/Tern.md"]),
+            (2, "", ["c2/Tern.md", "content/Tern.md", "c2/Gull.md"]),
+            (None, "campaigns/campaign_1/content", ["c1/Tern.md", "content/Tern.md"]),
+            (
+                2,
+                "campaigns/campaign_1/content",
+                ["c2/Tern.md", "content/Tern.md", "c2/Gull.md"],
+            ),
+            (
+                None,
+                "content",
+                ["c1/Tern.md", "c2/Tern.md", "content/Tern.md", "c2/Gull.md"],
+            ),
+        ],
+    )
+    def test_campaign_limits_the_search(
+        self,
+        vault: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        campaign: int | None,
+        directory: str,
+        expected: list[str],
+    ) -> None:
+        write(vault, "content/Tern.md", "summary: Shared.\n")
+        for number in (1, 2):
+            write(vault, f"campaigns/campaign_{number}/content/Tern.md", "summary: x\n")
+        write(vault, "campaigns/campaign_2/content/Gull.md", "aliases: [Tern]\n")
+        monkeypatch.chdir(vault / directory)
+        matches = find_records("tern", vault, campaign=campaign)
+        assert [
+            m.relative.replace("campaigns/campaign_", "c").replace("/content/", "/")
+            if m.relative.startswith("campaigns")
+            else m.relative
+            for m in matches
+        ] == expected
+
+    def test_rejects_missing_campaign(self, vault: Path) -> None:
+        with pytest.raises(ValueError, match="campaign 7 does not exist"):
+            find_records("mara", vault, campaign=7)
 
     @pytest.mark.parametrize("name", ["", "   ", "\t"])
     def test_rejects_blank_name(self, vault: Path, name: str) -> None:
