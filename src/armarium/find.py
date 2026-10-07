@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from armarium.add import infer_campaign, select_vault
+from armarium.add import select_vault
 from armarium.index import name_key, read_names
 from armarium.lib import find_campaign
 from armarium.parse import Frontmatter
@@ -71,8 +71,8 @@ def find_records(
         name: Name to look for, without a path or .md.
         vault: Vault root, or None to discover it from the working directory.
         campaign: Only list shared records and those of this campaign. When
-            omitted, the campaign is inferred from a working directory inside
-            one; anywhere else, every campaign's records are listed.
+            omitted, every campaign's records are listed, wherever the command
+            is run.
 
     Returns:
         list[Match]: Records with that name, then records with that alias,
@@ -91,7 +91,6 @@ def find_records(
     if not query:
         raise ValueError("name must not be blank")
     root = select_vault(vault)
-    campaign = infer_campaign(root, campaign)
     scope = None if campaign is None else f"campaign_{campaign}"
     if scope is not None and not (root / "campaigns" / scope).is_dir():
         raise ValueError(f"campaign {campaign} does not exist")

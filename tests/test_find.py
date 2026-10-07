@@ -198,7 +198,11 @@ class TestFindRecords:
             (None, "", ["c1/Tern.md", "c2/Tern.md", "content/Tern.md", "c2/Gull.md"]),
             (1, "", ["c1/Tern.md", "content/Tern.md"]),
             (2, "", ["c2/Tern.md", "content/Tern.md", "c2/Gull.md"]),
-            (None, "campaigns/campaign_1/content", ["c1/Tern.md", "content/Tern.md"]),
+            (
+                None,
+                "campaigns/campaign_1/content",
+                ["c1/Tern.md", "c2/Tern.md", "content/Tern.md", "c2/Gull.md"],
+            ),
             (
                 2,
                 "campaigns/campaign_1/content",
