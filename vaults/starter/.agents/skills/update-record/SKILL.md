@@ -8,23 +8,30 @@ description: Create or edit one record in this Armarium vault and leave the vaul
 This procedure writes one record and keeps the vault valid. It does not update
 the other records that the change may affect.
 
-You need two things: the name of the entity the record is for, and a source
-that says what to record, such as the user's request, a Session or the GM's
-notes. Run the commands from the vault root, or add `--vault PATH`.
+You need three things:
+
+- the name of the entity the record is for;
+- the campaign the change belongs to, if it belongs to one;
+- a source that says what to record, such as the user's request, a Session or
+  the GM's notes.
+
+Run the commands from the vault root, or add `--vault PATH`.
 
 ## 1. Find the record
 
 ```sh
-armarium find "NAME"
+armarium find "NAME" --campaign N
 ```
 
-This lists every record with that filename or alias, one per line: path, type,
-`name` or `alias`, and summary. It exits with 1 when there is none.
+This looks among the shared records and campaign N's for one with that
+filename or alias, and prints its path, type, `name` or `alias`, and summary.
+It exits with 1 when there is none. A name belongs to one record there, so:
 
-- **One match:** edit that record.
-- **Several matches:** read their summaries to pick the right one, and ask if
-  it is not clear.
+- **A match:** edit that record.
 - **No match:** create the record.
+
+For a change that belongs to no campaign, leave `--campaign` out and take the
+match outside `campaigns/`.
 
 ## 2. Read the Type record
 
@@ -72,7 +79,7 @@ handles.
 ## 5. Create stubs for links that name no record
 
 Validation reports each link you wrote that names no record as `link.missing`.
-For each one, run `armarium find` on the name.
+For each one, run `armarium find` on the name, as in step 1.
 
 - **It is another record's alias:** link to that record's filename and keep
   your wording as display text: `[[Real Name|name used]]`.
