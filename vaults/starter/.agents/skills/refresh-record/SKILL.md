@@ -80,11 +80,17 @@ calls for:
 
 ```sh
 armarium validate "PATH"
+armarium validate .
 ```
 
-Fix every error your change introduced. Every record you drew on exists, so
-your change should add no link that names no record; if validation reports
-`link.missing`, take that link out and report it.
+Validate the record, then the whole vault: a change here can break a record
+that links to it, for example by removing a heading it links to. Fix every
+error your change introduced, by changing this record only. If the vault had
+errors before you started, report them; do not fix them.
+
+Every record you drew on exists, so your change should add no link that names
+no record; if validation reports `link.missing`, take that link out and report
+it.
 
 ## 6. Report
 
