@@ -18,6 +18,7 @@ from armarium.trace import (
     _sharing,
     _spelling,
     _spellings,
+    trace_outbound,
     trace_record,
 )
 
@@ -568,3 +569,127 @@ class TestTraceRecord:
         write(vault.parent, "Loose.md")
         with pytest.raises(ValueError):
             trace_record(Path(relative), vault)
+
+
+class TestTraceOutbound:
+    QUAY = "content/Quay Nine.md"
+    PORT = "content/Port Briselle.md"
+    SESSION = "campaigns/campaign_1/sessions/S-1-001.md"
+
+    def test_lists_links_in_order_with_locations(self, vault: Path) -> None:
+        source, references, unresolved = trace_outbound(Path(self.SESSION), vault)
+        assert source == self.SESSION
+        assert [(r.relative, r.where, r.line) for r in references] == [
+            (self.QUAY, "prepared_locations", 0),
+            (self.PORT, "prepared_locations", 0),
+            (self.QUAY, "", 5),
+            (self.QUAY, "Preparation > Locations", 8),
+            (self.QUAY, "Notes > Events", 11),
+            (self.PORT, "Notes > Events", 12),
+            (self.QUAY, "Notes > Events > Aftermath", 14),
+        ]
+        assert unresolved == ["type: [[Session]] names no file"]
+
+    def test_repeats_at_one_location_are_listed_once(self, vault: Path) -> None:
+        _, references, unresolved = trace_outbound(
+            Path("content/Shoal Chart.md"), vault
+        )
+        assert [(r.relative, r.where, r.line) for r in references] == [
+            ("content/Mara.md", "campaign_1.held_by", 0),
+            (self.QUAY, "campaign_1.held_by", 0),
+            (self.QUAY, "found", 0),
+            (self.QUAY, "", 6),
+        ]
+        assert unresolved == ["line 6: [[Quay Ninety]] names no file"]
+
+    def test_links_to_itself_are_left_out(self, vault: Path) -> None:
+        assert trace_outbound(Path(self.QUAY), vault) == (self.QUAY, [], [])
+
+    def test_reports_malformed_links(self, vault: Path) -> None:
+        source, references, unresolved = trace_outbound(Path("content/Mara.md"), vault)
+        assert (source, references) == ("content/Mara.md", [])
+        assert len(unresolved) == 1 and unresolved[0].startswith("line 1: ")
+
+    def test_reports_ambiguous_links(self, vault: Path) -> None:
+        # A second Quay Nine leaves only the path-qualified link resolving.
+        write(vault, "notes/Quay Nine.md")
+        _, references, unresolved = trace_outbound(Path(self.SESSION), vault)
+        assert [(r.relative, r.line) for r in references] == [
+            (self.PORT, 0),
+            (self.QUAY, 8),
+            (self.PORT, 12),
+        ]
+        assert unresolved == [
+            "type: [[Session]] names no file",
+            "prepared_locations: [[Quay Nine]] names several files",
+            "line 5: [[quay nine]] names several files",
+            "line 11: [[Quay Nine]] names several files",
+            "line 11: [[Quay Nine]] names several files",
+            "line 14: [[Quay Nine.md]] names several files",
+        ]
+
+    def test_links_to_an_asset(self, vault: Path) -> None:
+        write(vault, "content/Map.md", "## Notes\n![[Quay Nine.png]]\n")
+        assert trace_outbound(Path("content/Map.md"), vault) == (
+            "content/Map.md",
+            [Reference("assets/Quay Nine.png", "Notes", 2)],
+            [],
+        )
+
+    def test_matches_the_whole_vault_index(self, vault: Path) -> None:
+        write(vault, "notes/Port Briselle.md.md")
+        write(vault, "notes/deep/Mara.md")
+        root = vault.resolve()
+        whole = VaultIndex(root)
+        for record in record_files(root, root):
+            _, references, _ = trace_outbound(record)
+            parsed, _ = whole.parse(record)
+            assert parsed is not None
+            expected = {
+                whole.resolve(link.target, record)[0]
+                for link in parsed.links
+                if not link.error and link.target
+            } - {None, record}
+            assert {root / r.relative for r in references} == expected
+
+    def test_indexes_only_files_the_links_could_name(self, vault: Path) -> None:
+        for number in range(20):
+            write(vault, f"content/Other {number}.md")
+        with patch("armarium.trace.VaultIndex", wraps=VaultIndex) as index:
+            trace_outbound(Path(self.SESSION), vault)
+        files = {file.name for file in index.call_args.args[1]}
+        assert files == {"Quay Nine.md", "Port Briselle.md"}
+
+    @pytest.mark.parametrize("form", ["vault", "cwd", "absolute"])
+    def test_path_forms_agree(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch, form: str
+    ) -> None:
+        expected = trace_outbound(Path(self.SESSION), vault)
+        if form == "vault":
+            monkeypatch.chdir(vault.parent)
+            traced = trace_outbound(Path(self.SESSION), vault)
+        elif form == "cwd":
+            monkeypatch.chdir(vault / "content")
+            traced = trace_outbound(Path("..") / self.SESSION)
+        else:
+            traced = trace_outbound(vault / self.SESSION)
+        assert traced == expected and len(traced[1]) == 7
+
+    @pytest.mark.parametrize(
+        ("relative", "text", "message"),
+        [
+            ("assets/Quay Nine.png", None, "is not a Markdown record"),
+            ("content/Broken.md", "---\nx: [\n---\n", "cannot parse content/Broken.md"),
+            ("content/Open.md", "---\nx: 1\n", "cannot parse content/Open.md"),
+            ("content/.Hidden.md", "", "is not part of the vault"),
+            ("content/Gull.md", None, "does not exist"),
+            ("content", None, "is a directory"),
+        ],
+    )
+    def test_rejects_what_it_cannot_read(
+        self, vault: Path, relative: str, text: str | None, message: str
+    ) -> None:
+        if text is not None:
+            write(vault, relative, text)
+        with pytest.raises(ValueError, match=message):
+            trace_outbound(Path(relative), vault)

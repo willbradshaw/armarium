@@ -1699,6 +1699,60 @@ class TestTraceCommand:
         "content/Quay Nine.md\tNotes > Events\t6",
     ]
 
+    @pytest.mark.parametrize("explicit", [False, True])
+    def test_outbound_lists_the_files_linked_to(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        explicit: bool,
+    ) -> None:
+        (records / "content/Quay Nine.md").write_text(
+            '---\nkeeper: "[[Mara]]"\n---\n# Notes\n[[Mara]] and [[Gull]].\n'
+        )
+        monkeypatch.chdir(records.parent if explicit else records / "content")
+        path = "content/Quay Nine.md" if explicit else "Quay Nine.md"
+        vault_option = ["--vault", str(records)] if explicit else []
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "trace", path, "--outbound", *vault_option]
+        )
+        before = {p: p.read_bytes() for p in records.rglob("*") if p.is_file()}
+        main()
+        output = capsys.readouterr()
+        assert output.out.splitlines() == [
+            "content/Mara.md\tkeeper\t",
+            "content/Mara.md\tNotes\t5",
+        ]
+        assert (
+            "WARNING: content/Quay Nine.md: line 5: [[Gull]] names no file"
+            in output.err
+        )
+        assert "INFO: 2 links from content/Quay Nine.md" in output.err
+        assert all(p.read_bytes() == content for p, content in before.items())
+
+    def test_outbound_rejects_what_is_not_a_record(
+        self,
+        records: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        (records / "assets").mkdir()
+        (records / "assets/Map.png").write_text("image")
+        monkeypatch.chdir(records)
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "trace", "assets/Map.png", "--outbound"]
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "is not a Markdown record" in output.err
+
+    def test_outbound_option(self) -> None:
+        assert parse_args(["trace", "a.md"]).outbound is False
+        assert parse_args(["trace", "a.md", "--outbound"]).outbound is True
+
     @pytest.fixture
     def records(self, vault: Path) -> Path:
         (vault / "content/Mara.md").write_text("---\naliases: [The Pilot]\n---\n")

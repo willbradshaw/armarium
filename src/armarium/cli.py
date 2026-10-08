@@ -24,7 +24,7 @@ from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.player import add_player
 from armarium.session import add_session
-from armarium.trace import trace_record
+from armarium.trace import trace_outbound, trace_record
 from armarium.transcript import add_transcript
 from armarium.validate import validate
 
@@ -253,13 +253,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     trace = commands.add_parser(
         "trace",
-        help="list the records that link to a record",
+        help="list the links to a file, or from a record",
         description=(
-            "List every link to one file from the vault's records. Each line "
-            "holds the linking record's path, the frontmatter field or body "
-            "headings where the link sits, and its line number, separated by tabs. "
+            "List every link to one file from the vault's records or, with "
+            "--outbound, every link from one record to other files. Each line "
+            "holds the other file's path, the frontmatter field or body headings "
+            "where the link sits, and its line number, separated by tabs. "
             "Use armarium find to get a record's path from its name."
         ),
+    )
+    trace.add_argument(
+        "--outbound",
+        action="store_true",
+        help="list the files the record links to, not the records that link to it",
     )
     trace.add_argument(
         "path",
@@ -337,16 +343,23 @@ def main() -> None:
         return
     if args.command == "trace":
         try:
-            target, references = trace_record(args.path, args.vault)
+            unresolved: list[str] = []
+            if args.outbound:
+                target, references, unresolved = trace_outbound(args.path, args.vault)
+            else:
+                target, references = trace_record(args.path, args.vault)
         except (OSError, ValueError) as exc:
             logger.error("Cannot trace %s: %s", args.path, exc)
             sys.exit(1)
         for reference in references:
             print(reference.text)
+        for problem in unresolved:
+            logger.warning("%s: %s", target, problem)
         logger.info(
-            "%s %s to %s",
+            "%s %s %s %s",
             len(references),
             "link" if len(references) == 1 else "links",
+            "from" if args.outbound else "to",
             target,
         )
         return

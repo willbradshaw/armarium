@@ -7,7 +7,9 @@ armarium trace "content/Quay Nine.md" --vault ../my-vault
 `armarium trace PATH` lists every [link](record.md#links) to one file from the
 records of an existing [vault](vault.md), with where each link sits. Use it after
 changing a record, to see which records refer to it and may need a matching
-change. It only reads: nothing is validated or changed.
+change. With `--outbound` it lists the links
+[from a record](#links-from-a-record) instead. It only reads: nothing is
+validated or changed.
 
 ## Choosing the file
 
@@ -60,3 +62,30 @@ It exits with `0` whether or not anything links to the file, and `2` for a usage
 error. It exits with `1`, with a one-line message, when `PATH` does not exist, is
 a directory or a symlink, is a hidden entry or lies in a directory that vault
 scans skip, or is not inside a vault or the vault given.
+
+## Links from a record
+
+```sh
+armarium trace "campaigns/campaign_1/sessions/S-1-002.md" --outbound --vault ../my-vault
+```
+
+`armarium trace PATH --outbound` lists every file that one record links to.
+`PATH` is chosen as above and must be a Markdown record. The output has the
+same three fields, with the linked file's path first; the location and line are
+those of the link in the traced record:
+
+```text
+content/Captain Mara Vey.md	prepared_npcs
+campaigns/campaign_1/content/Quay Nine.md	Preparation > Scene notes	42
+campaigns/campaign_1/content/Quay Nine.md	Notes > Events	65
+campaigns/campaign_1/content/Shoal Chart.md	Notes > Rewards > Loot	74
+```
+
+Lines follow the order of the links in the record, frontmatter first. Links to
+assets and embeds are included; several links to one file on a line, or in a
+field, are listed once, and the record's links to itself are left out.
+
+A link that is malformed, or names no file or several, is not listed. Each is
+reported on standard error as a warning; [`armarium validate`](validate.md)
+gives the full finding. The command still exits with `0`. It exits with `1`
+when the record cannot be parsed or `PATH` is not a Markdown file.
