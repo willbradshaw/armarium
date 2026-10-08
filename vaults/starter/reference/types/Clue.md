@@ -33,7 +33,8 @@ fully know and can come to learn. Three things mark one out:
 As a test, a fact that a Session's Events and its subjects' Notes would hold in
 full without a Clue is not a Clue.
 
-Until the players learn it, a Clue is not canon.
+Until the players learn it, a Clue is not canon. It becomes established only
+once it is revealed in play.
 
 ## One fact, one Clue
 
