@@ -242,8 +242,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--campaign",
         type=int,
         help=(
-            "only list shared records and this campaign's (default: the current "
-            "campaign directory, otherwise every campaign)"
+            "only list shared records and this campaign's (default: every "
+            "campaign's records)"
         ),
     )
     find.add_argument(
