@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Ship the `refresh-record` agent skill, which brings one record up to date with the records linked to and from it.
 - Add `armarium trace --outbound` to list the files a record links to, and where.
 - Stop `armarium find` inferring a campaign from the current directory; without `--campaign` it lists every campaign's records.
 - Ship `AGENTS.md`, a vault guide and the `update-record` agent skill in the starter and example vaults.
