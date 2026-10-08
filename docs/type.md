@@ -12,7 +12,9 @@ listed among its values.
 
 ### Description
 
-A GM-known candidate fact tracked through a lifecycle.
+A GM-known candidate fact tracked through a lifecycle. What counts as a Clue,
+when its status changes and what happens when it is revealed are set out in the
+vault's own [Clue Type record](../vaults/starter/reference/types/Clue.md).
 
 ### Location
 

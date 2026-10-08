@@ -13,6 +13,47 @@ Campaign 1's Clues live under `campaigns/campaign_1/clues/`, named `C-1-0001.md`
 `C-2-0001.md`, and so on. The Sessions view derives its scope from the containing
 campaign folder.
 
+## What counts as a Clue
+
+A Clue is a fact about how the world is that the players do not yet fully know.
+Make one only when the fact:
+
+- **has a hidden state.** Something the players can learn in part or in full.
+  A fact that is wholly known the moment it happens in play, such as an NPC
+  openly doing or saying something, is an event: it belongs in the Session's
+  Events. Where what is said is itself obscure, the Clue is what it means, and
+  the saying is a hint.
+- **lasts.** A condition, allegiance, secret or cause, not a single happening.
+- **outlives one Session.** If the only way to state it is "this happened in
+  that Session", it is Session content.
+
+A test: if the Session's Events and the subjects' Notes would hold the fact
+fully without the Clue, it should not be a Clue.
+
+## Before creating one
+
+Check whether a Clue already states the fact. `armarium trace` on its most
+distinctive subject lists the Clues whose `text` links to that record. If one
+states the same fact, update that Clue, for example its status or
+`last_session`, and do not create another.
+
+## Status
+
+Each status is a record in `reference/statuses/` that says what it means. A
+new Clue starts as Pending. Change the status only when the GM decides to, or
+when a played Session's Events show the change; preparing a Clue for a Session
+does not hint it.
+
+Update `last_session` whenever play develops the Clue, even when its status
+stays the same.
+
+## When a Clue is revealed
+
+A Revealed Clue no longer shows under its subjects' Active Clues, so the fact
+moves into their records: add it to the Notes of each subject it concerns, with
+a link back to the Clue. A subject that the fact only touches in passing, or
+that is a bare stub, can be skipped. The Clue itself stays, Revealed.
+
 ## Schema
 
 A Clue’s frontmatter requires `type`, `status`, nonblank `text`, `subjects`,
