@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Say in the Content Type record what Notes can hold before play and what play adds, for each subtype.
 - Stop `armarium find` inferring a campaign from the current directory; without `--campaign` it lists every campaign's records.
 - Ship `AGENTS.md`, a vault guide and the `update-record` agent skill in the starter and example vaults.
 - Require a record's filename and aliases to be its own among the records one campaign can see, and add `armarium find --campaign`.

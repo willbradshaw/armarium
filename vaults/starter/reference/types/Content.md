@@ -69,8 +69,7 @@ All subtypes share Notes, Active Clues and Appearances, in that order.
 
 Notes contain established, lasting information about the entity, read without
 the context of any one Session. Record only what play or the GM's own material
-states; never round a record out with plausible detail. Use `- N/A` while
-nothing is established.
+states, and nothing it does not. Use `- N/A` while nothing is established.
 
 - Describe the entity, not the scene in which it was met.
 - Describe it in absolute terms; a comparison needs its referent stated.
@@ -81,6 +80,22 @@ nothing is established.
 - A Clue is a candidate fact; displaying it under Active Clues does not
   establish it as world canon. Add a Clue's content to Notes only once the Clue
   is Revealed, and link the Clue there.
+
+What Notes can hold before play, and what play tends to add, differs by subtype:
+
+| Subtype | From the GM's material, before play | Established in play |
+| --- | --- | --- |
+| NPC | Identity and role. Personality and manner wait for play. | Appearance, a manner that recurs, background, allegiances and rivalries. |
+| PC | What the player's sheet and backstory give. | Backstory revealed, abilities that shaped events, relationships, lasting changes. A PC changes in most Sessions. |
+| Location | Physical description and geography. | Layout, hidden features, fixtures, residents, history. |
+| Faction | Purpose and known structure. | Internal structure and splits, doctrine, alliances and enmities. |
+| Object, Gear | What it is and how it looks. | Markings, contents, provenance, associations. |
+| Lore | Settled facts of the setting. | New facts, and relations to other lore. |
+| Date | What the calendar and history give. | Nothing; what happened then is recorded in Appearances. |
+
+After a Session in which the entity appears, add to Notes only what that Session
+established and will last. A passing visit, or a scene that repeats what is
+already recorded, adds nothing.
 
 ### Campaign state
 
