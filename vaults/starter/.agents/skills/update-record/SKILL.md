@@ -25,8 +25,8 @@ armarium find "NAME" [--campaign N]
 
 - If no match is returned, create the record at the appropriate location.
 - If a single match is returned, edit that record.
-- If multiple matches are returned, or if the `find` command raises an error,
-  report the problem and terminate the skill.
+- If multiple matches are returned, or if the `find` command encounters a
+  problem, report the problem and terminate the skill.
 
 ## 2. Read the Type record
 
