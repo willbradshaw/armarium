@@ -1,6 +1,6 @@
 ---
 name: update-record
-description: Create or edit one record in this Armarium vault and leave the vault valid. The base procedure for a record change, which other skills build on. Finds the record, reads its Type record, writes it from the source, validates it and creates stubs for links that name no record.
+description: Creates or edits one record in this Armarium vault, then fixes validation errors. Creates stub records for introduced dangling links.
 ---
 
 # Update a record
@@ -39,16 +39,11 @@ copy may differ from what you expect.
 
 ## 3. Write the record
 
-**To create**, use `armarium add`; never copy a template or write the file by
-hand. The command chooses the directory and filename, fills in the template's
-defaults and validates the result.
-
-```sh
-armarium add content "NAME" --subtype SUBTYPE --campaign N --frontmatter '{"summary": "..."}'
-```
-
-`armarium add --help` lists the record kinds and their options. Then edit the
-new record's body.
+**To create**, use
+[`armarium add`](https://github.com/willbradshaw/armarium/blob/main/docs/add.md);
+never copy a template or write the file by hand. The command chooses the
+directory and filename, fills in the template's defaults and validates the
+result. Then edit the new record's body.
 
 **To edit**, read the whole record first, then change only what the source
 calls for:
