@@ -3,8 +3,9 @@
 Each [record](record.md) has a type, declared in its `type` field, that
 determines where it lives, which frontmatter fields it has and what its body
 contains. A type is defined by a Type record in `reference/types/` and its
-schema in `reference/schemas/`. The built-in types follow, in alphabetical
-order. In the frontmatter tables, a *required* field must be present and an
+schema in `reference/schemas/`. Each Type record's body also says how records
+of its type are used, such as what counts as an appearance or a Clue. The
+built-in types follow, in alphabetical order. In the frontmatter tables, a *required* field must be present and an
 *optional* one may be omitted; a field may hold null only where null is
 listed among its values.
 
@@ -84,10 +85,6 @@ order without repeats, and each campaign that appears must have a
 [`campaign_N` block](campaign.md#state) whose
 `first_session` and `last_session` are that campaign's earliest and latest
 entries.
-
-What belongs in Notes, and what counts as an appearance for each subtype, is
-set out in the vault's own
-[Content Type record](../vaults/starter/reference/types/Content.md).
 
 Date Content represents a particular day or period. Recurring calendar concepts,
 such as a named month or weekday, are Lore.

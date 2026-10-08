@@ -15,24 +15,26 @@ campaign folder.
 
 ## What counts as a Clue
 
-A Clue states a fact about the world that the players do not yet fully know and
-can come to learn. Three things mark one out:
+A Clue states a candidate fact about the world that the players do not yet
+fully know and can come to learn. Three things mark one out:
 
 - **It has a hidden state.** The players can learn it in part or in full. What
   happens openly in play, such as an NPC doing or saying something in front of
   the party, is known at once and is recorded in the Session's Events. When
   what is said is itself obscure, the Clue is what it means, and the saying is
   a hint.
-- **It is a fact about the world, not a moment of play.** It stays true
-  whether or not the players learn it: a condition, an allegiance, a secret, a
-  cause, or a past event that was concealed, such as "the warehouse fire was
-  set deliberately". "The party met the harbourmaster on the quay" is a moment
-  of play, recorded in the Session's Events.
+- **It is about the world, not a moment of play.** It concerns a condition,
+  an allegiance, a secret, a cause, or a past event that was concealed, such as
+  "the warehouse fire was set deliberately". "The party met the harbourmaster
+  on the quay" is a moment of play, recorded in the Session's Events.
 - **It can span Sessions.** It can be hinted in one Session and revealed in a
   later one.
 
 As a test, a fact that a Session's Events and its subjects' Notes would hold in
 full without a Clue is not a Clue.
+
+Until the players learn it, a Clue is not canon: the GM can change it or drop
+it. It becomes established only once it is revealed in play.
 
 ## One fact, one Clue
 
