@@ -1,4 +1,4 @@
-"""List the records that link to a file, and where each link sits."""
+"""List the links to a file or from a record, and where each one sits."""
 
 import re
 from collections.abc import Iterable
@@ -17,15 +17,17 @@ from armarium.parse import Body, Frontmatter
 
 @dataclass(frozen=True)
 class Reference:
-    """One place where a record links to the traced record.
+    """One link between the traced file and another file.
 
     Attributes:
-        relative: Vault-relative path of the linking record, with forward
-            slashes.
+        relative: Vault-relative path of the other file, with forward
+            slashes: the linking record for a link to the traced file, the
+            linked file for a link from it.
         where: The frontmatter field holding the link, dotted for a nested
             field such as ``campaign_1.held_by``; or the headings the link
             sits beneath, outermost first and joined by `` > ``, which is
-            empty for body text before the first heading.
+            empty for body text before the first heading. It is a place in
+            the record that holds the link.
         line: One-based source line of a body link, or 0 for frontmatter.
     """
 
@@ -290,3 +292,85 @@ def trace_record(path: Path, vault: Path | None = None) -> tuple[str, list[Refer
     return target.relative_to(root).as_posix(), sorted(
         references, key=lambda r: (r.relative, r.line, r.where)
     )
+
+
+def trace_outbound(
+    path: Path, vault: Path | None = None
+) -> tuple[str, list[Reference], list[str]]:
+    """List every link from one record to the vault's other files.
+
+    Links resolve as validation resolves them; embeds count as links. Only
+    the files that a link's target could name are indexed.
+
+    Args:
+        path: The record to trace. With a vault, a relative path is taken
+            from the vault root; without one, from the working directory.
+        vault: Vault root, or None to discover the vault from the file's
+            location.
+
+    Returns:
+        tuple[str, list[Reference], list[str]]: The traced record's
+            vault-relative path, with forward slashes; the files it links to,
+            in the order the links appear, a link repeated at one location
+            listed once and the record's links to itself left out; and a
+            message for each link that is malformed or names no file or
+            several, which validation reports in full.
+
+    Raises:
+        ValueError: The path is not a Markdown file that can be parsed, lies
+            in no vault or outside the given one, or is an entry that vault
+            scans skip.
+        OSError: A directory or the record cannot be read.
+    """
+    root, located = _locate(path, vault)
+    if located.suffix.lower() != ".md":
+        raise ValueError(f"{located} is not a Markdown record, so it holds no links")
+    files = find_files(root)
+    # The scan's own path for the record, however the given path spelled it.
+    source = next(
+        (
+            file
+            for file in _sharing(files, _spellings(located))
+            if file.samefile(located)
+        ),
+        None,
+    )
+    if source is None:
+        raise ValueError(
+            f"{located} is not part of the vault: hidden entries, symlinks and "
+            "cache directories are skipped"
+        )
+    relative = source.relative_to(root).as_posix()
+    try:
+        text = source.read_bytes().decode("utf-8-sig")
+        frontmatter, length = Frontmatter.parse(text)
+        body = Body("".join(text.splitlines(keepends=True)[length:]), length + 1)
+    except (UnicodeError, yaml.YAMLError, ValueError, RecursionError) as exc:
+        raise ValueError(f"cannot parse {relative}: {exc}") from exc
+    links = frontmatter.links + body.links
+    index = VaultIndex(
+        root,
+        _sharing(files, {_final_segment(link.target) for link in links if link.target}),
+    )
+    references: dict[Reference, None] = {}
+    unresolved: list[str] = []
+    for link in sorted(links, key=lambda link: link.line):
+        where = " > ".join(body.headings_at(link.line)) if link.line else link.field
+        place = f"line {link.line}" if link.line else where
+        if link.error:
+            unresolved.append(f"{place}: {link.error}")
+            continue
+        if not link.target:
+            continue
+        resolved, rule = index.resolve(link.target, source)
+        if resolved is None:
+            problem = (
+                "names several files" if rule == "link.ambiguous" else "names no file"
+            )
+            unresolved.append(f"{place}: [[{link.target}]] {problem}")
+        elif resolved != source:
+            reference = Reference(
+                resolved.relative_to(root).as_posix(), where, link.line
+            )
+            references[reference] = None
+    return relative, list(references), unresolved
