@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Say in the Clue Type record what counts as a Clue, how to avoid duplicates, when its status changes and what revealing it entails.
+- Say in the Clue Type record what counts as a Clue, how its status follows play and what revealing it entails.
 - Ship the `refresh-record` agent skill, which brings one record up to date with the records linked to and from it.
 - Add `armarium trace --outbound` to list the files a record links to, and where.
 - Stop `armarium find` inferring a campaign from the current directory; without `--campaign` it lists every campaign's records.
