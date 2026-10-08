@@ -20,18 +20,13 @@ Run the commands from the vault root, or add `--vault PATH`.
 ## 1. Find the record
 
 ```sh
-armarium find "NAME" --campaign N
+armarium find "NAME" [--campaign N]
 ```
 
-This looks among the shared records and campaign N's for one with that
-filename or alias, and prints its path, type, `name` or `alias`, and summary.
-It exits with 1 when there is none. A name belongs to one record there, so:
-
-- **A match:** edit that record.
-- **No match:** create the record.
-
-For a change that belongs to no campaign, leave `--campaign` out and take the
-match outside `campaigns/`.
+- If no match is returned, create the record at the appropriate location.
+- If a single match is returned, edit that record.
+- If multiple matches are returned, or if the `find` command raises an error,
+  report the problem and terminate the skill.
 
 ## 2. Read the Type record
 
