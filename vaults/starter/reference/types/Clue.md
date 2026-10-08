@@ -13,6 +13,51 @@ Campaign 1's Clues live under `campaigns/campaign_1/clues/`, named `C-1-0001.md`
 `C-2-0001.md`, and so on. The Sessions view derives its scope from the containing
 campaign folder.
 
+## What counts as a Clue
+
+A Clue states a candidate fact about the world that the players do not yet
+fully know and can come to learn. Three things mark one out:
+
+- **It has a hidden state.** The players can learn it in part or in full. What
+  happens openly in play, such as an NPC doing or saying something in front of
+  the party, is known at once and is recorded in the Session's Events. When
+  what is said is itself obscure, the Clue is what it means, and the saying is
+  a hint.
+- **It is about the world, not a moment of play.** It concerns a condition,
+  an allegiance, a secret, a cause, or a past event that was concealed, such as
+  "the warehouse fire was set deliberately". "The party met the harbourmaster
+  on the quay" is a moment of play, recorded in the Session's Events.
+- **It can span Sessions.** It can be hinted in one Session and revealed in a
+  later one.
+
+As a test, a fact that a Session's Events and its subjects' Notes would hold in
+full without a Clue is not a Clue.
+
+Until the players learn it, a Clue is not canon. It becomes established only
+once it is revealed in play.
+
+## One fact, one Clue
+
+A fact that a Clue already states is developed in that Clue, not stated again
+in a new one. `armarium trace` on one of its subjects lists the Clues that link
+to it.
+
+## Status
+
+Each status is a record in `reference/statuses/` that says what it means. A
+Clue starts as Pending, and its status follows what the players have learned.
+Preparing a Clue for a Session does not hint it.
+
+`last_session` is the latest Session in which play developed the Clue, whether
+or not its status changed then.
+
+## When a Clue is revealed
+
+A Revealed Clue no longer appears under its subjects' Active Clues, so its fact
+belongs in the Notes of each subject it concerns, with a link back to the Clue.
+A subject that the fact only touches in passing, or a bare stub, need not take
+it. The Clue itself stays, Revealed.
+
 ## Schema
 
 A Clue’s frontmatter requires `type`, `status`, nonblank `text`, `subjects`,
