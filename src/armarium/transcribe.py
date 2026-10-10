@@ -346,8 +346,8 @@ def transcribe(
         )
         if shutil.which(BACKEND) is None:
             raise ValueError(
-                f"{BACKEND} is not on PATH; install whisper.cpp, for example "
-                "with `brew install whisper-cpp`"
+                f"{BACKEND} is not on PATH; install whisper.cpp to transcribe "
+                "recordings"
             )
         command = build_command(
             ensure_model(model, model_dir),
