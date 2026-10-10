@@ -22,6 +22,52 @@ Important NPCs each contain exactly one Base embed and no additional text.
 Always qualify campaign overview links, for example
 `[[campaign_1/reference/Campaign]]`.
 
+## Preparation and play
+
+A Session has two halves. Preparation is what the GM plans before play: it
+records intent, not history, and nothing in it has happened until the Events
+say so. Notes is what happened at the table, written afterwards.
+
+The halves are kept apart. Preparation is not rewritten to match what was
+played: a scene that never came up stays in Preparation and out of Events, and
+something the players did unprompted appears in Events alone.
+
+## What Preparation holds
+
+| Part | Holds |
+| --- | --- |
+| Starting scene | the one scene the Session opens on. A cliffhanger from the previous Session belongs here. |
+| Other scenes | the scenes that may come up, one line each. They are a menu, not a sequence. |
+| `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. Preparing a Clue does not hint it. |
+| `prepared_locations`, `prepared_npcs` | the places and characters the GM expects to use, whether or not play reaches them. |
+| Scene notes | what the GM needs to run this Session's scenes, such as how a Clue might surface. |
+| Encounters | the fights and contests prepared. |
+| Prepared rewards | what the party could gain. What they took is recorded under Rewards. |
+
+`date` is the real date of play. `in_game_start_date` is usually the previous
+Session's `in_game_end_date`; time passes between Sessions only when the GM
+says so. `players_absent` and `in_game_end_date` are not known until the
+Session is played.
+
+## What carries over
+
+Much of a Session's preparation follows from the Sessions before it:
+
+- how the previous Session ended, when it left something unresolved;
+- scenes, encounters and rewards that were prepared, not played, and could
+  still happen;
+- Clues that are still Pending or Hinted, where play is heading towards their
+  subjects;
+- what characters promised or threatened, and deadlines that now fall due;
+- the places and characters the party is in the middle of dealing with.
+
+What play has overtaken is dropped: a scene whose moment has passed, or a Clue
+that no longer fits what was established. An outdated Clue is not reworded;
+its status changes, as [[types/Clue]] describes.
+
+Carrying over copies what earlier Sessions already hold. Anything else in
+Preparation is new, and what is new is the GM's to decide.
+
 ## Schema
 
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,
