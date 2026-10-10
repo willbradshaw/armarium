@@ -105,6 +105,26 @@ Something the party passed straight on to someone else is an event, not loot.
 moves on from the start date only where the Events show time passing, such as
 a night's rest or a voyage.
 
+## What a played Session touches
+
+Once the Events are written, other records may need to follow them. A played
+Session touches the records its Notes half links to, and
+`armarium trace PATH --outbound` lists them with where each link sits. A
+record linked only from Preparation, or only from the `prepared_` lists, was
+planned and not touched.
+
+| Record | What may follow |
+| --- | --- |
+| Content | an Appearances entry and its campaign block's `first_session` and `last_session`, where the Events show an appearance as [[types/Content]] defines one for its subtype. |
+| Object or Gear | its holder, where the Events or Loot show it changing hands. |
+| Clue | its status and `last_session`, where play hinted or revealed it, as [[types/Clue]] describes. This applies to prepared Clues, and to Clues whose subjects the Events link. |
+| Date | an Appearances entry on the Date records the Session's in-game dates link. |
+| A stub created for the write-up | what the Events say about it. |
+
+A link is not proof. A character who is only spoken of has not appeared, and a
+prepared Clue that never came up is unchanged. Each record's own Type record
+decides, and where the Events do not settle it, the GM does.
+
 ## Schema
 
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,
