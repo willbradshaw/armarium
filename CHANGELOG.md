@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Ship the `create-transcript` agent skill, and say in the Transcript Type record what a Transcript keeps, how speakers are tagged and how doubt is marked.
 - Add `armarium transcribe` to turn a session recording into raw transcript text with whisper.cpp and collapse repeated-line loops.
 - Ship the `interview` agent skill, which questions the GM to develop part of the vault and records what is settled.
 - Say in the Clue Type record what counts as a Clue, how its status follows play and what revealing it entails.
