@@ -67,6 +67,8 @@ Fill the Session's Preparation from step 3, and from nothing else:
 - Link every record you name. Add each prepared Clue, place and character to
   its list in the frontmatter, quoted: `"[[Name]]"`.
 - Leave the embedded views and the Notes half as the template has them.
+- Write only preparation. Your questions and doubts, such as a Clue that looks
+  outdated, go to the GM in step 5, not into the record.
 
 Then validate, and fix every error your change introduced:
 
