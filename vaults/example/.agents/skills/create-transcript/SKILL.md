@@ -82,7 +82,11 @@ Type record and the list of names. Start each chunk knowing how the previous
 one ended. If you can hand chunks to sub-agents, give each one the Type record,
 the list of names and the end of the previous chunk.
 
-Treat each `[ASR loop:` marker as lost speech, as the Type record describes.
+Add nothing the raw text does not say. Where you cannot tell who spoke or what
+was said, use the uncertain tags and `(?)`; do not guess.
+
+At each `[ASR loop:` marker, part of the Session is missing. Write the line the
+Type record gives for that, and do not use the repeated text as speech.
 
 Then read the whole result once for what a single chunk cannot show: a name
 resolved two ways, or an action tagged to a character who could not have done

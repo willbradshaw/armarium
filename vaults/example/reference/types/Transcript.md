@@ -13,9 +13,10 @@ use `[Player?]` or `[?]` when attribution or hearing is uncertain.
 
 ## What a Transcript holds
 
-A Transcript is what was said at the table in one Session, cleaned enough to
-read and search. A Session's Events are written from it, so it condenses the
-speech and adds nothing: it does not summarise, interpret or tidy the story.
+A Transcript is a readable record of what was said at the table in one
+Session. It is the place to look up who said what, and a Session's Events can
+be written from it. It follows the conversation closely, so it is shorter than
+the recording but is not a summary of it.
 
 - **Kept:** what bears on the game. Decisions, the substance of dialogue, what
   the GM describes, dice results, abilities and spells used, loot and money,
@@ -23,8 +24,8 @@ speech and adds nothing: it does not summarise, interpret or tidy the story.
 - **Left out:** filler, false starts, repeated words and talk that is not about
   the game.
 - **Table talk worth keeping**, such as a rules ruling or who is absent, is
-  tagged `[Table]`. So is a recap of earlier Sessions: it describes earlier
-  play, not this Session's.
+  tagged `[Table]`. So is a recap of earlier Sessions, since it describes
+  earlier play.
 
 Sections follow the scenes in order, each titled for what happens in it.
 
@@ -42,27 +43,26 @@ Each utterance is tagged with who said it:
 | `[Table]` | talk outside the game |
 | `[?]` | not known who |
 
-An uncertain tag is better than a guess. A group deciding together often
-cannot be attributed line by line, and `[Player?]` is the honest record of it.
+When a group talks a decision through, it is often unclear who said each line.
+`[Player?]` is the usual tag there.
 
 ## Names and doubt
 
-Speech-to-text misspells the names of a setting. Write each name as its record
-spells it, and link it where that helps a reader find the record. A name that
-matches no record is kept as it was heard and followed by `(?)`. So is any word
-or number the hearing leaves in doubt. Most unfamiliar names in raw text are
-existing records misheard, so a name is new only once the vault has been
-searched for it.
+Names are spelled as their records spell them, and linked where that helps a
+reader find the record. A recording, and speech-to-text most of all, often
+gets a setting's names wrong, so an unfamiliar name is usually an existing
+record misheard.
 
-Where speech is lost, as when the recording drops out or speech-to-text
-repeats one line over the audio, a `[?]` utterance says what is missing, such
-as `- [?] (About two minutes lost here.)`. Nothing is invented to fill the gap,
-and the text of a repeated run is not treated as speech.
+A name that matches no record is written as it was heard and followed by
+`(?)`. So is any word or number that could not be made out for certain.
 
-The same mishearings recur from Session to Session. A campaign can keep them in
-a Note named `Transcription reference`: a table of record names, each with the
-misspellings seen so far, and any pair of names that is easily confused. It
-lists only what has been confirmed, and grows with each Transcript.
+Where part of the Session is missing, as when the recording drops out, a `[?]`
+line says so: `- [?] (About two minutes lost here.)`.
+
+The same mishearings come back from Session to Session. A campaign can keep
+them in a Note named `Transcription reference`: a table of record names, each
+with the misspellings seen so far, and any names that are easily confused with
+each other.
 
 ## Schema
 
