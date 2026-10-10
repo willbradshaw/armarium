@@ -68,6 +68,43 @@ its status changes, as [[types/Clue]] describes.
 Carrying over copies what earlier Sessions already hold. Anything else in
 Preparation is new, and what is new is the GM's to decide.
 
+## What Notes holds
+
+| Part | Holds |
+| --- | --- |
+| Preamble | table business: who attended, and anything said before play began. |
+| Events | what happened in play, in order. |
+| Loot | what the party took this Session, and who took it. |
+
+**Events** are the vault's record of what happened, and other records follow
+them: an Appearances entry or a Clue's status rests on what the Events say.
+
+- Each item is one beat of play, such as a scene, a conversation or a fight.
+  It says who did what and how it came out.
+- Only what happened at the table belongs. Something planned, expected,
+  ordered or talked about has not happened. Neither has a prepared scene that
+  was not played.
+- Every record named is linked, so that `armarium trace` finds the Session
+  from it. Where something named has no record, a stub is created; a name is
+  not left as plain text to avoid one.
+- An item says what happened in the world, not the rules or dice that decided
+  it.
+- Where play hinted or revealed a Clue, the item says so and links the Clue.
+- Earlier Sessions' Events are the model for length and voice.
+
+The Events are written from a source, such as a Transcript or the GM's notes,
+and state nothing the source does not. Once the GM has reviewed them they are
+the authority: a later correction is made to the Events first, and then to
+the records that follow from them.
+
+**Loot** is a snapshot of the table on the night. It is not updated when an
+item later changes hands; the item's own record says who holds it now.
+Something the party passed straight on to someone else is an event, not loot.
+
+`players_absent` lists the Players who were not there. `in_game_end_date`
+moves on from the start date only where the Events show time passing, such as
+a night's rest or a voyage.
+
 ## Schema
 
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,
