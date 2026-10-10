@@ -23,7 +23,7 @@ AUDIO_SUFFIXES = (".flac", ".mp3", ".ogg", ".wav")
 TEXT_SUFFIX = ".txt"
 
 DEFAULT_MODEL = "ggml-large-v3-turbo-q8_0.bin"
-DEFAULT_VAD_MODEL = "ggml-silero-v5.1.2.bin"
+DEFAULT_VAD_MODEL = "ggml-silero-v6.2.0.bin"
 DEFAULT_MODEL_DIR = Path.home() / ".cache" / "whisper-cpp"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_MIN_REPEATS = 4

@@ -21,7 +21,7 @@ attributed before [`armarium add transcript`](add.md#transcripts) can take it.
 - **Two models**, which the command downloads from Hugging Face the first time
   it needs them and keeps in `~/.cache/whisper-cpp`: a Whisper model,
   `ggml-large-v3-turbo-q8_0.bin` (about 900 MB), and a voice-detection model,
-  `ggml-silero-v5.1.2.bin` (under 1 MB). Nothing else is sent or fetched; the
+  `ggml-silero-v6.2.0.bin` (under 1 MB). Nothing else is sent or fetched; the
   recording stays on your machine.
 
 `SOURCE` is a FLAC, MP3, Ogg or WAV file. Convert other formats first, for
