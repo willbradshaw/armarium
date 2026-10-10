@@ -57,7 +57,8 @@ Build a list of the names to expect, each with its record's spelling:
   ```
 
 - the misspellings in the campaign's `Transcription reference` Note, if
-  `armarium find "Transcription reference" --campaign N` finds one.
+  `armarium find "Transcription reference" --campaign N` finds one. Read its
+  Cast and Traps sections too, where it has them.
 
 Then look for the names the list misses. Count the capitalised words in the raw
 text:
@@ -81,7 +82,8 @@ Split the raw text into chunks of about 300 lines and clean them with parallel
 sub-agents, one chunk each. Give each sub-agent:
 
 - the path of `reference/types/Transcript.md`, to read before it starts;
-- the list of names from step 3;
+- the list of names from step 3, and the Cast and Traps sections of the
+  Transcription reference, where it has them;
 - its chunk, and the last 20 raw lines of the chunk before it, for context
   only;
 - the two rules below.
@@ -141,6 +143,11 @@ the campaign has none, create it:
 ```sh
 armarium add note "Transcription reference" --campaign N
 ```
+
+The GM's answers may also show something that belongs under Cast or Traps, as
+the Type record describes them: how they knew a line was one character's, or a
+mistake you made that will recur. Propose each addition to the GM and add it
+only if they agree. Do not add either section empty.
 
 ## 8. Validate and report
 
