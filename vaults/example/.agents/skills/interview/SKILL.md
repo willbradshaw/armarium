@@ -1,12 +1,13 @@
 ---
 name: interview
-description: Interviews the GM to settle canon that exists only in their head, such as lore, history, motivations or names, then writes it into the records it concerns.
+description: Interviews the GM to develop part of this Armarium vault, such as lore, history, characters or places, then records what is settled.
 ---
 
 # Interview the GM
 
-This procedure draws out canon the vault does not hold yet, by questioning the
-GM until the topic is settled, and then records it.
+This procedure develops a topic by questioning the GM until it is settled, and
+then records it. The topic may be new, a gap in what the vault holds, or
+something the GM wants to rethink.
 
 You need the topic, and the campaign it belongs to, if it belongs to one. Run
 the commands from the vault root, or add `--vault PATH`.
@@ -17,8 +18,8 @@ Find the records the topic touches with `armarium find` and `armarium trace`,
 and read them and their Type records.
 
 Open by stating what is already established, with links, so that the GM can
-correct your reading before it shapes your questions. Never ask what the vault
-already answers.
+correct your reading before it shapes your questions. Do not ask what the vault
+already answers unless the GM wants to revisit it.
 
 ## 2. Ask in rounds
 
@@ -38,13 +39,7 @@ together, and drop your own suggestion cleanly when it fails.
 
 Draft nothing until the GM says the topic is settled.
 
-## 3. Leave names to the GM
-
-When the GM asks for suggestions, give ten to fifteen in prose, grouped by
-style, with a gloss for each and the ones you favour. Follow any naming rules
-in `AGENTS.md`.
-
-## 4. Write it up
+## 3. Write it up
 
 Record each settled fact once, in the record of the entity it is most about,
 where that record's Type record says it belongs. Other records link to it. A
@@ -58,7 +53,7 @@ you changed, follow `.agents/skills/refresh-record/SKILL.md`.
 The GM's edits to what you wrote are canon. Carry them through the other records
 you wrote, and report any fact an edit removed rather than restoring it.
 
-## 5. Report
+## 4. Report
 
 Say which records you wrote, which stubs you created and which records you
 refreshed, and list the questions still open. The work is finished when the GM

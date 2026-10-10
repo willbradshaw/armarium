@@ -69,8 +69,7 @@ All subtypes share Notes, Active Clues and Appearances, in that order.
 
 Notes contain established, lasting information about the entity, read without
 the context of any one Session. Record only what play or the GM's own material
-states; never round a record out with plausible detail. What the GM has
-decided belongs here even while the players do not know it. Use `- N/A` while
+states; never round a record out with plausible detail. Use `- N/A` while
 nothing is established.
 
 - Describe the entity, not the scene in which it was met.
