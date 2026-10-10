@@ -77,16 +77,27 @@ guessed.
 
 ## 4. Clean the text
 
-Work through the raw text in order, in chunks of about 300 lines, applying the
-Type record and the list of names. Start each chunk knowing how the previous
-one ended. If you can hand chunks to sub-agents, give each one the Type record,
-the list of names and the end of the previous chunk.
+Split the raw text into chunks of about 300 lines and clean them with parallel
+sub-agents, one chunk each. Give each sub-agent:
 
-Add nothing the raw text does not say. Where you cannot tell who spoke or what
-was said, use the uncertain tags and `(?)`; do not guess.
+- the path of `reference/types/Transcript.md`, to read before it starts;
+- the list of names from step 3;
+- its chunk, and the last 20 raw lines of the chunk before it, for context
+  only;
+- the two rules below.
 
-At each `[ASR loop:` marker, part of the Session is missing. Write the line the
-Type record gives for that, and do not use the repeated text as speech.
+Ask each to return its cleaned chunk, a summary of the chunk in a few lines,
+and the names it could not match. Try to match those names against the vault
+as they come back, and add what is left to the unresolved names.
+
+If you cannot run sub-agents, clean the chunks yourself in order.
+
+The rules for cleaning:
+
+- Add nothing the raw text does not say. Where it is unclear who spoke or what
+  was said, use the uncertain tags and `(?)`; do not guess.
+- At each `[ASR loop:` marker, part of the Session is missing. Write the line
+  the Type record gives for that, and do not use the repeated text as speech.
 
 Then read the whole result once for what a single chunk cannot show: a name
 resolved two ways, or an action tagged to a character who could not have done
