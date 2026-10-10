@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium transcribe` to turn a session recording into raw transcript text with whisper.cpp and collapse repeated-line loops.
 - Ship the `interview` agent skill, which questions the GM to develop part of the vault and records what is settled.
 - Say in the Clue Type record what counts as a Clue, how its status follows play and what revealing it entails.
 - Ship the `refresh-record` agent skill, which brings one record up to date with the records linked to and from it.

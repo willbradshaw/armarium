@@ -25,6 +25,14 @@ from armarium.note import add_note
 from armarium.player import add_player
 from armarium.session import add_session
 from armarium.trace import trace_outbound, trace_record
+from armarium.transcribe import (
+    DEFAULT_LANGUAGE,
+    DEFAULT_MIN_REPEATS,
+    DEFAULT_MODEL,
+    DEFAULT_MODEL_DIR,
+    DEFAULT_VAD_MODEL,
+    transcribe,
+)
 from armarium.transcript import add_transcript
 from armarium.validate import validate
 
@@ -62,6 +70,19 @@ def _jobs(value: str) -> int:
     if jobs < 1:
         raise argparse.ArgumentTypeError("jobs must be a whole number of at least 1")
     return jobs
+
+
+def _min_repeats(value: str) -> int:
+    """Parse a repeat count of at least two."""
+    try:
+        repeats = int(value)
+    except ValueError:
+        repeats = 0
+    if repeats < 2:
+        raise argparse.ArgumentTypeError(
+            "min-repeats must be a whole number of at least 2"
+        )
+    return repeats
 
 
 def _subtype_choices(argv: Sequence[str] | None) -> tuple[tuple[str, ...] | None, str]:
@@ -277,6 +298,65 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="vault root (default: discovered from the path)",
     )
+    recording = commands.add_parser(
+        "transcribe",
+        help="transcribe a recording to raw text with whisper.cpp",
+        description=(
+            "Transcribe a recording with whisper.cpp to NAME.raw.txt, then collapse "
+            "the runs of repeated lines that speech-to-text emits into NAME.txt. "
+            "Given a .txt file of raw transcript text, only collapse it, into "
+            "NAME.collapsed.txt. Prints the collapsed file's path. Changes no "
+            "source, replaces no file and creates no Transcript record. Arguments "
+            "after -- are passed to whisper-cli."
+        ),
+    )
+    recording.add_argument(
+        "source",
+        type=Path,
+        help="recording (.flac, .mp3, .ogg or .wav) or raw transcript text (.txt)",
+    )
+    recording.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help=(
+            "collapsed .txt file to write (default: NAME.txt beside a recording, "
+            "NAME.collapsed.txt beside a text file)"
+        ),
+    )
+    recording.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help=f"Whisper ggml model file or filename (default: {DEFAULT_MODEL})",
+    )
+    recording.add_argument(
+        "--vad-model",
+        default=DEFAULT_VAD_MODEL,
+        help=(
+            "voice-detection ggml model file or filename "
+            f"(default: {DEFAULT_VAD_MODEL})"
+        ),
+    )
+    recording.add_argument(
+        "--model-dir",
+        type=Path,
+        default=DEFAULT_MODEL_DIR,
+        help="directory for downloaded models (default: ~/.cache/whisper-cpp)",
+    )
+    recording.add_argument(
+        "--language",
+        default=DEFAULT_LANGUAGE,
+        help=f"spoken language code (default: {DEFAULT_LANGUAGE})",
+    )
+    recording.add_argument(
+        "--min-repeats",
+        type=_min_repeats,
+        default=DEFAULT_MIN_REPEATS,
+        help=(
+            "fewest consecutive copies of a line collapsed as a loop "
+            f"(default: {DEFAULT_MIN_REPEATS})"
+        ),
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -296,7 +376,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=1,
         help="worker processes for validating a directory (default: 1)",
     )
-    args = parser.parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    whisper_args: list[str] = []
+    if arguments[:1] == ["transcribe"] and "--" in arguments:
+        split = arguments.index("--")
+        arguments, whisper_args = arguments[:split], arguments[split + 1 :]
+    args = parser.parse_args(arguments)
+    if args.command == "transcribe":
+        args.whisper_args = whisper_args
     if args.command == "add":
         path = vars(args).pop("frontmatter_file", None)
         if path is not None:
@@ -322,7 +409,8 @@ def main() -> None:
 
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
-            find matches nothing or trace cannot locate its file.
+            find matches nothing, trace cannot locate its file or
+            transcribe cannot write its text.
             Creation reports validation warnings and errors; validate also reports
             informational diagnostics and coverage counts. Argument parsing
             exits with 0 for help or 2 for usage errors.
@@ -362,6 +450,35 @@ def main() -> None:
             "from" if args.outbound else "to",
             target,
         )
+        return
+    if args.command == "transcribe":
+        try:
+            transcription = transcribe(
+                args.source,
+                args.output,
+                model=args.model,
+                vad_model=args.vad_model,
+                model_dir=args.model_dir,
+                language=args.language,
+                min_repeats=args.min_repeats,
+                extra_args=args.whisper_args,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot transcribe %s: %s", args.source, exc)
+            sys.exit(1)
+        if transcription.raw is not None:
+            logger.info("Raw transcript written to %s", transcription.raw)
+        for loop in transcription.loops:
+            logger.info("Collapsed %s", loop)
+        count = len(transcription.loops)
+        logger.info(
+            "%s %s collapsed; %s of %s lines kept",
+            count,
+            "loop" if count == 1 else "loops",
+            transcription.kept,
+            transcription.lines,
+        )
+        print(transcription.output)
         return
     if args.command == "init":
         try:

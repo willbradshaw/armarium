@@ -12,9 +12,18 @@ from pathlib import Path
 
 import pytest
 
-from armarium.cli import _jobs, _subtype_choices, main, parse_args
+from armarium import cli
+from armarium.cli import _jobs, _min_repeats, _subtype_choices, main, parse_args
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
+from armarium.transcribe import (
+    DEFAULT_LANGUAGE,
+    DEFAULT_MIN_REPEATS,
+    DEFAULT_MODEL,
+    DEFAULT_MODEL_DIR,
+    DEFAULT_VAD_MODEL,
+    Transcription,
+)
 
 
 @pytest.fixture
@@ -1889,6 +1898,184 @@ class TestTraceCommand:
         assert (args.path, args.vault) == (Path("content/Mara Vey.md"), None)
         args = parse_args(["trace", "content/Mara.md", "--vault", str(tmp_path)])
         assert args.vault == tmp_path
+
+
+class TestTranscribeCommand:
+    LOOP = "lines 2-6: line x5: 'Agreed.'"
+
+    @pytest.mark.parametrize(
+        ("loops", "summary"),
+        [
+            ((), "0 loops collapsed; 3 of 3 lines kept"),
+            ((LOOP,), "1 loop collapsed; 3 of 3 lines kept"),
+            ((LOOP, LOOP), "2 loops collapsed; 3 of 3 lines kept"),
+        ],
+    )
+    @pytest.mark.parametrize("raw", [None, Path("s52.raw.txt")])
+    def test_prints_the_output_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        loops: tuple[str, ...],
+        summary: str,
+        raw: Path | None,
+    ) -> None:
+        calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+        def transcribe(*args: object, **options: object) -> Transcription:
+            calls.append((args, options))
+            return Transcription(Path("out/s52.txt"), raw, 3, 3, loops)
+
+        monkeypatch.setattr(cli, "transcribe", transcribe)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "transcribe", "s52.wav", "-o", "out/s52.txt", "--", "-t", "8"],
+        )
+        main()
+        output = capsys.readouterr()
+        assert output.out == "out/s52.txt\n"
+        messages = [line.split("] ", 1)[1] for line in output.err.splitlines()]
+        assert messages == [
+            *(["INFO: Raw transcript written to s52.raw.txt"] if raw else []),
+            *(f"INFO: Collapsed {loop}" for loop in loops),
+            f"INFO: {summary}",
+        ]
+        assert calls == [
+            (
+                (Path("s52.wav"), Path("out/s52.txt")),
+                {
+                    "model": DEFAULT_MODEL,
+                    "vad_model": DEFAULT_VAD_MODEL,
+                    "model_dir": DEFAULT_MODEL_DIR,
+                    "language": DEFAULT_LANGUAGE,
+                    "min_repeats": DEFAULT_MIN_REPEATS,
+                    "extra_args": ["-t", "8"],
+                },
+            )
+        ]
+
+    def test_collapses_a_text_file(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        source = tmp_path / "raw.txt"
+        source.write_text("before\n" + "Agreed.\n" * 5 + "after\n")
+        monkeypatch.setattr(sys, "argv", ["armarium", "transcribe", str(source)])
+        main()
+        output = capsys.readouterr()
+        assert output.out == f"{tmp_path / 'raw.collapsed.txt'}\n"
+        assert (tmp_path / "raw.collapsed.txt").read_text() == (
+            "before\nAgreed.\n"
+            "[ASR loop: previous line repeated 5 times; raw lines 2-6]\nafter\n"
+        )
+        assert f"INFO: Collapsed {self.LOOP}" in output.err
+        assert "INFO: 1 loop collapsed; 4 of 7 lines kept" in output.err
+
+    @pytest.mark.parametrize(
+        ("name", "message"),
+        [
+            ("absent.wav", "absent.wav is not a file"),
+            ("notes.md", "unsupported input notes.md"),
+            ("raw.txt", "raw.collapsed.txt already exists"),
+            ("s52.wav", "whisper-cli is not on PATH; install whisper.cpp"),
+        ],
+    )
+    def test_exits_with_one(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        name: str,
+        message: str,
+    ) -> None:
+        for existing in ("notes.md", "raw.txt", "raw.collapsed.txt", "s52.wav"):
+            (tmp_path / existing).write_text("kept")
+        monkeypatch.setenv("PATH", str(tmp_path))
+        path = str(tmp_path / name)
+        monkeypatch.setattr(sys, "argv", ["armarium", "transcribe", path])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert len(output.err.splitlines()) == 1
+        assert f"ERROR: Cannot transcribe {path}: " in output.err
+        assert message in output.err
+        assert (tmp_path / "raw.collapsed.txt").read_text() == "kept"
+        assert len(list(tmp_path.iterdir())) == 4
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(
+            [
+                "transcribe",
+                "s52.wav",
+                "--model",
+                "ggml-base.en.bin",
+                "--vad-model",
+                "vad.bin",
+                "--model-dir",
+                str(tmp_path),
+                "--language",
+                "de",
+                "--min-repeats",
+                "6",
+            ]
+        )
+        assert (args.source, args.output) == (Path("s52.wav"), None)
+        assert (args.model, args.vad_model) == ("ggml-base.en.bin", "vad.bin")
+        assert (args.model_dir, args.language) == (tmp_path, "de")
+        assert (args.min_repeats, args.whisper_args) == (6, [])
+
+    @pytest.mark.parametrize(
+        ("arguments", "source", "whisper_args"),
+        [
+            (["s.wav", "--"], "s.wav", []),
+            (["s.wav", "--", "--threads", "8"], "s.wav", ["--threads", "8"]),
+            (["--language", "de", "s.wav", "--", "-o", "--"], "s.wav", ["-o", "--"]),
+        ],
+    )
+    def test_passes_arguments_after_the_separator_to_the_backend(
+        self, arguments: list[str], source: str, whisper_args: list[str]
+    ) -> None:
+        args = parse_args(["transcribe", *arguments])
+        assert (args.source, args.output) == (Path(source), None)
+        assert args.whisper_args == whisper_args
+
+    def test_other_commands_keep_the_separator(self) -> None:
+        args = parse_args(["find", "--", "--name"])
+        assert args.name == "--name" and not hasattr(args, "whisper_args")
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["a.wav", "b.wav"],
+            ["a.wav", "--threads", "8"],
+            ["a.wav", "--min-repeats", "1"],
+            ["--", "a.wav"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["transcribe", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestMinRepeats:
+    @pytest.mark.parametrize(("value", "expected"), [("2", 2), ("12", 12)])
+    def test_count(self, value: str, expected: int) -> None:
+        assert _min_repeats(value) == expected
+
+    @pytest.mark.parametrize("value", ["1", "0", "-3", "2.0", "", "all"])
+    def test_invalid_count(self, value: str) -> None:
+        with pytest.raises(argparse.ArgumentTypeError, match="at least 2"):
+            _min_repeats(value)
 
 
 class TestJobs:
