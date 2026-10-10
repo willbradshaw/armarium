@@ -27,7 +27,9 @@ Add campaigns and records with `armarium add`; see
 [Adding to a vault](docs/add.md). Look a record up by name or alias with
 `armarium find`; see [Finding records](docs/find.md). List the records that link
 to it, or the files it links to, with `armarium trace`; see
-[Tracing links to a record](docs/trace.md).
+[Tracing links to a record](docs/trace.md). Turn a session recording into raw
+transcript text with `armarium transcribe`; see
+[Transcribing a recording](docs/transcribe.md).
 Optional [extensions](docs/extensions.md) add additional conventions. A new
 vault also carries [instructions and skills for coding agents](docs/agents.md).
 
