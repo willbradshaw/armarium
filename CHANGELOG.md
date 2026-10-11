@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Ship the `process-session` agent skill, and say in the Session Type record which records a played Session touches.
 - Ship the `write-up-session` agent skill, and say in the Session Type record what Events and Loot hold.
 - Ship the `prepare-session` agent skill, and say in the Session Type record what Preparation holds and what carries over between Sessions.
 - Describe the Transcription reference Note in the `create-transcript` skill, not the Transcript Type record, and let it hold optional Cast and Traps sections.
