@@ -17,19 +17,6 @@ your memory of either.
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores.
 
-## What needs the GM's decision
-
-Where the Events make clear what should change in a record, make the change.
-You do not need the GM's approval first.
-
-Ask the GM before you make either of these changes:
-
-- changing a Clue's status;
-- updating a record when the Events leave it unclear whether it appeared.
-
-Step 4 is where you ask. If the GM has already told you what to do about one
-of these, do that.
-
 ## 1. List what the Session touches
 
 A played Session touches the records its Notes half links to. List the
@@ -78,7 +65,7 @@ you will do or propose, and the line of the Events it rests on. Sort it into:
 ## 2. Update the records
 
 Take the records under "appeared" one at a time, and mark each line in the
-file when its record is done:
+file when its record is done. These do not need the GM's approval first.
 
 - **An existing record:** follow `.agents/skills/refresh-record/SKILL.md`.
 - **A stub created for the write-up:** follow
@@ -101,8 +88,9 @@ When you write an Appearances entry:
 A fact that only a Clue holds stays in the Clue until the Clue is revealed.
 Do not copy it into the Notes of the Clue's subjects.
 
-Leave the Clues and the records under "cannot judge" as they are, unless the
-GM has told you what to do with one. For a Clue the GM has settled, follow
+Do not change a Clue's status, or a record under "cannot judge", until the GM
+has told you what to do with it. Step 4 asks them. For a Clue the GM has
+settled, follow
 `.agents/skills/update-record/SKILL.md`, with the Events and the GM's decision
 as the source. When a Clue is revealed, refresh each of its subjects
 afterwards, as its Type record describes.
