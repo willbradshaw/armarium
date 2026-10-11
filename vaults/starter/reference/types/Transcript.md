@@ -59,11 +59,6 @@ A name that matches no record is written as it was heard and followed by
 Where part of the Session is missing, as when the recording drops out, a `[?]`
 line says so: `- [?] (About two minutes lost here.)`.
 
-The same mishearings come back from Session to Session. A campaign can keep
-them in a Note named `Transcription reference`: a table of record names, each
-with the misspellings seen so far, and any names that are easily confused with
-each other.
-
 ## Schema
 
 A Transcript’s frontmatter requires `type` and a Session link in `session`. The

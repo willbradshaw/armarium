@@ -17,6 +17,22 @@ You need two things:
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores. Never move, edit or delete the source.
 
+## The Transcription reference
+
+The same mishearings come back from Session to Session. This procedure keeps
+what it learns about them in a Note named `Transcription reference`, one for
+each campaign, and reads it at the start of the next run. The Note has up to
+three sections, each left out until there is something to put in it:
+
+- **Misspellings:** a table of record names, each with the misspellings seen
+  so far, and any names that are easily confused with each other.
+- **Cast:** a row for each character, giving its player and what marks that
+  character's lines at the table, such as an ability they often use, something
+  they carry or a habit of speech.
+- **Traps:** short notes on mistakes that Transcripts of this campaign are
+  prone to, such as two groups whose names get merged, or the party's nickname
+  for something.
+
 ## 1. Get the raw text
 
 ```sh
@@ -56,8 +72,9 @@ Build a list of the names to expect, each with its record's spelling:
   armarium trace "campaigns/campaign_N/sessions/S-N-NNN.md" --outbound
   ```
 
-- the misspellings in the campaign's `Transcription reference` Note, if
-  `armarium find "Transcription reference" --campaign N` finds one.
+- the misspellings in the campaign's Transcription reference, if
+  `armarium find "Transcription reference" --campaign N` finds one. Read its
+  Cast and Traps sections too, where it has them.
 
 Then look for the names the list misses. Count the capitalised words in the raw
 text:
@@ -81,7 +98,8 @@ Split the raw text into chunks of about 300 lines and clean them with parallel
 sub-agents, one chunk each. Give each sub-agent:
 
 - the path of `reference/types/Transcript.md`, to read before it starts;
-- the list of names from step 3;
+- the list of names from step 3, and the Cast and Traps sections of the
+  Transcription reference, where it has them;
 - its chunk, and the last 20 raw lines of the chunk before it, for context
   only;
 - the two rules below.
@@ -135,12 +153,17 @@ again, until the GM says the Transcript is done.
 ## 7. Record what you learned
 
 For each misspelling the GM confirmed or you matched with confidence, add it to
-the campaign's `Transcription reference` Note, as the Type record describes. If
-the campaign has none, create it:
+the Misspellings table of the campaign's Transcription reference. If the
+campaign has none, create it:
 
 ```sh
 armarium add note "Transcription reference" --campaign N
 ```
+
+The GM's answers may also show something that belongs under Cast or Traps: how
+they knew a line was one character's, or a mistake you made that will recur.
+Propose each addition to the GM and add it only if they agree. Do not add
+either section empty.
 
 ## 8. Validate and report
 

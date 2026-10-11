@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Describe the Transcription reference Note in the `create-transcript` skill, not the Transcript Type record, and let it hold optional Cast and Traps sections.
 - Ship the `create-transcript` agent skill, and say in the Transcript Type record what a Transcript keeps, how speakers are tagged and how doubt is marked.
 - Add `armarium transcribe` to turn a session recording into raw transcript text with whisper.cpp and collapse repeated-line loops.
 - Ship the `interview` agent skill, which questions the GM to develop part of the vault and records what is settled.
