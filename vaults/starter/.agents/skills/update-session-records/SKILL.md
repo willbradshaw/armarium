@@ -17,17 +17,18 @@ your memory of either.
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores.
 
-## What you decide and what the GM decides
+## What needs the GM's decision
 
 Where the Events make clear what should change in a record, make the change.
-You do not need the GM's approval first. Two kinds of change are the GM's,
-and you make them only on the GM's word:
+You do not need the GM's approval first.
 
-- a change to a Clue's status;
-- a change to a record where the Events do not settle whether it appeared.
+Ask the GM before you make either of these changes:
 
-Report both in step 4, each with what you would do. If the GM has already
-told you what to do with one, do it.
+- changing a Clue's status;
+- updating a record when the Events leave it unclear whether it appeared.
+
+Step 4 is where you ask. If the GM has already told you what to do about one
+of these, do that.
 
 ## 1. List what the Session touches
 
