@@ -65,13 +65,7 @@ something the players did unprompted appears in Events alone.
 | Events | what happened in play, in order. |
 | Rewards | what the party gained. Loot lists each item and who acquired it. |
 
-## What Notes holds
-
-| Part | Holds |
-| --- | --- |
-| Preamble | table business: who attended, and anything said before play began. |
-| Events | what happened in play, in order. |
-| Loot | what the party took this Session, and who took it. |
+## Events and Loot
 
 **Events** are the vault's record of what happened, and other records follow
 them: an Appearances entry or a Clue's status rests on what the Events say.
