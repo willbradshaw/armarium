@@ -22,6 +22,49 @@ Important NPCs each contain exactly one Base embed and no additional text.
 Always qualify campaign overview links, for example
 `[[campaign_1/reference/Campaign]]`.
 
+## Preparation and play
+
+A Session has two halves. Preparation is what the GM plans before play: it
+holds intent, not history, and nothing in it has happened until the Events
+say so. Notes is what happened at the table, written afterwards.
+
+The halves are kept apart. Preparation is not rewritten to match what was
+played: a scene that never came up stays in Preparation and out of Events, and
+something the players did unprompted appears in Events alone.
+
+## What a Session holds
+
+### Frontmatter
+
+| Field | Holds |
+| --- | --- |
+| `campaign`, `session_number` | which Session of which campaign this is. |
+| `aliases` | other names the Session goes by. |
+| `date` | the real date of play. It is empty while the Session is unscheduled. |
+| `in_game_start_date`, `in_game_end_date` | the Dates in the setting on which play began and ended. A Session usually begins on the Date the previous one ended, unless that one ended with a night's rest, in which case it begins on the next. |
+| `players_absent` | the Players who missed the Session, known once it is played. |
+| `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. A prepared Clue keeps its status until play changes it. |
+| `prepared_locations`, `prepared_npcs` | the places and characters the GM expects to use, whether or not play reaches them. |
+
+### Preparation
+
+| Section | Holds |
+| --- | --- |
+| Starting scene | the one scene the Session opens on. If the previous Session ended on a cliffhanger, it is usually picked up here. |
+| Other scenes | other scenes that may come up, briefly summarized. |
+| Secrets & Clues, Locations, Important NPCs | views of the three prepared lists. Nothing is written here. |
+| Scene notes | what the GM needs to run this Session's scenes, such as how a Clue might surface. |
+| Encounters | the fights and contests prepared. |
+| Prepared rewards | what the party could gain. |
+
+### Notes
+
+| Section | Holds |
+| --- | --- |
+| Preamble | who attended, and anything else to know before the Events. |
+| Events | what happened in play, in order. |
+| Rewards | what the party gained. Loot lists each item and who acquired it. |
+
 ## Schema
 
 A Session’s frontmatter requires `type`, `date`, `campaign`, `session_number`,
