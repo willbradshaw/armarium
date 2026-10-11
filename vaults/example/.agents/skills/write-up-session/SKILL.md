@@ -18,6 +18,14 @@ You need two things:
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores. Never move, edit or delete the source.
 
+## The Write-up reference
+
+A GM's corrections to one write-up apply to the next. This procedure keeps
+them in a Note named `Write-up reference`, one for each campaign, and reads
+it before drafting. The Note is a list of rules, each a sentence or two, on
+how this campaign's Events are written and what counts as an event. Where it
+differs from the drafting rules in step 3, the Note wins.
+
 ## The rule: the GM approves the exact text
 
 Nothing taken from the source reaches the Session, or any other record, until
@@ -49,6 +57,8 @@ where they disagree.
 
 - `reference/types/Session.md`. It says what each section of Notes holds and
   how Events are written. It is the authority for this vault.
+- The campaign's Write-up reference, if
+  `armarium find "Write-up reference" --campaign N` finds one.
 - The Session's Preparation, and each Clue in its `prepared_clues`.
 - The Events of the two or three Sessions before this one. They show how this
   vault's Events read, and what has already been told and should not be told
@@ -70,27 +80,40 @@ very text. In writing it:
   where the reader would need the Session to know which: name it and link it.
 - Where a record exists, link it. Do not describe around it.
 - Leave out what was only planned, expected or talked about.
-- Keep a discovery with the character who made it. Telling someone else a
-  known fact is the telling, not a new discovery.
+- Credit a discovery to the character who made it, in the Session where
+  they made it. If a character later passes that fact on to someone, write
+  that they told them. Do not write it as if it were learned again.
 - Do not retell what earlier Events hold. Refer to it.
 - Leave out rules, dice and numbers, and say what happened in the world: "the
-  blast badly burned his hand", not the damage. Leave out talk about the game
-  itself, or say at most what the party discussed.
-- Fold the setting-up of a moment into the item where it pays off. Give a fight
-  one item unless a turn of it mattered.
+  blast badly burned his hand", not the damage. Leave out talk that is
+  not about the story, such as scheduling or looking up a rule. Where the
+  players debated what their characters should do, write one sentence
+  saying what the party discussed.
+- Do not give an item to the lead-up to something. Say it in the item where
+  the thing happens: not one item for the party walking to the tower and
+  another for what they found there.
+- Give a fight one item, unless a single moment of it mattered to the story.
 - Quote a text read aloud at the table word for word, as a blockquote. If the
   Preparation already holds the text, refer to it there.
-- Avoid a label before a colon ("The upshot:"), a clause hung on the end of a
-  sentence with "with", a passive that hides who acted, and a chain of three
-  or more clauses. If shortening an item makes it unclear, put the words back.
+- Avoid the habits that mark text as machine-written, including:
+  - a label and a colon in front of the sentence. Not "The upshot: the
+    council refused." Write "The council refused."
+  - a clause tacked on the end with "with". Not "The crew boarded, with Talia
+    taking the helm." Write "The crew boarded, and Talia took the helm."
+  - a passive that hides who acted. Not "The matter was agreed to be
+    urgent." Write "The council agreed that the matter was urgent."
+  - three or more clauses strung into one sentence. Split it into
+    sentences or sub-items.
+- Prefer clear to short. If shortening an item makes it unclear, put the
+  words back.
 
 **Preamble.** Who attended and who was absent, and any table business the
 source shows.
 
-**Clues.** First a table with a row for each Clue in `prepared_clues`: the
-Clue, its status now, and the change you propose or "no change". Then one line
-for each, saying whether the source shows it hinted, revealed or untouched,
-with the line of the source that shows it. Add any other Clue that play
+**Clues.** A table with a row for each Clue in `prepared_clues`: the Clue,
+its status now, the change you propose or "no change", and why. The reason
+cites the lines of the source that hinted or revealed the Clue, or says that
+nothing in the source touches it. Add a row for any other Clue that play
 developed. Do not change a Clue.
 
 **On stage.** The characters who appeared, with a line on what each did; then
@@ -162,7 +185,12 @@ Leave the draft in `.scratch/`. It is the account of what was decided.
 If the GM corrected how you wrote the Events, or what you counted as an event,
 the same correction will be needed next time. Put each one as a general rule,
 without quoting the text that prompted it, and propose adding it to the
-Session Type record where it describes Events. Add it only if the GM agrees.
+campaign's Write-up reference. Add it only if the GM agrees. If the campaign
+has no Write-up reference, create it:
+
+```sh
+armarium add note "Write-up reference" --campaign N
+```
 
 ## 8. Report
 
