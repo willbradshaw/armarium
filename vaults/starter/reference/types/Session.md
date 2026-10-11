@@ -72,9 +72,6 @@ usually one beat, such as a scene, a conversation or a fight, and says who did
 what and how it came out. Events hold only what happened at the table: a
 prepared scene that was not played stays in Preparation.
 
-Other records follow the Events. An Appearances entry or a Clue's status rests
-on what they say, so a correction is made to the Events first.
-
 **Loot** is a snapshot of the table on the night: what the party took, and who
 took it. It is not updated when an item later changes hands; the item's own
 record says who holds it now. Something the party passed straight on to
