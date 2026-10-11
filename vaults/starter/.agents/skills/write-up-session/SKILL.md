@@ -18,10 +18,10 @@ You need two things:
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores. Never move, edit or delete the source.
 
-## The Write-up reference
+## The Session reference
 
 A GM's corrections to one write-up apply to the next. This procedure keeps
-them in a Note named `Write-up reference`, one for each campaign, and reads
+them in a Note named `Session reference`, one for each campaign, and reads
 it before drafting. The Note is a list of rules, each a sentence or two, on
 how this campaign's Events are written and what counts as an event. Where it
 differs from the drafting rules in step 3, the Note wins.
@@ -57,8 +57,8 @@ where they disagree.
 
 - `reference/types/Session.md`. It says what each section of Notes holds and
   how Events are written. It is the authority for this vault.
-- The campaign's Write-up reference, if
-  `armarium find "Write-up reference" --campaign N` finds one.
+- The campaign's Session reference, if
+  `armarium find "Session reference" --campaign N` finds one.
 - The Session's Preparation, and each Clue in its `prepared_clues`.
 - The Events of the two or three Sessions before this one. They show how this
   vault's Events read, and what has already been told and should not be told
@@ -115,10 +115,6 @@ its status now, the change you propose or "no change", and why. The reason
 cites the lines of the source that hinted or revealed the Clue, or says that
 nothing in the source touches it. Add a row for any other Clue that play
 developed. Do not change a Clue.
-
-**On stage.** The characters who appeared, with a line on what each did; then
-the characters who were only mentioned. The places the party went; a place
-only spoken of does not count.
 
 **Loot.** A line for each item: where it came from and who took it. Say which
 items belong in the Events and not in Loot, as the Type record describes.
@@ -185,11 +181,11 @@ Leave the draft in `.scratch/`. It is the account of what was decided.
 If the GM corrected how you wrote the Events, or what you counted as an event,
 the same correction will be needed next time. Put each one as a general rule,
 without quoting the text that prompted it, and propose adding it to the
-campaign's Write-up reference. Add it only if the GM agrees. If the campaign
-has no Write-up reference, create it:
+campaign's Session reference. Add it only if the GM agrees. If the campaign
+has no Session reference, create it:
 
 ```sh
-armarium add note "Write-up reference" --campaign N
+armarium add note "Session reference" --campaign N
 ```
 
 ## 8. Report
