@@ -25,7 +25,7 @@ Always qualify campaign overview links, for example
 ## Preparation and play
 
 A Session has two halves. Preparation is what the GM plans before play: it
-records intent, not history, and nothing in it has happened until the Events
+holds intent, not history, and nothing in it has happened until the Events
 say so. Notes is what happened at the table, written afterwards.
 
 The halves are kept apart. Preparation is not rewritten to match what was

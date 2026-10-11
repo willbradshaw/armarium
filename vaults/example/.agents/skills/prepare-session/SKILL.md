@@ -78,7 +78,7 @@ An in-game date links a Date record. If the one you need does not exist,
 create it by following `.agents/skills/update-record/SKILL.md`.
 
 When a thread sets a date ahead, such as a deadline "in three days", work the
-date out from the setting's calendar as the vault records it. Do not assume
+date out from the setting's calendar as the vault describes it. Do not assume
 the calendar counts as ours does. If the vault does not say, ask the GM.
 
 ## 4. Work through the carry-over checklist
@@ -151,7 +151,7 @@ Fill the Session's Preparation from step 4, and from nothing else:
   its list in the frontmatter, quoted: `"[[Name]]"`.
 - Leave the embedded views and the Notes half as the template has them.
 - Write only preparation. Your questions and doubts, such as a Clue that looks
-  outdated, go to the GM in step 6, not into the record.
+  outdated, go to the GM in step 6, not into the Session.
 
 Then validate, and fix every error your change introduced:
 
