@@ -78,7 +78,10 @@ very text. In writing it:
   sub-item for each point. Do not put unrelated matters in one item.
 - Make each item readable on its own. Do not write "the plan" or "the letter"
   where the reader would need the Session to know which: name it and link it.
-- Where a record exists, link it. Do not describe around it.
+- Where a record exists, link it. Do not describe around it. Link a name
+  that has no record as well; step 6 creates its stub.
+- Where play hinted or revealed a Clue, say so in the item and link the
+  Clue.
 - Leave out what was only planned, expected or talked about.
 - Credit a discovery to the character who made it, in the Session where
   they made it. If a character later passes that fact on to someone, write
@@ -116,8 +119,9 @@ cites the lines of the source that hinted or revealed the Clue, or says that
 nothing in the source touches it. Add a row for any other Clue that play
 developed. Do not change a Clue.
 
-**Loot.** A line for each item: where it came from and who took it. Say which
-items belong in the Events and not in Loot, as the Type record describes.
+**Loot.** A line for each item: where it came from and who took it. Leave
+"who" empty for something the party holds in common. Say which items belong
+in the Events and not in Loot, as the Type record describes.
 
 **Frontmatter.** `players_absent`, `in_game_start_date` and
 `in_game_end_date`, each with the line of the source that supports it, or "not
