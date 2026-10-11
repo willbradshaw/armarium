@@ -11,7 +11,7 @@ not update the other records the Session touches.
 
 You need two things:
 
-- the Session, which must already exist;
+- the Session, or the campaign and number of one that has no record yet;
 - a source that says what happened: the Session's Transcript, or the GM's
   notes, as a file or in their request.
 
@@ -45,6 +45,13 @@ nobody spreads to every character and place the Session touched.
 ```sh
 armarium find "S-N-NNN"
 armarium find "S-N-NNN Transcript"
+```
+
+If `find` shows that the Session has no record, check its number with the GM
+and create it:
+
+```sh
+armarium add session --campaign N --number NNN
 ```
 
 Read the whole Session. If its Events are already written, stop and ask

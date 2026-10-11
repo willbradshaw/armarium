@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let the `create-transcript` and `write-up-session` skills create a Session that has no record yet.
 - Stop the `write-up-session` skill writing a Session while a `(?)` remains, and make it ask separately before saving a style rule.
 - Ship the `write-up-session` agent skill, and say in the Session Type record what Events and Loot hold.
 - Ship the `prepare-session` agent skill, and say in the Session Type record what each field and section of a Session holds.
