@@ -50,8 +50,8 @@ something the players did unprompted appears in Events alone.
 
 | Section | Holds |
 | --- | --- |
-| Starting scene | the one scene the Session opens on. A cliffhanger from the previous Session belongs here. |
-| Other scenes | the scenes that may come up, one line each. They are a menu, not a sequence. |
+| Starting scene | the one scene the Session opens on. It usually picks up a cliffhanger from the previous Session, where there is one. |
+| Other scenes | the scenes that may come up, usually one line each. They are a menu, not a sequence. |
 | Secrets & Clues, Locations, Important NPCs | views of the three prepared lists. Nothing is written here. |
 | Scene notes | what the GM needs to run this Session's scenes, such as how a Clue might surface. |
 | Encounters | the fights and contests prepared. |

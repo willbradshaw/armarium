@@ -66,9 +66,13 @@ planned, and its Notes, to see what happened.
 | `type`, `campaign`, `session_number` | Leave as `armarium add session` set them. |
 | `aliases` | Leave empty unless the GM gives the Session a name. |
 | `date` | Ask the GM for the date of play if you were not given it, and write it as `"YYYY-MM-DD"`. Leave it empty if they do not know. |
-| `in_game_start_date` | Link the previous Session's `in_game_end_date`, or the Date after it if that Session's Events end with a night's rest. If the end date is empty, or the GM says more time has passed, ask the GM for the Date. |
+| `in_game_start_date` | By default, link the previous Session's `in_game_end_date`, or the Date after it if that Session's Events end with a night's rest. This is an assumption: report it in step 6. If the end date is empty, or the GM has said how much time has passed, ask the GM for the Date. |
 | `in_game_end_date`, `players_absent` | Leave empty. They are filled in after play. |
 | `prepared_clues`, `prepared_locations`, `prepared_npcs` | Filled in steps 5 and 7. |
+
+Where the Type record says what is usual, treat it as a default and not a
+rule. Write the usual case, and report it to the GM in step 6 as an
+assumption they can change.
 
 An in-game date links a Date record. If the one you need does not exist,
 create it by following `.agents/skills/update-record/SKILL.md`.
@@ -85,11 +89,11 @@ record in this step.
 
 - **Cliffhangers.** Did the previous Session end on something due to land at
   the start of this one, such as a question left unanswered, a door opened on
-  a room not yet described, or a character about to arrive? These go in the
-  Starting scene.
+  a room not yet described, or a character about to arrive? By default
+  these go in the Starting scene.
 - **Unfinished fights.** Did the previous Session end with an encounter
   unresolved? The same encounter carries over in the state play left it, with
-  what was already defeated, and the Starting scene continues it.
+  what was already defeated. By default the Starting scene continues it.
 - **Unplayed scenes.** Compare the previous Session's Other scenes with its
   Events. A scene that did not happen and still could carries over as it was
   written. Drop one whose moment has passed, as when the character it turned
@@ -102,8 +106,8 @@ record in this step.
 - **Deadlines.** Search the earlier Sessions' Events for dated threads: "it
   happens in three days", "she arrives tomorrow", "the deadline is the
   festival". Compare each with this Session's `in_game_start_date`. One that
-  falls on or before it is due, and belongs in the Starting scene or Other
-  scenes.
+  falls on or before it is due. By default it goes in the Starting scene or
+  Other scenes; the GM may prefer to hold it back.
 - **Commitments.** Did a character promise or threaten something: a visit, a
   courier, a meeting? Check its date in the same way.
 - **Open Clues.** List the campaign's open Clues and read each one:
@@ -116,8 +120,9 @@ record in this step.
     Session? If so it is a candidate for `prepared_clues`.
   - **Hinted:** did the previous Session move towards it, so that it may be
     revealed in this one? If so it is a candidate.
-  - Skip Clues with any other status. `reference/types/Clue.md` says what
-    each status means.
+  - **Any other status:** do not prepare it. `reference/types/Clue.md` says
+    what each status means. If a Dormant Clue has a subject within the
+    party's reach, ask the GM in step 6 whether they want it back.
   - **Outdated:** a candidate whose text no longer fits what play has
     established, such as a room the party has since searched. Never edit its
     text or subjects. Leave it out, and raise it with the GM in step 6.
@@ -140,8 +145,8 @@ Fill the Session's Preparation from step 4, and from nothing else:
 
 - Put each item in the section the Type record gives for it. Copy a carried
   scene as it was written.
-- Keep each scene to one line that points at the scene. It is not a
-  description of it.
+- Write each new scene line as one line that points at the scene, unless
+  the GM's own scenes run longer. It is not a description of the scene.
 - Link every record you name. Add each prepared Clue, place and character to
   its list in the frontmatter, quoted: `"[[Name]]"`.
 - Leave the embedded views and the Notes half as the template has them.
@@ -158,11 +163,14 @@ armarium validate "campaigns/campaign_N/sessions/S-N-NNN.md"
 
 Give the GM a summary under these headings, leaving out any that are empty:
 
+- what you assumed: the in-game start date, and where you placed each
+  cliffhanger, unfinished fight and due deadline;
 - cliffhangers, and how you framed the Starting scene;
 - unfinished and unplayed encounters;
 - scenes carried over;
 - deadlines and commitments that fall due;
-- Clues prepared, and any that look outdated;
+- Clues prepared, any that look outdated, and any Dormant Clue within
+  reach;
 - places and characters prepared;
 - what you dropped, and why;
 - which parts of Preparation are still empty.
