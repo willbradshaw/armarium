@@ -71,9 +71,9 @@ from the draft, the Transcript or your memory of them.
 
 ## 4. The records the Session touches
 
-Follow `.agents/skills/update-session-records/SKILL.md`. It updates the
-records where the Events settle what follows, and reports the rest for the
-GM to decide.
+Follow `.agents/skills/update-session-records/SKILL.md`. It updates each
+record where the Events make clear what should change, and reports the rest
+for the GM to decide.
 
 ## 5. Report
 

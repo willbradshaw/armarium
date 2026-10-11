@@ -19,8 +19,9 @@ in `.scratch/`, which Git ignores.
 
 ## What you decide and what the GM decides
 
-Update a record without asking where the Events settle what follows. Two
-kinds of change are the GM's, and you make them only on the GM's word:
+Where the Events make clear what should change in a record, make the change.
+You do not need the GM's approval first. Two kinds of change are the GM's,
+and you make them only on the GM's word:
 
 - a change to a Clue's status;
 - a change to a record where the Events do not settle whether it appeared.
