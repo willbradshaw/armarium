@@ -11,7 +11,8 @@ record.
 
 You need two things:
 
-- the Session the recording belongs to, which must already exist;
+- the Session the recording belongs to, or the campaign and number of one
+  that has no record yet;
 - the source: a recording, or a text file of raw speech-to-text.
 
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
@@ -42,6 +43,13 @@ armarium transcribe "SOURCE" --output ".scratch/S-N-NNN.txt"
 
 `find` gives the Session's path. If a Transcript for it already exists, stop
 and ask.
+
+If it shows that the Session has no record, check its number with the GM
+and create it:
+
+```sh
+armarium add session --campaign N --number NNN
+```
 
 [`armarium transcribe`](https://github.com/willbradshaw/armarium/blob/main/docs/transcribe.md)
 takes a recording or a `.txt` file and prints the path of the text to work
