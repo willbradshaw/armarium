@@ -66,7 +66,7 @@ planned, and its Notes, to see what happened.
 | `type`, `campaign`, `session_number` | Leave as `armarium add session` set them. |
 | `aliases` | Leave empty unless the GM gives the Session a name. |
 | `date` | Ask the GM for the date of play if you were not given it, and write it as `"YYYY-MM-DD"`. Leave it empty if they do not know. |
-| `in_game_start_date` | By default, link the previous Session's `in_game_end_date`, or the Date after it if that Session's Events end with a night's rest. This is an assumption: report it in step 6. If the end date is empty, or the GM has said how much time has passed, ask the GM for the Date. |
+| `in_game_start_date` | By default, link the previous Session's `in_game_end_date`, or the Date after it if that Session's Events end with a night's rest. This is an assumption: report it in step 6. If the GM has said how much time has passed, use the Date that gives. If the end date is empty, ask the GM for the Date. |
 | `in_game_end_date`, `players_absent` | Leave empty. They are filled in after play. |
 | `prepared_clues`, `prepared_locations`, `prepared_npcs` | Filled in steps 5 and 7. |
 
