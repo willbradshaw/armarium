@@ -19,15 +19,18 @@ Run the commands from the vault root, or add `--vault PATH`.
 
 ## Checkpoints
 
-Each of stages 2, 3 and 4 shows the GM something and stops, as its own
-procedure describes. Go on to the next stage only when the GM says to, in
-their own words.
+Stages 2 and 3 each show the GM something and stop, as their own procedures
+describe. Go on from one only when the GM says to, in their own words.
 
 - An answer or a correction is not approval. Apply it, show what changed and
   wait again.
 - Never set your own condition for going on, such as "once you answer this I
   will continue".
-- What you write into a record is the text the GM last saw.
+- What you write into the Transcript or the Session is the text the GM last
+  saw.
+
+Stage 4 does not stop first. Once the write-up is approved and written, go
+straight on to it.
 
 ## 1. Work out where to start
 
@@ -68,8 +71,9 @@ from the draft, the Transcript or your memory of them.
 
 ## 4. The records the Session touches
 
-Follow `.agents/skills/update-session-records/SKILL.md`. It ends with its own
-report of what changed.
+Follow `.agents/skills/update-session-records/SKILL.md`. It updates the
+records where the Events settle what follows, and reports the rest for the
+GM to decide.
 
 ## 5. Report
 

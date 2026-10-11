@@ -1,6 +1,6 @@
 ---
 name: update-session-records
-description: Brings the records that a played Session touches up to date with its Events in this Armarium vault. Lists them for the GM's approval, then updates each one.
+description: Brings the records that a played Session touches up to date with its Events in this Armarium vault. Updates the clear cases and reports the rest for the GM to decide.
 ---
 
 # Update the records a Session touches
@@ -17,14 +17,16 @@ your memory of either.
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores.
 
-## The rule: the GM approves the list
+## What you decide and what the GM decides
 
-Change no record until the GM has approved the list of records to change.
+Update a record without asking where the Events settle what follows. Two
+kinds of change are the GM's, and you make them only on the GM's word:
 
-- An answer or a correction is not approval. Apply it, show what changed and
-  wait again.
-- Never set your own condition for going on, such as "once you answer this I
-  will continue".
+- a change to a Clue's status;
+- a change to a record where the Events do not settle whether it appeared.
+
+Report both in step 4, each with what you would do. If the GM has already
+told you what to do with one, do it.
 
 ## 1. List what the Session touches
 
@@ -61,35 +63,25 @@ for what follows from a Session. This is what usually follows:
 Read enough of each record to see whether it already holds this Session.
 
 Write the list to `.scratch/S-N-NNN touched.md`, a line for each record: what
-you propose, and the line of the Events it rests on. Sort it into:
+you will do or propose, and the line of the Events it rests on. Sort it into:
 
-- **appeared:** records you propose to update;
-- **mentioned only:** records the Notes link that you propose to leave, such
-  as a character who was spoken of;
+- **appeared:** records you will update;
+- **mentioned only:** records the Notes link that you will leave, such as a
+  character who was spoken of;
 - **Clues:** each prepared Clue and any other Clue in play, with what the
   Events show (hinted, revealed or nothing) and the status you would give it;
-- **cannot judge:** records where the Events do not settle it.
+- **cannot judge:** records where the Events do not settle it, with what you
+  would do either way.
 
-Change no record in this step.
+## 2. Update the records
 
-## 2. Show the GM and stop
-
-Show the GM the list as it stands in the file.
-
-Then stop and wait. The GM may strike records, add some, move one between
-"appeared" and "mentioned only", and settle each Clue. Apply each change to the
-file, show what changed and wait again.
-
-## 3. Update the records
-
-Take the approved list one record at a time, and mark each line in the file
-when its record is done or the GM says to skip it:
+Take the records under "appeared" one at a time, and mark each line in the
+file when its record is done:
 
 - **An existing record:** follow `.agents/skills/refresh-record/SKILL.md`.
-- **A stub created for the write-up, or a Clue whose status the GM settled:**
-  follow `.agents/skills/update-record/SKILL.md`, with the Session's Events
-  and the GM's decision as the source. When a Clue is revealed, refresh each
-  of its subjects afterwards, as its Type record describes.
+- **A stub created for the write-up:** follow
+  `.agents/skills/update-record/SKILL.md`, with the Session's Events as the
+  source.
 
 Both procedures edit one record and report what they left alone. Keep those
 reports.
@@ -107,18 +99,23 @@ When you write an Appearances entry:
 A fact that only a Clue holds stays in the Clue until the Clue is revealed.
 Do not copy it into the Notes of the Clue's subjects.
 
-If the GM corrects the Events at any point, change the Session first. Then
-run step 1 again, and check every entry you wrote for this Session against
-the corrected lines.
+Leave the Clues and the records under "cannot judge" as they are, unless the
+GM has told you what to do with one. For a Clue the GM has settled, follow
+`.agents/skills/update-record/SKILL.md`, with the Events and the GM's decision
+as the source. When a Clue is revealed, refresh each of its subjects
+afterwards, as its Type record describes.
 
-## 4. Check, validate and report
+## 3. Check and validate
 
 Read each record you changed once more, beside the Events:
 
 - Does each `last_session` you set have an Appearances entry for this Session?
 - Does each entry say only what the Events say?
-- Did anything go into a record's Notes that happened once, or that only a
-  Clue holds?
+- Does each stub, and each change you made to a record's Notes, hold only what
+  the Events say? Take out any detail they do not give: a look, a motive, a
+  history.
+- Does anything you put in a record's Notes break what its Type record says
+  belongs there?
 
 ```sh
 armarium validate .
@@ -127,7 +124,21 @@ armarium validate .
 Fix every error your changes introduced. If the vault had errors before you
 started, report them; do not fix them unasked.
 
-Then report, record by record, what changed and which line of the Events
-supports it. List what the record procedures left alone, the disagreements
-they found, and what is still for the GM to decide. Leave the file in
-`.scratch/`.
+## 4. Report
+
+Report, record by record, what changed and which line of the Events supports
+it. List what the record procedures left alone and the disagreements they
+found.
+
+Then give the GM what is theirs to decide:
+
+- each Clue whose status you would change, with the line of the Events and
+  the status you would give it;
+- each record under "cannot judge", with what you would do either way.
+
+When the GM answers, make those changes as step 2 describes, run step 3 again
+on them, and report what changed. Leave the file in `.scratch/`.
+
+If the GM corrects the Events at any point, change the Session first. Then
+run step 1 again, and check every entry you wrote for this Session against
+the corrected lines.
