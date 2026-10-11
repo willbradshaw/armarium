@@ -32,38 +32,38 @@ The halves are kept apart. Preparation is not rewritten to match what was
 played: a scene that never came up stays in Preparation and out of Events, and
 something the players did unprompted appears in Events alone.
 
-## What Preparation holds
+## What a Session holds
 
-| Part | Holds |
+### Frontmatter
+
+| Field | Holds |
+| --- | --- |
+| `campaign`, `session_number` | which Session of which campaign this is. |
+| `aliases` | other names the Session goes by. |
+| `date` | the real date of play. It is empty while the Session is unscheduled. |
+| `in_game_start_date`, `in_game_end_date` | the Dates in the setting on which play began and ended. A Session usually begins on the Date the previous one ended. |
+| `players_absent` | the Players who missed the Session, known once it is played. |
+| `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. A prepared Clue keeps its status until play changes it. |
+| `prepared_locations`, `prepared_npcs` | the places and characters the GM expects to use, whether or not play reaches them. |
+
+### Preparation
+
+| Section | Holds |
 | --- | --- |
 | Starting scene | the one scene the Session opens on. A cliffhanger from the previous Session belongs here. |
 | Other scenes | the scenes that may come up, one line each. They are a menu, not a sequence. |
-| `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. A prepared Clue keeps its status until play changes it. |
-| `prepared_locations`, `prepared_npcs` | the places and characters the GM expects to use, whether or not play reaches them. |
+| Secrets & Clues, Locations, Important NPCs | views of the three prepared lists. Nothing is written here. |
 | Scene notes | what the GM needs to run this Session's scenes, such as how a Clue might surface. |
 | Encounters | the fights and contests prepared. |
-| Prepared rewards | what the party could gain. What they took is recorded under Rewards. |
+| Prepared rewards | what the party could gain. |
 
-`date` is the real date of play. `in_game_start_date` is usually the previous
-Session's `in_game_end_date`; time passes between Sessions only when the GM
-says so. `players_absent` and `in_game_end_date` are not known until the
-Session is played.
+### Notes
 
-## What carries over
-
-Much of a Session's preparation follows from the Sessions before it:
-
-- how the previous Session ended, when it left something unresolved;
-- scenes, encounters and rewards that were prepared, not played, and could
-  still happen;
-- Clues that are still Pending or Hinted, where play is heading towards their
-  subjects;
-- what characters promised or threatened, and deadlines that now fall due;
-- the places and characters the party is in the middle of dealing with.
-
-What play has overtaken is dropped: a scene whose moment has passed, or a Clue
-that no longer fits what was established. An outdated Clue is not reworded;
-its status changes, as [[types/Clue]] describes.
+| Section | Holds |
+| --- | --- |
+| Preamble | who attended, and anything else to know before the Events. |
+| Events | what happened in play, in order. |
+| Rewards | what the party gained. Loot lists each item and who acquired it. |
 
 ## Schema
 

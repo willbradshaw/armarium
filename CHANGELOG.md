@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Ship the `prepare-session` agent skill, and say in the Session Type record what Preparation holds and what carries over between Sessions.
+- Ship the `prepare-session` agent skill, and say in the Session Type record what each field and section of a Session holds.
 - Describe the Transcription reference Note in the `create-transcript` skill, not the Transcript Type record, and let it hold optional Cast and Traps sections.
 - Ship the `create-transcript` agent skill, and say in the Transcript Type record what a Transcript keeps, how speakers are tagged and how doubt is marked.
 - Add `armarium transcribe` to turn a session recording into raw transcript text with whisper.cpp and collapse repeated-line loops.

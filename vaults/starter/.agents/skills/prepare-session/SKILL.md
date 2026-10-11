@@ -8,10 +8,32 @@ description: Prepares the next Session record in this Armarium vault before play
 This procedure fills in the Preparation half of a Session before it is played.
 It never writes a Session's Notes, and it changes no earlier Session.
 
+It has two phases:
+
+- **Carry-over** (steps 1 to 6) is mechanical. It creates the Session, reads
+  the Sessions before it for what they left open, and writes that down. It
+  invents nothing.
+- **New material** (step 7) is done with the GM. You propose, the GM decides,
+  and you write only what they confirmed.
+
 You need the campaign. The GM may also give the date of play, or what they
 want the Session to cover.
 
 Run the commands from the vault root, or add `--vault PATH`.
+
+## The rule: ask before adding anything new
+
+Never write a new scene, Clue, character, place, encounter or reward without
+first proposing it to the GM and getting an explicit yes.
+
+Carry-over is allowed to copy forward what earlier Sessions and existing
+records already hold: that is reproduction, not invention. The moment you
+would write a fact, a character's motive or a detail of an encounter that no
+record holds, stop and ask.
+
+The reason is that preparation hardens into canon. A rival you made up for a
+character, a line of doctrine you put in a priest's mouth or an innkeeper you
+named will be read later as something the GM established.
 
 ## 1. Find the Session to prepare
 
@@ -31,44 +53,100 @@ Never copy the template or write the file by hand.
 
 ## 2. Read the Type record and the Session before
 
-Read `reference/types/Session.md`. It says what each part of Preparation
-holds and what carries over from earlier Sessions. It is the authority for
-this vault.
+Read `reference/types/Session.md`. It says what each field and section of a
+Session holds. It is the authority for this vault.
 
 Read the whole of the last played Session: its Preparation, to see what was
-planned, and its Events, to see what happened. Read earlier Sessions only as
-far as an open thread leads back to them.
+planned, and its Notes, to see what happened.
 
-## 3. Gather what carries over
+## 3. Settle the frontmatter
 
-Work through the Type record's list of what carries over, and note each item
-with the Session it comes from. Find the open Clues from their records:
+| Field | What to do |
+| --- | --- |
+| `type`, `campaign`, `session_number` | Leave as `armarium add session` set them. |
+| `aliases` | Leave empty unless the GM gives the Session a name. |
+| `date` | Ask the GM for the date of play if you were not given it, and write it as `"YYYY-MM-DD"`. Leave it empty if they do not know. |
+| `in_game_start_date` | Link the previous Session's `in_game_end_date`. If that is empty, or the GM says time has passed, ask the GM for the Date. |
+| `in_game_end_date`, `players_absent` | Leave empty. They are filled in after play. |
+| `prepared_clues`, `prepared_locations`, `prepared_npcs` | Filled in steps 5 and 7. |
 
-```sh
-grep -lE "^status: .*(Pending|Hinted)" campaigns/campaign_N/clues/*.md
-```
+An in-game date links a Date record. If the one you need does not exist,
+create it by following `.agents/skills/update-record/SKILL.md`.
 
-For each, read the Clue and decide from its subjects and the last Events
-whether play is heading towards it. `reference/types/Clue.md` says what each
-status means.
+When a thread sets a date ahead, such as a deadline "in three days", work the
+date out from the setting's calendar as the vault records it. Do not assume
+the calendar counts as ours does. If the vault does not say, ask the GM.
 
-Note also what you are dropping and why. Do not change a Clue's status or any
-other record in this step.
+## 4. Work through the carry-over checklist
 
-## 4. Write the carry-over
+Work through every item below, in order. For each thing you find, note the
+Session it comes from. Note also what you are dropping and why. Change no
+record in this step.
 
-Fill the Session's Preparation from step 3, and from nothing else:
+- **Cliffhangers.** Did the previous Session end on something due to land at
+  the start of this one, such as a question left unanswered, a door opened on
+  a room not yet described, or a character about to arrive? These go in the
+  Starting scene.
+- **Unfinished fights.** Did the previous Session end with an encounter
+  unresolved? The same encounter carries over in the state play left it, with
+  what was already defeated, and the Starting scene continues it.
+- **Unplayed scenes.** Compare the previous Session's Other scenes with its
+  Events. A scene that did not happen and still could carries over as it was
+  written. Drop one whose moment has passed, as when the character it turned
+  on has died.
+- **Unplayed encounters.** Do the same for its Encounters. One the party may
+  still walk into carries over.
+- **Unclaimed rewards and unseen characters.** A prepared reward the party did
+  not gain, or a prepared character who never appeared and still may, carries
+  over.
+- **Deadlines.** Search the earlier Sessions' Events for dated threads: "it
+  happens in three days", "she arrives tomorrow", "the deadline is the
+  festival". Compare each with this Session's `in_game_start_date`. One that
+  falls on or before it is due, and belongs in the Starting scene or Other
+  scenes.
+- **Commitments.** Did a character promise or threaten something: a visit, a
+  courier, a meeting? Check its date in the same way.
+- **Open Clues.** List the campaign's open Clues and read each one:
 
-- Set the frontmatter the Type record says can be known before play. Ask the
-  GM for the date of play if you were not given it; leave it empty if they do
-  not know.
-- Put each item where the Type record says it belongs. Copy a carried scene as
-  it was written.
+  ```sh
+  grep -lE "^status: .*(Pending|Hinted)" campaigns/campaign_N/clues/*.md
+  ```
+
+  - **Pending:** is one of its subjects within the party's reach this
+    Session? If so it is a candidate for `prepared_clues`.
+  - **Hinted:** did the previous Session move towards it, so that it may be
+    revealed in this one? If so it is a candidate.
+  - Skip Clues with any other status. `reference/types/Clue.md` says what
+    each status means.
+  - **Outdated:** a candidate whose text no longer fits what play has
+    established, such as a room the party has since searched. Never edit its
+    text or subjects. Leave it out, and raise it with the GM in step 6.
+- **Places and characters in play.** List the records the previous Session
+  links to:
+
+  ```sh
+  armarium trace "campaigns/campaign_N/sessions/S-N-NNN.md" --outbound
+  ```
+
+  The places and characters its Events name, and that the party is likely to
+  keep dealing with, are candidates for `prepared_locations` and
+  `prepared_npcs`.
+
+Read earlier Sessions only as far as one of these threads leads back to them.
+
+## 5. Write the carry-over
+
+Fill the Session's Preparation from step 4, and from nothing else:
+
+- Put each item in the section the Type record gives for it. Copy a carried
+  scene as it was written.
+- Keep each scene to one line that points at the scene. It is not a
+  description of it.
 - Link every record you name. Add each prepared Clue, place and character to
   its list in the frontmatter, quoted: `"[[Name]]"`.
 - Leave the embedded views and the Notes half as the template has them.
 - Write only preparation. Your questions and doubts, such as a Clue that looks
-  outdated, go to the GM in step 5, not into the record.
+  outdated, go to the GM in step 6, not into the record.
 
 Then validate, and fix every error your change introduced:
 
@@ -76,39 +154,66 @@ Then validate, and fix every error your change introduced:
 armarium validate "campaigns/campaign_N/sessions/S-N-NNN.md"
 ```
 
-## 5. Show the GM and stop
+## 6. Show the GM and stop
 
-Tell the GM:
+Give the GM a summary under these headings, leaving out any that are empty:
 
-- what you carried over, and from which Session;
+- cliffhangers, and how you framed the Starting scene;
+- unfinished and unplayed encounters;
+- scenes carried over;
+- deadlines and commitments that fall due;
+- Clues prepared, and any that look outdated;
+- places and characters prepared;
 - what you dropped, and why;
-- any Clue that looks outdated;
 - which parts of Preparation are still empty.
 
 Then stop and wait. Corrections to the carry-over are not a request for new
 material.
 
-## 6. Add what is new, as the GM confirms it
+## 7. Add what is new, as the GM confirms it
 
-A new scene, Clue, character, place, encounter or reward is the GM's to
-decide. You may suggest; write nothing new until the GM has confirmed that
-item. One confirmation covers one item.
+Go through each kind of material below with the GM. For each, either confirm
+that nothing new is wanted or work out the additions together. You may
+suggest; write nothing until the GM has confirmed that item. One confirmation
+covers one item.
+
+- **Starting scene.** If the carry-over supplies it, confirm it. Otherwise
+  propose alternatives.
+- **Scenes.** Which threads does the GM want to press this Session that the
+  carry-over did not supply?
+- **Clues.** Aim for about ten in `prepared_clues`. If the carry-over leaves
+  it short, propose new ones to fill the gap. Do not pad it with Clues that
+  have little to do with the Session: fewer good Clues are better than ten
+  strained ones. Confirm each fact with the GM before creating its Clue, and
+  check first that no existing Clue states it: `armarium trace` on one of its
+  subjects lists the Clues that link to it.
+- **Characters and places.** Any the GM wants ready that have no record yet?
+- **Encounters.** Agree the opposition and the stakes with the GM first, then
+  write the encounter under Encounters. Take statistics and rules from the
+  vault's records or from the GM, never from memory. Where an opponent has no
+  record, say in the encounter that it is a sketch.
+- **Rewards.** When the GM names an item, use its record. When they want
+  options, such as "something for this character", search the vault's Content
+  for candidates and offer a short list with a line on each; the GM picks. A
+  new item needs its rules text from the GM. Never write that from memory, and
+  never leave a placeholder for it.
 
 For each confirmed item:
 
 - **A line of Preparation:** add it to the Session.
 - **A new record, or a change to one:** follow
   `.agents/skills/update-record/SKILL.md`, then add the record to the Session
-  where it belongs. Before creating a Clue, check that no existing Clue states
-  the fact: `armarium trace` on one of its subjects lists the Clues that link
-  to it.
+  where it belongs.
 - **An outdated Clue:** change its status as its Type record describes, only
   if the GM says to.
 
-If the GM defers something, add it to Scene notes as a line beginning `To do:`,
-so that it is not lost.
+This step ends when the GM says the preparation is complete.
 
-## 7. Validate and report
+If the GM defers something, such as a handout to write later or what a search
+of some room turns up, add it to Scene notes as a line beginning `To do:`, so
+that it is not lost.
+
+## 8. Validate and report
 
 ```sh
 armarium validate .
