@@ -38,7 +38,7 @@ something the players did unprompted appears in Events alone.
 | --- | --- |
 | Starting scene | the one scene the Session opens on. A cliffhanger from the previous Session belongs here. |
 | Other scenes | the scenes that may come up, one line each. They are a menu, not a sequence. |
-| `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. Preparing a Clue does not hint it. |
+| `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. A prepared Clue keeps its status until play changes it. |
 | `prepared_locations`, `prepared_npcs` | the places and characters the GM expects to use, whether or not play reaches them. |
 | Scene notes | what the GM needs to run this Session's scenes, such as how a Clue might surface. |
 | Encounters | the fights and contests prepared. |
@@ -64,9 +64,6 @@ Much of a Session's preparation follows from the Sessions before it:
 What play has overtaken is dropped: a scene whose moment has passed, or a Clue
 that no longer fits what was established. An outdated Clue is not reworded;
 its status changes, as [[types/Clue]] describes.
-
-Carrying over copies what earlier Sessions already hold. Anything else in
-Preparation is new, and what is new is the GM's to decide.
 
 ## Schema
 
