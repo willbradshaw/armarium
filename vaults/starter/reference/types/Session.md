@@ -41,7 +41,7 @@ something the players did unprompted appears in Events alone.
 | `campaign`, `session_number` | which Session of which campaign this is. |
 | `aliases` | other names the Session goes by. |
 | `date` | the real date of play. It is empty while the Session is unscheduled. |
-| `in_game_start_date`, `in_game_end_date` | the Dates in the setting on which play began and ended. A Session usually begins on the Date the previous one ended. |
+| `in_game_start_date`, `in_game_end_date` | the Dates in the setting on which play began and ended. A Session usually begins on the Date the previous one ended, unless that one ended with a night's rest, in which case it begins on the next. |
 | `players_absent` | the Players who missed the Session, known once it is played. |
 | `prepared_clues` | the Clues that could come up: open Clues whose subjects are within the party's reach. A prepared Clue keeps its status until play changes it. |
 | `prepared_locations`, `prepared_npcs` | the places and characters the GM expects to use, whether or not play reaches them. |
