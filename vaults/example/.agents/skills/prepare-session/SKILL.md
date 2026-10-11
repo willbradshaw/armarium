@@ -13,8 +13,9 @@ It has two phases:
 - **Carry-over** (steps 1 to 6) is mechanical. It creates the Session, reads
   the Sessions before it for what they left open, and writes that down. It
   invents nothing.
-- **New material** (step 7) is done with the GM. You propose, the GM decides,
-  and you write only what they confirmed.
+- **New material** (step 7) is done with the GM. You point out what the vault
+  already implies, the GM decides what to add, and you write only the text
+  they confirmed.
 
 You need the campaign. The GM may also give the date of play, or what they
 want the Session to cover.
@@ -178,48 +179,84 @@ Give the GM a summary under these headings, leaving out any that are empty:
 Then stop and wait. Corrections to the carry-over are not a request for new
 material.
 
-## 7. Add what is new, as the GM confirms it
+## 7. Add what is new, with the GM
 
-Go through each kind of material below with the GM. For each, either confirm
-that nothing new is wanted or work out the additions together. You may
-suggest; write nothing until the GM has confirmed that item. One confirmation
-covers one item.
+Take the kinds of material in the order below. Scenes come first because the
+rest mostly follows from them. For each kind, go round this loop.
 
-- **Starting scene.** If the carry-over supplies it, confirm it. Otherwise
-  propose alternatives.
-- **Scenes.** Which threads does the GM want to press this Session that the
-  carry-over did not supply?
-- **Clues.** Aim for about ten in `prepared_clues`. If the carry-over leaves
-  it short, propose new ones to fill the gap. Do not pad it with Clues that
-  have little to do with the Session: fewer good Clues are better than ten
-  strained ones. Confirm each fact with the GM before creating its Clue, and
-  check first that no existing Clue states it: `armarium trace` on one of its
-  subjects lists the Clues that link to it.
-- **Characters and places.** Any the GM wants ready that have no record yet?
-- **Encounters.** Agree the opposition and the stakes with the GM first, then
-  write the encounter under Encounters. Take statistics and rules from the
-  vault's records or from the GM, never from memory. Where an opponent has no
-  record, say in the encounter that it is a sketch.
-- **Rewards.** When the GM names an item, use its record. When they want
-  options, such as "something for this character", search the vault's Content
-  for candidates and offer a short list with a line on each; the GM picks. A
-  new item needs its rules text from the GM. Never write that from memory, and
-  never leave a placeholder for it.
+**a. Say what is there.** Tell the GM what Preparation already holds for this
+kind.
 
-For each confirmed item:
+**b. Propose what the vault implies.** List what existing records point to
+and Preparation does not yet hold: a thread the carry-over left unplaced, a
+Clue whose subject a confirmed scene brings within reach, a character or place
+a confirmed scene needs. Give each with the records it rests on. Propose
+nothing here that no record supports.
 
-- **A line of Preparation:** add it to the Session.
-- **A new record, or a change to one:** follow
-  `.agents/skills/update-record/SKILL.md`, then add the record to the Session
-  where it belongs.
-- **An outdated Clue:** change its status as its Type record describes, only
-  if the GM says to.
+**c. Ask.** Ask the GM what else they want for this kind, and whether they
+would like ideas. Offer ideas of your own only if they say yes: three at most,
+each saying which parts of it would be new facts.
 
-This step ends when the GM says the preparation is complete.
+**d. Show the exact text.** For each item the GM wants, show exactly what you
+will write: the line for the Session, and for a new or changed record, its
+fields and body. Write nothing yet.
 
-If the GM defers something, such as a handout to write later or what a search
-of some room turns up, add it to Scene notes as a line beginning `To do:`, so
-that it is not lost.
+**e. Write on a yes.** When the GM confirms that text, write it as shown:
+
+- a line of Preparation goes into the Session;
+- a new record, or a change to one, is made by following
+  `.agents/skills/update-record/SKILL.md`, and the record is then added to the
+  Session where it belongs, including its `prepared_*` list.
+
+One confirmation covers one item. A change to the text needs a new
+confirmation.
+
+**f. Note what follows.** A confirmed item often needs others: a new scene may
+need a character, a place or a Clue. Do not write them. Raise each under its
+own kind, at step b.
+
+**g. Close the kind.** Validate the Session and tell the GM what you wrote. If
+the GM defers something, such as a handout to write later or what a search of
+some room turns up, add it to Scene notes as a line beginning `To do:`, so
+that it is not lost. Then go on to the next kind.
+
+The GM may give you several things at once, or out of order. Take what they
+give, run d to f on each, then return to the kinds you have not covered.
+
+The kinds, and what is particular to each:
+
+1. **Starting scene.** If the carry-over supplies it, confirm its text.
+2. **Other scenes.** The threads the GM wants to press this Session that the
+   carry-over did not supply.
+3. **Characters and places.** Those the scenes need that are not yet in
+   `prepared_npcs` or `prepared_locations`, with or without a record.
+4. **Clues.** A Session usually has about ten in `prepared_clues`. If it has
+   fewer, say how many, list at step b any open Clues that could join them,
+   and ask whether the GM wants new ones suggested. Do not pad the list with
+   Clues that have little to do with the Session: fewer good Clues are better
+   than ten strained ones. Before showing the text of a new Clue, check that no
+   existing Clue states the fact: `armarium trace` on one of its subjects
+   lists the Clues that link to it. Change the status of an outdated Clue as
+   its Type record describes, only if the GM says to.
+5. **Encounters.** Agree the opposition and the stakes with the GM before
+   showing the text. Take statistics and rules from the vault's records or from
+   the GM, never from memory. Where an opponent has no record, say in the
+   encounter that it is a sketch.
+6. **Rewards.** When the GM names an item, use its record. When they want
+   options, such as "something for this character", search the vault's Content
+   for candidates and offer a short list with a line on each; the GM picks. A
+   new item needs its rules text from the GM. Never write that from memory, and
+   never leave a placeholder for it.
+
+After the last kind, read the whole of Preparation and check that it holds
+together:
+
+- every record a scene names is in its `prepared_*` list, where it has one;
+- every prepared Clue has some way to come up in a scene;
+- no section is empty that the GM meant to fill.
+
+Tell the GM what you found, and ask whether the preparation is complete. This
+step ends when they say it is.
 
 ## 8. Validate and report
 
