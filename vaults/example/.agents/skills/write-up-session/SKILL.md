@@ -167,6 +167,10 @@ Then stop and wait. For each answer or correction:
 
 Go on only when the GM approves the text in their own words.
 
+If the approved text still holds a `(?)`, do not write it. List each one and
+ask. Go on when the GM has settled each, or has said in their own words
+that it stays in the Events as written.
+
 ## 6. Write the Session
 
 Follow `.agents/skills/update-record/SKILL.md` for the Session, with the
@@ -185,8 +189,12 @@ Leave the draft in `.scratch/`. It is the account of what was decided.
 If the GM corrected how you wrote the Events, or what you counted as an event,
 the same correction will be needed next time. Put each one as a general rule,
 without quoting the text that prompted it, and propose adding it to the
-campaign's Session reference. Add it only if the GM agrees. If the campaign
-has no Session reference, create it:
+campaign's Session reference.
+
+Propose the rules now, after the Session is written, and not alongside the
+draft. The GM's approval of the write-up is not agreement to a rule: add each
+rule only when the GM has agreed to that rule. If the campaign has no
+Session reference, create it:
 
 ```sh
 armarium add note "Session reference" --campaign N
