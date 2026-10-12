@@ -17,6 +17,12 @@ You need two things:
 
 Run the commands from the vault root, or add `--vault PATH`.
 
+If `.agents/skills/process-session/addenda/` exists, read every file in it before you
+start. Each adds to this procedure, for an extension the vault has enabled or
+for the vault itself, and applies as if it were written here. Where an addendum
+and this file disagree, follow the addendum; where two addenda disagree, follow
+`vault.md`, the vault's own.
+
 ## Checkpoints
 
 Stages 2 and 3 each show the GM something and stop, as their own procedures

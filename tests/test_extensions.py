@@ -1,6 +1,7 @@
 """Extension registration, local customization, confinement and installation."""
 
 import json
+import logging
 import shutil
 from pathlib import Path
 
@@ -12,10 +13,13 @@ from armarium.extensions import (
     CONFIG,
     ExtensionRule,
     ExtensionSet,
+    _addenda,
     _core_link_fields,
     _declarations,
     _extension,
+    _install_addenda,
     _local_path,
+    _set_addenda,
     _write_config,
     content_subtypes,
     enable_extension,
@@ -521,7 +525,132 @@ class TestExtension:
             _extension(name)
 
 
+ADDENDUM = ".agents/skills/update-record/addenda/example.md"
+
+
+@pytest.fixture
+def skilled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The example extension, extended with addenda to two skills."""
+    import armarium.extensions as extensions
+
+    source = tmp_path / "skilled"
+    shutil.copytree(ROOT / "extensions/example", source)
+    (source / "skills").mkdir()
+    (source / "skills/update-record.md").write_text("Record the climate.\n")
+    (source / "skills/refresh-record.md").write_text("Check the climate.\n")
+    monkeypatch.setattr(extensions, "_extension", lambda name: source)
+    return source
+
+
+@pytest.fixture
+def taught(vault: Path, skilled: Path) -> Path:
+    enable_extension("example", vault)
+    return vault
+
+
+def files(root: Path) -> dict[Path, bytes]:
+    return {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+
+class TestAddenda:
+    def test_absent(self, vault: Path) -> None:
+        assert _addenda(vault, "example") == {}
+
+    def test_reads_only_the_extension(self, taught: Path) -> None:
+        (taught / ADDENDUM).with_name("vault.md").write_text("House rule.\n")
+        assert _addenda(taught, "example") == {
+            taught / ".agents/skills/refresh-record/addenda/example.md": (
+                b"Check the climate.\n"
+            ),
+            taught / ADDENDUM: b"Record the climate.\n",
+        }
+
+    def test_symlink(self, taught: Path, tmp_path: Path) -> None:
+        path = taught / ADDENDUM
+        path.unlink()
+        path.symlink_to(tmp_path / "outside.md")
+        (tmp_path / "outside.md").write_text("Outside")
+        with pytest.raises(ValueError, match="symlinks"):
+            _addenda(taught, "example")
+
+
+class TestSetAddenda:
+    @pytest.mark.parametrize("own", [False, True])
+    def test_removes(self, taught: Path, own: bool) -> None:
+        directory = (taught / ADDENDUM).parent
+        if own:
+            (directory / "vault.md").write_text("House rule.\n")
+        _set_addenda(taught, "example", {})
+        assert _addenda(taught, "example") == {}
+        assert directory.exists() == own
+        assert (directory / "vault.md").exists() == own
+
+    def test_restores(self, taught: Path) -> None:
+        before = _addenda(taught, "example")
+        _set_addenda(taught, "example", {})
+        _set_addenda(taught, "example", before)
+        assert _addenda(taught, "example") == before
+
+    def test_keeps_only_the_given(self, taught: Path) -> None:
+        kept = {taught / ADDENDUM: b"Rewritten.\n"}
+        _set_addenda(taught, "example", kept)
+        assert _addenda(taught, "example") == kept
+
+
+class TestInstallAddenda:
+    def test_installs(self, vault: Path, skilled: Path) -> None:
+        _install_addenda(skilled, vault, "example")
+        assert sorted(p.parts[-3] for p in _addenda(vault, "example")) == [
+            "refresh-record",
+            "update-record",
+        ]
+        assert (vault / ADDENDUM).read_text() == "Record the climate.\n"
+
+    def test_without_skills(self, vault: Path) -> None:
+        before = files(vault)
+        _install_addenda(ROOT / "extensions/example", vault, "example")
+        assert files(vault) == before
+
+    def test_replaces_earlier_addenda(self, taught: Path, skilled: Path) -> None:
+        (skilled / "skills/refresh-record.md").unlink()
+        (skilled / "skills/update-record.md").write_text("Revised.\n")
+        _install_addenda(skilled, taught, "example")
+        assert _addenda(taught, "example") == {taught / ADDENDUM: b"Revised.\n"}
+
+    def test_missing_skill_warns(
+        self, vault: Path, skilled: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        shutil.rmtree(vault / ".agents/skills/refresh-record")
+        with caplog.at_level(logging.WARNING, logger="armarium"):
+            _install_addenda(skilled, vault, "example")
+        assert caplog.messages == [
+            "Vault has no refresh-record skill; its example addendum is not installed"
+        ]
+        assert list(_addenda(vault, "example")) == [vault / ADDENDUM]
+
+    def test_symlink(self, vault: Path, skilled: Path, tmp_path: Path) -> None:
+        (tmp_path / "outside").mkdir()
+        (vault / ADDENDUM).parent.symlink_to(tmp_path / "outside")
+        with pytest.raises(ValueError, match="symlinks"):
+            _install_addenda(skilled, vault, "example")
+        assert not list((tmp_path / "outside").iterdir())
+
+
 class TestEnableExtension:
+    def test_installs_addenda_apart_from_reference(self, taught: Path) -> None:
+        assert not (taught / "reference/extensions/example/skills").exists()
+        assert (taught / ADDENDUM).read_text() == "Record the climate.\n"
+        assert not validate(taught).failed
+
+    def test_failure_removes_addenda(self, vault: Path, skilled: Path) -> None:
+        (skilled / "templates/Location.md").write_text("invalid")
+        before = files(vault)
+        entries = set(vault.rglob("*"))
+        with pytest.raises(ValueError):
+            enable_extension("example", vault)
+        assert set(vault.rglob("*")) == entries
+        assert files(vault) == before
+
     def test_install_preserves_core(self, vault: Path) -> None:
         original = {p: p.read_bytes() for p in vault.rglob("*") if p.is_file()}
         assert enable_extension("example", vault) == vault
@@ -745,6 +874,36 @@ class TestRemoveExtension:
         enable_extension("example", declared)
         assert not validate(declared).failed
 
+    def test_removes_addenda(self, taught: Path) -> None:
+        own = (taught / ADDENDUM).with_name("vault.md")
+        own.write_text("House rule.\n")
+        remove_extension("example", taught)
+        assert _addenda(taught, "example") == {}
+        assert own.read_text() == "House rule.\n"
+        assert not (taught / ".agents/skills/refresh-record/addenda").exists()
+
+    def test_failure_restores_addenda(
+        self, taught: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import armarium.extensions as extensions
+
+        def write(path: Path, contents: bytes) -> None:
+            raise OSError("failed configuration write")
+
+        before = files(taught)
+        monkeypatch.setattr(extensions, "_write_config", write)
+        with pytest.raises(OSError):
+            remove_extension("example", taught)
+        assert files(taught) == before
+
+    def test_manual_declaration_keeps_addenda(self, taught: Path) -> None:
+        config = taught / CONFIG
+        data = _declarations(config)
+        data["example"].pop("installed")
+        config.write_text(json.dumps(data))
+        remove_extension("example", taught)
+        assert (taught / ADDENDUM).exists()
+
     @pytest.mark.parametrize(
         "file",
         [
@@ -944,6 +1103,27 @@ class TestUpdateExtension:
         assert record.read_bytes() == before
         assert not validate(enabled).failed
         assert not list(enabled.glob(".armarium-update-*"))
+
+    def test_replaces_addenda(self, taught: Path, skilled: Path) -> None:
+        from armarium.extensions import update_extension
+
+        (skilled / "skills/refresh-record.md").unlink()
+        (skilled / "skills/update-record.md").write_text("Revised.\n")
+        own = (taught / ADDENDUM).with_name("vault.md")
+        own.write_text("House rule.\n")
+        update_extension("example", taught)
+        assert _addenda(taught, "example") == {taught / ADDENDUM: b"Revised.\n"}
+        assert own.read_text() == "House rule.\n"
+
+    def test_failure_restores_addenda(self, taught: Path, skilled: Path) -> None:
+        from armarium.extensions import update_extension
+
+        (skilled / "skills/update-record.md").write_text("Revised.\n")
+        (skilled / "templates/Location.md").write_text("invalid")
+        before = files(taught)
+        with pytest.raises(ValueError):
+            update_extension("example", taught)
+        assert files(taught) == before
 
     def test_keeps_custom_rules_and_shared_references(
         self, enabled: Path, replacement: Path

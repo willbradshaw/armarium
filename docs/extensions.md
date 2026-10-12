@@ -24,6 +24,10 @@ Files install into `reference/extensions/NAME/`, grouped into `schemas/`,
 extension schemas. Matching extension templates supply defaults for new records;
 conflicting templates are rejected.
 
+An extension can also [add to the vault's agent skills](agents.md#adding-to-a-skill).
+Each addition installs as `.agents/skills/SKILL/addenda/NAME.md`. A skill the
+vault does not have gets none, and the command warns of it.
+
 Both commands validate the completed vault. Validation failures leave the new
 vault or enabled extension in place for correction. Installation failures roll
 back the operation, including all selected extensions during initialization.
@@ -34,8 +38,8 @@ back the operation, including all selected extensions during initialization.
 armarium extension remove EXTENSION --vault ../my-vault
 ```
 
-Removal unregisters the extension and deletes its installed directory, including
-any local edits. Records and their fields are preserved. The command then validates
+Removal unregisters the extension and deletes its installed directory and skill
+addenda, including any local edits. Records and their fields are preserved. The command then validates
 the vault; validation failures leave the removal in place for correction.
 
 ## Updating
@@ -45,8 +49,9 @@ armarium extension update EXTENSION --vault ../my-vault
 ```
 
 After upgrading Armarium, run this command to replace an installed extension with
-its current files and rules. Local edits to installed files are overwritten;
-records and separate custom schemas are preserved. Installation failures restore
+its current files, rules and skill addenda. Local edits to installed files are
+overwritten; records, separate custom schemas and the vault's own addenda are
+preserved. Installation failures restore
 the previous extension. Validation runs afterward; failures leave the updated
 extension installed for record corrections.
 
@@ -87,6 +92,10 @@ in matching records; validation reports `extension.yaml` otherwise. Optional
 `links` [declares link targets](#declaring-link-targets). Source
 declaration paths are relative to the extension directory. Schemas and templates
 belong in their respective subdirectories.
+
+To add to an agent skill, put a Markdown file named for the skill in `skills/`,
+such as `skills/update-record.md`. It needs no declaration, and installs as that
+skill's addendum, not with the reference files.
 
 ### Declaring subtypes
 
