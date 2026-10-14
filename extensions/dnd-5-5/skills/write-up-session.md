@@ -27,8 +27,8 @@ this:
 - An ally who gave the party substantial help in the fight counts as one more
   member of the party, whatever its CR, so each character's share is smaller.
   A character's own familiar or animal companion is part of that character,
-  not an ally. Whether an ally's help was substantial is the GM's call: ask
-  under Questions about each ally, unless the source makes it plain.
+  not an ally. Whether an ally's help was substantial is the GM's call: if
+  this is unclear, ask about it under Questions.
 
 Round each share down to a whole number. If a character took no part in a fight, such as one left behind on a
 ship, ask the GM whether they share in it.
