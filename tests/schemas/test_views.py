@@ -146,12 +146,23 @@ class ViewTests(unittest.TestCase):
                 )
 
 
+def content_fields() -> dict[str, str | None]:
+    """Map each documented Content field to its subtype, or None for all."""
+    docs = Path(__file__).resolve().parents[2] / "docs/type.md"
+    section = docs.read_text().split("\n## Content\n", 1)[1].split("\n## ", 1)[0]
+    return {
+        field: subtype or None
+        for field, subtype in re.findall(
+            r"^\| `(\w+)` \| (?:required|optional)(?: for (\w+))?", section, re.M
+        )
+    }
+
+
 class ContentBaseTests(unittest.TestCase):
-    """Check bases/Content.base against the records of the example vault."""
+    """Check bases/Content.base against the Content type and example vault."""
 
     BASE = yaml.safe_load((ROOT / "starter/bases/Content.base").read_text())
-    # One table per core subtype except Gear, which extensions specialize.
-    SUBTYPES = {"NPC", "PC", "Location", "Faction", "Object", "Lore", "Date"}
+    SUBTYPES = {"NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear"}
 
     def records(self, subtype: str) -> list[dict]:
         vault = ROOT / "example"
@@ -203,20 +214,21 @@ class ContentBaseTests(unittest.TestCase):
         self.assertEqual(used, set(self.BASE["properties"]))
         self.assertLessEqual(formulas, used)
 
-    def test_note_columns_are_template_or_example_record_fields(self):
-        template = frontmatter(ROOT / "starter/reference/templates/Content.md")
+    def test_note_columns_are_documented_fields_of_their_subtype(self):
+        fields = content_fields()
         for view in self.BASE["views"]:
             subtype = re.fullmatch(r'subtype == "(\w+)"', view["filters"])[1]
-            records = self.records(subtype)
-            with self.subTest(view=view["name"]):
-                self.assertTrue(records)
             for column in view["order"]:
                 if "." in column:
                     continue
                 with self.subTest(view=view["name"], column=column):
-                    self.assertTrue(
-                        any(column in record for record in [template, *records])
-                    )
+                    self.assertIn(column, fields)
+                    self.assertIn(fields[column], {None, subtype})
+
+    def test_each_table_has_example_records(self):
+        for subtype in self.SUBTYPES:
+            with self.subTest(subtype=subtype):
+                self.assertTrue(self.records(subtype))
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ Outside the optional root directories, non-Markdown files belong in `assets/`,
 except bases in `bases/` and `reference/views/` and schemas in
 `reference/schemas/`.
 
-`bases/Content.base` has one table per core subtype except Gear, selected by
+`bases/Content.base` has one table per core subtype, selected by
 `type` and `subtype` rather than folder, with each record's scope: `shared` or
 its `campaign_N`. Add the vault's own bases to `bases/`.
 

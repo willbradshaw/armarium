@@ -27,6 +27,10 @@ properties:
     displayName: Reckoning
   note.scale:
     displayName: Scale
+  note.source:
+    displayName: Source
+  note.url:
+    displayName: URL
 views:
   - type: table
     name: NPCs
@@ -64,6 +68,14 @@ views:
     name: Objects
     filters: 'subtype == "Object"'
     order: [file.name, formula.scope, formula.summary, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Gear
+    filters: 'subtype == "Gear"'
+    order: [file.name, formula.scope, formula.summary, source, url, content_tags]
     rowHeight: medium
     sort:
       - property: file.name
