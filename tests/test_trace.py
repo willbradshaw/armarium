@@ -12,12 +12,12 @@ from armarium.trace import (
     Reference,
     _final_segment,
     _frontmatter_text,
-    _locate,
     _mentions,
     _references,
     _sharing,
     _spelling,
     _spellings,
+    locate,
     trace_outbound,
     trace_record,
 )
@@ -161,14 +161,14 @@ class TestLocate:
         root = vault.resolve()
         if form == "vault":
             monkeypatch.chdir(vault.parent)
-            located = _locate(Path(relative), vault)
+            located = locate(Path(relative), vault)
         elif form == "vault_absolute":
-            located = _locate(vault / relative, vault)
+            located = locate(vault / relative, vault)
         elif form == "cwd":
             monkeypatch.chdir(vault / "content")
-            located = _locate(Path("..") / relative, None)
+            located = locate(Path("..") / relative, None)
         else:
-            located = _locate(vault / relative, None)
+            located = locate(vault / relative, None)
         assert located == (root, root / relative)
 
     def test_vault_relative_path_ignores_the_working_directory(
@@ -176,8 +176,8 @@ class TestLocate:
     ) -> None:
         monkeypatch.chdir(vault / "content")
         with pytest.raises(ValueError, match="does not exist"):
-            _locate(Path("Quay Nine.md"), vault)
-        assert _locate(Path("Quay Nine.md"), None)[1].name == "Quay Nine.md"
+            locate(Path("Quay Nine.md"), vault)
+        assert locate(Path("Quay Nine.md"), None)[1].name == "Quay Nine.md"
 
     @pytest.mark.parametrize(
         ("relative", "message"),
@@ -201,14 +201,14 @@ class TestLocate:
         (vault / "content/Dangling.md").symlink_to(vault / "content/Missing.md")
         with pytest.raises(ValueError, match=message):
             if explicit:
-                _locate(Path(relative), vault)
+                locate(Path(relative), vault)
             else:
-                _locate(vault / relative, None)
+                locate(vault / relative, None)
 
     def test_rejects_file_outside_any_vault(self, tmp_path: Path) -> None:
         outside = write(tmp_path, "Loose.md")
         with pytest.raises(ValueError, match="cannot infer vault"):
-            _locate(outside, None)
+            locate(outside, None)
 
     @pytest.mark.parametrize("escape", ["absolute", "relative"])
     def test_rejects_file_outside_the_given_vault(
@@ -217,7 +217,7 @@ class TestLocate:
         outside = write(tmp_path, "Loose.md")
         path = outside if escape == "absolute" else Path("../Loose.md")
         with pytest.raises(ValueError, match="inside the selected vault"):
-            _locate(path, vault)
+            locate(path, vault)
 
     @pytest.mark.parametrize("kind", ["missing", "inside", "plain"])
     def test_rejects_vault_that_is_not_a_vault_root(
@@ -229,7 +229,7 @@ class TestLocate:
             "plain": tmp_path,
         }[kind]
         with pytest.raises(ValueError):
-            _locate(Path("content/Quay Nine.md"), given)
+            locate(Path("content/Quay Nine.md"), given)
 
 
 class TestSpelling:

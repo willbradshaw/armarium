@@ -17,6 +17,7 @@ dependencies = [
   "jsonschema[format]>=4.23,<5",
   "markdown-it-py>=3,<4",
   "referencing>=0.35,<1",
+  "Pillow>=11,<13",
 ]
 
 [project.urls]

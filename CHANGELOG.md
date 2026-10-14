@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium illustrate ingest` to take a picture into a vault as a record's image within a size budget, adding Pillow as a dependency.
 - Make the `dnd-5-5` extension add encounter difficulty, XP and levels gained to the session skills, for campaigns with or without XP.
 - Add Character Advancement, Combat Encounter Difficulty and Magic Item Values pages, with their SRD 5.2.1 tables, to the `dnd-5-5` extension.
 - Let an extension, or a vault, add to a shipped agent skill through files in the skill's `addenda/` directory, which `armarium extension` installs and removes.
