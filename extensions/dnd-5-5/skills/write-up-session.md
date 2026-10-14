@@ -30,8 +30,7 @@ this:
   not an ally. Whether an ally's help was substantial is the GM's call: if
   this is unclear, ask about it under Questions.
 
-Round each share down to a whole number. If a character took no part in a fight, such as one left behind on a
-ship, ask the GM whether they share in it.
+Round each share down to a whole number.
 
 A campaign may use its own rule instead, such as leaving out absent players'
 characters, or giving an ally a share in proportion to its XP. Follow the
