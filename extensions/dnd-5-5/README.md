@@ -172,6 +172,33 @@ Three pages hold the tables for running a game:
 | Combat Encounter Difficulty | the XP budget per character for each difficulty, XP by Challenge Rating, and how to build an encounter within a budget |
 | Magic Item Values | values by rarity, the rules for consumables and items built on equipment, and Spell Scroll values |
 
+## Sessions
+
+The extension adds to three of the vault's agent skills, as
+[skill addenda](https://github.com/willbradshaw/armarium/blob/main/docs/agents.md#adding-to-a-skill).
+With it enabled, a Session's Preparation and Rewards hold the following.
+
+- **Encounters.** Each prepared fight has an Enemies table (Type, Number, CR,
+  XP), an Allies table with the same columns for creatures expected to give
+  the party substantial help, and a Difficulty table (Enemy XP, Characters,
+  Allies, Level, Difficulty). The difficulty is Low, Moderate, High or Above High, rated as
+  Combat Encounter Difficulty describes, with each ally counted as one more
+  character of the party's level. Every campaign rates its fights, whether or not it
+  awards XP.
+- **XP.** In a campaign that awards XP, Rewards has an `### XP` section: the
+  XP of each fight won, any other awards, and the campaign's running total per
+  character.
+- **Advancement.** When characters gain a level, Rewards has an
+  `### Advancement` section naming each one and their new level, and the
+  character's `level` field is updated. A level is gained only when the GM
+  says so: in a campaign with XP, reaching a threshold prompts the question,
+  since campaigns differ on when the level comes.
+
+By default, a fight's XP is divided evenly among the party's characters,
+counting each ally who gave substantial help as one more member of the party,
+and each share is rounded down. Whether a campaign awards XP, and any sharing
+rule of its own, is recorded in the campaign's `Session reference` Note.
+
 ## Attribution
 
 This work includes material from the System Reference Document 5.2.1 (“SRD

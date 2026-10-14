@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import shutil
 from pathlib import Path
 
@@ -1970,3 +1971,28 @@ class TestDndRulesReference:
         remove_extension("dnd-5-5", vault)
         rules = [d.rule for d in validate(path, vault).diagnostics]
         assert rules == ["link.missing"] * len(self.PAGES)
+
+
+class TestDndSkillAddenda:
+    SKILLS = sorted(
+        path.stem for path in (ROOT / "extensions/dnd-5-5/skills").glob("*.md")
+    )
+
+    def test_installs_into_shipped_skills(self, vault: Path) -> None:
+        assert self.SKILLS == [
+            "prepare-session",
+            "update-session-records",
+            "write-up-session",
+        ]
+        enable_extension("dnd-5-5", vault)
+        for skill in self.SKILLS:
+            installed = vault / f".agents/skills/{skill}/addenda/dnd-5-5.md"
+            source = ROOT / f"extensions/dnd-5-5/skills/{skill}.md"
+            assert installed.read_text() == source.read_text()
+        assert not (vault / "reference/extensions/dnd-5-5/skills").exists()
+
+    @pytest.mark.parametrize("skill", SKILLS)
+    def test_named_pages_exist(self, skill: str) -> None:
+        text = (ROOT / f"extensions/dnd-5-5/skills/{skill}.md").read_text()
+        for page in re.findall(r"`reference/extensions/dnd-5-5/([^`]+)`", text):
+            assert (ROOT / "extensions/dnd-5-5" / page).is_file(), page
