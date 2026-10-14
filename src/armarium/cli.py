@@ -319,10 +319,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "prompt",
         help="print what an image model is told to paint a record's picture",
         description=(
-            "Print the prompt for a record's picture: the style's text, the "
-            "record's name, its rules callout and its visual field. The style "
-            f"named, or else the one in {STYLE_DIRECTORY}/ that illustrates the "
-            "record's type, supplies the text. Reads only; sends nothing."
+            "Print the prompt for a record's picture: a preamble, the "
+            "record's name, its rules callout and its visual field. The "
+            "preamble is the --preamble file's text, or else the text of the "
+            f"style named, or of the one in {STYLE_DIRECTORY}/ that illustrates "
+            "the record's type, if any. Reads only; sends nothing."
         ),
     )
     picture = stages.add_parser(
@@ -346,15 +347,23 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     picture.add_argument(
         "picture", type=Path, help="picture to take in, in any common format"
     )
-    for stage, fallback in ((request, ""), (picture, ", if any")):
-        stage.add_argument(
+    text = request.add_mutually_exclusive_group()
+    for group in (text, picture):
+        group.add_argument(
             "--style",
             metavar="NAME",
             help=(
                 f"style in {STYLE_DIRECTORY}/ to use (default: the one that "
-                f"illustrates the record's type{fallback})"
+                "illustrates the record's type, if any)"
             ),
         )
+    text.add_argument(
+        "--preamble",
+        type=Path,
+        metavar="FILE",
+        help="text file to open the prompt with, in place of a style's text",
+    )
+    for stage in (request, picture):
         stage.add_argument(
             "--vault",
             type=Path,
@@ -554,7 +563,9 @@ def main() -> None:
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:
-            text = prompt(args.record, args.vault, style=args.style)
+            text = prompt(
+                args.record, args.vault, style=args.style, preamble=args.preamble
+            )
         except (OSError, ValueError) as exc:
             logger.error("Cannot illustrate %s: %s", args.record, exc)
             sys.exit(1)

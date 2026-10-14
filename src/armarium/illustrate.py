@@ -286,20 +286,21 @@ def rules_text(record: Record) -> str:
     return _plain("\n".join(lines))
 
 
-def build_prompt(style: Style, record: Record) -> str:
+def build_prompt(preamble: str, record: Record) -> str:
     """Assemble what an image model is told to paint a record's picture.
 
     Args:
-        style: The style the picture is painted in.
+        preamble: Text that opens the prompt, such as a style's, or "" for
+            none.
         record: The record the picture illustrates.
 
     Returns:
-        str: The style's prompt, the record's name, then its rules text and
-            its visual field, each in a tagged block and left out when empty.
-            The visual field is art direction, and outranks the rules text.
+        str: The preamble, the record's name, then its rules text and its
+            visual field, each in a tagged block and left out when empty. The
+            visual field is art direction, and outranks the rules text.
     """
     visual = record.frontmatter.get(VISUAL)
-    parts = [style.prompt, "", f"<subject>{record.path.stem}</subject>"]
+    parts = [preamble.strip(), "", f"<subject>{record.path.stem}</subject>"]
     for tag, text in (
         ("rules", rules_text(record)),
         ("visual", visual.strip() if isinstance(visual, str) else ""),
@@ -334,35 +335,42 @@ def _read(record: Path, vault: Path | None) -> tuple[Path, Path, Record]:
     return root, path, parsed
 
 
-def prompt(record: Path, vault: Path | None = None, *, style: str | None = None) -> str:
+def prompt(
+    record: Path,
+    vault: Path | None = None,
+    *,
+    style: str | None = None,
+    preamble: Path | None = None,
+) -> str:
     """Assemble the prompt for a record's picture, as `build_prompt` does.
+
+    The preamble file's text opens the prompt. Without one, the style named,
+    or else the only style that applies to the record, supplies it; with no
+    style, the prompt opens with the record's name.
 
     Args:
         record: The record to illustrate. With a vault, a relative path is
             taken from the vault root; without one, from the working directory.
         vault: Vault root, or None to discover it from the record's location.
         style: The style to paint in, or None to choose one by the record's
-            type.
+            type. Ignored with a preamble.
+        preamble: A UTF-8 text file whose text opens the prompt, or None for
+            the style's.
 
     Returns:
         str: The prompt.
 
     Raises:
         ValueError: The record is not a Markdown file in a vault or cannot be
-            parsed, or there is no one style to paint in.
+            parsed; no style has the name, or several apply, as choose_style
+            describes; or the preamble is not UTF-8.
         OSError: A file cannot be read.
     """
     root, _, parsed = _read(record, vault)
+    if preamble is not None:
+        return build_prompt(preamble.read_text(encoding="utf-8-sig"), parsed)
     chosen = choose_style(root, parsed, style)
-    if chosen is None:
-        kind = parsed.frontmatter.type or "untyped"
-        subtype = parsed.frontmatter.get("subtype")
-        if isinstance(subtype, str):
-            kind += f"/{subtype}"
-        raise ValueError(
-            f"no style illustrates {kind} records; choose one with --style"
-        )
-    return build_prompt(chosen, parsed)
+    return build_prompt(chosen.prompt if chosen else "", parsed)
 
 
 def _destination(output: str | None, record: Path, directory: str) -> PurePosixPath:

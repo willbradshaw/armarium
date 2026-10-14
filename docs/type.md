@@ -64,7 +64,7 @@ of a declared subtype sits in that subfolder of its Content directory.
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
 | `source` | required for Gear | null when unrecorded, or nonblank publication/homebrew attribution |
 | `image` | optional for Gear | null, a nonblank HTTP/HTTPS image URL, or the vault-relative path of an image in the vault |
-| `visual` | optional for Gear | null, or nonblank art direction for the image, which [`armarium illustrate prompt`](illustrate.md#prompts) passes to the image model |
+| `visual` | optional for Gear | null, or nonblank art direction for the image, which [`armarium illustrate prompt`](illustrate.md#prompts) includes in the prompt for the picture |
 | `url` | optional for Gear | null, or an HTTP/HTTPS source URL |
 | `reckoning` | required for Date | nonempty wikilink to a Lore record describing the calendar, in the same campaign or shared |
 | `scale` | required for Date | nonblank string naming a calendar period, such as `day`, `month`, `year` or `century`; no fixed list of values |

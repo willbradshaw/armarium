@@ -117,9 +117,6 @@ command uses the style whose `illustrates` names the record's type, or its type
 and subtype, such as `Content/Gear`; if several do, it stops and asks for
 `--style`, and if none does, the defaults above apply.
 
-`prompt` needs a style: if none applies to the record, it stops and asks for
-`--style`.
-
 [Validation](validate.md) checks each style's fields, and holds every file in
 its `directory` and the folders inside it to its budget: each must be a WebP or
 PNG image within `max_bytes` and `max_edge`. A style that cannot be read stops
@@ -131,7 +128,8 @@ the command until it is fixed.
 standard output. It reads only: nothing is sent or written. The prompt is, in
 order:
 
-1. the style's body;
+1. a preamble: the text of the `--preamble FILE`, or else the body of the
+   record's style, if it has one;
 2. the record's name, as `<subject>NAME</subject>`;
 3. the record's `> [!rules]` callout, as `<rules>` … `</rules>`;
 4. the record's `visual` field, as `<visual>` … `</visual>`.
@@ -148,4 +146,7 @@ visual: A coil of rope on a brass reel, its hook worn bright.
 ```
 
 `RECORD` and `--vault` work as for `ingest`, and `--style NAME` chooses the
-style as it does there.
+style as it does there. `--preamble FILE` is a UTF-8 text file, relative to the
+current directory, that opens the prompt in place of a style's text; it cannot
+be combined with `--style`. Without either, and with no style for the record's
+type, the prompt opens with the record's name.
