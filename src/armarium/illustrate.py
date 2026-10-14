@@ -8,24 +8,19 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 import yaml
+from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
 from armarium.parse import Frontmatter
 from armarium.trace import locate
-
-try:
-    from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
-except ModuleNotFoundError:
-    PILLOW = False
-else:
-    PILLOW = True
 
 FIELD = "image"
 ART_DIRECTORY = "assets/art"
 MAX_BYTES = 100_000
 MAX_EDGE = 1200
-# Long-edge sizes tried below the largest allowed, in order; the first whose
-# WebP fits the budget wins.
-EDGES = (1000, 900, 800, 700, 650, 600, 550, 500, 450, 400, 350)
+# Each long edge tried is this fraction of the one before, rounded down to
+# ten pixels, and none is tried below MIN_EDGE.
+EDGE_STEP = 0.9
+MIN_EDGE = 350
 QUALITIES = (80, 70, 60)
 # At and below this edge, lower qualities are tried before a smaller size:
 # shrinking further starts to show, while these qualities barely differ.
@@ -71,9 +66,13 @@ def edges(max_edge: int) -> tuple[int, ...]:
         max_edge: The largest long edge allowed, in pixels.
 
     Returns:
-        tuple[int, ...]: The largest allowed edge, then each of EDGES below it.
+        tuple[int, ...]: The largest allowed edge, then each EDGE_STEP of the
+        one before, rounded down to ten pixels, down to MIN_EDGE.
     """
-    return (max_edge, *(edge for edge in EDGES if edge < max_edge))
+    sizes = [max_edge]
+    while (edge := int(sizes[-1] * EDGE_STEP) // 10 * 10) >= MIN_EDGE:
+        sizes.append(edge)
+    return tuple(sizes)
 
 
 def _trimmed(img: "Image.Image") -> "Image.Image":
@@ -314,17 +313,11 @@ def ingest(
         Illustration: What was written.
 
     Raises:
-        ValueError: Pillow is not installed; the record is not a Markdown file
-            in a vault; the destination is not allowed or already exists; or
+        ValueError: The record is not a Markdown file in a vault; the destination is not allowed or already exists; or
             the picture cannot be encoded or the field set.
         OSError: A file cannot be read or written.
         UnicodeError: The record is not UTF-8.
     """
-    if not PILLOW:
-        raise ValueError(
-            "illustrate needs Pillow; install Armarium with the art extra, "
-            "armarium[art]"
-        )
     root, path = locate(record, vault)
     if path.suffix != ".md":
         raise ValueError(f"{path} is not a Markdown record")

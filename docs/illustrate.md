@@ -9,18 +9,6 @@ armarium illustrate ingest "content/Lucky Ring.md" ~/Downloads/ring.png
 small WebP and sets the record's `image` field to its path, then validates the
 record.
 
-## What it needs
-
-**Pillow**, the Python imaging library, which a plain install of Armarium leaves
-out. Install Armarium with the `art` extra to include it:
-
-```sh
-uv tool install '.[art]'
-```
-
-Without Pillow the command stops with a message and changes nothing. Only this
-command uses it.
-
 ## Choosing the record
 
 `RECORD` is the record's file path, as for
@@ -65,9 +53,9 @@ The picture is trimmed of plain borders, then shrunk until it fits the budget:
 | `--max-bytes N` | largest file, in bytes | 100000 |
 | `--max-edge N` | largest long edge, in pixels | 1200 |
 
-The long edge steps down from `--max-edge` until the file fits, through sizes
-from 1000 to 350 pixels; at 450 pixels and below, lower WebP qualities are tried
-before a smaller size. A picture is never enlarged. If it does not fit even at
+The long edge starts at `--max-edge` and shrinks by a tenth at a time until the
+file fits, down to 350 pixels; at 450 pixels and below, lower WebP qualities are
+tried before a smaller size. A picture is never enlarged. If it does not fit even at
 the smallest size, the command stops and writes nothing.
 
 Transparency is kept, and metadata such as camera details is dropped.

@@ -13,7 +13,6 @@ from armarium import illustrate as module
 from armarium.content import add_content
 from armarium.illustrate import (
     ART_DIRECTORY,
-    EDGES,
     MAX_EDGE,
     Illustration,
     _as_opacity,
@@ -66,9 +65,10 @@ class TestEdges:
     @pytest.mark.parametrize(
         ("max_edge", "expected"),
         [
-            (MAX_EDGE, (MAX_EDGE, *EDGES)),
-            (1000, EDGES),
-            (720, (720, 700, *EDGES[4:])),
+            (MAX_EDGE, (1200, 1080, 970, 870, 780, 700, 630, 560, 500, 450, 400, 360)),
+            (720, (720, 640, 570, 510, 450, 400, 360)),
+            (389, (389, 350)),
+            (388, (388,)),
             (100, (100,)),
         ],
     )
@@ -139,7 +139,7 @@ class TestEncode:
     def test_shrinks_until_it_fits(self, tmp_path: Path) -> None:
         source = picture(tmp_path / "a.png", (1200, 1200), noise=True)
         data, edge = encode(source, max_bytes=50_000)
-        assert len(data) <= 50_000 and edge == 700
+        assert len(data) <= 50_000 and edge == 780
 
     def test_keeps_transparency(self, tmp_path: Path) -> None:
         img = Image.new("RGBA", (40, 40), "red")
@@ -390,7 +390,6 @@ class TestIngest:
     @pytest.mark.parametrize(
         ("setup", "message"),
         [
-            ("pillow", "needs Pillow"),
             ("not markdown", "is not a Markdown record"),
             ("directory", "is a directory or symlink"),
             ("not a picture", "is not a picture"),
@@ -402,16 +401,13 @@ class TestIngest:
         self,
         vault: Path,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
         setup: str,
         message: str,
     ) -> None:
         record = self.RECORD
         source = picture(tmp_path / "a.png", (30, 20))
         path = vault / record
-        if setup == "pillow":
-            monkeypatch.setattr(module, "PILLOW", False)
-        elif setup == "not markdown":
+        if setup == "not markdown":
             record = Path("assets/notes.txt")
             (vault / record).write_text("text")
         elif setup == "directory":
