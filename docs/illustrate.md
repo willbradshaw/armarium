@@ -54,8 +54,11 @@ The picture is trimmed of plain borders, then shrunk until it fits the budget:
 
 | Option | Limit | Default |
 | --- | --- | --- |
-| `--max-bytes N` | largest file, in bytes | the style's `max_bytes`, or 100000 |
-| `--max-edge N` | largest long edge, in pixels | the style's `max_edge`, or 1200 |
+| `--max-bytes N` | largest file, in bytes | 100000 |
+| `--max-edge N` | largest long edge, in pixels | 1200 |
+
+A [style](#styles) replaces these defaults, and those of `--directory` and
+`--opacity`, with its own.
 
 The long edge starts at `--max-edge` and shrinks by a tenth at a time until the
 file fits, down to 350 pixels; at 450 pixels and below, lower WebP qualities are

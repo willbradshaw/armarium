@@ -321,10 +321,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         description=(
             "Take a picture into the vault's assets/ as a WebP, trimmed of "
             "plain borders and shrunk until it fits the size budget, and set "
-            "the record's image field to its path. The style named, or else "
-            f"the one in {STYLE_DIRECTORY}/ that illustrates the record's type, "
-            "supplies the folder, budget and storage that options leave unset. "
-            "Prints the image's path, then validates the record."
+            "the record's image field to its path. A style, the one named or "
+            f"else the one in {STYLE_DIRECTORY}/ that illustrates the record's "
+            "type, replaces the defaults below with its own. Prints the "
+            "image's path, then validates the record."
         ),
     )
     picture.add_argument(
@@ -349,7 +349,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="DIR",
         help=(
             "vault-relative folder inside assets/ to write NAME.webp into, NAME "
-            f"the record's (default: the style's directory, or {ART_DIRECTORY})"
+            f"the record's (default: {ART_DIRECTORY})"
         ),
     )
     where.add_argument(
@@ -357,28 +357,25 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--output",
         help=(
             "vault-relative .webp path inside assets/ to write (default: "
-            f"NAME.webp, NAME the record's, in the style's directory or {ART_DIRECTORY})"
+            "NAME.webp in the directory, NAME the record's)"
         ),
     )
     picture.add_argument(
         "--max-bytes",
         type=_positive,
-        help=f"largest image to write, in bytes (default: the style's, or {MAX_BYTES})",
+        help=f"largest image to write, in bytes (default: {MAX_BYTES})",
     )
     picture.add_argument(
         "--max-edge",
         type=_positive,
-        help=(
-            "largest long edge to write, in pixels (default: the style's, or "
-            f"{MAX_EDGE})"
-        ),
+        help=f"largest long edge to write, in pixels (default: {MAX_EDGE})",
     )
     picture.add_argument(
         "--opacity",
         action=argparse.BooleanOptionalAction,
         help=(
             "store a monochrome drawing on white as black opacity on a "
-            "transparent ground (default: as the style says, or not)"
+            "transparent ground (default: off)"
         ),
     )
     picture.add_argument(
