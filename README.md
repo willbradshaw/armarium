@@ -29,7 +29,9 @@ Add campaigns and records with `armarium add`; see
 to it, or the files it links to, with `armarium trace`; see
 [Tracing links to a record](docs/trace.md). Turn a session recording into raw
 transcript text with `armarium transcribe`; see
-[Transcribing a recording](docs/transcribe.md).
+[Transcribing a recording](docs/transcribe.md). Take a picture into the vault
+as a record's image with `armarium illustrate ingest`; see
+[Illustrating a record](docs/illustrate.md).
 Optional [extensions](docs/extensions.md) add additional conventions. A new
 vault also carries [instructions and skills for coding agents](docs/agents.md).
 

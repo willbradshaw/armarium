@@ -1,0 +1,431 @@
+"""Pictures become budgeted WebP images that a record's image field names."""
+
+import io
+import os
+import random
+import shutil
+from pathlib import Path, PurePosixPath
+
+import pytest
+from PIL import Image
+
+from armarium import illustrate as module
+from armarium.content import add_content
+from armarium.illustrate import (
+    ART_DIRECTORY,
+    EDGES,
+    MAX_EDGE,
+    Illustration,
+    _as_opacity,
+    _destination,
+    _on_white,
+    _trimmed,
+    _write,
+    edges,
+    encode,
+    ingest,
+    set_field,
+)
+from armarium.parse import Frontmatter
+
+STARTER = Path(__file__).resolve().parents[1] / "vaults/starter"
+
+
+@pytest.fixture
+def vault(tmp_path: Path) -> Path:
+    root = tmp_path / "vault"
+    shutil.copytree(STARTER, root)
+    add_content("Harness", "Gear", root, campaign=1)
+    return root
+
+
+def picture(path: Path, size: tuple[int, int], *, noise: bool = False) -> Path:
+    """Save a flat red picture, or smooth colour noise, as a PNG."""
+    img = Image.new("RGB", size, "red")
+    if noise:
+        generator = random.Random(1)
+        pixels = bytes(generator.randrange(256) for _ in range(40 * 40 * 3))
+        img = Image.frombytes("RGB", (40, 40), pixels).resize(
+            size, Image.Resampling.BICUBIC
+        )
+    img.save(path)
+    return path
+
+
+def opened(data: bytes) -> Image.Image:
+    img = Image.open(io.BytesIO(data))
+    img.load()
+    return img
+
+
+def frontmatter(path: Path) -> Frontmatter:
+    return Frontmatter.parse(path.read_text(encoding="utf-8-sig"))[0]
+
+
+class TestEdges:
+    @pytest.mark.parametrize(
+        ("max_edge", "expected"),
+        [
+            (MAX_EDGE, (MAX_EDGE, *EDGES)),
+            (1000, EDGES),
+            (720, (720, 700, *EDGES[4:])),
+            (100, (100,)),
+        ],
+    )
+    def test_steps_down_from_the_largest_edge(
+        self, max_edge: int, expected: tuple[int, ...]
+    ) -> None:
+        assert edges(max_edge) == expected
+
+
+class TestTrimmed:
+    @pytest.mark.parametrize(
+        ("border", "expected"),
+        [
+            ((255, 255, 255), (4, 2)),
+            ((252, 254, 255), (4, 2)),
+            ((240, 255, 255), (10, 9)),
+        ],
+    )
+    def test_crops_borders_close_to_the_corner(
+        self, border: tuple[int, int, int], expected: tuple[int, int]
+    ) -> None:
+        img = Image.new("RGB", (10, 10), "white")
+        img.paste(Image.new("RGB", (4, 2), "black"), (3, 5))
+        img.paste(Image.new("RGB", (10, 1), border), (0, 0))
+        assert _trimmed(img).size == expected
+
+    def test_keeps_a_uniform_image_whole(self) -> None:
+        assert _trimmed(Image.new("RGB", (6, 3), "blue")).size == (6, 3)
+
+
+class TestOnWhite:
+    @pytest.mark.parametrize(
+        ("pixel", "expected"),
+        [((0, 0, 0, 0), (255, 255, 255)), ((200, 10, 10, 255), (200, 10, 10))],
+    )
+    def test_lays_the_image_on_white(
+        self, pixel: tuple[int, int, int, int], expected: tuple[int, int, int]
+    ) -> None:
+        img = _on_white(Image.new("RGBA", (2, 2), pixel))
+        assert img.mode == "RGB"
+        assert img.getpixel((0, 0)) == expected
+
+
+class TestAsOpacity:
+    @pytest.mark.parametrize(("shade", "alpha"), [(255, 0), (0, 255), (128, 127)])
+    def test_is_black_and_as_opaque_as_the_drawing_is_dark(
+        self, shade: int, alpha: int
+    ) -> None:
+        img = _as_opacity(Image.new("RGB", (2, 2), (shade, shade, shade)))
+        assert img.mode == "RGBA"
+        assert img.getpixel((0, 0)) == (0, 0, 0, alpha)
+
+
+class TestEncode:
+    def test_writes_a_webp_without_enlarging(self, tmp_path: Path) -> None:
+        data, edge = encode(picture(tmp_path / "a.png", (300, 200)))
+        img = opened(data)
+        assert (img.format, img.size, edge) == ("WEBP", (300, 200), 300)
+
+    @pytest.mark.parametrize(("max_edge", "expected"), [(800, 800), (2000, 2000)])
+    def test_keeps_within_the_largest_edge(
+        self, tmp_path: Path, max_edge: int, expected: int
+    ) -> None:
+        source = picture(tmp_path / "a.png", (2400, 1200))
+        data, edge = encode(source, max_edge=max_edge)
+        assert edge == expected == max(opened(data).size)
+
+    def test_shrinks_until_it_fits(self, tmp_path: Path) -> None:
+        source = picture(tmp_path / "a.png", (1200, 1200), noise=True)
+        data, edge = encode(source, max_bytes=50_000)
+        assert len(data) <= 50_000 and edge == 700
+
+    def test_keeps_transparency(self, tmp_path: Path) -> None:
+        img = Image.new("RGBA", (40, 40), "red")
+        img.paste(Image.new("RGBA", (38, 38), (0, 0, 0, 0)), (1, 1))
+        img.save(tmp_path / "a.png")
+        stored = opened(encode(tmp_path / "a.png")[0])
+        assert stored.mode == "RGBA" and stored.getpixel((20, 20))[3] == 0
+
+    @pytest.mark.parametrize(("mode", "expected"), [("L", "RGB"), ("LA", "RGBA")])
+    def test_converts_other_modes(
+        self, tmp_path: Path, mode: str, expected: str
+    ) -> None:
+        img = Image.new(mode, (20, 20), 0)
+        img.paste(Image.new(mode, (18, 18), 128), (1, 1))
+        img.save(tmp_path / "a.png")
+        assert opened(encode(tmp_path / "a.png")[0]).mode == expected
+
+    @pytest.mark.parametrize("inside", ["white", (0, 0, 0, 0)])
+    def test_stores_a_drawing_as_black_opacity(
+        self, tmp_path: Path, inside: str | tuple[int, ...]
+    ) -> None:
+        img = Image.new("RGBA", (96, 48), inside)
+        for left in (8, 56):
+            img.paste(Image.new("RGBA", (32, 32), "black"), (left, 8))
+        img.save(tmp_path / "a.png")
+        stored = opened(encode(tmp_path / "a.png", opacity=True)[0])
+        assert stored.mode == "RGBA"
+        assert stored.getpixel((16, 16))[3] > 240
+        assert stored.getpixel((40, 16))[3] < 15
+
+    def test_compresses_black_opacity(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        source = picture(tmp_path / "a.png", (300, 300), noise=True)
+        compressed = encode(source, opacity=True)[0]
+        monkeypatch.setattr(module, "OPACITY_QUALITY", 100)
+        assert len(compressed) < len(encode(source, opacity=True)[0])
+
+    @pytest.mark.parametrize(
+        ("contents", "max_bytes", "message"),
+        [(b"not a picture", 100_000, "not a picture"), (None, 50, "does not fit")],
+    )
+    def test_refuses(
+        self, tmp_path: Path, contents: bytes | None, max_bytes: int, message: str
+    ) -> None:
+        source = tmp_path / "a.png"
+        if contents is None:
+            picture(source, (400, 400), noise=True)
+        else:
+            source.write_bytes(contents)
+        with pytest.raises(ValueError, match=message):
+            encode(source, max_bytes=max_bytes)
+
+
+class TestSetField:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            (
+                "---\ntype: x\nimage:\nsource: s\n---\nBody\n",
+                "---\ntype: x\nimage: assets/a.webp\nsource: s\n---\nBody\n",
+            ),
+            (
+                "---\nimage: >\n  old\n  text\n# kept\n---\n",
+                "---\nimage: assets/a.webp\n# kept\n---\n",
+            ),
+            (
+                "---\nimage:\n- a\n- b\ntags: [ 'x' ]\n---\n",
+                "---\nimage: assets/a.webp\ntags: [ 'x' ]\n---\n",
+            ),
+            (
+                "---\ntype: x\nimage_source: y\n---\nimage: body\n",
+                "---\ntype: x\nimage_source: y\nimage: assets/a.webp\n---\nimage: body\n",
+            ),
+            (
+                "---\r\ntype: x\r\n---\r\nBody\r\n",
+                "---\r\ntype: x\r\nimage: assets/a.webp\r\n---\r\nBody\r\n",
+            ),
+        ],
+    )
+    def test_sets_only_the_field(self, text: str, expected: str) -> None:
+        assert set_field(text, "image", "assets/a.webp") == expected
+
+    def test_quotes_a_value_when_yaml_needs_it(self) -> None:
+        updated = set_field("---\ntype: x\n---\n", "image", "assets/a: b.webp")
+        assert Frontmatter.parse(updated)[0]["image"] == "assets/a: b.webp"
+
+    @pytest.mark.parametrize(
+        ("text", "message"),
+        [
+            ("Body\n", "no frontmatter"),
+            ('---\n"image": old\n---\n', "without changing other fields"),
+            ("---\nimage: &old x\nother: *old\n---\n", "without changing other fields"),
+        ],
+    )
+    def test_refuses(self, text: str, message: str) -> None:
+        with pytest.raises(ValueError, match=message):
+            set_field(text, "image", "assets/a.webp")
+
+
+class TestDestination:
+    @pytest.mark.parametrize(
+        ("output", "expected"),
+        [
+            (None, f"{ART_DIRECTORY}/Lucky Ring.webp"),
+            ("assets/gear/ring.webp", "assets/gear/ring.webp"),
+            ("./assets/ring.webp", "assets/ring.webp"),
+        ],
+    )
+    def test_chooses_a_path_in_assets(self, output: str | None, expected: str) -> None:
+        assert _destination(output, Path("content/Lucky Ring.md")) == PurePosixPath(
+            expected
+        )
+
+    @pytest.mark.parametrize(
+        "output",
+        [
+            "/assets/ring.webp",
+            "assets/../content/ring.webp",
+            "content/ring.webp",
+            "assets/ring.png",
+            "assets.webp",
+            "assets/.webp",
+        ],
+    )
+    def test_refuses_a_path_outside_assets(self, output: str) -> None:
+        with pytest.raises(ValueError, match="inside the vault's assets/"):
+            _destination(output, Path("content/Lucky Ring.md"))
+
+
+class TestWrite:
+    @pytest.mark.parametrize("existing", [None, b"old"])
+    def test_replaces_the_contents(
+        self, tmp_path: Path, existing: bytes | None
+    ) -> None:
+        path = tmp_path / "new/dir/a.webp"
+        if existing is not None:
+            path.parent.mkdir(parents=True)
+            path.write_bytes(existing)
+        _write(path, b"new")
+        assert path.read_bytes() == b"new"
+        assert os.listdir(path.parent) == ["a.webp"]
+
+    def test_leaves_nothing_behind_on_failure(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fail(*args: object) -> None:
+            raise OSError("disk full")
+
+        monkeypatch.setattr(os, "replace", fail)
+        with pytest.raises(OSError, match="disk full"):
+            _write(tmp_path / "a.webp", b"new")
+        assert os.listdir(tmp_path) == []
+
+
+class TestIngest:
+    RECORD = Path("campaigns/campaign_1/content/Harness.md")
+    IMAGE = f"{ART_DIRECTORY}/Harness.webp"
+
+    @pytest.mark.parametrize("with_vault", [True, False])
+    def test_writes_the_image_and_sets_the_field(
+        self,
+        vault: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        with_vault: bool,
+    ) -> None:
+        source = picture(tmp_path / "a.png", (300, 200))
+        if with_vault:
+            illustration = ingest(self.RECORD, source, vault)
+        else:
+            monkeypatch.chdir(vault)
+            illustration = ingest(self.RECORD, source)
+        record = vault.resolve() / self.RECORD
+        data = (vault / self.IMAGE).read_bytes()
+        assert illustration == Illustration(
+            vault.resolve(), record, self.IMAGE, 300, len(data), None
+        )
+        assert frontmatter(record)["image"] == self.IMAGE
+        assert opened(data).format == "WEBP"
+
+    @pytest.mark.parametrize(
+        ("previous", "output", "replaced"),
+        [
+            ("assets/old.webp", None, "assets/old.webp"),
+            ("", None, None),
+            ("assets/art/Harness.webp", None, None),
+            ("assets/art/Harness.webp", "assets/new.webp", "assets/art/Harness.webp"),
+        ],
+    )
+    def test_reports_the_image_it_replaces(
+        self,
+        vault: Path,
+        tmp_path: Path,
+        previous: str,
+        output: str | None,
+        replaced: str | None,
+    ) -> None:
+        path = vault / self.RECORD
+        path.write_text(set_field(path.read_text(), "image", previous))
+        source = picture(tmp_path / "a.png", (30, 20))
+        illustration = ingest(self.RECORD, source, vault, output=output, overwrite=True)
+        assert illustration.replaced == replaced
+
+    def test_options_reach_the_encoder(
+        self, vault: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[dict[str, object]] = []
+
+        def encode(source: Path, **options: object) -> tuple[bytes, int]:
+            calls.append(options)
+            return b"webp", 4
+
+        monkeypatch.setattr(module, "encode", encode)
+        ingest(
+            self.RECORD,
+            tmp_path / "a.png",
+            vault,
+            max_bytes=10,
+            max_edge=20,
+            opacity=True,
+        )
+        assert calls == [{"max_bytes": 10, "max_edge": 20, "opacity": True}]
+        assert (vault / self.IMAGE).read_bytes() == b"webp"
+
+    @pytest.mark.parametrize("overwrite", [False, True])
+    def test_an_existing_image_needs_overwrite(
+        self, vault: Path, tmp_path: Path, overwrite: bool
+    ) -> None:
+        (vault / ART_DIRECTORY).mkdir()
+        (vault / self.IMAGE).write_bytes(b"old")
+        source = picture(tmp_path / "a.png", (30, 20))
+        if overwrite:
+            ingest(self.RECORD, source, vault, overwrite=True)
+            assert (vault / self.IMAGE).read_bytes() != b"old"
+        else:
+            with pytest.raises(ValueError, match="already exists; pass --overwrite"):
+                ingest(self.RECORD, source, vault)
+            assert (vault / self.IMAGE).read_bytes() == b"old"
+
+    def test_keeps_a_byte_order_mark(self, vault: Path, tmp_path: Path) -> None:
+        path = vault / self.RECORD
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        ingest(self.RECORD, picture(tmp_path / "a.png", (30, 20)), vault)
+        assert path.read_bytes().startswith(b"\xef\xbb\xbf---\n")
+        assert frontmatter(path)["image"] == self.IMAGE
+
+    @pytest.mark.parametrize(
+        ("setup", "message"),
+        [
+            ("pillow", "needs Pillow"),
+            ("not markdown", "is not a Markdown record"),
+            ("directory", "is a directory or symlink"),
+            ("not a picture", "is not a picture"),
+            ("invalid yaml", "has invalid frontmatter"),
+            ("unsettable", "without changing other fields"),
+        ],
+    )
+    def test_writes_nothing_when_it_cannot_ingest(
+        self,
+        vault: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        setup: str,
+        message: str,
+    ) -> None:
+        record = self.RECORD
+        source = picture(tmp_path / "a.png", (30, 20))
+        path = vault / record
+        if setup == "pillow":
+            monkeypatch.setattr(module, "PILLOW", False)
+        elif setup == "not markdown":
+            record = Path("assets/notes.txt")
+            (vault / record).write_text("text")
+        elif setup == "directory":
+            (vault / self.IMAGE).mkdir(parents=True)
+        elif setup == "not a picture":
+            source.write_bytes(b"text")
+        elif setup == "invalid yaml":
+            path.write_text("---\ntype: [\n---\n")
+        else:
+            path.write_text(
+                path.read_text().replace("summary:", '"image": x\nsummary:')
+            )
+        before = path.read_bytes()
+        with pytest.raises(ValueError, match=message):
+            ingest(record, source, vault)
+        assert path.read_bytes() == before
+        assert not (vault / self.IMAGE).is_file()

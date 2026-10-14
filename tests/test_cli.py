@@ -13,7 +13,14 @@ from pathlib import Path
 import pytest
 
 from armarium import cli
-from armarium.cli import _jobs, _min_repeats, _subtype_choices, main, parse_args
+from armarium.cli import (
+    _jobs,
+    _min_repeats,
+    _positive,
+    _subtype_choices,
+    main,
+    parse_args,
+)
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
 from armarium.transcribe import (
@@ -2065,6 +2072,166 @@ class TestTranscribeCommand:
             parse_args(["transcribe", *arguments])
         assert exc.value.code == 2
         assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestIllustrateCommand:
+    RECORD = "campaigns/campaign_1/content/Harness.md"
+
+    @pytest.fixture
+    def starter(self, tmp_path: Path) -> Path:
+        from armarium.content import add_content
+
+        root = tmp_path / "vault"
+        shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/starter", root)
+        add_content("Harness", "Gear", root, campaign=1)
+        return root
+
+    @pytest.fixture
+    def source(self, tmp_path: Path) -> Path:
+        from PIL import Image
+
+        Image.new("RGB", (30, 20), "red").save(tmp_path / "harness.png")
+        return tmp_path / "harness.png"
+
+    def test_prints_the_image_path(
+        self,
+        starter: Path,
+        source: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        image = "assets/art/Harness.webp"
+        argv = ["armarium", "illustrate", "ingest", self.RECORD, str(source)]
+        monkeypatch.setattr(sys, "argv", [*argv, "--vault", str(starter)])
+        main()
+        output = capsys.readouterr()
+        assert output.out == f"{image}\n"
+        messages = [line.split("] ", 1)[1] for line in output.err.splitlines()]
+        size = (starter / image).stat().st_size
+        assert messages == [
+            f"INFO: Wrote {image}: 30 px on its long edge, {size} bytes",
+            f"INFO: Set image in {self.RECORD}; validating",
+            "INFO: Validation completed successfully",
+        ]
+        assert f"image: {image}\n" in (starter / self.RECORD).read_text()
+
+    def test_reports_the_image_it_replaces(
+        self,
+        starter: Path,
+        source: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        path = starter / self.RECORD
+        path.write_text(path.read_text().replace("source:", "image: old.png\nsource:"))
+        argv = ["armarium", "illustrate", "ingest", self.RECORD, str(source)]
+        monkeypatch.setattr(sys, "argv", [*argv, "--vault", str(starter)])
+        main()
+        assert "INFO: The record's image was old.png, left in place" in (
+            capsys.readouterr().err
+        )
+
+    def test_exits_with_one_when_it_cannot_ingest(
+        self,
+        starter: Path,
+        source: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        argv = ["armarium", "illustrate", "ingest", self.RECORD, str(source)]
+        monkeypatch.setattr(
+            sys, "argv", [*argv, "--vault", str(starter), "-o", "a.webp"]
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert output.err.splitlines()[0].endswith(
+            f"ERROR: Cannot illustrate {self.RECORD}: a.webp is not a .webp path "
+            "inside the vault's assets/"
+        )
+
+    def test_exits_with_one_when_the_record_fails_validation(
+        self,
+        starter: Path,
+        source: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        path = starter / self.RECORD
+        path.write_text(path.read_text().replace("source: null", "source: 3"))
+        argv = ["armarium", "illustrate", "ingest", self.RECORD, str(source)]
+        monkeypatch.setattr(sys, "argv", [*argv, "--vault", str(starter)])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert "ERROR: 1 file failed validation" in err
+        assert "ERROR: Image and record change retained for inspection" in err
+        assert (starter / "assets/art/Harness.webp").is_file()
+
+    def test_options(self) -> None:
+        args = parse_args(
+            [
+                "illustrate",
+                "ingest",
+                "a.md",
+                "a.png",
+                "-o",
+                "assets/a.webp",
+                "--max-bytes",
+                "5000",
+                "--max-edge",
+                "600",
+                "--opacity",
+                "--overwrite",
+            ]
+        )
+        assert (args.stage, args.record, args.picture) == (
+            "ingest",
+            Path("a.md"),
+            Path("a.png"),
+        )
+        assert (args.output, args.max_bytes, args.max_edge) == (
+            "assets/a.webp",
+            5000,
+            600,
+        )
+        assert (args.opacity, args.overwrite, args.vault) == (True, True, None)
+
+    def test_defaults(self) -> None:
+        args = parse_args(["illustrate", "ingest", "a.md", "a.png"])
+        assert (args.output, args.max_bytes, args.max_edge) == (None, 100_000, 1200)
+        assert (args.opacity, args.overwrite) == (False, False)
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["ingest"],
+            ["ingest", "a.md"],
+            ["ingest", "a.md", "a.png", "--max-edge", "0"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["illustrate", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestPositive:
+    @pytest.mark.parametrize(("value", "expected"), [("1", 1), ("98000", 98000)])
+    def test_size(self, value: str, expected: int) -> None:
+        assert _positive(value) == expected
+
+    @pytest.mark.parametrize("value", ["0", "-3", "2.0", "", "all"])
+    def test_invalid_size(self, value: str) -> None:
+        with pytest.raises(argparse.ArgumentTypeError, match="at least 1"):
+            _positive(value)
 
 
 class TestMinRepeats:

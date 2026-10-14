@@ -18,6 +18,7 @@ from armarium.extensions import (
     update_extension,
 )
 from armarium.find import find_records
+from armarium.illustrate import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, ingest
 from armarium.init import init_vault
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
@@ -70,6 +71,17 @@ def _jobs(value: str) -> int:
     if jobs < 1:
         raise argparse.ArgumentTypeError("jobs must be a whole number of at least 1")
     return jobs
+
+
+def _positive(value: str) -> int:
+    """Parse a size of at least one."""
+    try:
+        size = int(value)
+    except ValueError:
+        size = 0
+    if size < 1:
+        raise argparse.ArgumentTypeError("must be a whole number of at least 1")
+    return size
 
 
 def _min_repeats(value: str) -> int:
@@ -298,6 +310,64 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="vault root (default: discovered from the path)",
     )
+    illustration = commands.add_parser(
+        "illustrate", help="illustrate a record with a picture"
+    )
+    stages = illustration.add_subparsers(dest="stage", required=True)
+    picture = stages.add_parser(
+        "ingest",
+        help="take a picture into the vault as a record's image",
+        description=(
+            "Take a picture into the vault's assets/ as a WebP, trimmed of "
+            "plain borders and shrunk until it fits the size budget, and set "
+            "the record's image field to its path. Prints the image's path, "
+            "then validates the record."
+        ),
+    )
+    picture.add_argument(
+        "record",
+        type=Path,
+        help="record to illustrate; with --vault, relative to the vault root",
+    )
+    picture.add_argument(
+        "picture", type=Path, help="picture to take in, in any common format"
+    )
+    picture.add_argument(
+        "-o",
+        "--output",
+        help=(
+            "vault-relative .webp path inside assets/ to write "
+            f"(default: {ART_DIRECTORY}/NAME.webp, NAME the record's)"
+        ),
+    )
+    picture.add_argument(
+        "--max-bytes",
+        type=_positive,
+        default=MAX_BYTES,
+        help=f"largest image to write, in bytes (default: {MAX_BYTES})",
+    )
+    picture.add_argument(
+        "--max-edge",
+        type=_positive,
+        default=MAX_EDGE,
+        help=f"largest long edge to write, in pixels (default: {MAX_EDGE})",
+    )
+    picture.add_argument(
+        "--opacity",
+        action="store_true",
+        help=(
+            "store a monochrome drawing on white as black opacity on a "
+            "transparent ground"
+        ),
+    )
+    picture.add_argument(
+        "--overwrite", action="store_true", help="replace an existing image file"
+    )
+    picture.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the record)",
+    )
     recording = commands.add_parser(
         "transcribe",
         help="transcribe a recording to raw text with whisper.cpp",
@@ -409,8 +479,9 @@ def main() -> None:
 
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
-            find matches nothing, trace cannot locate its file or
-            transcribe cannot write its text.
+            find matches nothing, trace cannot locate its file,
+            transcribe cannot write its text or illustrate cannot take its
+            picture in.
             Creation reports validation warnings and errors; validate also reports
             informational diagnostics and coverage counts. Argument parsing
             exits with 0 for help or 2 for usage errors.
@@ -532,10 +603,42 @@ def main() -> None:
             sys.exit(1)
         logger.info("New %s successfully created; validating", args.addition)
         result = validate(find_vault(destination))
+    elif args.command == "illustrate":
+        try:
+            illustration = ingest(
+                args.record,
+                args.picture,
+                args.vault,
+                output=args.output,
+                max_bytes=args.max_bytes,
+                max_edge=args.max_edge,
+                opacity=args.opacity,
+                overwrite=args.overwrite,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot illustrate %s: %s", args.record, exc)
+            sys.exit(1)
+        logger.info(
+            "Wrote %s: %s px on its long edge, %s bytes",
+            illustration.image,
+            illustration.edge,
+            illustration.size,
+        )
+        if illustration.replaced is not None:
+            logger.info(
+                "The record's image was %s, left in place", illustration.replaced
+            )
+        print(illustration.image)
+        destination = illustration.record
+        logger.info(
+            "Set image in %s; validating",
+            destination.relative_to(illustration.vault).as_posix(),
+        )
+        result = validate(destination, illustration.vault)
     else:
         result = validate(args.path, args.vault, jobs=args.jobs)
         result.report()
-    if args.command in {"init", "add", "extension"}:
+    if args.command in {"init", "add", "extension", "illustrate"}:
         for diagnostic in result.diagnostics:
             if diagnostic.severity != "info":
                 diagnostic.report()
@@ -553,8 +656,10 @@ def main() -> None:
             )
         elif args.command == "extension":
             logger.error("Extension change retained; see validation diagnostics above")
+        elif args.command == "illustrate":
+            logger.error("Image and record change retained for inspection")
         sys.exit(1)
-    if args.command in {"init", "add", "extension"}:
+    if args.command in {"init", "add", "extension", "illustrate"}:
         logger.info("Validation completed successfully")
 
 

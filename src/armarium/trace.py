@@ -84,7 +84,7 @@ def _final_segment(target: str) -> str:
     return link_key(target).rsplit("/", 1)[-1]
 
 
-def _locate(path: Path, vault: Path | None) -> tuple[Path, Path]:
+def locate(path: Path, vault: Path | None) -> tuple[Path, Path]:
     """Find the file to trace and the vault it belongs to.
 
     Args:
@@ -265,7 +265,7 @@ def trace_record(path: Path, vault: Path | None = None) -> tuple[str, list[Refer
             given one, or is an entry that vault scans skip.
         OSError: A directory cannot be read.
     """
-    root, located = _locate(path, vault)
+    root, located = locate(path, vault)
     sharing = _sharing(find_files(root), _spellings(located))
     # The scan's own path for the file, however the given path spelled it.
     target = next((file for file in sharing if file.samefile(located)), None)
@@ -322,7 +322,7 @@ def trace_outbound(
             scans skip.
         OSError: A directory or the record cannot be read.
     """
-    root, located = _locate(path, vault)
+    root, located = locate(path, vault)
     if located.suffix.lower() != ".md":
         raise ValueError(f"{located} is not a Markdown record, so it holds no links")
     files = find_files(root)
