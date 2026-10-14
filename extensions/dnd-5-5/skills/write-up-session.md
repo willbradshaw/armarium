@@ -32,10 +32,6 @@ this:
 
 Round each share down to a whole number.
 
-A campaign may use its own rule instead, such as leaving out absent players'
-characters, or giving an ally a share in proportion to its XP. Follow the
-Session reference where it says so.
-
 ## A campaign that awards XP
 
 Add an XP part to the draft, after Loot. It is written under Rewards, in a
