@@ -174,30 +174,12 @@ Three pages hold the tables for running a game:
 
 ## Sessions
 
-The extension adds to three of the vault's agent skills, as
+The extension adds to the vault's session skills through
 [skill addenda](https://github.com/willbradshaw/armarium/blob/main/docs/agents.md#adding-to-a-skill).
-With it enabled, a Session's Preparation and Rewards hold the following.
-
-- **Encounters.** Each prepared fight has an Enemies table (Type, Number, CR,
-  XP), an Allies table with the same columns for creatures expected to give
-  the party substantial help, and a Difficulty table (Enemy XP, Characters,
-  Allies, Level, Difficulty). The difficulty is Low, Moderate, High or Above High, rated as
-  Combat Encounter Difficulty describes, with each ally counted as one more
-  character of the party's level. Every campaign rates its fights, whether or not it
-  awards XP.
-- **XP.** In a campaign that awards XP, Rewards has an `### XP` section: the
-  XP of each fight won, any other awards, and the campaign's running total per
-  character.
-- **Advancement.** When characters gain a level, Rewards has an
-  `### Advancement` section naming each one and their new level, and the
-  character's `level` field is updated. A level is gained only when the GM
-  says so: in a campaign with XP, reaching a threshold prompts the question,
-  since campaigns differ on when the level comes.
-
-By default, a fight's XP is divided evenly among the party's characters,
-counting each ally who gave substantial help as one more member of the party,
-and each share is rounded down. Whether a campaign awards XP, and any sharing
-rule of its own, is recorded in the campaign's `Session reference` Note.
+With it enabled, each prepared fight is rated Low, Moderate or High as Combat
+Encounter Difficulty describes. In a campaign that awards XP, a Session's
+Rewards record the XP gained and the campaign's running total. Rewards also
+record any levels the characters gained.
 
 ## Attribution
 
