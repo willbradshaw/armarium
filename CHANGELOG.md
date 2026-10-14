@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let an extension, or a vault, add to a shipped agent skill through files in the skill's `addenda/` directory, which `armarium extension` installs and removes.
 - Ship the `update-session-records` agent skill, which brings the records a played Session touches up to date, and the `process-session` skill, which runs the Transcript, write-up and record updates in order.
 - Let the `create-transcript` and `write-up-session` skills create a Session that has no record yet.
 - Stop the `write-up-session` skill writing a Session while a `(?)` remains, and make it ask separately before saving a style rule.

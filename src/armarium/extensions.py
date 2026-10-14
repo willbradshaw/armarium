@@ -18,11 +18,14 @@ from jsonschema.exceptions import SchemaError
 from packaging.version import Version
 
 from armarium.lib import CAMPAIGN_NAME, SUBTYPES
+from armarium.logging import logger
 from armarium.parse import Record
 from armarium.schemas import Schema
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 CONFIG = Path("reference/extensions.json")
+# Where a vault keeps its skills; an extension's addenda install below it.
+SKILLS = ".agents/skills"
 
 
 class ExtensionDeclaration(TypedDict):
@@ -270,6 +273,79 @@ def _armarium_version() -> str:
         return str(tomllib.load(stream)["project"]["version"])
 
 
+def _addenda(root: Path, name: str) -> dict[Path, bytes]:
+    """Read the skill addenda an extension has installed in a vault.
+
+    Args:
+        root: Vault root.
+        name: Extension name.
+
+    Returns:
+        dict[Path, bytes]: The contents of each skill's ``addenda/NAME.md``, by
+            path.
+
+    Raises:
+        ValueError: An addendum is reached through a symlink.
+    """
+    return {
+        _local_path(root, SKILLS, f"{path.parts[-3]}/addenda/{name}.md"): (
+            path.read_bytes()
+        )
+        for path in sorted((root / SKILLS).glob(f"*/addenda/{name}.md"))
+    }
+
+
+def _set_addenda(root: Path, name: str, contents: Mapping[Path, bytes]) -> None:
+    """Make the skill addenda an extension has installed exactly the ones given.
+
+    Delete its other addenda, and each ``addenda`` directory that leaves empty.
+    Other files in those directories, such as the vault's own addenda, are
+    untouched.
+
+    Args:
+        root: Vault root.
+        name: Extension name.
+        contents: The addenda to leave installed, as _addenda returns them;
+            empty to remove them all.
+    """
+    for path in _addenda(root, name):
+        if path not in contents:
+            path.unlink()
+            if not any(path.parent.iterdir()):
+                path.parent.rmdir()
+    for path, content in contents.items():
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(content)
+
+
+def _install_addenda(source: Path, root: Path, name: str) -> None:
+    """Install an extension's skill addenda, replacing those it installed before.
+
+    Each ``skills/SKILL.md`` in the extension becomes ``addenda/NAME.md`` in
+    the vault's skill of that name. A skill the vault lacks gets no addendum,
+    and a warning says so.
+
+    Args:
+        source: Extension directory to install from.
+        root: Vault root.
+        name: Extension name.
+
+    Raises:
+        ValueError: An addendum's destination is reached through a symlink.
+    """
+    contents: dict[Path, bytes] = {}
+    for addendum in sorted((source / "skills").glob("*.md")):
+        skill = addendum.stem
+        if (root / SKILLS / skill / "SKILL.md").is_file():
+            path = _local_path(root, SKILLS, f"{skill}/addenda/{name}.md")
+            contents[path] = addendum.read_bytes()
+        else:
+            logger.warning(
+                "Vault has no %s skill; its %s addendum is not installed", skill, name
+            )
+    _set_addenda(root, name, contents)
+
+
 def enable_extension(name: str, vault: Path | None = None) -> Path:
     """Install a complete extension directory and register its rules.
 
@@ -295,10 +371,13 @@ def _install_extension(
     """Install files and register rules against the complete resulting configuration.
 
     Enable checks existing rules first; update checks them after replacement so
-    rules referencing this extension remain usable during an update.
+    rules referencing this extension remain usable during an update. The
+    extension's ``skills`` directory installs as skill addenda, not with its
+    reference files; a failure restores the addenda found beforehand.
     """
     config = root / CONFIG
     original = config.read_bytes() if config.exists() else None
+    addenda = _addenda(root, name)
     with as_file(_extension(name)) as source:
         addition = _declarations(source / "extension.json")
         if set(addition) != {name}:
@@ -308,7 +387,13 @@ def _install_extension(
         directory.mkdir(parents=True)
         registered = False
         try:
-            shutil.copytree(source, directory, dirs_exist_ok=True)
+            shutil.copytree(
+                source,
+                directory,
+                dirs_exist_ok=True,
+                ignore=lambda parent, _: ["skills"] if Path(parent) == source else [],
+            )
+            _install_addenda(source, root, name)
             for rule in addition[name]["rules"]:
                 for field in ("schema", "template"):
                     if field in rule:
@@ -326,6 +411,7 @@ def _install_extension(
                     config.unlink()
                 else:
                     _write_config(config, original)
+            _set_addenda(root, name, addenda)
             shutil.rmtree(directory)
             if not parent_existed:
                 directory.parent.rmdir()
@@ -347,10 +433,11 @@ def _write_config(path: Path, contents: bytes) -> None:
 def remove_extension(name: str, vault: Path | None = None) -> Path:
     """Unregister an extension and delete its installation, including local edits.
 
-    Records are unchanged. Explicit dependencies prevent removal. A failed
-    change restores the directory and configuration; failed restoration keeps
-    the backup for recovery. Local declarations without an installation are
-    unregistered without deleting their files.
+    Records are unchanged. Explicit dependencies prevent removal. An installed
+    extension's skill addenda are deleted with it. A failed change restores the
+    directory, addenda and configuration; failed restoration keeps the backup
+    for recovery. Local declarations without an installation are unregistered
+    without deleting their files.
     """
     from armarium.add import select_vault
 
@@ -373,6 +460,7 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
                         raise ValueError(
                             "extension files are used by another enabled extension"
                         )
+    addenda = _addenda(root, name) if installed else {}
     workspace = Path(tempfile.mkdtemp(prefix=".armarium-extension-", dir=root))
     backup = workspace / "extension"
     registered = False
@@ -380,6 +468,7 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
     try:
         if installed:
             directory.rename(backup)
+            _set_addenda(root, name, {})
         _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
         registered = True
         load_extensions(root)
@@ -389,6 +478,7 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
             _write_config(config, original)
         if backup.exists():
             backup.rename(directory)
+        _set_addenda(root, name, addenda)
         raise
     finally:
         if committed or not backup.exists():
@@ -402,6 +492,7 @@ def update_extension(
     """Replace an installed extension with files from the current Armarium.
 
     Reuse installation checks without requiring the old extension to be valid.
+    Its skill addenda are replaced with it, dropping any it no longer supplies.
     Preserve the old directory and declaration until replacement succeeds,
     including when versions match. Downgrades require allow_downgrade.
     Failed restoration retains the backup.

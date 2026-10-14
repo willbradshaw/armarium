@@ -22,6 +22,12 @@ want the Session to cover.
 
 Run the commands from the vault root, or add `--vault PATH`.
 
+If `.agents/skills/prepare-session/addenda/` exists, read every file in it before you
+start. Each adds to this procedure, for an extension the vault has enabled or
+for the vault itself, and applies as if it were written here. Where an addendum
+and this file disagree, follow the addendum; where two addenda disagree, follow
+`vault.md`, the vault's own.
+
 ## The rule: ask before adding anything new
 
 Never write a new scene, Clue, character, place, encounter or reward without

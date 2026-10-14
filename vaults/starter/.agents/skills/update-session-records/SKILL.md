@@ -17,6 +17,12 @@ your memory of either.
 Run the commands from the vault root, or add `--vault PATH`. Keep working files
 in `.scratch/`, which Git ignores.
 
+If `.agents/skills/update-session-records/addenda/` exists, read every file in it before you
+start. Each adds to this procedure, for an extension the vault has enabled or
+for the vault itself, and applies as if it were written here. Where an addendum
+and this file disagree, follow the addendum; where two addenda disagree, follow
+`vault.md`, the vault's own.
+
 ## 1. List what the Session touches
 
 A played Session touches the records its Notes half links to. List the

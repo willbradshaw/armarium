@@ -110,6 +110,11 @@ class TestAgentFiles:
         assert stub == metadata
         assert f"`.agents/skills/{skill}/SKILL.md`" in body
 
+    @pytest.mark.parametrize("skill", AGENT_SKILLS)
+    def test_skill_reads_its_addenda(self, skill: str) -> None:
+        _, body = skill_metadata(STARTER / f".agents/skills/{skill}/SKILL.md")
+        assert f"`.agents/skills/{skill}/addenda/`" in body
+
     def test_every_stub_has_a_skill(self) -> None:
         stubs = sorted(p.name for p in (STARTER / ".claude/skills").iterdir())
         assert stubs == AGENT_SKILLS
