@@ -1928,13 +1928,34 @@ class TestDndRulesReference:
         for path in (ROOT / "extensions/dnd-5-5" / folder).glob("*.md")
     )
 
-    def test_pages_are_bare_references(self) -> None:
-        assert len(self.PAGES) == 16
+    TABLES = (
+        "Character Advancement",
+        "Combat Encounter Difficulty",
+        "Magic Item Values",
+    )
+    ATTRIBUTION = (
+        "This work includes material from the System Reference Document 5.2.1 "
+        "(“SRD 5.2.1”) by Wizards of the Coast LLC, available at "
+        "https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the "
+        "Creative Commons Attribution 4.0 International License, available at "
+        "https://creativecommons.org/licenses/by/4.0/legalcode."
+    )
+
+    def test_pages_are_references(self) -> None:
+        assert len(self.PAGES) == 19
         readme = (ROOT / "extensions/dnd-5-5/README.md").read_text()
         for page in self.PAGES:
             text = (ROOT / "extensions/dnd-5-5" / page).read_text()
-            assert text == '---\ntype: "[[Reference]]"\n---\n', page
+            bare = '---\ntype: "[[Reference]]"\n---\n'
+            assert (text == bare) is (page.stem not in self.TABLES), page
+            assert text.startswith(bare), page
             assert page.stem in readme, page
+
+    @pytest.mark.parametrize("page", [*TABLES, "README"])
+    def test_srd_attribution(self, page: str) -> None:
+        folder = "" if page == "README" else "rules/"
+        text = (ROOT / f"extensions/dnd-5-5/{folder}{page}.md").read_text()
+        assert self.ATTRIBUTION in " ".join(text.split())
 
     def test_links_resolve_while_enabled(self, vault: Path) -> None:
         enable_extension("dnd-5-5", vault)

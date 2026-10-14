@@ -149,12 +149,12 @@ See the [PC schema](schemas/pc.schema.json) and
 ## Rules reference
 
 The extension installs Reference pages for D&D rules terms and class features, so records can link
-to them by name, for example `[[Short Rest]]` or `[[Sentinel]]`. The pages hold
-no text yet.
+to them by name, for example `[[Short Rest]]` or `[[Sentinel]]`. Most of the
+pages hold no text yet.
 
 | Folder | Pages |
 | --- | --- |
-| `rules/` | Blindsight, Heroic Inspiration, Long Rest, Origin Feat, Proficiency, Short Rest, Skill, Species |
+| `rules/` | Blindsight, Character Advancement, Combat Encounter Difficulty, Heroic Inspiration, Long Rest, Magic Item Values, Origin Feat, Proficiency, Short Rest, Skill, Species |
 | `conditions/` | Exhaustion |
 | `feats/` | Ability Score Improvement, Durable, Heavy Armor Master, Mage Slayer, Sentinel, Spell Sniper |
 | `features/` | Divine Sense |
@@ -163,3 +163,19 @@ Like every installed extension file, these pages are replaced on update and
 removed with the extension, so keep vault notes about a rule elsewhere. A vault
 record with the same name as one of these pages makes links to that name
 ambiguous.
+
+Three pages hold the tables for running a game:
+
+| Page | Holds |
+| --- | --- |
+| Character Advancement | the XP needed for each level, and each level's Proficiency Bonus |
+| Combat Encounter Difficulty | the XP budget per character for each difficulty, XP by Challenge Rating, and how to build an encounter within a budget |
+| Magic Item Values | values by rarity, the rules for consumables and items built on equipment, and Spell Scroll values |
+
+## Attribution
+
+This work includes material from the System Reference Document 5.2.1 (“SRD
+5.2.1”) by Wizards of the Coast LLC, available at
+https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative
+Commons Attribution 4.0 International License, available at
+https://creativecommons.org/licenses/by/4.0/legalcode.
