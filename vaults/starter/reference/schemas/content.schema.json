@@ -291,6 +291,18 @@
                 ],
                 "description": "Optional vault-relative image path or image URL."
               },
+              "visual": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "\\S"
+                  }
+                ],
+                "description": "Optional art direction for the image: what it shows and how."
+              },
               "url": {
                 "anyOf": [
                   {

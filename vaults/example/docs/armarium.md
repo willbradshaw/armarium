@@ -37,6 +37,7 @@ Run these from the vault root, or add `--vault PATH`.
 | `armarium add content "NAME" --subtype SUBTYPE` | creates a record from the vault's template; also `session`, `clue`, `note`, `player`, `transcript` and `campaign` |
 | `armarium find "NAME"` | lists the records with that name or alias |
 | `armarium trace "PATH"` | lists every link to a record, and where each one sits |
+| `armarium illustrate prompt "PATH"` | prints what an image model should be told to paint a record's picture |
 | `armarium illustrate ingest "PATH" "PICTURE"` | takes a picture into `assets/` as a record's image and sets its `image` field |
 | `armarium transcribe "FILE"` | turns a session recording, or raw speech-to-text, into text ready to clean into a Transcript |
 | `armarium validate .` | checks the whole vault; give a file to check one record |

@@ -16,15 +16,20 @@ from armarium.illustrate import (
     _as_opacity,
     _destination,
     _on_white,
+    _plain,
+    _read,
     _trimmed,
     _write,
+    build_prompt,
     edges,
     encode,
     ingest,
+    prompt,
+    rules_text,
     set_field,
 )
-from armarium.parse import Frontmatter
-from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE
+from armarium.parse import Frontmatter, Record
+from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, Style
 
 STARTER = Path(__file__).resolve().parents[1] / "vaults/starter"
 
@@ -237,6 +242,157 @@ class TestSetField:
     def test_refuses(self, text: str, message: str) -> None:
         with pytest.raises(ValueError, match=message):
             set_field(text, "image", "assets/a.webp")
+
+
+def parsed(tmp_path: Path, text: str, name: str = "Lucky Ring") -> Record:
+    path = tmp_path / f"{name}.md"
+    path.write_text(text)
+    record, _ = Record.parse(path, tmp_path)
+    assert record is not None
+    return record
+
+
+class TestPlain:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("A [[Lucky Ring]] of [[content/Gold|gold]].", "A Lucky Ring of gold."),
+            ("See [[Rules#Luck]] and [[rules/Luck#^b1]].", "See Rules and Luck."),
+            (
+                "**Bold**, *italic*, __strong__ and ***both***.",
+                "Bold, italic, strong and both.",
+            ),
+            ("  plain  \n", "plain"),
+        ],
+    )
+    def test_reads_as_prose(self, text: str, expected: str) -> None:
+        assert _plain(text) == expected
+
+
+class TestRulesText:
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            (
+                "> [!rules]\n> *Ring*, rare.\n>\n> Grants [[Luck]].\n\n## Notes\n",
+                "Ring, rare.\n\nGrants Luck.",
+            ),
+            ("> [!RULES]- Folded\n> Text.\nAfter\n", "Text."),
+            ("Intro.\n\n> [!rules]\n>   Indented.\n", "Indented."),
+            ("> [!rules]\n>\n", ""),
+            ("> [!note]\n> Not rules.\n", ""),
+            ("> Just a quote.\n", ""),
+            ("## Notes\n- N/A\n", ""),
+        ],
+    )
+    def test_reads_the_rules_callout(
+        self, tmp_path: Path, body: str, expected: str
+    ) -> None:
+        assert rules_text(parsed(tmp_path, "---\ntype: x\n---\n" + body)) == expected
+
+
+class TestBuildPrompt:
+    STYLE = Style("Gear", "Paint one item.")
+
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            (
+                "---\nvisual: ' A ring on velvet. '\n---\n> [!rules]\n> Grants luck.\n",
+                "Paint one item.\n\n<subject>Lucky Ring</subject>\n\n<rules>\nGrants luck."
+                "\n</rules>\n\n<visual>\nA ring on velvet.\n</visual>",
+            ),
+            (
+                "---\nvisual:\n---\n> [!rules]\n> Grants luck.\n",
+                "Paint one item.\n\n<subject>Lucky Ring</subject>\n\n<rules>\nGrants luck.\n</rules>",
+            ),
+            (
+                "---\nvisual: A ring.\n---\n## Notes\n",
+                "Paint one item.\n\n<subject>Lucky Ring</subject>\n\n<visual>\nA ring.\n</visual>",
+            ),
+            (
+                "---\nvisual: 3\n---\n",
+                "Paint one item.\n\n<subject>Lucky Ring</subject>",
+            ),
+        ],
+    )
+    def test_assembles_the_parts(
+        self, tmp_path: Path, text: str, expected: str
+    ) -> None:
+        assert build_prompt(self.STYLE, parsed(tmp_path, text)) == expected
+
+    def test_a_style_without_text_opens_with_the_subject(self, tmp_path: Path) -> None:
+        record = parsed(tmp_path, "---\ntype: x\n---\n")
+        assert (
+            build_prompt(Style("Bare", ""), record) == "<subject>Lucky Ring</subject>"
+        )
+
+
+class TestRead:
+    def test_finds_and_parses_the_record(self, vault: Path) -> None:
+        root, path, record = _read(TestIngest.RECORD, vault)
+        assert (root, path) == (vault.resolve(), vault.resolve() / TestIngest.RECORD)
+        assert record.frontmatter["subtype"] == "Gear"
+
+    @pytest.mark.parametrize(
+        ("relative", "text", "message"),
+        [
+            ("assets/notes.txt", "text", "is not a Markdown record"),
+            ("content/Bad.md", "---\ntype: [\n---\n", "cannot parse the record: "),
+        ],
+    )
+    def test_refuses_what_is_not_a_record(
+        self, vault: Path, relative: str, text: str, message: str
+    ) -> None:
+        (vault / relative).write_text(text)
+        with pytest.raises(ValueError, match=message):
+            _read(Path(relative), vault)
+
+
+class TestPrompt:
+    def test_uses_the_style_that_applies(self, vault: Path) -> None:
+        path = vault / TestIngest.RECORD
+        path.write_text(
+            path.read_text().replace("> [!rules]\n>\n", "> [!rules]\n> Hauls one.\n")
+        )
+        text = prompt(TestIngest.RECORD, vault)
+        style = (
+            (vault / "reference/styles/Gear.md")
+            .read_text()
+            .split("---\n", 2)[2]
+            .strip()
+        )
+        assert (
+            text
+            == f"{style}\n\n<subject>Harness</subject>\n\n<rules>\nHauls one.\n</rules>"
+        )
+
+    def test_uses_the_style_named(self, vault: Path) -> None:
+        (vault / "reference/styles/Ink.md").write_text(
+            '---\ntype: "[[Reference]]"\n---\nInk it.\n'
+        )
+        assert (
+            prompt(TestIngest.RECORD, vault, style="Ink")
+            == "Ink it.\n\n<subject>Harness</subject>"
+        )
+
+    @pytest.mark.parametrize(
+        ("relative", "text", "message"),
+        [
+            (
+                "content/Port.md",
+                '---\ntype: "[[Content]]"\nsubtype: Location\n---\n',
+                "no style illustrates Content/Location records; choose one with --style",
+            ),
+            ("content/Loose.md", "Body\n", "no style illustrates untyped records"),
+        ],
+    )
+    def test_needs_a_style(
+        self, vault: Path, relative: str, text: str, message: str
+    ) -> None:
+        (vault / relative).write_text(text)
+        with pytest.raises(ValueError, match=message):
+            prompt(Path(relative), vault)
 
 
 class TestDestination:

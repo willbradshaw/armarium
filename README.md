@@ -29,7 +29,7 @@ for details.
 | `armarium find` | looks a record up by name or alias | [Finding records](docs/find.md) |
 | `armarium trace` | lists the records that link to a record, or the files it links to | [Tracing links to a record](docs/trace.md) |
 | `armarium transcribe` | turns a session recording into raw transcript text | [Transcribing a recording](docs/transcribe.md) |
-| `armarium illustrate ingest` | takes a picture into the vault as a record's image | [Illustrating a record](docs/illustrate.md) |
+| `armarium illustrate` | prints the prompt for a record's picture, and takes a picture into the vault as its image | [Illustrating a record](docs/illustrate.md) |
 
 Optional [extensions](docs/extensions.md) add additional conventions. A new
 vault also carries [instructions and skills for coding agents](docs/agents.md).
