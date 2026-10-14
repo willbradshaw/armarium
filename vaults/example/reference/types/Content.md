@@ -44,9 +44,9 @@ such as `Healing` or `Warding`.
 | Date | `reckoning`: a nonempty link to Lore describing the calendar. `scale`: a nonblank calendar-defined string, such as day or year. |
 
 Object describes narrative artifacts; Gear describes equipment with recorded game
-mechanics, whether magical or mundane. Gear may add an `image` path relative to
-the vault root or an image URL, and an HTTP/HTTPS `url` for its source. These fields
-may be omitted or empty. Other rules-specific fields are custom frontmatter.
+mechanics, whether magical or mundane. Gear may add an `image`, the vault-relative
+path of an image file in the vault or an HTTP/HTTPS image URL, and an HTTP/HTTPS
+`url` for its source. These fields may be omitted or empty. Other rules-specific fields are custom frontmatter.
 
 Dates represent particular days or periods within a calendar. Recurring calendar
 concepts, such as a named month or weekday, are Lore rather than Dates.

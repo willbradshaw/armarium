@@ -16,7 +16,7 @@ from armarium.extensions import (
     is_template,
     load_extension_set,
 )
-from armarium.index import VaultIndex, name_key, read_aliases
+from armarium.index import VaultIndex, link_key, name_key, read_aliases
 from armarium.lib import (
     CAMPAIGN_NAME,
     UNSCANNED_DIRECTORIES,
@@ -107,6 +107,9 @@ ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
 
 # A Transcript utterance opens with a speaker tag, a space and text.
 SPEECH = re.compile(r"\[[^\[\]]+\] \S")
+
+# An image field holding a web address names no file to check.
+IMAGE_URL = re.compile(r"[Hh][Tt][Tt][Pp][Ss]?://")
 
 # Fields that link a record to its predecessor, followed record to record.
 CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
@@ -1611,6 +1614,37 @@ def validate_chains(record: Record, index: VaultIndex) -> Findings:
         current = linked
 
 
+def validate_image(record: Record, index: VaultIndex) -> Findings:
+    """Check that the record's image path names a file in the vault.
+
+    Args:
+        record: Selected record; templates are excluded by the caller.
+        index: Whole-vault index of the files a path may name.
+
+    Returns:
+        Findings: A record.image error when image is a nonblank path that is
+            not, spelled exactly, the vault-relative path of a file in the
+            vault. Hidden files and symlinks are not in the vault. A null,
+            blank or absent image passes, as does an HTTP or HTTPS URL, which
+            is not fetched; a value that is not text is left to the schema.
+    """
+    findings = Findings.from_record(record, index)
+    value = record.frontmatter.get("image")
+    if not isinstance(value, str) or not value.strip() or IMAGE_URL.match(value):
+        return findings
+    found = any(
+        path.relative_to(index.root).as_posix() == value
+        for path in index.targets.get(link_key(value), set())
+    )
+    findings.diagnose(
+        not found,
+        "record.image",
+        f"image {value} is not the vault-relative path of a file in the vault",
+        "image",
+    )
+    return findings
+
+
 # Checks every typed record receives, in the order validate_markdown runs them.
 RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_wikilinks,
@@ -1621,6 +1655,7 @@ RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_campaigns,
     validate_identity_links,
     validate_chains,
+    validate_image,
     validate_appearances,
     validate_clue,
     validate_transcript,
