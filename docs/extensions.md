@@ -25,8 +25,8 @@ extension schemas. Matching extension templates supply defaults for new records;
 conflicting templates are rejected.
 
 An extension can also [add to the vault's agent skills](agents.md#adding-to-a-skill).
-Each addition installs as `.agents/skills/SKILL/addenda/NAME.md`. A skill the
-vault does not have gets none, and the command warns of it.
+Each addition installs as `.agents/skills/SKILL/addenda/NAME.md`. If the vault
+doesn't have that skill, the addition is skipped and the command logs a warning.
 
 Both commands validate the completed vault. Validation failures leave the new
 vault or enabled extension in place for correction. Installation failures roll
