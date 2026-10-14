@@ -13,6 +13,8 @@ properties:
     displayName: Scope
   formula.summary:
     displayName: Summary
+  note.subtype:
+    displayName: Subtype
   note.content_tags:
     displayName: Tags
   note.stats:
@@ -32,6 +34,13 @@ properties:
   note.url:
     displayName: URL
 views:
+  - type: table
+    name: All
+    order: [file.name, subtype, formula.scope, formula.summary, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
   - type: table
     name: NPCs
     filters: 'subtype == "NPC"'

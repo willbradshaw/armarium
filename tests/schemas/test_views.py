@@ -186,14 +186,25 @@ class ContentBaseTests(unittest.TestCase):
             },
         )
 
+    @staticmethod
+    def subtype(view: dict) -> str | None:
+        """Return the subtype a table selects, or None for all Content."""
+        if "filters" not in view:
+            return None
+        return re.fullmatch(r'subtype == "([A-Za-z]+)"', view["filters"])[1]
+
+    def test_opens_on_all_content(self):
+        first = self.BASE["views"][0]
+        self.assertEqual(first["name"], "All")
+        self.assertIsNone(self.subtype(first))
+        self.assertIn("subtype", first["order"])
+
     def test_each_core_subtype_has_one_table(self):
         subtypes = []
-        for view in self.BASE["views"]:
+        for view in self.BASE["views"][1:]:
             with self.subTest(view=view["name"]):
                 self.assertEqual(view["type"], "table")
-                match = re.fullmatch(r'subtype == "([A-Za-z]+)"', view["filters"])
-                self.assertIsNotNone(match)
-                subtypes.append(match[1])
+                subtypes.append(self.subtype(view))
         self.assertCountEqual(subtypes, self.SUBTYPES)
 
     def test_columns_are_labelled_and_defined(self):
@@ -217,7 +228,7 @@ class ContentBaseTests(unittest.TestCase):
     def test_note_columns_are_documented_fields_of_their_subtype(self):
         fields = content_fields()
         for view in self.BASE["views"]:
-            subtype = re.fullmatch(r'subtype == "(\w+)"', view["filters"])[1]
+            subtype = self.subtype(view)
             for column in view["order"]:
                 if "." in column:
                     continue

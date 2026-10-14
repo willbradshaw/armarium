@@ -18,7 +18,7 @@ to start a new one. `vaults/example/` is a populated vault with two campaigns.
     armarium-prose.css        prose styling
 assets/                       files that are not records: images, handouts
 bases/                        Bases (.base) opened directly to browse records
-  Content.base                a table of Content per core subtype
+  Content.base                all Content, and a table per core subtype
 campaigns/                    only campaign_N directories, at least one
   campaign_N/                 N is a positive integer
     clues/                    Clue records
@@ -50,9 +50,9 @@ Outside the optional root directories, non-Markdown files belong in `assets/`,
 except bases in `bases/` and `reference/views/` and schemas in
 `reference/schemas/`.
 
-`bases/Content.base` has one table per core subtype, selected by
-`type` and `subtype` rather than folder, with each record's scope: `shared` or
-its `campaign_N`. Add the vault's own bases to `bases/`.
+`bases/Content.base` opens on a table of all Content, followed by one table per
+core subtype, selected by `type` and `subtype` rather than folder. Each shows
+the record's scope: `shared` or its `campaign_N`. Add the vault's own bases to `bases/`.
 
 `reference/types/` and `reference/schemas/` correspond one to one: `Clue.md`
 has `clue.schema.json`, and so on, the schema named after the lowercased type.
