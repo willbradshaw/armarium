@@ -56,7 +56,7 @@ class ViewTests(unittest.TestCase):
             self.assertEqual(embedded, set((vault / "reference/views").glob("*.base")))
 
     def test_views_and_styling_are_mirrored(self):
-        for folder in ["reference/views", ".obsidian/snippets"]:
+        for folder in ["bases", "reference/views", ".obsidian/snippets"]:
             starter, example = ROOT / "starter" / folder, ROOT / "example" / folder
             self.assertEqual(
                 {p.name for p in starter.iterdir()}, {p.name for p in example.iterdir()}
@@ -144,6 +144,79 @@ class ViewTests(unittest.TestCase):
                 self.assertNotRegex(
                     path.read_text(), r"(?im)^\s*`{3,}dataview(?:js)?\b|`\s*="
                 )
+
+
+class ContentBaseTests(unittest.TestCase):
+    """Check bases/Content.base against the records of the example vault."""
+
+    BASE = yaml.safe_load((ROOT / "starter/bases/Content.base").read_text())
+    # One table per core subtype except Gear, which extensions specialize.
+    SUBTYPES = {"NPC", "PC", "Location", "Faction", "Object", "Lore", "Date"}
+
+    def records(self, subtype: str) -> list[dict]:
+        vault = ROOT / "example"
+        return [
+            metadata
+            for path in vault.rglob("*.md")
+            if path.relative_to(vault).parts[0] in {"content", "campaigns"}
+            and (metadata := frontmatter(path)).get("type") == "[[types/Content]]"
+            and metadata.get("subtype") == subtype
+        ]
+
+    def test_selects_content_by_type_outside_templates(self):
+        self.assertEqual(
+            self.BASE["filters"],
+            {
+                "and": [
+                    'file.ext == "md"',
+                    '!file.inFolder("reference")',
+                    'type == link("reference/types/Content")',
+                ]
+            },
+        )
+
+    def test_each_core_subtype_has_one_table(self):
+        subtypes = []
+        for view in self.BASE["views"]:
+            with self.subTest(view=view["name"]):
+                self.assertEqual(view["type"], "table")
+                match = re.fullmatch(r'subtype == "([A-Za-z]+)"', view["filters"])
+                self.assertIsNotNone(match)
+                subtypes.append(match[1])
+        self.assertCountEqual(subtypes, self.SUBTYPES)
+
+    def test_columns_are_labelled_and_defined(self):
+        formulas = {f"formula.{name}" for name in self.BASE["formulas"]}
+        used = set()
+        for view in self.BASE["views"]:
+            for column in view["order"]:
+                with self.subTest(view=view["name"], column=column):
+                    if column.startswith("formula."):
+                        self.assertIn(column, formulas)
+                        key = column
+                    elif column.startswith("file."):
+                        key = column
+                    else:
+                        key = f"note.{column}"
+                    self.assertIn(key, self.BASE["properties"])
+                    used.add(key)
+        self.assertEqual(used, set(self.BASE["properties"]))
+        self.assertLessEqual(formulas, used)
+
+    def test_note_columns_are_template_or_example_record_fields(self):
+        template = frontmatter(ROOT / "starter/reference/templates/Content.md")
+        for view in self.BASE["views"]:
+            subtype = re.fullmatch(r'subtype == "(\w+)"', view["filters"])[1]
+            records = self.records(subtype)
+            with self.subTest(view=view["name"]):
+                self.assertTrue(records)
+            for column in view["order"]:
+                if "." in column:
+                    continue
+                with self.subTest(view=view["name"], column=column):
+                    self.assertTrue(
+                        any(column in record for record in [template, *records])
+                    )
 
 
 if __name__ == "__main__":

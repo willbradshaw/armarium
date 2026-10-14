@@ -48,6 +48,7 @@ VAULT_DIRECTORIES = (
     ".obsidian",
     ".obsidian/snippets",
     "assets",
+    "bases",
     "campaigns",
     "content",
     "notes",
@@ -96,7 +97,10 @@ CAMPAIGN_DIRECTORIES = (
 CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
 
 # Where non-Markdown files may live outside assets/, by extension.
-ASSET_EXCEPTIONS = {".base": "reference/views", ".schema.json": "reference/schemas"}
+ASSET_EXCEPTIONS = {
+    ".base": ("bases", "reference/views"),
+    ".schema.json": ("reference/schemas",),
+}
 
 # An Appearances entry: a wikilink, a colon and a description.
 ENTRY = re.compile(rf"({WIKILINK.pattern}): \S.*")
@@ -549,7 +553,7 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
                 # A closed directory holds files only if it is itself required.
                 findings.add("vault.entry", f"{location} is not in the vault skeleton")
             elif child.suffix.lower() != ".md" and entry.parts[0] != "assets":
-                # Non-Markdown files belong in assets/, except views and schemas.
+                # Non-Markdown files belong in assets/, except bases and schemas.
                 findings.diagnose(
                     entry != CONFIG
                     and not (
@@ -566,7 +570,8 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
                     and not any(
                         child.name.lower().endswith(suffix)
                         and entry.is_relative_to(home)
-                        for suffix, home in ASSET_EXCEPTIONS.items()
+                        for suffix, homes in ASSET_EXCEPTIONS.items()
+                        for home in homes
                     ),
                     "vault.entry",
                     f"{location} is not Markdown and belongs in assets/",
