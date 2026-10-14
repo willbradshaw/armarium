@@ -1608,6 +1608,7 @@ class TestDndSpellSchema:
     )
     def test_values(self, vault: Path, field: str, value: object, valid: bool) -> None:
         enable_extension("dnd-5-5", vault)
+        (vault / "assets/salt-ward.webp").write_bytes(b"webp")
         path = self.spell(vault, **{field: value})
         assert validate(path, vault).failed != valid
 
@@ -1770,6 +1771,7 @@ class TestDndMonsterSchema:
     )
     def test_values(self, vault: Path, field: str, value: object, valid: bool) -> None:
         enable_extension("dnd-5-5", vault)
+        (vault / "assets/reef-shark.webp").write_bytes(b"webp")
         assert validate(self.monster(vault, **{field: value}), vault).failed != valid
 
     @pytest.mark.parametrize(

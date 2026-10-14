@@ -43,6 +43,7 @@ from armarium.validate import (
     validate_directory,
     validate_filename,
     validate_identity_links,
+    validate_image,
     validate_markdown,
     validate_names,
     validate_placement,
@@ -628,6 +629,7 @@ class TestRecordChecks:
             "validate_clue",
             "validate_filename",
             "validate_identity_links",
+            "validate_image",
             "validate_names",
             "validate_placement",
             "validate_subdirectory",
@@ -2495,6 +2497,58 @@ class TestValidateChains:
             else "parent_location"
         )
         expected = [] if message is None else [("link.cycle", message, field)]
+        assert [(d.rule, d.message, d.field) for d in result] == expected
+
+
+class TestValidateImage:
+    @pytest.mark.parametrize(
+        ("image", "error"),
+        [
+            ("assets/art/Ring.webp", False),
+            ("null", False),
+            ('""', False),
+            ('" "', False),
+            ("3", False),
+            ("https://example.com/ring.webp", False),
+            ("HTTP://example.com/missing.webp", False),
+            ("assets/art/Missing.webp", True),
+            ("assets/art/ring.webp", True),
+            ("art/Ring.webp", True),
+            ("Ring.webp", True),
+            ("/assets/art/Ring.webp", True),
+            ("./assets/art/Ring.webp", True),
+            ("assets/art/../art/Ring.webp", True),
+            ("assets/art/.Hidden.webp", True),
+            ("assets/art/Linked.webp", True),
+            ("ftp://example.com/ring.webp", True),
+        ],
+    )
+    def test_image(self, tmp_path: Path, image: str, error: bool) -> None:
+        write_records(
+            tmp_path, {"content/A.md": f'type: "[[Content]]"\nimage: {image}'}
+        )
+        art = tmp_path / "assets/art"
+        art.mkdir(parents=True)
+        for name in ("Ring.webp", ".Hidden.webp"):
+            (art / name).write_bytes(b"webp")
+        (art / "Linked.webp").symlink_to(art / "Ring.webp")
+        index = VaultIndex(tmp_path)
+        record, _ = index.parse(tmp_path / "content/A.md")
+        assert record is not None
+        result = validate_image(record, index).diagnostics
+        value = record.frontmatter["image"]
+        expected = (
+            [
+                (
+                    "record.image",
+                    f"image {value} is not the vault-relative path of a file in "
+                    "the vault",
+                    "image",
+                )
+            ]
+            if error
+            else []
+        )
         assert [(d.rule, d.message, d.field) for d in result] == expected
 
 
