@@ -2202,16 +2202,26 @@ class TestIllustrateCommand:
             600,
         )
         assert (args.opacity, args.overwrite, args.vault) == (False, True, None)
-        assert args.style == "Ink"
+        assert (args.style, args.directory) == ("Ink", None)
+
+    def test_directory(self) -> None:
+        args = parse_args(
+            ["illustrate", "ingest", "a.md", "a.png", "--directory", "assets/ink"]
+        )
+        assert (args.directory, args.output) == ("assets/ink", None)
+
+    def test_directory_and_output_exclude_each_other(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        argv = ["illustrate", "ingest", "a.md", "a.png", "--directory", "assets/x"]
+        with pytest.raises(SystemExit):
+            parse_args([*argv, "-o", "assets/a.webp"])
+        assert "not allowed with argument" in capsys.readouterr().err
 
     def test_defaults(self) -> None:
         args = parse_args(["illustrate", "ingest", "a.md", "a.png"])
-        assert (args.style, args.output, args.max_bytes, args.max_edge) == (
-            None,
-            None,
-            None,
-            None,
-        )
+        assert (args.style, args.directory, args.output) == (None, None, None)
+        assert (args.max_bytes, args.max_edge) == (None, None)
         assert (args.opacity, args.overwrite) == (None, False)
 
     def test_passes_the_options_to_ingest(
@@ -2234,6 +2244,7 @@ class TestIllustrateCommand:
         assert calls == [
             {
                 "style": None,
+                "directory": None,
                 "output": None,
                 "max_bytes": None,
                 "max_edge": None,

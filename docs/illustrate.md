@@ -32,8 +32,9 @@ image: assets/art/gear/Lucky Ring.webp
 ```
 
 It prints the image's path on standard output, and the style it used and the
-image's size on standard error. `--output PATH` names another `.webp` file
-inside `assets/`, relative to the vault root. Missing directories are created.
+image's size on standard error. `--directory DIR` names another folder inside
+`assets/`, and `--output PATH` another `.webp` file there, each relative to the
+vault root. Missing directories are created.
 
 The command replaces no file unless given `--overwrite`: if the image file
 exists it stops before writing anything. When the record's `image` already named
@@ -88,27 +89,24 @@ A single item of equipment, shown whole and on its own, as a plate in an
 illustrated catalogue of adventuring gear. ...
 ```
 
-Every field is optional:
+Every field is optional, and each but `illustrates` has an option that
+overrides it:
 
-| Field | Holds | Default |
-| --- | --- | --- |
-| `illustrates` | the record types the style applies to, each a type or `Type/Subtype` | none |
-| `directory` | the folder inside `assets/` that its art goes in | `assets/art` |
-| `opacity` | `true` to store its art as [black opacity](#black-opacity) | `false` |
-| `max_bytes` | the largest art file, in bytes | 100000 |
-| `max_edge` | the largest long edge, in pixels | 1200 |
-| `references` | links to images that show the style, or to records whose `image` does | none |
-| `sample` | how many references to show the image model for each picture | all of them |
+| Field | Holds | Option | Default |
+| --- | --- | --- | --- |
+| `illustrates` | the record types the style applies to, each a type or `Type/Subtype` | | none |
+| `directory` | the folder inside `assets/` that its art goes in | `--directory` | `assets/art` |
+| `opacity` | `true` to store its art as [black opacity](#black-opacity) | `--opacity` | `false` |
+| `max_bytes` | the largest art file, in bytes | `--max-bytes` | 100000 |
+| `max_edge` | the largest long edge, in pixels | `--max-edge` | 1200 |
 
-The body says what the style looks like, for an image model to paint from;
-`references` and `sample` are also for painting. The command does not paint
-yet, so none of the three changes what it writes.
+The body says what the style looks like, for an image model to paint from. The
+command does not paint, so the body does not change what it writes.
 
 `--style NAME` uses the style in `reference/styles/NAME.md`. Without it, the
 command uses the style whose `illustrates` names the record's type, or its type
 and subtype, such as `Content/Gear`; if several do, it stops and asks for
-`--style`, and if none does, the defaults above apply. Options given on the
-command line override the style's.
+`--style`, and if none does, the defaults above apply.
 
 [Validation](validate.md) checks each style's fields, and holds every file in
 its `directory` and the folders inside it to its budget: each must be a WebP or

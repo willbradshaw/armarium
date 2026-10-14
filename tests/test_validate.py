@@ -2611,7 +2611,7 @@ class TestValidateStyle:
         [
             ("illustrates: Gear", "illustrates must list record types"),
             ("directory: content", "directory must be a folder inside assets/"),
-            ("sample: 0", "sample must be a whole number of at least 1"),
+            ("max_bytes: 0", "max_bytes must be a whole number of at least 1"),
         ],
     )
     def test_reports_an_invalid_style(

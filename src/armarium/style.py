@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from armarium.lib import DIRECTORY, find_files, parse_wikilink
+from armarium.lib import DIRECTORY, find_files
 from armarium.parse import Record
 
 STYLE_DIRECTORY = "reference/styles"
@@ -32,9 +32,6 @@ class Style:
             opacity on a transparent ground.
         max_bytes: The largest art file allowed, in bytes.
         max_edge: The largest long edge allowed, in pixels.
-        references: Link targets of the files or records that show the style.
-        sample: How many references to send with each picture, or None for
-            all of them.
     """
 
     name: str
@@ -44,8 +41,6 @@ class Style:
     opacity: bool = False
     max_bytes: int = MAX_BYTES
     max_edge: int = MAX_EDGE
-    references: tuple[str, ...] = ()
-    sample: int | None = None
 
     def applies_to(self, kind: str | None, subtype: object) -> bool:
         """Say whether the style illustrates records of a type and subtype.
@@ -62,6 +57,27 @@ class Style:
             kind in self.illustrates
             or (isinstance(subtype, str) and f"{kind}/{subtype}" in self.illustrates)
         )
+
+
+def art_directory(value: object) -> str:
+    """Check a folder that art goes in.
+
+    Args:
+        value: The folder, as a style or option gives it.
+
+    Returns:
+        str: The folder, a vault-relative path inside assets/.
+
+    Raises:
+        ValueError: The value is not a folder inside assets/.
+    """
+    if (
+        not isinstance(value, str)
+        or DIRECTORY.fullmatch(value) is None
+        or not value.startswith("assets/")
+    ):
+        raise ValueError("directory must be a folder inside assets/")
+    return value
 
 
 def _count(data: Mapping[str, Any], field: str) -> int | None:
@@ -93,9 +109,12 @@ def parse_style(record: Record) -> Style:
         Style: The style the record declares.
 
     Raises:
-        ValueError: A field holds a value of the wrong form.
+        ValueError: The record is not a Reference record, or a field holds a
+            value of the wrong form.
     """
     data = record.frontmatter
+    if data.type != "Reference":
+        raise ValueError('a style must be a Reference record, type "[[Reference]]"')
     illustrates = data.get("illustrates") or []
     if not isinstance(illustrates, list) or not all(
         isinstance(kind, str) and KIND.fullmatch(kind) for kind in illustrates
@@ -103,25 +122,10 @@ def parse_style(record: Record) -> Style:
         raise ValueError(
             "illustrates must list record types, each a type or Type/Subtype"
         )
-    directory = data.get("directory") or ART_DIRECTORY
-    if (
-        not isinstance(directory, str)
-        or DIRECTORY.fullmatch(directory) is None
-        or not directory.startswith("assets/")
-    ):
-        raise ValueError("directory must be a folder inside assets/")
+    directory = art_directory(data.get("directory") or ART_DIRECTORY)
     opacity = data.get("opacity")
     if opacity is not None and not isinstance(opacity, bool):
         raise ValueError("opacity must be true or false")
-    references = data.get("references") or []
-    if not isinstance(references, list):
-        raise ValueError("references must list wikilinks")
-    targets: list[str] = []
-    for reference in references:
-        try:
-            targets.append(parse_wikilink(reference))
-        except ValueError as exc:
-            raise ValueError(f"references must list wikilinks: {exc}") from exc
     return Style(
         record.path.stem,
         record.body.text.strip(),
@@ -130,8 +134,6 @@ def parse_style(record: Record) -> Style:
         bool(opacity),
         _count(data, "max_bytes") or MAX_BYTES,
         _count(data, "max_edge") or MAX_EDGE,
-        tuple(targets),
-        _count(data, "sample"),
     )
 
 
@@ -147,7 +149,8 @@ def read_styles(root: Path) -> dict[str, Style]:
             the folder does not exist.
 
     Raises:
-        ValueError: A style cannot be parsed, or declares a field wrongly.
+        ValueError: A style cannot be parsed, is not a Reference record, or
+            declares a field wrongly.
         OSError: A file cannot be read.
     """
     directory = root / STYLE_DIRECTORY

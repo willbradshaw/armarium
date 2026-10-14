@@ -343,7 +343,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "illustrates the record's type, if any)"
         ),
     )
-    picture.add_argument(
+    where = picture.add_mutually_exclusive_group()
+    where.add_argument(
+        "--directory",
+        metavar="DIR",
+        help=(
+            "vault-relative folder inside assets/ to write NAME.webp into, NAME "
+            f"the record's (default: the style's directory, or {ART_DIRECTORY})"
+        ),
+    )
+    where.add_argument(
         "-o",
         "--output",
         help=(
@@ -622,6 +631,7 @@ def main() -> None:
                 args.picture,
                 args.vault,
                 style=args.style,
+                directory=args.directory,
                 output=args.output,
                 max_bytes=args.max_bytes,
                 max_edge=args.max_edge,

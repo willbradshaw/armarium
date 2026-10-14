@@ -11,6 +11,7 @@ from armarium.style import (
     STYLE_DIRECTORY,
     Style,
     _count,
+    art_directory,
     choose_style,
     parse_style,
     read_styles,
@@ -59,6 +60,21 @@ class TestStyleAppliesTo:
         assert Style("S", "", illustrates).applies_to(kind, subtype) is expected
 
 
+class TestArtDirectory:
+    @pytest.mark.parametrize("value", ["assets/art", "assets/art/gear"])
+    def test_accepts_a_folder_inside_assets(self, value: str) -> None:
+        assert art_directory(value) == value
+
+    @pytest.mark.parametrize(
+        "value", ["content", "assets", "assets/../content", "assets/art/", 3, None]
+    )
+    def test_refuses_anything_else(self, value: object) -> None:
+        with pytest.raises(
+            ValueError, match="directory must be a folder inside assets/"
+        ):
+            art_directory(value)
+
+
 class TestCount:
     @pytest.mark.parametrize(
         ("data", "expected"), [({}, None), ({"n": None}, None), ({"n": 3}, 3)]
@@ -88,8 +104,6 @@ class TestParseStyle:
             "opacity": True,
             "max_bytes": 5000,
             "max_edge": 600,
-            "references": ["[[Lucky Ring]]", "[[assets/art/gear/Rope.webp|Rope]]"],
-            "sample": 3,
         }
         path = write_style(
             tmp_path, "Gear", fields, "\nPaint the item.\n\nNo text.\n\n"
@@ -104,8 +118,6 @@ class TestParseStyle:
             True,
             5000,
             600,
-            ("Lucky Ring", "assets/art/gear/Rope.webp"),
-            3,
         )
 
     @pytest.mark.parametrize(
@@ -119,20 +131,12 @@ class TestParseStyle:
             ),
             ({"illustrates": [" Content"]}, "illustrates must list record types"),
             ({"illustrates": [3]}, "illustrates must list record types"),
+            ({"type": None}, "a style must be a Reference record"),
+            ({"type": "[[Content]]"}, "a style must be a Reference record"),
             ({"directory": "content"}, "directory must be a folder inside assets/"),
-            ({"directory": "assets"}, "directory must be a folder inside assets/"),
-            (
-                {"directory": "assets/../content"},
-                "directory must be a folder inside assets/",
-            ),
-            ({"directory": "assets/art/"}, "directory must be a folder inside assets/"),
-            ({"directory": 3}, "directory must be a folder inside assets/"),
             ({"opacity": "yes"}, "opacity must be true or false"),
-            ({"references": "[[Ring]]"}, "references must list wikilinks"),
-            ({"references": ["Ring"]}, "references must list wikilinks: "),
             ({"max_bytes": 0}, "max_bytes must be a whole number"),
             ({"max_edge": "big"}, "max_edge must be a whole number"),
-            ({"sample": -2}, "sample must be a whole number"),
         ],
     )
     def test_refuses_a_field_of_the_wrong_form(
@@ -166,6 +170,7 @@ class TestReadStyles:
                 '---\ntype: "[[Reference]]"\nmax_edge: 0\n---\n',
                 "reference/styles/Bad.md: max_edge",
             ),
+            ("Just some style text.\n", "reference/styles/Bad.md: a style must be"),
         ],
     )
     def test_refuses_a_style_it_cannot_read(

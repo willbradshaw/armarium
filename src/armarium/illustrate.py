@@ -11,7 +11,7 @@ import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
 from armarium.parse import Frontmatter, Record
-from armarium.style import MAX_BYTES, MAX_EDGE, Style, choose_style
+from armarium.style import MAX_BYTES, MAX_EDGE, Style, art_directory, choose_style
 from armarium.trace import locate
 
 FIELD = "image"
@@ -285,6 +285,7 @@ def ingest(
     vault: Path | None = None,
     *,
     style: str | None = None,
+    directory: str | None = None,
     output: str | None = None,
     max_bytes: int | None = None,
     max_edge: int | None = None,
@@ -307,8 +308,10 @@ def ingest(
         picture: The picture to take in, in any format Pillow reads.
         vault: Vault root, or None to discover it from the record's location.
         style: The style to use, or None to choose one by the record's type.
+        directory: Vault-relative folder inside assets/ to write into, or
+            None for the style's.
         output: Vault-relative .webp path inside assets/ to write, or None for
-            the record's name in the style's directory.
+            the record's name in the directory. It outranks directory.
         max_bytes: The largest image allowed, in bytes, or None for the
             style's.
         max_edge: The largest long edge allowed, in pixels, or None for the
@@ -323,8 +326,8 @@ def ingest(
     Raises:
         ValueError: The record is not a Markdown file in a vault, or cannot
             be parsed; no style or several apply as choose_style describes;
-            the destination is not allowed or already exists; or the
-            picture cannot be encoded or the field set.
+            the directory or destination is not allowed, or the destination
+            already exists; or the picture cannot be encoded or the field set.
         OSError: A file cannot be read or written.
     """
     root, path = locate(record, vault)
@@ -335,7 +338,8 @@ def ingest(
         raise ValueError(f"cannot parse the record: {diagnostics[0].message}")
     chosen = choose_style(root, parsed, style)
     settings = chosen or Style("", "")
-    relative = _destination(output, path, settings.directory)
+    folder = settings.directory if directory is None else art_directory(directory)
+    relative = _destination(output, path, folder)
     destination = root / relative
     if destination.is_dir() or destination.is_symlink():
         raise ValueError(f"{relative} is a directory or symlink")

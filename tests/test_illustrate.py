@@ -446,15 +446,47 @@ class TestIngest:
             '---\ntype: "[[Reference]]"\nillustrates: [Content/Gear]\n'
             "opacity: true\nmax_bytes: 5000\nmax_edge: 600\n---\n"
         )
-        ingest(
+        illustration = ingest(
             self.RECORD,
             tmp_path / "a.png",
             vault,
+            directory="assets/other",
             max_bytes=9,
             max_edge=8,
             opacity=False,
         )
         assert calls == [(9, 8, False)]
+        assert illustration.image == "assets/other/Harness.webp"
+
+    @pytest.mark.parametrize(
+        ("directory", "output", "image"),
+        [
+            ("assets/other", "assets/named.webp", "assets/named.webp"),
+            ("assets/other", None, "assets/other/Harness.webp"),
+        ],
+    )
+    def test_output_outranks_directory(
+        self,
+        vault: Path,
+        tmp_path: Path,
+        directory: str,
+        output: str | None,
+        image: str,
+    ) -> None:
+        source = picture(tmp_path / "a.png", (30, 20))
+        illustration = ingest(
+            self.RECORD, source, vault, directory=directory, output=output
+        )
+        assert illustration.image == image
+
+    def test_refuses_a_directory_outside_assets(
+        self, vault: Path, tmp_path: Path
+    ) -> None:
+        source = picture(tmp_path / "a.png", (30, 20))
+        before = (vault / self.RECORD).read_text()
+        with pytest.raises(ValueError, match="directory must be a folder inside"):
+            ingest(self.RECORD, source, vault, directory="content")
+        assert (vault / self.RECORD).read_text() == before
 
     @pytest.mark.parametrize(
         ("name", "extra", "message"),
