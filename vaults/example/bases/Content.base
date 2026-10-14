@@ -1,0 +1,107 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - '!file.inFolder("reference")'
+    - 'type == link("reference/types/Content")'
+formulas:
+  scope: 'if(file.inFolder("campaigns"), file.folder.split("/")[1], "shared")'
+  summary: 'note.summary'
+properties:
+  file.name:
+    displayName: Name
+  formula.scope:
+    displayName: Scope
+  formula.summary:
+    displayName: Summary
+  note.subtype:
+    displayName: Subtype
+  note.content_tags:
+    displayName: Tags
+  note.stats:
+    displayName: Stats
+  note.player:
+    displayName: Player
+  note.parent_location:
+    displayName: Parent Location
+  note.members:
+    displayName: Members
+  note.reckoning:
+    displayName: Reckoning
+  note.scale:
+    displayName: Scale
+  note.source:
+    displayName: Source
+  note.url:
+    displayName: URL
+views:
+  - type: table
+    name: All
+    order: [file.name, subtype, formula.scope, formula.summary, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: NPCs
+    filters: 'subtype == "NPC"'
+    order: [file.name, formula.scope, formula.summary, stats, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: PCs
+    filters: 'subtype == "PC"'
+    order: [file.name, formula.scope, formula.summary, player, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Locations
+    filters: 'subtype == "Location"'
+    order: [file.name, formula.scope, formula.summary, parent_location, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Factions
+    filters: 'subtype == "Faction"'
+    order: [file.name, formula.scope, formula.summary, members, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Objects
+    filters: 'subtype == "Object"'
+    order: [file.name, formula.scope, formula.summary, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Gear
+    filters: 'subtype == "Gear"'
+    order: [file.name, formula.scope, formula.summary, source, url, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Lore
+    filters: 'subtype == "Lore"'
+    order: [file.name, formula.scope, formula.summary, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Dates
+    filters: 'subtype == "Date"'
+    order: [file.name, formula.scope, formula.summary, reckoning, scale, content_tags]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC

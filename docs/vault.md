@@ -17,6 +17,8 @@ to start a new one. `vaults/example/` is a populated vault with two campaigns.
   snippets/
     armarium-prose.css        prose styling
 assets/                       files that are not records: images, handouts
+bases/                        Bases (.base) opened directly to browse records
+  Content.base                all Content, and a table per core subtype
 campaigns/                    only campaign_N directories, at least one
   campaign_N/                 N is a positive integer
     clues/                    Clue records
@@ -36,7 +38,7 @@ reference/                    shared Reference records
   statuses/                   Status records: Abandoned, Dormant, Hinted, Pending, Revealed, Superseded
   templates/                  record templates: Campaign, Clue, Clues, Content, Note, Player, Session, Transcript
   types/                      Type records: Clue, Content, Note, Player, Reference, Session, Status, Transcript, Type
-  views/                      Bases views (.base) embedded by records
+  views/                      Bases (.base) embedded by records
 ```
 
 Every entry shown is required, as a real directory or file rather than a
@@ -45,7 +47,12 @@ hold the entries shown, plus Reference records in `reference/` and the
 [optional root entries](#other-entries). Other directories may hold subfolders.
 Markdown in the record directories must follow the [record rules](record.md).
 Outside the optional root directories, non-Markdown files belong in `assets/`,
-except views in `reference/views/` and schemas in `reference/schemas/`.
+except bases in `bases/` and `reference/views/` and schemas in
+`reference/schemas/`.
+
+`bases/Content.base` opens on a table of all Content, followed by one table per
+core subtype, selected by `type` and `subtype` rather than folder. Each shows
+the record's scope: `shared` or its `campaign_N`. Add the vault's own bases to `bases/`.
 
 `reference/types/` and `reference/schemas/` correspond one to one: `Clue.md`
 has `clue.schema.json`, and so on, the schema named after the lowercased type.

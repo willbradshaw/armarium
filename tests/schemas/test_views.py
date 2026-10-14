@@ -56,7 +56,7 @@ class ViewTests(unittest.TestCase):
             self.assertEqual(embedded, set((vault / "reference/views").glob("*.base")))
 
     def test_views_and_styling_are_mirrored(self):
-        for folder in ["reference/views", ".obsidian/snippets"]:
+        for folder in ["bases", "reference/views", ".obsidian/snippets"]:
             starter, example = ROOT / "starter" / folder, ROOT / "example" / folder
             self.assertEqual(
                 {p.name for p in starter.iterdir()}, {p.name for p in example.iterdir()}
@@ -144,6 +144,102 @@ class ViewTests(unittest.TestCase):
                 self.assertNotRegex(
                     path.read_text(), r"(?im)^\s*`{3,}dataview(?:js)?\b|`\s*="
                 )
+
+
+def content_fields() -> dict[str, str | None]:
+    """Map each documented Content field to its subtype, or None for all."""
+    docs = Path(__file__).resolve().parents[2] / "docs/type.md"
+    section = docs.read_text().split("\n## Content\n", 1)[1].split("\n## ", 1)[0]
+    return {
+        field: subtype or None
+        for field, subtype in re.findall(
+            r"^\| `(\w+)` \| (?:required|optional)(?: for (\w+))?", section, re.M
+        )
+    }
+
+
+class ContentBaseTests(unittest.TestCase):
+    """Check bases/Content.base against the Content type and example vault."""
+
+    BASE = yaml.safe_load((ROOT / "starter/bases/Content.base").read_text())
+    SUBTYPES = {"NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear"}
+
+    def records(self, subtype: str) -> list[dict]:
+        vault = ROOT / "example"
+        return [
+            metadata
+            for path in vault.rglob("*.md")
+            if path.relative_to(vault).parts[0] in {"content", "campaigns"}
+            and (metadata := frontmatter(path)).get("type") == "[[types/Content]]"
+            and metadata.get("subtype") == subtype
+        ]
+
+    def test_selects_content_by_type_outside_templates(self):
+        self.assertEqual(
+            self.BASE["filters"],
+            {
+                "and": [
+                    'file.ext == "md"',
+                    '!file.inFolder("reference")',
+                    'type == link("reference/types/Content")',
+                ]
+            },
+        )
+
+    @staticmethod
+    def subtype(view: dict) -> str | None:
+        """Return the subtype a table selects, or None for all Content."""
+        if "filters" not in view:
+            return None
+        return re.fullmatch(r'subtype == "([A-Za-z]+)"', view["filters"])[1]
+
+    def test_opens_on_all_content(self):
+        first = self.BASE["views"][0]
+        self.assertEqual(first["name"], "All")
+        self.assertIsNone(self.subtype(first))
+        self.assertIn("subtype", first["order"])
+
+    def test_each_core_subtype_has_one_table(self):
+        subtypes = []
+        for view in self.BASE["views"][1:]:
+            with self.subTest(view=view["name"]):
+                self.assertEqual(view["type"], "table")
+                subtypes.append(self.subtype(view))
+        self.assertCountEqual(subtypes, self.SUBTYPES)
+
+    def test_columns_are_labelled_and_defined(self):
+        formulas = {f"formula.{name}" for name in self.BASE["formulas"]}
+        used = set()
+        for view in self.BASE["views"]:
+            for column in view["order"]:
+                with self.subTest(view=view["name"], column=column):
+                    if column.startswith("formula."):
+                        self.assertIn(column, formulas)
+                        key = column
+                    elif column.startswith("file."):
+                        key = column
+                    else:
+                        key = f"note.{column}"
+                    self.assertIn(key, self.BASE["properties"])
+                    used.add(key)
+        self.assertEqual(used, set(self.BASE["properties"]))
+        self.assertLessEqual(formulas, used)
+
+    def test_note_columns_are_documented_fields_of_their_subtype(self):
+        fields = content_fields()
+        for view in self.BASE["views"]:
+            subtype = self.subtype(view)
+            for column in view["order"]:
+                if "." in column:
+                    continue
+                with self.subTest(view=view["name"], column=column):
+                    self.assertIn(column, fields)
+                    self.assertIn(fields[column], {None, subtype})
+
+    def test_each_table_has_example_records(self):
+        for subtype in self.SUBTYPES:
+            with self.subTest(subtype=subtype):
+                self.assertTrue(self.records(subtype))
 
 
 if __name__ == "__main__":
