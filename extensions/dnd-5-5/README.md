@@ -172,6 +172,15 @@ Three pages hold the tables for running a game:
 | Combat Encounter Difficulty | the XP budget per character for each difficulty, XP by Challenge Rating, and how to build an encounter within a budget |
 | Magic Item Values | values by rarity, the rules for consumables and items built on equipment, and Spell Scroll values |
 
+## Sessions
+
+The extension adds to the vault's session skills through
+[skill addenda](https://github.com/willbradshaw/armarium/blob/main/docs/agents.md#adding-to-a-skill).
+With it enabled, each prepared fight is rated Low, Moderate or High as Combat
+Encounter Difficulty describes. In a campaign that awards XP, a Session's
+Rewards record the XP gained and the campaign's running total. Rewards also
+record any levels the characters gained.
+
 ## Attribution
 
 This work includes material from the System Reference Document 5.2.1 (“SRD
