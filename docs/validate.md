@@ -104,5 +104,6 @@ Rule identifiers group into families:
 | `history.` | a Content record's Appearances and campaign blocks | [Campaigns](campaign.md#state), [Content](type.md#content) |
 | `clue.` | a Clue's `subjects` against its `text` | [Clue](type.md#clue) |
 | `transcript.` | the transcript grammar | [Transcript](type.md#transcript) |
+| `style.` | an illustration style's fields, and art in its directory over its size budget | [Illustrating a record](illustrate.md#styles) |
 | `extension.` | enabled extension declarations, schemas and templates, and code blocks an extension requires to be YAML | [Extensions](extensions.md) |
 | `vault.` | the vault skeleton, campaign layout, declared directories and stray entries | [Vault layout](vault.md) |

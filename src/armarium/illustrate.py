@@ -10,13 +10,11 @@ from pathlib import Path, PurePosixPath
 import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
-from armarium.parse import Frontmatter
+from armarium.parse import Frontmatter, Record
+from armarium.style import MAX_BYTES, MAX_EDGE, Style, choose_style
 from armarium.trace import locate
 
 FIELD = "image"
-ART_DIRECTORY = "assets/art"
-MAX_BYTES = 100_000
-MAX_EDGE = 1200
 # Each long edge tried is this fraction of the one before, rounded down to
 # ten pixels, and none is tried below MIN_EDGE.
 EDGE_STEP = 0.9
@@ -49,6 +47,7 @@ class Illustration:
         size: The written image's size, in bytes.
         replaced: The field's previous value when it named another image,
             otherwise None.
+        style: The style whose settings were used, or None.
     """
 
     vault: Path
@@ -57,6 +56,7 @@ class Illustration:
     edge: int
     size: int
     replaced: str | None
+    style: str | None = None
 
 
 def edges(max_edge: int) -> tuple[int, ...]:
@@ -234,21 +234,22 @@ def set_field(text: str, key: str, value: str) -> str:
     return updated
 
 
-def _destination(output: str | None, record: Path) -> PurePosixPath:
+def _destination(output: str | None, record: Path, directory: str) -> PurePosixPath:
     """Choose the vault-relative path an image is written to.
 
     Args:
         output: Path the user asked for, relative to the vault root, or None.
         record: The record being illustrated.
+        directory: Vault-relative folder that art goes in by default.
 
     Returns:
         PurePosixPath: The asked-for path, or the record's name with .webp in
-            ART_DIRECTORY.
+            the directory.
 
     Raises:
         ValueError: The path is not a .webp file inside the vault's assets/.
     """
-    relative = PurePosixPath(output or f"{ART_DIRECTORY}/{record.stem}.webp")
+    relative = PurePosixPath(output or f"{directory}/{record.stem}.webp")
     if (
         relative.is_absolute()
         or ".." in relative.parts
@@ -283,45 +284,58 @@ def ingest(
     picture: Path,
     vault: Path | None = None,
     *,
+    style: str | None = None,
     output: str | None = None,
-    max_bytes: int = MAX_BYTES,
-    max_edge: int = MAX_EDGE,
-    opacity: bool = False,
+    max_bytes: int | None = None,
+    max_edge: int | None = None,
+    opacity: bool | None = None,
     overwrite: bool = False,
 ) -> Illustration:
     """Take a picture into a vault and name it in a record's image field.
 
     The picture is encoded as `encode` describes and written into the vault's
     assets/, and the record's image field is set to its vault-relative path.
-    Nothing is written when the picture cannot be encoded or the field cannot
-    be set. The record is not validated here.
+    The style named, or else the only style that applies to the record,
+    supplies the folder, budget and storage that options leave unset; without
+    a style they take Style's defaults. Nothing is written when the picture
+    cannot be encoded or the field cannot be set. The record is not validated
+    here.
 
     Args:
         record: The record to illustrate. With a vault, a relative path is
             taken from the vault root; without one, from the working directory.
         picture: The picture to take in, in any format Pillow reads.
         vault: Vault root, or None to discover it from the record's location.
+        style: The style to use, or None to choose one by the record's type.
         output: Vault-relative .webp path inside assets/ to write, or None for
-            the record's name in ART_DIRECTORY.
-        max_bytes: The largest image allowed, in bytes.
-        max_edge: The largest long edge allowed, in pixels.
-        opacity: Store a monochrome drawing on white as black opacity on a
-            transparent ground.
+            the record's name in the style's directory.
+        max_bytes: The largest image allowed, in bytes, or None for the
+            style's.
+        max_edge: The largest long edge allowed, in pixels, or None for the
+            style's.
+        opacity: Whether to store a monochrome drawing on white as black
+            opacity on a transparent ground, or None for the style's choice.
         overwrite: Replace an existing file at the destination.
 
     Returns:
         Illustration: What was written.
 
     Raises:
-        ValueError: The record is not a Markdown file in a vault; the destination is not allowed or already exists; or
-            the picture cannot be encoded or the field set.
+        ValueError: The record is not a Markdown file in a vault, or cannot
+            be parsed; no style or several apply as choose_style describes;
+            the destination is not allowed or already exists; or the
+            picture cannot be encoded or the field set.
         OSError: A file cannot be read or written.
-        UnicodeError: The record is not UTF-8.
     """
     root, path = locate(record, vault)
     if path.suffix != ".md":
         raise ValueError(f"{path} is not a Markdown record")
-    relative = _destination(output, path)
+    parsed, diagnostics = Record.parse(path, root)
+    if parsed is None:
+        raise ValueError(f"cannot parse the record: {diagnostics[0].message}")
+    chosen = choose_style(root, parsed, style)
+    settings = chosen or Style("", "")
+    relative = _destination(output, path, settings.directory)
     destination = root / relative
     if destination.is_dir() or destination.is_symlink():
         raise ValueError(f"{relative} is a directory or symlink")
@@ -331,13 +345,13 @@ def ingest(
     bom = data.startswith(b"\xef\xbb\xbf")
     text = data.decode("utf-8-sig")
     image, edge = encode(
-        picture, max_bytes=max_bytes, max_edge=max_edge, opacity=opacity
+        picture,
+        max_bytes=settings.max_bytes if max_bytes is None else max_bytes,
+        max_edge=settings.max_edge if max_edge is None else max_edge,
+        opacity=settings.opacity if opacity is None else opacity,
     )
-    try:
-        updated = set_field(text, FIELD, relative.as_posix())
-    except yaml.YAMLError as exc:
-        raise ValueError(f"{path} has invalid frontmatter: {exc}") from exc
-    previous = Frontmatter.parse(text)[0].get(FIELD)
+    updated = set_field(text, FIELD, relative.as_posix())
+    previous = parsed.frontmatter.get(FIELD)
     _write(destination, image)
     if updated != text:
         _write(path, updated.encode("utf-8-sig" if bom else "utf-8"))
@@ -352,4 +366,5 @@ def ingest(
         and previous.strip()
         and previous != relative.as_posix()
         else None,
+        None if chosen is None else chosen.name,
     )

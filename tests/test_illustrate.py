@@ -12,8 +12,6 @@ from PIL import Image
 from armarium import illustrate as module
 from armarium.content import add_content
 from armarium.illustrate import (
-    ART_DIRECTORY,
-    MAX_EDGE,
     Illustration,
     _as_opacity,
     _destination,
@@ -26,6 +24,7 @@ from armarium.illustrate import (
     set_field,
 )
 from armarium.parse import Frontmatter
+from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE
 
 STARTER = Path(__file__).resolve().parents[1] / "vaults/starter"
 
@@ -244,13 +243,14 @@ class TestDestination:
     @pytest.mark.parametrize(
         ("output", "expected"),
         [
-            (None, f"{ART_DIRECTORY}/Lucky Ring.webp"),
+            (None, "assets/art/gear/Lucky Ring.webp"),
             ("assets/gear/ring.webp", "assets/gear/ring.webp"),
             ("./assets/ring.webp", "assets/ring.webp"),
         ],
     )
     def test_chooses_a_path_in_assets(self, output: str | None, expected: str) -> None:
-        assert _destination(output, Path("content/Lucky Ring.md")) == PurePosixPath(
+        record = Path("content/Lucky Ring.md")
+        assert _destination(output, record, "assets/art/gear") == PurePosixPath(
             expected
         )
 
@@ -267,7 +267,7 @@ class TestDestination:
     )
     def test_refuses_a_path_outside_assets(self, output: str) -> None:
         with pytest.raises(ValueError, match="inside the vault's assets/"):
-            _destination(output, Path("content/Lucky Ring.md"))
+            _destination(output, Path("content/Lucky Ring.md"), ART_DIRECTORY)
 
 
 class TestWrite:
@@ -297,7 +297,8 @@ class TestWrite:
 
 class TestIngest:
     RECORD = Path("campaigns/campaign_1/content/Harness.md")
-    IMAGE = f"{ART_DIRECTORY}/Harness.webp"
+    # The starter vault's Gear style puts Gear art in its own folder.
+    IMAGE = "assets/art/gear/Harness.webp"
 
     @pytest.mark.parametrize("with_vault", [True, False])
     def test_writes_the_image_and_sets_the_field(
@@ -316,7 +317,7 @@ class TestIngest:
         record = vault.resolve() / self.RECORD
         data = (vault / self.IMAGE).read_bytes()
         assert illustration == Illustration(
-            vault.resolve(), record, self.IMAGE, 300, len(data), None
+            vault.resolve(), record, self.IMAGE, 300, len(data), None, "Gear"
         )
         assert frontmatter(record)["image"] == self.IMAGE
         assert opened(data).format == "WEBP"
@@ -326,8 +327,8 @@ class TestIngest:
         [
             ("assets/old.webp", None, "assets/old.webp"),
             ("", None, None),
-            ("assets/art/Harness.webp", None, None),
-            ("assets/art/Harness.webp", "assets/new.webp", "assets/art/Harness.webp"),
+            (IMAGE, None, None),
+            (IMAGE, "assets/new.webp", IMAGE),
         ],
     )
     def test_reports_the_image_it_replaces(
@@ -365,11 +366,130 @@ class TestIngest:
         assert calls == [{"max_bytes": 10, "max_edge": 20, "opacity": True}]
         assert (vault / self.IMAGE).read_bytes() == b"webp"
 
+    @pytest.mark.parametrize(
+        ("styles", "name", "image", "options", "style"),
+        [
+            (
+                {},
+                None,
+                f"{ART_DIRECTORY}/Harness.webp",
+                (MAX_BYTES, MAX_EDGE, False),
+                None,
+            ),
+            (
+                {
+                    "Ink": "illustrates: [Content]\ndirectory: assets/ink\nopacity: true\n"
+                    "max_bytes: 5000\nmax_edge: 600"
+                },
+                None,
+                "assets/ink/Harness.webp",
+                (5000, 600, True),
+                "Ink",
+            ),
+            (
+                {
+                    "Ink": "directory: assets/ink\nopacity: true",
+                    "Gear": "illustrates: [Content/Gear]",
+                },
+                "Ink",
+                "assets/ink/Harness.webp",
+                (MAX_BYTES, MAX_EDGE, True),
+                "Ink",
+            ),
+            (
+                {"Lore": "illustrates: [Content/Lore, Note]\ndirectory: assets/lore"},
+                None,
+                f"{ART_DIRECTORY}/Harness.webp",
+                (MAX_BYTES, MAX_EDGE, False),
+                None,
+            ),
+        ],
+    )
+    def test_a_style_supplies_the_settings(
+        self,
+        vault: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        styles: dict[str, str],
+        name: str | None,
+        image: str,
+        options: tuple[int, int, bool],
+        style: str | None,
+    ) -> None:
+        calls: list[tuple[object, ...]] = []
+
+        def encode(source: Path, **kwargs: object) -> tuple[bytes, int]:
+            calls.append(tuple(kwargs.values()))
+            return b"webp", 4
+
+        monkeypatch.setattr(module, "encode", encode)
+        (vault / "reference/styles/Gear.md").unlink()
+        for title, fields in styles.items():
+            (vault / f"reference/styles/{title}.md").write_text(
+                f'---\ntype: "[[Reference]]"\n{fields}\n---\nPaint it.\n'
+            )
+        illustration = ingest(self.RECORD, tmp_path / "a.png", vault, style=name)
+        assert (illustration.image, illustration.style) == (image, style)
+        assert calls == [options]
+
+    def test_options_outrank_the_style(
+        self, vault: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        calls: list[tuple[object, ...]] = []
+
+        def encode(source: Path, **kwargs: object) -> tuple[bytes, int]:
+            calls.append(tuple(kwargs.values()))
+            return b"webp", 4
+
+        monkeypatch.setattr(module, "encode", encode)
+        (vault / "reference/styles/Gear.md").write_text(
+            '---\ntype: "[[Reference]]"\nillustrates: [Content/Gear]\n'
+            "opacity: true\nmax_bytes: 5000\nmax_edge: 600\n---\n"
+        )
+        ingest(
+            self.RECORD,
+            tmp_path / "a.png",
+            vault,
+            max_bytes=9,
+            max_edge=8,
+            opacity=False,
+        )
+        assert calls == [(9, 8, False)]
+
+    @pytest.mark.parametrize(
+        ("name", "extra", "message"),
+        [
+            ("Missing", None, "no style Missing in reference/styles/"),
+            (
+                None,
+                "illustrates: [Content]",
+                "styles Gear, Other all apply; choose one",
+            ),
+            (None, "max_edge: 0", "reference/styles/Other.md: max_edge must be"),
+        ],
+    )
+    def test_refuses_without_one_usable_style(
+        self,
+        vault: Path,
+        tmp_path: Path,
+        name: str | None,
+        extra: str | None,
+        message: str,
+    ) -> None:
+        if extra is not None:
+            (vault / "reference/styles/Other.md").write_text(
+                f'---\ntype: "[[Reference]]"\n{extra}\n---\n'
+            )
+        source = picture(tmp_path / "a.png", (30, 20))
+        with pytest.raises(ValueError, match=message):
+            ingest(self.RECORD, source, vault, style=name)
+        assert not (vault / self.IMAGE).exists()
+
     @pytest.mark.parametrize("overwrite", [False, True])
     def test_an_existing_image_needs_overwrite(
         self, vault: Path, tmp_path: Path, overwrite: bool
     ) -> None:
-        (vault / ART_DIRECTORY).mkdir()
+        (vault / self.IMAGE).parent.mkdir(parents=True)
         (vault / self.IMAGE).write_bytes(b"old")
         source = picture(tmp_path / "a.png", (30, 20))
         if overwrite:
@@ -393,7 +513,7 @@ class TestIngest:
             ("not markdown", "is not a Markdown record"),
             ("directory", "is a directory or symlink"),
             ("not a picture", "is not a picture"),
-            ("invalid yaml", "has invalid frontmatter"),
+            ("invalid yaml", "cannot parse the record"),
             ("unsettable", "without changing other fields"),
         ],
     )

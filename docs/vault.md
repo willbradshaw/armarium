@@ -116,3 +116,5 @@ This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
 
 Optional [extensions](extensions.md) are declared in `reference/extensions.json`;
 their schemas, templates and reference pages live in `reference/extensions/NAME/`.
+Illustration [styles](illustrate.md#styles) are Reference records in the
+optional `reference/styles/`.

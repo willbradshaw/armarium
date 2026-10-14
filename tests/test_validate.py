@@ -47,6 +47,7 @@ from armarium.validate import (
     validate_markdown,
     validate_names,
     validate_placement,
+    validate_style,
     validate_subdirectory,
     validate_transcript,
     validate_vault,
@@ -632,6 +633,7 @@ class TestRecordChecks:
             "validate_image",
             "validate_names",
             "validate_placement",
+            "validate_style",
             "validate_subdirectory",
             "validate_transcript",
             "validate_wikilinks",
@@ -2552,6 +2554,93 @@ class TestValidateImage:
         assert [(d.rule, d.message, d.field) for d in result] == expected
 
 
+class TestValidateStyle:
+    STYLE = 'type: "[[Reference]]"\ndirectory: assets/art\nmax_bytes: 100\nmax_edge: 40'
+
+    @staticmethod
+    def check(
+        root: Path, relative: str = "reference/styles/Gear.md"
+    ) -> list[tuple[str, str, str]]:
+        index = VaultIndex(root)
+        record, _ = index.parse(root / relative)
+        assert record is not None
+        return [
+            (d.rule, d.message, d.field)
+            for d in validate_style(record, index).diagnostics
+        ]
+
+    @staticmethod
+    def png(path: Path, width: int, height: int, padding: int = 0) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        header = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+        path.write_bytes(
+            header + width.to_bytes(4) + height.to_bytes(4) + bytes(padding)
+        )
+
+    def test_art_within_the_budget_passes(self, tmp_path: Path) -> None:
+        write_records(tmp_path, {"reference/styles/Gear.md": self.STYLE})
+        self.png(tmp_path / "assets/art/a.png", 40, 30)
+        self.png(tmp_path / "assets/art/nested/b.png", 10, 40, 76)
+        assert self.check(tmp_path) == []
+
+    def test_reports_art_over_the_budget(self, tmp_path: Path) -> None:
+        write_records(tmp_path, {"reference/styles/Gear.md": self.STYLE})
+        self.png(tmp_path / "assets/art/wide.png", 41, 30)
+        self.png(tmp_path / "assets/art/heavy.png", 10, 10, 77)
+        (tmp_path / "assets/art/notes.txt").write_text("text")
+        assert self.check(tmp_path) == [
+            (
+                "style.budget",
+                "assets/art/heavy.png is 101 bytes, over the style's 100",
+                "max_bytes",
+            ),
+            (
+                "style.budget",
+                "assets/art/notes.txt: not a WebP or PNG image",
+                "directory",
+            ),
+            (
+                "style.budget",
+                "assets/art/wide.png is 41 by 30 pixels, over the style's 40 on its long edge",
+                "max_edge",
+            ),
+        ]
+
+    @pytest.mark.parametrize(
+        ("fields", "message"),
+        [
+            ("illustrates: Gear", "illustrates must list record types"),
+            ("directory: content", "directory must be a folder inside assets/"),
+            ("sample: 0", "sample must be a whole number of at least 1"),
+        ],
+    )
+    def test_reports_an_invalid_style(
+        self, tmp_path: Path, fields: str, message: str
+    ) -> None:
+        write_records(
+            tmp_path, {"reference/styles/Gear.md": f'type: "[[Reference]]"\n{fields}'}
+        )
+        self.png(tmp_path / "assets/art/wide.png", 4000, 30)
+        assert [
+            (rule, text.startswith(message)) for rule, text, _ in self.check(tmp_path)
+        ] == [("style.invalid", True)]
+
+    @pytest.mark.parametrize(
+        "relative",
+        ["reference/Gear.md", "campaigns/campaign_1/reference/styles/Gear.md"],
+    )
+    def test_only_records_in_the_styles_folder_are_styles(
+        self, tmp_path: Path, relative: str
+    ) -> None:
+        write_records(tmp_path, {relative: self.STYLE})
+        self.png(tmp_path / "assets/art/wide.png", 4000, 30)
+        assert self.check(tmp_path, relative) == []
+
+    def test_a_missing_directory_holds_no_art(self, tmp_path: Path) -> None:
+        write_records(tmp_path, {"reference/styles/Gear.md": self.STYLE})
+        assert self.check(tmp_path) == []
+
+
 class TestValidateIdentityLinks:
     @pytest.mark.parametrize(
         "kind, name, target, expected",
@@ -2735,6 +2824,19 @@ class TestValidateVault:
                 "campaigns/campaign_1/sessions/notes.txt is not Markdown and belongs in assets/",
             ),
             ("reference/Setting.md", False, None),
+            ("reference/styles", True, None),
+            ("reference/styles/Gear.md", False, None),
+            ("reference/styles/nested/Ink.md", False, None),
+            (
+                "reference/styles/gear.json",
+                False,
+                "reference/styles/gear.json is not Markdown and belongs in assets/",
+            ),
+            (
+                "campaigns/campaign_1/reference/styles",
+                True,
+                "campaigns/campaign_1/reference/styles is not in the vault skeleton",
+            ),
             ("campaigns/campaign_1/reference/Notes.md", False, None),
             ("reference/views/clues.base", False, None),
             ("reference/views/nested/clues.BASE", False, None),

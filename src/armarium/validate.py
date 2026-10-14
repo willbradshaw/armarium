@@ -31,6 +31,7 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    image_size,
     iter_wikilinks,
     parse_directories,
     parse_subtype_directories,
@@ -39,6 +40,7 @@ from armarium.lib import (
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
+from armarium.style import STYLE_DIRECTORY, parse_style
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 # Infrastructure every vault must contain. Together with the directories Type
@@ -498,8 +500,9 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
-    if (root / "reference/extensions").exists():
-        require("reference/extensions", True)
+    for optional in ("reference/extensions", STYLE_DIRECTORY):
+        if (root / optional).exists():
+            require(optional, True)
 
     # Extension declarations are optional, but every enabled rule must be usable.
     extension_schemas: set[Path] = set()
@@ -1645,6 +1648,57 @@ def validate_image(record: Record, index: VaultIndex) -> Findings:
     return findings
 
 
+def validate_style(record: Record, index: VaultIndex) -> Findings:
+    """Check a style record's fields and hold its art to its size budget.
+
+    Args:
+        record: Selected record; only records in reference/styles/ and its
+            subfolders are styles.
+        index: Index supplying the vault root.
+
+    Returns:
+        Findings: A style.invalid error when a field holds a value of the
+            wrong form. Otherwise a style.budget error for each file in the
+            style's directory, or its subfolders, that is not a WebP or PNG
+            image, or is larger than the style's max_bytes or longer on its
+            long edge than its max_edge. A directory that does not exist yet
+            holds no art.
+    """
+    findings = Findings.from_record(record, index)
+    if not record.path.is_relative_to(index.root / STYLE_DIRECTORY):
+        return findings
+    try:
+        style = parse_style(record)
+    except ValueError as exc:
+        findings.add("style.invalid", str(exc))
+        return findings
+    directory = index.root / style.directory
+    if directory.is_symlink() or not directory.is_dir():
+        return findings
+    for path in find_files(directory):
+        relative = path.relative_to(index.root).as_posix()
+        try:
+            width, height = image_size(path)
+            size = path.stat().st_size
+        except (OSError, ValueError) as exc:
+            findings.add("style.budget", f"{relative}: {exc}", "directory")
+            continue
+        findings.diagnose(
+            size > style.max_bytes,
+            "style.budget",
+            f"{relative} is {size} bytes, over the style's {style.max_bytes}",
+            "max_bytes",
+        )
+        findings.diagnose(
+            max(width, height) > style.max_edge,
+            "style.budget",
+            f"{relative} is {width} by {height} pixels, over the style's "
+            f"{style.max_edge} on its long edge",
+            "max_edge",
+        )
+    return findings
+
+
 # Checks every typed record receives, in the order validate_markdown runs them.
 RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_wikilinks,
@@ -1656,6 +1710,7 @@ RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_identity_links,
     validate_chains,
     validate_image,
+    validate_style,
     validate_appearances,
     validate_clue,
     validate_transcript,

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add illustration styles in `reference/styles/`, which say where `armarium illustrate ingest` puts each kind of art and how, and hold that art to a size budget in validation.
 - Require a record's `image` path to name a file in the vault.
 - Add a required `bases/` directory to the vault skeleton, with a `Content.base` of all Content and a table per core subtype.
 - Add `armarium illustrate ingest` to take a picture into a vault as a record's image within a size budget, adding Pillow as a dependency.

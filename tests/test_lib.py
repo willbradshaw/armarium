@@ -21,6 +21,7 @@ from armarium.lib import (
     find_children,
     find_files,
     find_vault,
+    image_size,
     iter_wikilinks,
     parse_directories,
     parse_subtype_directories,
@@ -940,3 +941,57 @@ class TestParseSubtypeDirectories:
     def test_unusable(self, value: object, message: str) -> None:
         with pytest.raises(ValueError, match=f"^{message}$"):
             parse_subtype_directories(value, SUBTYPES)
+
+
+class TestImageSize:
+    @pytest.mark.parametrize(
+        ("mode", "lossless", "size"),
+        [
+            ("RGB", False, (37, 20)),
+            ("RGB", True, (37, 20)),
+            ("RGBA", False, (20, 37)),
+            ("RGBA", True, (1201, 3)),
+        ],
+    )
+    def test_reads_a_webp(
+        self, tmp_path: Path, mode: str, lossless: bool, size: tuple[int, int]
+    ) -> None:
+        from PIL import Image
+
+        path = tmp_path / "a.webp"
+        Image.new(mode, size, "red").save(path, "WEBP", lossless=lossless)
+        assert image_size(path) == size
+
+    def test_reads_an_extended_webp(self, tmp_path: Path) -> None:
+        from PIL import Image
+
+        path = tmp_path / "a.webp"
+        img = Image.new("RGBA", (300, 200), (255, 0, 0, 128))
+        img.save(path, "WEBP", exif=b"Exif\x00\x00")
+        assert path.read_bytes()[12:16] == b"VP8X"
+        assert image_size(path) == (300, 200)
+
+    def test_reads_a_png(self, tmp_path: Path) -> None:
+        from PIL import Image
+
+        path = tmp_path / "a.png"
+        Image.new("RGB", (70000 // 100, 3)).save(path)
+        assert image_size(path) == (700, 3)
+
+    @pytest.mark.parametrize(
+        ("data", "message"),
+        [
+            (b"", "not a WebP or PNG image"),
+            (b"GIF89a" + bytes(30), "not a WebP or PNG image"),
+            (b"RIFF\x00\x00\x00\x00WEBPVP8 " + bytes(18), "damaged WebP header"),
+            (b"RIFF\x00\x00\x00\x00WEBPVP8L" + bytes(18), "damaged WebP header"),
+            (b"RIFF\x00\x00\x00\x00WEBPABCD" + bytes(18), "damaged WebP header"),
+        ],
+    )
+    def test_refuses_other_files(
+        self, tmp_path: Path, data: bytes, message: str
+    ) -> None:
+        path = tmp_path / "a.webp"
+        path.write_bytes(data)
+        with pytest.raises(ValueError, match=message):
+            image_size(path)
