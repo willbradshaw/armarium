@@ -59,7 +59,7 @@ agrees, then build the prompt again.
 ## 3. Paint candidates
 
 The image model charges for every candidate. Tell the GM how many you will
-paint, two unless they say otherwise, and paint only when they agree.
+paint, three unless they say otherwise, and paint only when they agree.
 
 ```sh
 armarium illustrate generate "PATH" --prompt ".scratch/RECORD.prompt.txt"

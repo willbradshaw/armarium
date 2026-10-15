@@ -1040,5 +1040,5 @@ class TestGenerate:
     ) -> None:
         fake = Painter(short=True)
         monkeypatch.setattr(module, "find_painter", lambda model=None: (fake, "m"))
-        with pytest.raises(ValueError, match="m painted 1 candidates, not 2"):
+        with pytest.raises(ValueError, match="m painted 2 candidates, not 3"):
             generate(self.RECORD, "Paint it.", vault)

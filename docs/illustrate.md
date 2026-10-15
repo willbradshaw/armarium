@@ -185,7 +185,7 @@ choose to `ingest`. Nothing in the vault changes until then: a new vault keeps
 
 | Option | Sets | Default |
 | --- | --- | --- |
-| `--count N` | how many candidates to paint | 2 |
+| `--count N` | how many candidates to paint | 3 |
 | `--model NAME` | the image model; see [Image models](#image-models) | `gpt-image-2.5-sunburst` |
 | `--reference IMAGE` | an image to send to show the style; repeatable | none |
 | `--sample N` | how many references to draw at random for each candidate | all of them |

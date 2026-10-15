@@ -2470,7 +2470,7 @@ class TestIllustrateGenerateCommand:
                     "style": None,
                     "references": None,
                     "sample": None,
-                    "count": 2,
+                    "count": 3,
                     "model": None,
                     "overwrite": False,
                 },
