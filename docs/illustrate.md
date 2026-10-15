@@ -226,4 +226,3 @@ too. Older models, such as `gpt-image-2`, are not.
 - **Key:** read from `OPENAI_API_KEY`.
 - **References:** at most 16 per request.
 - **Pictures:** 1024 by 1024 pixels, at high quality, as PNG.
-- **Cost:** OpenAI charges for every candidate painted.
