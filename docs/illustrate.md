@@ -109,8 +109,8 @@ overrides it:
 | `max_bytes` | the largest art file, in bytes | `--max-bytes` | 100000 |
 | `max_edge` | the largest long edge, in pixels | `--max-edge` | 1200 |
 
-The body says what the style looks like, and opens every [prompt](#prompts)
-in the style.
+The body says what the style looks like. [`prompt`](#prompts) puts it at the
+start of the prompt for any record illustrated in that style.
 
 `--style NAME` uses the style in `reference/styles/NAME.md`. Without it, the
 command uses the style whose `illustrates` names the record's type, or its type
