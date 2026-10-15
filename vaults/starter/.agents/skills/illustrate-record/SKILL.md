@@ -32,7 +32,21 @@ armarium illustrate prompt "PATH" > ".scratch/RECORD.prompt.txt"
 
 `RECORD` is the record's filename without `.md`. If the command stops because
 several styles apply, ask the GM which to use and pass `--style NAME` here and
-in step 3. Read the style in `reference/styles/` that applies, and the prompt.
+in steps 3 and 5. Read the prompt, and the style in `reference/styles/` whose
+`illustrates` names the record's type, or its type and subtype.
+
+If no style does, the prompt says nothing of how to paint, no reference images
+are sent, and the picture goes to `assets/art/`. Tell the GM, and ask which
+they want:
+
+- **An existing style:** pass `--style NAME` here, in step 3 and in step 5.
+- **A new style** for this kind of record: draft a Reference record in
+  `reference/styles/` for the GM to approve, with `illustrates` naming the
+  record's type and subtype, a `directory` inside `assets/`, and a body saying
+  what the art looks like. Validate it, then build the prompt again.
+- **A preamble for this picture only:** write the text the GM gives you to
+  `.scratch/RECORD.preamble.txt` and pass `--preamble` with that path here.
+- **No style:** go on as it is.
 
 ## 2. Settle the art direction
 
@@ -66,6 +80,8 @@ chooses; do not choose for them. If none will do, ask what to change, adjust
 ```sh
 armarium illustrate ingest "PATH" "CANDIDATE"
 ```
+
+Pass the same `--style NAME` as in step 1, if any.
 
 Add `--overwrite` only if the GM agreed in step 1 to replace an existing
 picture file. The command writes the image within the style's size budget, sets
