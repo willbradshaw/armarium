@@ -4,6 +4,7 @@ import io
 import os
 import random
 import shutil
+from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 
 import pytest
@@ -12,22 +13,30 @@ from PIL import Image
 from armarium import illustrate as module
 from armarium.content import add_content
 from armarium.illustrate import (
+    CANDIDATE_DIRECTORY,
+    Candidate,
+    Generation,
     Illustration,
     _as_opacity,
+    _batches,
     _destination,
     _on_white,
     _plain,
     _read,
+    _reference,
+    _style_references,
     _trimmed,
     _write,
     build_prompt,
     edges,
     encode,
+    generate,
     ingest,
     prompt,
     rules_text,
     set_field,
 )
+from armarium.painters import Reference
 from armarium.parse import Frontmatter, Record
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE
 
@@ -51,6 +60,7 @@ def picture(path: Path, size: tuple[int, int], *, noise: bool = False) -> Path:
         img = Image.frombytes("RGB", (40, 40), pixels).resize(
             size, Image.Resampling.BICUBIC
         )
+    path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path)
     return path
 
@@ -791,3 +801,244 @@ class TestIngest:
             ingest(record, source, vault)
         assert path.read_bytes() == before
         assert not (vault / self.IMAGE).is_file()
+
+
+class Painter:
+    """A painter that paints without a network, recording each request."""
+
+    def __init__(self, short: bool = False) -> None:
+        self.calls: list[tuple[str, list[str], str, int, bool]] = []
+        self.short = short
+
+    default_model = "fake-model"
+
+    def accepts(self, model: str) -> bool:
+        return model == "fake-model"
+
+    def models(self) -> tuple[str, ...]:
+        return ("fake-model",)
+
+    def reference_limit(self, model: str) -> int:
+        return 3
+
+    def paint(
+        self,
+        prompt: str,
+        references: Sequence[Reference],
+        *,
+        model: str,
+        count: int,
+        transparent: bool,
+    ) -> list[bytes]:
+        names = [reference.name for reference in references]
+        self.calls.append((prompt, names, model, count, transparent))
+        painted = [f"png {len(self.calls)}.{n}".encode() for n in range(count)]
+        return painted[:-1] if self.short else painted
+
+
+def style(vault: Path, fields: str, name: str = "Gear") -> None:
+    (vault / f"reference/styles/{name}.md").write_text(
+        f'---\ntype: "[[Reference]]"\nillustrates: [Content/Gear]\n{fields}\n---\n'
+    )
+
+
+class TestStyleReferences:
+    def test_finds_images_and_records_art(self, vault: Path, tmp_path: Path) -> None:
+        picture(vault / "assets/art/gear/Rope.png", (8, 8))
+        picture(vault / "assets/art/gear/Ring.png", (8, 8))
+        add_content("Lucky Ring", "Gear", vault, campaign=1)
+        add_content("Bare Hook", "Gear", vault, campaign=1)
+        ring = vault / "campaigns/campaign_1/content/Lucky Ring.md"
+        set_text = set_field(ring.read_text(), "image", "assets/art/gear/Ring.png")
+        ring.write_text(set_text)
+        record = (vault / TestIngest.RECORD).resolve()
+        images, omitted = _style_references(
+            vault.resolve(),
+            record,
+            ["assets/art/gear/Rope.png", "Lucky Ring", "Harness", "Bare Hook"],
+        )
+        assert images == [
+            vault.resolve() / "assets/art/gear/Rope.png",
+            vault.resolve() / "assets/art/gear/Ring.png",
+        ]
+        assert omitted == ["[[Bare Hook]] has no image file in the vault"]
+
+    @pytest.mark.parametrize("target", ["Missing", "nowhere/Rope.png"])
+    def test_refuses_a_reference_it_cannot_find(self, vault: Path, target: str) -> None:
+        with pytest.raises(ValueError, match="cannot uniquely resolve reference"):
+            _style_references(
+                vault.resolve(), (vault / TestIngest.RECORD).resolve(), [target]
+            )
+
+
+class TestReference:
+    def test_sends_an_image_as_it_is(self, tmp_path: Path) -> None:
+        source = picture(tmp_path / "a.png", (4, 4))
+        assert _reference(source, False) == Reference(
+            "a.png", source.read_bytes(), "image/png"
+        )
+
+    def test_lays_opacity_art_on_white(self, tmp_path: Path) -> None:
+        source = tmp_path / "ink.webp"
+        Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(source)
+        reference = _reference(source, True)
+        assert (reference.name, reference.media) == ("ink.png", "image/png")
+        img = opened(reference.data)
+        assert (img.mode, img.getpixel((0, 0))) == ("RGB", (255, 255, 255))
+
+    def test_refuses_opacity_art_it_cannot_read(self, tmp_path: Path) -> None:
+        source = tmp_path / "ink.webp"
+        source.write_bytes(b"text")
+        with pytest.raises(ValueError, match="is not a picture Pillow can read"):
+            _reference(source, True)
+
+
+class TestBatches:
+    IMAGES = [Path(f"{n}.png") for n in range(5)]
+
+    def test_sends_every_reference_in_one_request(self) -> None:
+        assert _batches(self.IMAGES, None, 3) == [(self.IMAGES, 3)]
+
+    @pytest.mark.parametrize(("sample", "drawn"), [(2, 2), (9, 5)])
+    def test_draws_for_each_candidate(self, sample: int, drawn: int) -> None:
+        random.seed(3)
+        batches = _batches(self.IMAGES, sample, 3)
+        assert [count for _, count in batches] == [1, 1, 1]
+        for batch, _ in batches:
+            assert len(batch) == len(set(batch)) == drawn
+            assert set(batch) <= set(self.IMAGES)
+
+    def test_draws_nothing_from_no_references(self) -> None:
+        assert _batches([], 2, 2) == [([], 1), ([], 1)]
+
+
+class TestGenerate:
+    RECORD = TestIngest.RECORD
+
+    @pytest.fixture
+    def painter(self, monkeypatch: pytest.MonkeyPatch) -> Painter:
+        fake = Painter()
+        monkeypatch.setattr(
+            module,
+            "find_painter",
+            lambda model=None: (fake, model or fake.default_model),
+        )
+        return fake
+
+    def test_writes_candidates_with_the_style(
+        self, vault: Path, painter: Painter
+    ) -> None:
+        generation = generate(self.RECORD, "Paint it.\n", vault, count=2)
+        directory = vault.resolve() / CANDIDATE_DIRECTORY
+        assert generation == Generation(
+            vault.resolve() / self.RECORD,
+            "fake-model",
+            "Gear",
+            (
+                Candidate(directory / "Harness-1.png", ()),
+                Candidate(directory / "Harness-2.png", ()),
+            ),
+            (),
+        )
+        assert painter.calls == [("Paint it.\n", [], "fake-model", 2, True)]
+        assert (directory / "Harness-2.png").read_bytes() == b"png 1.1"
+
+    def test_a_style_supplies_references_sample_and_ground(
+        self, vault: Path, painter: Painter
+    ) -> None:
+        for name in ("a", "b", "c"):
+            picture(vault / f"assets/ink/{name}.png", (4, 4))
+        links = ", ".join(f'"[[assets/ink/{n}.png]]"' for n in "abc")
+        style(vault, f"opacity: true\nsample: 2\nreferences: [{links}]")
+        random.seed(1)
+        generation = generate(self.RECORD, "Ink it.", vault, count=3)
+        assert [len(call[1]) for call in painter.calls] == [2, 2, 2]
+        assert {call[3] for call in painter.calls} == {1}
+        assert {call[4] for call in painter.calls} == {False}
+        assert [len(c.references) for c in generation.candidates] == [2, 2, 2]
+
+    def test_options_outrank_the_style(
+        self, vault: Path, tmp_path: Path, painter: Painter
+    ) -> None:
+        picture(vault / "assets/ink/a.png", (4, 4))
+        style(vault, 'sample: 1\nreferences: ["[[assets/ink/a.png]]"]')
+        mine = [picture(tmp_path / f"{n}.png", (4, 4)) for n in "xy"]
+        generation = generate(
+            self.RECORD,
+            "Paint it.",
+            vault,
+            references=mine,
+            sample=2,
+            count=1,
+            model="fake-model",
+        )
+        ((text, names, model, count, transparent),) = painter.calls
+        assert (text, sorted(names), model, count, transparent) == (
+            "Paint it.",
+            ["x.png", "y.png"],
+            "fake-model",
+            1,
+            True,
+        )
+        assert generation.candidates[0].references == tuple(names)
+
+    def test_reports_references_left_out(self, vault: Path, painter: Painter) -> None:
+        add_content("Bare Hook", "Gear", vault, campaign=1)
+        style(vault, 'references: ["[[Bare Hook]]"]')
+        generation = generate(self.RECORD, "Paint it.", vault, count=1)
+        assert generation.omitted == ("[[Bare Hook]] has no image file in the vault",)
+        assert painter.calls == [("Paint it.", [], "fake-model", 1, True)]
+
+    @pytest.mark.parametrize("overwrite", [False, True])
+    def test_existing_candidates_need_overwrite(
+        self, vault: Path, painter: Painter, overwrite: bool
+    ) -> None:
+        existing = vault / CANDIDATE_DIRECTORY / "Harness-2.png"
+        existing.parent.mkdir(parents=True)
+        existing.write_bytes(b"old")
+        if overwrite:
+            generate(self.RECORD, "Paint it.", vault, overwrite=True)
+            assert existing.read_bytes() == b"png 1.1"
+        else:
+            with pytest.raises(ValueError, match="already exists; pass --overwrite"):
+                generate(self.RECORD, "Paint it.", vault)
+            assert existing.read_bytes() == b"old"
+            assert painter.calls == []
+
+    @pytest.mark.parametrize(
+        ("setup", "message"),
+        [
+            ("empty prompt", "the prompt is empty"),
+            ("missing reference", "is not a file"),
+            ("too many references", "4 references is more than fake-model takes"),
+            ("several styles", "styles Gear, Other all apply"),
+        ],
+    )
+    def test_paints_nothing_when_it_cannot_generate(
+        self, vault: Path, tmp_path: Path, painter: Painter, setup: str, message: str
+    ) -> None:
+        text, references = "Paint it.", None
+        if setup == "empty prompt":
+            text = " \n"
+        elif setup == "missing reference":
+            references = [tmp_path / "missing.png"]
+        elif setup == "too many references":
+            references = [picture(tmp_path / f"{n}.png", (4, 4)) for n in range(4)]
+        else:
+            style(vault, "", "Other")
+        with pytest.raises(ValueError, match=message):
+            generate(self.RECORD, text, vault, references=references)
+        assert painter.calls == []
+        assert not (vault / CANDIDATE_DIRECTORY).exists()
+
+    def test_refuses_a_model_no_painter_offers(self, vault: Path) -> None:
+        with pytest.raises(ValueError, match="no painter offers model gpt-image-1"):
+            generate(self.RECORD, "Paint it.", vault, model="gpt-image-1")
+
+    def test_reports_a_painter_that_paints_too_few(
+        self, vault: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake = Painter(short=True)
+        monkeypatch.setattr(module, "find_painter", lambda model=None: (fake, "m"))
+        with pytest.raises(ValueError, match="m painted 1 candidates, not 2"):
+            generate(self.RECORD, "Paint it.", vault)

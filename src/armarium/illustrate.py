@@ -2,16 +2,21 @@
 picture into the vault as its image within a size budget."""
 
 import io
+import mimetypes
 import os
+import random
 import re
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
+from armarium.index import VaultIndex
 from armarium.lib import WIKILINK
+from armarium.painters import Reference, find_painter
 from armarium.parse import Frontmatter, Record
 from armarium.style import MAX_BYTES, MAX_EDGE, Style, art_directory, choose_style
 from armarium.trace import locate
@@ -41,6 +46,9 @@ TRIM_FUZZ = 3
 # at about three times the bytes. Compressed this hard it still shows no
 # banding, and the bytes saved buy a larger image.
 OPACITY_QUALITY = 20
+# Where generate writes candidates, relative to the vault root.
+CANDIDATE_DIRECTORY = ".scratch/illustrate"
+COUNT = 2
 
 
 @dataclass(frozen=True)
@@ -513,4 +521,237 @@ def ingest(
         and previous != relative.as_posix()
         else None,
         None if chosen is None else chosen.name,
+    )
+
+
+@dataclass(frozen=True)
+class Candidate:
+    """One picture an image model painted for a record.
+
+    Attributes:
+        path: The candidate's file.
+        references: The references it was painted from, as named in the
+            request.
+    """
+
+    path: Path
+    references: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Generation:
+    """The candidates painted for a record.
+
+    Attributes:
+        record: The record they illustrate.
+        model: The model that painted them.
+        style: The name of the style whose settings were used, or None.
+        candidates: Each candidate, in the order painted.
+        omitted: Each style reference left out, with why.
+    """
+
+    record: Path
+    model: str
+    style: str | None
+    candidates: tuple[Candidate, ...]
+    omitted: tuple[str, ...]
+
+
+def _style_references(
+    root: Path, record: Path, targets: Sequence[str]
+) -> tuple[list[Path], list[str]]:
+    """Find the images a style's references name.
+
+    A reference to an image is that image; a reference to a record is the
+    image its image field names. The record being illustrated is left out of
+    its own references, as is a record with no image file in the vault.
+
+    Args:
+        root: Vault root.
+        record: The record being illustrated.
+        targets: The style's reference link targets.
+
+    Returns:
+        tuple[list[Path], list[str]]: The images, and a note for each
+            reference left out.
+
+    Raises:
+        ValueError: A reference names no file, or several.
+    """
+    index = VaultIndex(root)
+    images: list[Path] = []
+    omitted: list[str] = []
+    for target in targets:
+        found, _ = index.resolve(target, record)
+        if found is None:
+            raise ValueError(f"cannot uniquely resolve reference [[{target}]]")
+        if found.resolve() == record.resolve():
+            continue
+        if found.suffix != ".md":
+            images.append(found)
+            continue
+        parsed, _ = Record.parse(found, root)
+        image = None if parsed is None else parsed.frontmatter.get(FIELD)
+        art = root / image if isinstance(image, str) and image.strip() else None
+        if art is None or not art.is_file() or art.is_symlink():
+            omitted.append(f"[[{target}]] has no image file in the vault")
+        else:
+            images.append(art)
+    return images, omitted
+
+
+def _reference(path: Path, opacity: bool) -> Reference:
+    """Read a reference image as a request carries it.
+
+    Art stored as black opacity is sent laid on white, as it was painted.
+
+    Args:
+        path: The image.
+        opacity: Whether the style stores its art as black opacity.
+
+    Returns:
+        Reference: The image's name, bytes and media type.
+
+    Raises:
+        ValueError: The image is not one Pillow reads.
+        OSError: The image cannot be read.
+    """
+    if not opacity:
+        media = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        return Reference(path.name, path.read_bytes(), media)
+    try:
+        with Image.open(path) as opened:
+            img = _on_white(opened)
+    except UnidentifiedImageError as exc:
+        raise ValueError(f"{path} is not a picture Pillow can read") from exc
+    buffer = io.BytesIO()
+    img.save(buffer, "PNG")
+    return Reference(f"{path.stem}.png", buffer.getvalue(), "image/png")
+
+
+def _batches(
+    images: Sequence[Path], sample: int | None, count: int
+) -> list[tuple[list[Path], int]]:
+    """Plan the requests that paint a record's candidates.
+
+    Args:
+        images: The reference images.
+        sample: How many references to draw at random for each candidate,
+            or None to send them all.
+        count: How many candidates to paint.
+
+    Returns:
+        list[tuple[list[Path], int]]: Each request's references and how
+            many candidates it paints: one request for all of them when
+            every reference is sent, otherwise one per candidate, each with
+            its own draw.
+    """
+    if sample is None:
+        return [(list(images), count)]
+    return [
+        (random.sample(list(images), min(sample, len(images))), 1) for _ in range(count)
+    ]
+
+
+def generate(
+    record: Path,
+    text: str,
+    vault: Path | None = None,
+    *,
+    style: str | None = None,
+    references: Sequence[Path] | None = None,
+    sample: int | None = None,
+    count: int = COUNT,
+    model: str | None = None,
+    overwrite: bool = False,
+) -> Generation:
+    """Paint candidate pictures for a record from a prompt.
+
+    The style named, or else the only style that applies to the record,
+    supplies the references, how many to draw for each candidate, and the
+    ground: transparent, or opaque for a style stored as black opacity.
+    Candidates are written to CANDIDATE_DIRECTORY as NAME-1.png, NAME-2.png
+    and so on, NAME the record's.
+
+    Args:
+        record: The record to illustrate. With a vault, a relative path is
+            taken from the vault root; without one, from the working directory.
+        text: The prompt, such as `prompt` prints.
+        vault: Vault root, or None to discover it from the record's location.
+        style: The style to use, or None to choose one by the record's type.
+        references: Images to send in place of the style's references, or
+            None for the style's.
+        sample: How many references to draw for each candidate, or None for
+            the style's.
+        count: How many candidates to paint.
+        model: The model to paint with, or None for the default.
+        overwrite: Replace existing candidates for the record.
+
+    Returns:
+        Generation: What was painted.
+
+    Raises:
+        ValueError: The record is not a Markdown file in a vault, or cannot
+            be parsed; the prompt is empty; no painter offers the model; no
+            style or several apply, as choose_style describes; a reference
+            cannot be found or read, or there are more than one request
+            takes; a candidate exists; or the painter fails.
+        OSError: A file cannot be read or written, or the painter cannot be
+            reached.
+    """
+    root, path, parsed = _read(record, vault)
+    if not text.strip():
+        raise ValueError("the prompt is empty")
+    painter, chosen_model = find_painter(model)
+    chosen = choose_style(root, parsed, style)
+    settings = chosen or Style("", "")
+    if references is None:
+        images, omitted = _style_references(root, path, settings.references)
+    else:
+        images, omitted = list(references), []
+        for image in images:
+            if not image.is_file():
+                raise ValueError(f"reference {image} is not a file")
+    sample = settings.sample if sample is None else sample
+    per_request = len(images) if sample is None else min(sample, len(images))
+    limit = painter.reference_limit(chosen_model)
+    if per_request > limit:
+        raise ValueError(
+            f"{per_request} references is more than {chosen_model} takes in one "
+            f"request ({limit}); draw fewer with --sample"
+        )
+    directory = root / CANDIDATE_DIRECTORY
+    outputs = [directory / f"{path.stem}-{n}.png" for n in range(1, count + 1)]
+    if not overwrite:
+        for output in outputs:
+            if output.exists():
+                raise ValueError(
+                    f"{output} already exists; pass --overwrite to replace it"
+                )
+    encoded = {image: _reference(image, settings.opacity) for image in images}
+    candidates: list[Candidate] = []
+    for batch, wanted in _batches(images, sample, count):
+        sent = [encoded[image] for image in batch]
+        painted = painter.paint(
+            text,
+            sent,
+            model=chosen_model,
+            count=wanted,
+            transparent=not settings.opacity,
+        )
+        if len(painted) != wanted:
+            raise ValueError(
+                f"{chosen_model} painted {len(painted)} candidates, not {wanted}"
+            )
+        for data in painted:
+            output = outputs[len(candidates)]
+            _write(output, data)
+            names = tuple(reference.name for reference in sent)
+            candidates.append(Candidate(output, names))
+    return Generation(
+        path,
+        chosen_model,
+        None if chosen is None else chosen.name,
+        tuple(candidates),
+        tuple(omitted),
     )

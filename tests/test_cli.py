@@ -1,6 +1,7 @@
 """Command parsing, diagnostics, exit status and process entry point."""
 
 import argparse
+import io
 import json
 import os
 import re
@@ -21,6 +22,7 @@ from armarium.cli import (
     main,
     parse_args,
 )
+from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
 from armarium.transcribe import (
@@ -2357,6 +2359,168 @@ class TestIllustratePromptCommand:
     ) -> None:
         with pytest.raises(SystemExit) as exc:
             parse_args(["illustrate", "prompt", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestIllustrateGenerateCommand:
+    GENERATION = Generation(
+        Path("/v/content/Harness.md"),
+        "gpt-image-2.5-flare",
+        "Gear",
+        (
+            Candidate(Path("/v/.scratch/illustrate/Harness-1.png"), ("a.png",)),
+            Candidate(Path("/v/.scratch/illustrate/Harness-2.png"), ()),
+        ),
+        ("[[Hook]] has no image file in the vault",),
+    )
+
+    @pytest.fixture
+    def calls(self, monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, ...]]:
+        recorded: list[tuple[object, ...]] = []
+
+        def generate(*args: object, **options: object) -> Generation:
+            recorded.append((*args, options))
+            return self.GENERATION
+
+        monkeypatch.setattr(cli, "generate", generate)
+        return recorded
+
+    def test_paints_from_a_prompt_file(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        calls: list[tuple[object, ...]],
+    ) -> None:
+        text = tmp_path / "prompt.txt"
+        text.write_text("\ufeffPaint it.\n", encoding="utf-8")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "illustrate",
+                "generate",
+                "a.md",
+                "--prompt",
+                str(text),
+                "--style",
+                "Gear",
+                "--reference",
+                "x.png",
+                "--reference",
+                "y.png",
+                "--sample",
+                "1",
+                "--count",
+                "3",
+                "--model",
+                "gpt-image-2.5-flare",
+                "--overwrite",
+                "--vault",
+                "v",
+            ],
+        )
+        main()
+        assert calls == [
+            (
+                Path("a.md"),
+                "Paint it.\n",
+                Path("v"),
+                {
+                    "style": "Gear",
+                    "references": [Path("x.png"), Path("y.png")],
+                    "sample": 1,
+                    "count": 3,
+                    "model": "gpt-image-2.5-flare",
+                    "overwrite": True,
+                },
+            )
+        ]
+        output = capsys.readouterr()
+        assert output.out == (
+            "/v/.scratch/illustrate/Harness-1.png\n/v/.scratch/illustrate/Harness-2.png\n"
+        )
+        for line in (
+            "INFO: Used style Gear",
+            "WARNING: Left out reference [[Hook]] has no image file in the vault",
+            "INFO: Painted with gpt-image-2.5-flare",
+            "INFO: Harness-1.png: painted from a.png",
+        ):
+            assert line in output.err
+        assert "Harness-2.png: painted" not in output.err
+
+    def test_reads_the_prompt_from_standard_input(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        calls: list[tuple[object, ...]],
+    ) -> None:
+        monkeypatch.setattr(sys, "stdin", io.StringIO("Paint it."))
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "illustrate", "generate", "a.md", "--prompt", "-"]
+        )
+        main()
+        assert calls == [
+            (
+                Path("a.md"),
+                "Paint it.",
+                None,
+                {
+                    "style": None,
+                    "references": None,
+                    "sample": None,
+                    "count": 2,
+                    "model": None,
+                    "overwrite": False,
+                },
+            )
+        ]
+
+    @pytest.mark.parametrize("missing", [True, False])
+    def test_exits_with_one_when_it_cannot_paint(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        missing: bool,
+    ) -> None:
+        text = tmp_path / "prompt.txt"
+        if not missing:
+            text.write_text("Paint it.")
+
+            def generate(*args: object, **options: object) -> Generation:
+                raise ValueError("OPENAI_API_KEY is not set")
+
+            monkeypatch.setattr(cli, "generate", generate)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "illustrate", "generate", "a.md", "--prompt", str(text)],
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "ERROR: Cannot illustrate a.md: " in output.err
+        if not missing:
+            assert "OPENAI_API_KEY is not set" in output.err
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            ["a.md"],
+            ["a.md", "--prompt", "p", "--count", "0"],
+            ["a.md", "--prompt", "p", "--sample", "-1"],
+            ["a.md", "--prompt", "p", "--preamble", "x"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["illustrate", "generate", *arguments])
         assert exc.value.code == 2
         assert "usage: armarium" in capsys.readouterr().err
 

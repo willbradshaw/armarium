@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium illustrate generate` to paint candidate pictures for a record with an image model from a prompt, and `references` and `sample` on illustration styles.
 - Add `armarium transcribe --loose`, which loosens voice detection to keep quieter speech, and have the `create-transcript` skill use it when a pass loses quiet speech.
 - Add `armarium illustrate prompt` to print the prompt for a record's picture, and optional `image` and `visual` fields, the latter for art direction, on all Content.
 - Add illustration styles in `reference/styles/`, which say where `armarium illustrate ingest` puts each kind of art and how, and hold that art to a size budget in validation.

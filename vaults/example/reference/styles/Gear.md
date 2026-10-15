@@ -2,6 +2,7 @@
 type: "[[Reference]]"
 illustrates: [Content/Gear]
 directory: assets/art/gear
+references: []
 ---
 A single item of equipment, shown whole and on its own, as a plate in an
 illustrated catalogue of adventuring gear. Hand-painted, with soft light from

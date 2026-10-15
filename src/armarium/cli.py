@@ -18,11 +18,12 @@ from armarium.extensions import (
     update_extension,
 )
 from armarium.find import find_records
-from armarium.illustrate import ingest, prompt
+from armarium.illustrate import CANDIDATE_DIRECTORY, COUNT, generate, ingest, prompt
 from armarium.init import init_vault
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
+from armarium.painters import PAINTERS
 from armarium.player import add_player
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
@@ -323,7 +324,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "record's name, its rules callout and its visual field. The "
             "preamble is the --preamble file's text, or else the text of the "
             f"style named, or of the one in {STYLE_DIRECTORY}/ that illustrates "
-            "the record's type, if any. Reads only; sends nothing."
+            "the record's type, if any."
+        ),
+    )
+    paint = stages.add_parser(
+        "generate",
+        help="paint candidate pictures for a record with an image model",
+        description=(
+            "Send a prompt, such as illustrate prompt prints, to an image model "
+            f"and write the candidates it paints to {CANDIDATE_DIRECTORY}/ as "
+            "NAME-1.png, NAME-2.png and so on, NAME the record's. A style, the "
+            f"one named or else the one in {STYLE_DIRECTORY}/ that illustrates "
+            "the record's type, supplies the ground and replaces the defaults "
+            "below with its own. Prints each candidate's path."
         ),
     )
     picture = stages.add_parser(
@@ -338,7 +351,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "image's path, then validates the record."
         ),
     )
-    for stage in (request, picture):
+    for stage in (request, paint, picture):
         stage.add_argument(
             "record",
             type=Path,
@@ -348,7 +361,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "picture", type=Path, help="picture to take in, in any common format"
     )
     text = request.add_mutually_exclusive_group()
-    for group in (text, picture):
+    for group in (text, paint, picture):
         group.add_argument(
             "--style",
             metavar="NAME",
@@ -368,7 +381,41 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="TEXT",
         help="art direction to use in place of the record's visual field",
     )
-    for stage in (request, picture):
+    paint.add_argument(
+        "--prompt",
+        required=True,
+        metavar="FILE",
+        help="file holding the prompt, or - to read it from standard input",
+    )
+    paint.add_argument(
+        "--reference",
+        action="append",
+        type=Path,
+        dest="references",
+        metavar="IMAGE",
+        help="image to send to show the style; repeatable (default: none)",
+    )
+    paint.add_argument(
+        "--sample",
+        type=_positive,
+        metavar="N",
+        help="references to draw at random for each candidate (default: all)",
+    )
+    paint.add_argument(
+        "--count",
+        type=_positive,
+        default=COUNT,
+        metavar="N",
+        help=f"candidates to paint (default: {COUNT})",
+    )
+    paint.add_argument(
+        "--model",
+        help=f"image model to paint with (default: {PAINTERS[0].default_model})",
+    )
+    paint.add_argument(
+        "--overwrite", action="store_true", help="replace the record's candidates"
+    )
+    for stage in (request, paint, picture):
         stage.add_argument(
             "--vault",
             type=Path,
@@ -584,6 +631,41 @@ def main() -> None:
             logger.error("Cannot illustrate %s: %s", args.record, exc)
             sys.exit(1)
         print(text)
+        return
+    if args.command == "illustrate" and args.stage == "generate":
+        try:
+            text = (
+                sys.stdin.read()
+                if args.prompt == "-"
+                else Path(args.prompt).read_text(encoding="utf-8-sig")
+            )
+            generation = generate(
+                args.record,
+                text,
+                args.vault,
+                style=args.style,
+                references=args.references,
+                sample=args.sample,
+                count=args.count,
+                model=args.model,
+                overwrite=args.overwrite,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot illustrate %s: %s", args.record, exc)
+            sys.exit(1)
+        if generation.style is not None:
+            logger.info("Used style %s", generation.style)
+        for note in generation.omitted:
+            logger.warning("Left out reference %s", note)
+        logger.info("Painted with %s", generation.model)
+        for candidate in generation.candidates:
+            if candidate.references:
+                logger.info(
+                    "%s: painted from %s",
+                    candidate.path.name,
+                    ", ".join(candidate.references),
+                )
+            print(candidate.path)
         return
     if args.command == "transcribe":
         try:

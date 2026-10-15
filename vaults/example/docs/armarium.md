@@ -38,6 +38,7 @@ Run these from the vault root, or add `--vault PATH`.
 | `armarium find "NAME"` | lists the records with that name or alias |
 | `armarium trace "PATH"` | lists every link to a record, and where each one sits |
 | `armarium illustrate prompt "PATH"` | prints what an image model should be told to paint a record's picture |
+| `armarium illustrate generate "PATH" --prompt FILE` | paints candidate pictures for a record with an image model, into `.scratch/illustrate/` |
 | `armarium illustrate ingest "PATH" "PICTURE"` | takes a picture into `assets/` as a record's image and sets its `image` field |
 | `armarium transcribe "FILE"` | turns a session recording, or raw speech-to-text, into text ready to clean into a Transcript |
 | `armarium validate .` | checks the whole vault; give a file to check one record |
