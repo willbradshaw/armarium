@@ -335,8 +335,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             f"and write the candidates it paints to {CANDIDATE_DIRECTORY}/ as "
             "NAME-1.png, NAME-2.png and so on, NAME the record's. A style, the "
             f"one named or else the one in {STYLE_DIRECTORY}/ that illustrates "
-            "the record's type, supplies the reference images and the ground. "
-            "Prints each candidate's path."
+            "the record's type, supplies the ground and replaces the defaults "
+            "below with its own. Prints each candidate's path."
         ),
     )
     picture = stages.add_parser(
@@ -393,7 +393,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         dest="references",
         metavar="IMAGE",
-        help="image to send in place of the style's references; repeatable",
+        help="image to send to show the style; repeatable (default: none)",
     )
     paint.add_argument(
         "--sample",

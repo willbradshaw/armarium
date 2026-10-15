@@ -92,13 +92,15 @@ laid on white. A style with `opacity: true` stores its art this way;
 
 A style says how one kind of art is made and stored. Each is a
 [Reference](type.md#reference) record in `reference/styles/`, named for the
-style, and a new vault has one, `Gear`:
+style, and a new vault has one, `Gear`. Its `references` is empty until the
+vault has Gear art to show the style:
 
 ```markdown
 ---
 type: "[[Reference]]"
 illustrates: [Content/Gear]
 directory: assets/art/gear
+references: []
 ---
 A single item of equipment, shown whole and on its own, as a plate in an
 illustrated catalogue of adventuring gear. ...
@@ -178,27 +180,50 @@ choose to `ingest`. Nothing in the vault changes until then: a new vault keeps
 | Option | Sets | Default |
 | --- | --- | --- |
 | `--count N` | how many candidates to paint | 2 |
-| `--model NAME` | the image model | `gpt-image-2.5-sunburst` |
-| `--reference IMAGE` | an image to send in place of the style's references; repeatable | the style's |
-| `--sample N` | how many references to draw at random for each candidate | the style's, or all |
+| `--model NAME` | the image model; see [Image models](#image-models) | `gpt-image-2.5-sunburst` |
+| `--reference IMAGE` | an image to send to show the style; repeatable | none |
+| `--sample N` | how many references to draw at random for each candidate | all of them |
 | `--overwrite` | replace the record's earlier candidates | off |
 
-`RECORD`, `--vault` and `--style NAME` work as for `ingest`.
+A [style](#styles) replaces the defaults of `--reference` and `--sample` with its
+`references` and `sample`. `RECORD`, `--vault` and `--style NAME` work as for
+`ingest`.
 
-**References.** Each request carries the style's reference images, to show the
-model the style. A reference to a record sends the image its `image` names; a
-record without an image file in the vault is left out, with a warning, as is the
-record being illustrated. Sent all at once, many references average out into one
-middling style, so `sample` draws a few at random for each candidate instead,
-one request per candidate, and the command reports each candidate's draw. A
-request may carry at most 16 references.
+### References
 
-**Ground.** Art is painted on a transparent ground. For a style stored as
+Each request carries the reference images, to show the model the style. A
+reference to a record sends the image its `image` names; a record without an
+image file in the vault is left out, with a warning, as is the record being
+illustrated. Sent all at once, many references average out into one middling
+style, so `sample` draws a few at random for each candidate instead, one request
+per candidate, and the command reports each candidate's draw. If there are more
+references per request than the model takes, the command stops and asks for
+`--sample`.
+
+### Ground
+
+Art is painted on a transparent ground. For a style stored as
 [black opacity](#black-opacity), it is painted on the ground the prompt
 describes, such as white, and the references are sent laid on white.
 
-**Models.** Only models that paint on a transparent ground are offered:
-`gpt-image-2.5-sunburst`, and the faster, looser `gpt-image-2.5-flare`, from
-OpenAI, or a dated snapshot of either, such as
-`gpt-image-2.5-flare-2026-09-08`. The command reads the API key from
-`OPENAI_API_KEY`. Each candidate is a paid request.
+### Image models
+
+A provider is a service that runs image models. Armarium offers one provider
+for now, OpenAI; others may be added later. `--model` chooses the model, and
+with it the provider that offers it. A provider offers only models that can
+paint on a transparent ground, so a model that cannot is refused.
+
+#### OpenAI
+
+| Model | Paints |
+| --- | --- |
+| `gpt-image-2.5-sunburst` | with more precision, more slowly; the default |
+| `gpt-image-2.5-flare` | faster and more loosely |
+
+A dated snapshot of either, such as `gpt-image-2.5-flare-2026-09-08`, is offered
+too. Older models, such as `gpt-image-2`, are not.
+
+- **Key:** read from `OPENAI_API_KEY`.
+- **References:** at most 16 per request.
+- **Pictures:** 1024 by 1024 pixels, at high quality, as PNG.
+- **Cost:** OpenAI charges for every candidate painted.
