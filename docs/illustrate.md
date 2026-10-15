@@ -88,6 +88,12 @@ a grey wash lets the page show through. A picture with transparency is first
 laid on white. A style with `opacity: true` stores its art this way;
 `--no-opacity` stores a picture as it is.
 
+Black art would vanish on Obsidian's dark theme, so a new vault enables the CSS
+snippet `.obsidian/snippets/armarium-opacity-art.css`, which shows the art in
+`assets/art/ink/` inverted, as white, on a dark theme; printing and PDF export
+keep it black. Give a black-opacity style `directory: assets/art/ink`, or add a
+selector for its own folder to the snippet.
+
 ## Styles
 
 A style says how one kind of art is made and stored. Each is a
@@ -179,7 +185,7 @@ choose to `ingest`. Nothing in the vault changes until then: a new vault keeps
 
 | Option | Sets | Default |
 | --- | --- | --- |
-| `--count N` | how many candidates to paint | 2 |
+| `--count N` | how many candidates to paint | 3 |
 | `--model NAME` | the image model; see [Image models](#image-models) | `gpt-image-2.5-sunburst` |
 | `--reference IMAGE` | an image to send to show the style; repeatable | none |
 | `--sample N` | how many references to draw at random for each candidate | all of them |
@@ -226,3 +232,10 @@ too. Older models, such as `gpt-image-2`, are not.
 - **Key:** read from `OPENAI_API_KEY`.
 - **References:** at most 16 per request.
 - **Pictures:** 1024 by 1024 pixels, at high quality, as PNG.
+
+## With an agent
+
+A new vault ships the `illustrate-record` [skill](agents.md), which walks a
+coding agent through the stages for one record: it builds the prompt, proposes
+a `visual` line where the record needs one, paints candidates once the GM
+agrees, and takes in the one the GM chooses.

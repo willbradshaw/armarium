@@ -48,7 +48,7 @@ TRIM_FUZZ = 3
 OPACITY_QUALITY = 20
 # Where generate writes candidates, relative to the vault root.
 CANDIDATE_DIRECTORY = ".scratch/illustrate"
-COUNT = 2
+COUNT = 3
 
 
 @dataclass(frozen=True)

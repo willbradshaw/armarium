@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Ship the `illustrate-record` agent skill, and a CSS snippet that shows black-opacity art in `assets/art/ink/` as white on Obsidian's dark theme.
+- Make `armarium illustrate generate` paint three candidates by default.
 - Add `armarium illustrate generate` to paint candidate pictures for a record with an image model from a prompt, and `references` and `sample` on illustration styles.
 - Add `armarium transcribe --loose`, which loosens voice detection to keep quieter speech, and have the `create-transcript` skill use it when a pass loses quiet speech.
 - Add `armarium illustrate prompt` to print the prompt for a record's picture, and optional `image` and `visual` fields, the latter for art direction, on all Content.
