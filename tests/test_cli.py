@@ -2271,6 +2271,92 @@ class TestIllustrateCommand:
         assert "usage: armarium" in capsys.readouterr().err
 
 
+class TestIllustratePromptCommand:
+    def test_prints_the_prompt(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[tuple[object, ...]] = []
+
+        def prompt(*args: object, **options: object) -> str:
+            calls.append((*args, options))
+            return "Paint it.\n\n<subject>Harness</subject>"
+
+        monkeypatch.setattr(cli, "prompt", prompt)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "illustrate",
+                "prompt",
+                "a.md",
+                "--style",
+                "Ink",
+                "--vault",
+                "v",
+                "--visual",
+                "Laid flat.",
+            ],
+        )
+        main()
+        output = capsys.readouterr()
+        assert output.out == "Paint it.\n\n<subject>Harness</subject>\n"
+        assert output.err == ""
+        assert calls == [
+            (
+                Path("a.md"),
+                Path("v"),
+                {"style": "Ink", "preamble": None, "visual": "Laid flat."},
+            )
+        ]
+
+    def test_exits_with_one_when_it_cannot_build_the_prompt(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        missing = str(tmp_path / "missing.md")
+        monkeypatch.setattr(sys, "argv", ["armarium", "illustrate", "prompt", missing])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert f"ERROR: Cannot illustrate {missing}: " in output.err
+
+    def test_defaults(self) -> None:
+        args = parse_args(["illustrate", "prompt", "a.md"])
+        assert (args.stage, args.record, args.style, args.vault) == (
+            "prompt",
+            Path("a.md"),
+            None,
+            None,
+        )
+        assert (args.preamble, args.visual) == (None, None)
+
+    def test_preamble(self) -> None:
+        args = parse_args(["illustrate", "prompt", "a.md", "--preamble", "p.txt"])
+        assert (args.preamble, args.style) == (Path("p.txt"), None)
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["a.md", "b.md"],
+            ["a.md", "--opacity"],
+            ["a.md", "--style", "Ink", "--preamble", "p.txt"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["illustrate", "prompt", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+
 class TestPositive:
     @pytest.mark.parametrize(("value", "expected"), [("1", 1), ("98000", 98000)])
     def test_size(self, value: str, expected: int) -> None:

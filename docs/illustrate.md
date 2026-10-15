@@ -1,14 +1,20 @@
 # Illustrating a record
 
 ```sh
+armarium illustrate prompt "content/Lucky Ring.md"
 armarium illustrate ingest "content/Lucky Ring.md" ~/Downloads/ring.png
 ```
+
+`armarium illustrate prompt RECORD` prints what an image model should be told
+to paint a record's picture; see [Prompts](#prompts).
 
 `armarium illustrate ingest RECORD PICTURE` takes a picture into a
 [vault](vault.md) as a record's image. It writes the picture into `assets/` as a
 small WebP and sets the record's `image` field to its path, then validates the
-record. A [style](#styles) can say where each kind of art goes and how it is
-stored.
+record.
+
+A [style](#styles) says how each kind of art is painted, where it goes and how
+it is stored.
 
 ## Choosing the record
 
@@ -103,8 +109,8 @@ overrides it:
 | `max_bytes` | the largest art file, in bytes | `--max-bytes` | 100000 |
 | `max_edge` | the largest long edge, in pixels | `--max-edge` | 1200 |
 
-The body says what the style looks like, for an image model to paint from. The
-command does not paint, so the body does not change what it writes.
+The body says what the style looks like. [`prompt`](#prompts) puts it at the
+start of the prompt for any record illustrated in that style.
 
 `--style NAME` uses the style in `reference/styles/NAME.md`. Without it, the
 command uses the style whose `illustrates` names the record's type, or its type
@@ -115,3 +121,34 @@ and subtype, such as `Content/Gear`; if several do, it stops and asks for
 its `directory` and the folders inside it to its budget: each must be a WebP or
 PNG image within `max_bytes` and `max_edge`. A style that cannot be read stops
 the command until it is fixed.
+
+## Prompts
+
+`armarium illustrate prompt RECORD` prints the prompt for a record's picture. The
+prompt is, in order:
+
+1. a preamble, if any: the text of the `--preamble FILE`, or else the body of
+   the record's style;
+2. the record's name, as `<subject>NAME</subject>`;
+3. the record's `> [!rules]` callout, if any, as `<rules>` … `</rules>`;
+4. the record's `visual` field, if any, as `<visual>` … `</visual>`.
+
+The rules text loses its quote markers, its links become their text and its
+bold and italic markers are dropped.
+
+`visual` is art direction: what the picture should show and how, when the rules
+text alone would not get it right. It outranks the rules text. Any Content
+record may set it:
+
+```yaml
+visual: A coil of rope on a brass reel, its hook worn bright.
+```
+
+`--visual TEXT` uses that text in place of the record's field, without changing
+the record.
+
+`RECORD` and `--vault` work as for `ingest`, and `--style NAME` chooses the
+style as it does there. `--preamble FILE` is a UTF-8 text file, relative to the
+current directory, that opens the prompt in place of a style's text; it cannot
+be combined with `--style`. Without either, and with no style for the record's
+type, the prompt opens with the record's name.

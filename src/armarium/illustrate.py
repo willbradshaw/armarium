@@ -1,4 +1,5 @@
-"""Take a picture into a vault as a record's image, within a size budget."""
+"""Illustrate a record: assemble the prompt for its picture, and take the
+picture into the vault as its image within a size budget."""
 
 import io
 import os
@@ -10,11 +11,18 @@ from pathlib import Path, PurePosixPath
 import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
+from armarium.lib import WIKILINK
 from armarium.parse import Frontmatter, Record
 from armarium.style import MAX_BYTES, MAX_EDGE, Style, art_directory, choose_style
 from armarium.trace import locate
 
 FIELD = "image"
+# The field holding a record's art direction.
+VISUAL = "visual"
+# The first line of the callout holding a record's rules text.
+RULES = re.compile(r"\[!rules\][+-]?(?:[ \t].*)?", re.IGNORECASE)
+# Emphasis markers around a run of text.
+EMPHASIS = re.compile(r"(\*{1,3}|_{1,3})(.+?)\1")
 # Each long edge tried is this fraction of the one before, rounded down to
 # ten pixels, and none is tried below MIN_EDGE.
 EDGE_STEP = 0.9
@@ -234,6 +242,145 @@ def set_field(text: str, key: str, value: str) -> str:
     return updated
 
 
+def _plain(text: str) -> str:
+    """Turn Markdown into plain prose: links become their text, emphasis goes.
+
+    Args:
+        text: Markdown text.
+
+    Returns:
+        str: The text with each wikilink replaced by its display text, or
+            else by its target's name, and emphasis markers removed.
+    """
+
+    def label(match: re.Match[str]) -> str:
+        target, _, alias = match.group(1).partition("|")
+        return alias or target.partition("#")[0].rsplit("/", 1)[-1]
+
+    return EMPHASIS.sub(r"\2", WIKILINK.sub(label, text)).strip()
+
+
+def rules_text(record: Record) -> str:
+    """Read the rules callout that opens a record such as Gear, as plain prose.
+
+    Args:
+        record: The record.
+
+    Returns:
+        str: The text of the record's first ``> [!rules]`` callout, without
+            its marker line or quote markers, as `_plain` gives it; empty
+            when the record has none.
+    """
+    for block in record.body.iter_blocks():
+        if block.kind == "quote" and RULES.match(
+            block.children[0].text if block.children else ""
+        ):
+            break
+    else:
+        return ""
+    lines: list[str] = []
+    for line in record.body.text.splitlines()[block.line - record.body.line + 1 :]:
+        if not line.lstrip().startswith(">"):
+            break
+        lines.append(re.sub(r"^\s*>\s?", "", line))
+    return _plain("\n".join(lines))
+
+
+def build_prompt(preamble: str, record: Record, visual: str | None = None) -> str:
+    """Assemble what an image model is told to paint a record's picture.
+
+    Args:
+        preamble: Text that opens the prompt, such as a style's, or "" for
+            none.
+        record: The record the picture illustrates.
+        visual: Art direction to use in place of the record's visual field,
+            or None for the field's.
+
+    Returns:
+        str: The preamble, the record's name, then its rules text and its
+            visual field, each in a tagged block and left out when empty. The
+            visual field is art direction, and outranks the rules text.
+    """
+    if visual is None:
+        visual = record.frontmatter.get(VISUAL)
+    parts = [preamble.strip(), "", f"<subject>{record.path.stem}</subject>"]
+    for tag, text in (
+        ("rules", rules_text(record)),
+        ("visual", visual.strip() if isinstance(visual, str) else ""),
+    ):
+        if text:
+            parts += ["", f"<{tag}>", text, f"</{tag}>"]
+    return "\n".join(parts).strip()
+
+
+def _read(record: Path, vault: Path | None) -> tuple[Path, Path, Record]:
+    """Find and parse the record to illustrate.
+
+    Args:
+        record: The record's path. With a vault, a relative path is taken
+            from the vault root; without one, from the working directory.
+        vault: Vault root, or None to discover it from the record's location.
+
+    Returns:
+        tuple[Path, Path, Record]: The vault root, the record's path and the
+            parsed record.
+
+    Raises:
+        ValueError: The record is not a Markdown file in a vault, or cannot
+            be parsed.
+    """
+    root, path = locate(record, vault)
+    if path.suffix != ".md":
+        raise ValueError(f"{path} is not a Markdown record")
+    parsed, diagnostics = Record.parse(path, root)
+    if parsed is None:
+        raise ValueError(f"cannot parse the record: {diagnostics[0].message}")
+    return root, path, parsed
+
+
+def prompt(
+    record: Path,
+    vault: Path | None = None,
+    *,
+    style: str | None = None,
+    preamble: Path | None = None,
+    visual: str | None = None,
+) -> str:
+    """Assemble the prompt for a record's picture, as `build_prompt` does.
+
+    The preamble file's text opens the prompt. Without one, the style named,
+    or else the only style that applies to the record, supplies it; with no
+    style, the prompt opens with the record's name.
+
+    Args:
+        record: The record to illustrate. With a vault, a relative path is
+            taken from the vault root; without one, from the working directory.
+        vault: Vault root, or None to discover it from the record's location.
+        style: The style to paint in, or None to choose one by the record's
+            type. Ignored with a preamble.
+        preamble: A UTF-8 text file whose text opens the prompt, or None for
+            the style's.
+        visual: Art direction to use in place of the record's visual field,
+            or None for the field's.
+
+    Returns:
+        str: The prompt.
+
+    Raises:
+        ValueError: The record is not a Markdown file in a vault or cannot be
+            parsed; no style has the name, or several apply, as choose_style
+            describes; or the preamble is not UTF-8.
+        OSError: A file cannot be read.
+    """
+    root, _, parsed = _read(record, vault)
+    if preamble is not None:
+        text = preamble.read_text(encoding="utf-8-sig")
+    else:
+        chosen = choose_style(root, parsed, style)
+        text = chosen.prompt if chosen else ""
+    return build_prompt(text, parsed, visual)
+
+
 def _destination(output: str | None, record: Path, directory: str) -> PurePosixPath:
     """Choose the vault-relative path an image is written to.
 
@@ -330,12 +477,7 @@ def ingest(
             already exists; or the picture cannot be encoded or the field set.
         OSError: A file cannot be read or written.
     """
-    root, path = locate(record, vault)
-    if path.suffix != ".md":
-        raise ValueError(f"{path} is not a Markdown record")
-    parsed, diagnostics = Record.parse(path, root)
-    if parsed is None:
-        raise ValueError(f"cannot parse the record: {diagnostics[0].message}")
+    root, path, parsed = _read(record, vault)
     chosen = choose_style(root, parsed, style)
     settings = chosen or Style("", "")
     folder = settings.directory if directory is None else art_directory(directory)

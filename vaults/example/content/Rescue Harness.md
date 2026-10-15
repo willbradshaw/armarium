@@ -3,6 +3,7 @@ type: "[[types/Content]]"
 subtype: Gear
 summary: Rope-and-canvas harness for lifting a person aboard a vessel.
 source: Example homebrew
+visual: A harness of tarred canvas straps with a single iron ring at the chest, laid flat.
 campaign_2:
   held_by:
   first_session:

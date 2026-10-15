@@ -18,7 +18,7 @@ from armarium.extensions import (
     update_extension,
 )
 from armarium.find import find_records
-from armarium.illustrate import ingest
+from armarium.illustrate import ingest, prompt
 from armarium.init import init_vault
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
@@ -315,6 +315,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "illustrate", help="illustrate a record with a picture"
     )
     stages = illustration.add_subparsers(dest="stage", required=True)
+    request = stages.add_parser(
+        "prompt",
+        help="print what an image model is told to paint a record's picture",
+        description=(
+            "Print the prompt for a record's picture: a preamble, the "
+            "record's name, its rules callout and its visual field. The "
+            "preamble is the --preamble file's text, or else the text of the "
+            f"style named, or of the one in {STYLE_DIRECTORY}/ that illustrates "
+            "the record's type, if any. Reads only; sends nothing."
+        ),
+    )
     picture = stages.add_parser(
         "ingest",
         help="take a picture into the vault as a record's image",
@@ -327,22 +338,42 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "image's path, then validates the record."
         ),
     )
-    picture.add_argument(
-        "record",
-        type=Path,
-        help="record to illustrate; with --vault, relative to the vault root",
-    )
+    for stage in (request, picture):
+        stage.add_argument(
+            "record",
+            type=Path,
+            help="record to illustrate; with --vault, relative to the vault root",
+        )
     picture.add_argument(
         "picture", type=Path, help="picture to take in, in any common format"
     )
-    picture.add_argument(
-        "--style",
-        metavar="NAME",
-        help=(
-            f"style in {STYLE_DIRECTORY}/ to use (default: the one that "
-            "illustrates the record's type, if any)"
-        ),
+    text = request.add_mutually_exclusive_group()
+    for group in (text, picture):
+        group.add_argument(
+            "--style",
+            metavar="NAME",
+            help=(
+                f"style in {STYLE_DIRECTORY}/ to use (default: the one that "
+                "illustrates the record's type, if any)"
+            ),
+        )
+    text.add_argument(
+        "--preamble",
+        type=Path,
+        metavar="FILE",
+        help="text file to open the prompt with, in place of a style's text",
     )
+    request.add_argument(
+        "--visual",
+        metavar="TEXT",
+        help="art direction to use in place of the record's visual field",
+    )
+    for stage in (request, picture):
+        stage.add_argument(
+            "--vault",
+            type=Path,
+            help="vault root (default: discovered from the record)",
+        )
     where = picture.add_mutually_exclusive_group()
     where.add_argument(
         "--directory",
@@ -380,11 +411,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     picture.add_argument(
         "--overwrite", action="store_true", help="replace an existing image file"
-    )
-    picture.add_argument(
-        "--vault",
-        type=Path,
-        help="vault root (default: discovered from the record)",
     )
     recording = commands.add_parser(
         "transcribe",
@@ -539,6 +565,20 @@ def main() -> None:
             "from" if args.outbound else "to",
             target,
         )
+        return
+    if args.command == "illustrate" and args.stage == "prompt":
+        try:
+            text = prompt(
+                args.record,
+                args.vault,
+                style=args.style,
+                preamble=args.preamble,
+                visual=args.visual,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot illustrate %s: %s", args.record, exc)
+            sys.exit(1)
+        print(text)
         return
     if args.command == "transcribe":
         try:

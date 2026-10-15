@@ -461,6 +461,36 @@
       "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
     },
     {
+      "name": "Gear with visual",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "visual": "A harness laid flat."
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid visual: ' '",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "visual": " "
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "Gear invalid visual: []",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Gear",
+        "source": null,
+        "visual": []
+      },
+      "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
       "name": "Gear invalid url: 'ftp://example.org'",
       "valid": false,
       "frontmatter": {
@@ -507,9 +537,35 @@
         "subtype": "Gear",
         "source": null,
         "image": null,
+        "visual": null,
         "url": null
       },
       "body": "> [!rules]\n>\n\n## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "NPC with image and visual",
+      "valid": true,
+      "frontmatter": {
+        "image": "assets/art/mara.webp",
+        "visual": "A weathered captain at the helm."
+      },
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "NPC invalid image: ''",
+      "valid": false,
+      "frontmatter": {
+        "image": ""
+      },
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
+    },
+    {
+      "name": "NPC invalid visual: ' '",
+      "valid": false,
+      "frontmatter": {
+        "visual": " "
+      },
+      "body": "## Notes\n## Active Clues\n![[reference/views/content-clues.base]]\n## Appearances\n"
     },
     {
       "name": "Gear object stub",
