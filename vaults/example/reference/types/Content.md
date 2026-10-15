@@ -39,14 +39,18 @@ such as `Healing` or `Warding`.
 | Location | `parent_location`: empty or a wikilink to Location Content. |
 | Faction | `members`: empty if unknown, or a list of PC/NPC Content links. An empty list means no recorded members. |
 | Object, Gear | `held_by` inside each campaign block: holder link(s) or `GONE`; may be empty before entering play. |
-| Gear | `source`: publication or homebrew attribution; empty when unrecorded. Optional `image`, `visual` and `url`. |
+| Gear | `source`: publication or homebrew attribution; empty when unrecorded. Optional `url`. |
 | Lore | None. |
 | Date | `reckoning`: a nonempty link to Lore describing the calendar. `scale`: a nonblank calendar-defined string, such as day or year. |
 
 Object describes narrative artifacts; Gear describes equipment with recorded game
-mechanics, whether magical or mundane. Gear may add an `image`, the vault-relative
-path of an image file in the vault or an HTTP/HTTPS image URL, a `visual` giving
-art direction for that image, and an HTTP/HTTPS `url` for its source. These fields may be omitted or empty. Other rules-specific fields are custom frontmatter.
+mechanics, whether magical or mundane. Gear may add an HTTP/HTTPS `url` for its
+source, which may be omitted or empty. Other rules-specific fields are custom
+frontmatter.
+
+Any Content may add an `image`, the vault-relative path of an image file in the
+vault or an HTTP/HTTPS image URL, and a `visual` giving art direction for that
+image. Both may be omitted or empty.
 
 Dates represent particular days or periods within a calendar. Recurring calendar
 concepts, such as a named month or weekday, are Lore rather than Dates.

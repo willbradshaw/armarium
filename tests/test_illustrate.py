@@ -321,6 +321,26 @@ class TestBuildPrompt:
     ) -> None:
         assert build_prompt(self.PREAMBLE, parsed(tmp_path, text)) == expected
 
+    @pytest.mark.parametrize(
+        ("field", "visual", "expected"),
+        [
+            ("A ring.", "A ring on velvet.", "A ring on velvet."),
+            (None, "A ring on velvet.", "A ring on velvet."),
+            ("A ring.", None, "A ring."),
+        ],
+    )
+    def test_a_visual_replaces_the_field(
+        self,
+        tmp_path: Path,
+        field: str | None,
+        visual: str | None,
+        expected: str,
+    ) -> None:
+        text = f"---\nvisual: {field or ''}\n---\n"
+        assert build_prompt("", parsed(tmp_path, text), visual) == (
+            f"<subject>Lucky Ring</subject>\n\n<visual>\n{expected}\n</visual>"
+        )
+
     @pytest.mark.parametrize("preamble", ["", " \n"])
     def test_no_preamble_opens_with_the_subject(
         self, tmp_path: Path, preamble: str
@@ -419,6 +439,13 @@ class TestPrompt:
             preamble.write_bytes(contents)
         with pytest.raises(error):
             prompt(TestIngest.RECORD, vault, preamble=preamble)
+
+    def test_a_visual_replaces_the_field(self, vault: Path) -> None:
+        path = vault / TestIngest.RECORD
+        before = path.read_text()
+        text = prompt(TestIngest.RECORD, vault, visual="Coiled on a deck.")
+        assert text.endswith("<visual>\nCoiled on a deck.\n</visual>")
+        assert path.read_text() == before
 
     def test_refuses_a_broken_style(self, vault: Path) -> None:
         (vault / "reference/styles/Broken.md").write_text("no type\n")

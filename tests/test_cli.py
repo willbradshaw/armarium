@@ -2294,13 +2294,21 @@ class TestIllustratePromptCommand:
                 "Ink",
                 "--vault",
                 "v",
+                "--visual",
+                "Laid flat.",
             ],
         )
         main()
         output = capsys.readouterr()
         assert output.out == "Paint it.\n\n<subject>Harness</subject>\n"
         assert output.err == ""
-        assert calls == [(Path("a.md"), Path("v"), {"style": "Ink", "preamble": None})]
+        assert calls == [
+            (
+                Path("a.md"),
+                Path("v"),
+                {"style": "Ink", "preamble": None, "visual": "Laid flat."},
+            )
+        ]
 
     def test_exits_with_one_when_it_cannot_build_the_prompt(
         self,
@@ -2325,7 +2333,7 @@ class TestIllustratePromptCommand:
             None,
             None,
         )
-        assert args.preamble is None
+        assert (args.preamble, args.visual) == (None, None)
 
     def test_preamble(self) -> None:
         args = parse_args(["illustrate", "prompt", "a.md", "--preamble", "p.txt"])

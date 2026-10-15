@@ -363,6 +363,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="FILE",
         help="text file to open the prompt with, in place of a style's text",
     )
+    request.add_argument(
+        "--visual",
+        metavar="TEXT",
+        help="art direction to use in place of the record's visual field",
+    )
     for stage in (request, picture):
         stage.add_argument(
             "--vault",
@@ -564,7 +569,11 @@ def main() -> None:
     if args.command == "illustrate" and args.stage == "prompt":
         try:
             text = prompt(
-                args.record, args.vault, style=args.style, preamble=args.preamble
+                args.record,
+                args.vault,
+                style=args.style,
+                preamble=args.preamble,
+                visual=args.visual,
             )
         except (OSError, ValueError) as exc:
             logger.error("Cannot illustrate %s: %s", args.record, exc)

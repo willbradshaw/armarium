@@ -124,26 +124,28 @@ the command until it is fixed.
 
 ## Prompts
 
-`armarium illustrate prompt RECORD` prints the prompt for a record's picture on
-standard output. It reads only: nothing is sent or written. The prompt is, in
-order:
+`armarium illustrate prompt RECORD` prints the prompt for a record's picture. The
+prompt is, in order:
 
-1. a preamble: the text of the `--preamble FILE`, or else the body of the
-   record's style, if it has one;
+1. a preamble, if any: the text of the `--preamble FILE`, or else the body of
+   the record's style;
 2. the record's name, as `<subject>NAME</subject>`;
-3. the record's `> [!rules]` callout, as `<rules>` … `</rules>`;
-4. the record's `visual` field, as `<visual>` … `</visual>`.
+3. the record's `> [!rules]` callout, if any, as `<rules>` … `</rules>`;
+4. the record's `visual` field, if any, as `<visual>` … `</visual>`.
 
 The rules text loses its quote markers, its links become their text and its
-bold and italic markers are dropped. A part that is empty is left out.
+bold and italic markers are dropped.
 
 `visual` is art direction: what the picture should show and how, when the rules
-text alone would not get it right. It outranks the rules text. Gear may set it,
-and any record may add it:
+text alone would not get it right. It outranks the rules text. Any Content
+record may set it:
 
 ```yaml
 visual: A coil of rope on a brass reel, its hook worn bright.
 ```
+
+`--visual TEXT` uses that text in place of the record's field, without changing
+the record.
 
 `RECORD` and `--vault` work as for `ingest`, and `--style NAME` chooses the
 style as it does there. `--preamble FILE` is a UTF-8 text file, relative to the

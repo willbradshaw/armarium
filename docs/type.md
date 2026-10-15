@@ -58,13 +58,13 @@ of a declared subtype sits in that subfolder of its Content directory.
 | `summary` | required | null for a stub, or short text describing stable identity |
 | `aliases` | optional | null, `[]` or a list of non-empty strings |
 | `content_tags` | optional | null, `[]` or a list of unique, non-blank strings: freeform labels for filtering Content |
+| `image` | optional | null, a nonblank HTTP/HTTPS image URL, or the vault-relative path of an image in the vault |
+| `visual` | optional | null, or nonblank art direction for the image, which [`armarium illustrate prompt`](illustrate.md#prompts) includes in the prompt for the picture |
 | `stats` | required for NPC | null, a link to a record, or an `http(s)://` URL |
 | `player` | required for PC | a link to a [Player](#player) in the same campaign |
 | `parent_location` | required for Location | null, or a link to Location Content in the same campaign or shared; following it from Location to Location must never return to the starting record |
 | `members` | required for Faction | null (unknown), `[]` (none recorded) or a list of links to PC or NPC Content in the same campaign or shared |
 | `source` | required for Gear | null when unrecorded, or nonblank publication/homebrew attribution |
-| `image` | optional for Gear | null, a nonblank HTTP/HTTPS image URL, or the vault-relative path of an image in the vault |
-| `visual` | optional for Gear | null, or nonblank art direction for the image, which [`armarium illustrate prompt`](illustrate.md#prompts) includes in the prompt for the picture |
 | `url` | optional for Gear | null, or an HTTP/HTTPS source URL |
 | `reckoning` | required for Date | nonempty wikilink to a Lore record describing the calendar, in the same campaign or shared |
 | `scale` | required for Date | nonblank string naming a calendar period, such as `day`, `month`, `year` or `century`; no fixed list of values |

@@ -286,20 +286,23 @@ def rules_text(record: Record) -> str:
     return _plain("\n".join(lines))
 
 
-def build_prompt(preamble: str, record: Record) -> str:
+def build_prompt(preamble: str, record: Record, visual: str | None = None) -> str:
     """Assemble what an image model is told to paint a record's picture.
 
     Args:
         preamble: Text that opens the prompt, such as a style's, or "" for
             none.
         record: The record the picture illustrates.
+        visual: Art direction to use in place of the record's visual field,
+            or None for the field's.
 
     Returns:
         str: The preamble, the record's name, then its rules text and its
             visual field, each in a tagged block and left out when empty. The
             visual field is art direction, and outranks the rules text.
     """
-    visual = record.frontmatter.get(VISUAL)
+    if visual is None:
+        visual = record.frontmatter.get(VISUAL)
     parts = [preamble.strip(), "", f"<subject>{record.path.stem}</subject>"]
     for tag, text in (
         ("rules", rules_text(record)),
@@ -341,6 +344,7 @@ def prompt(
     *,
     style: str | None = None,
     preamble: Path | None = None,
+    visual: str | None = None,
 ) -> str:
     """Assemble the prompt for a record's picture, as `build_prompt` does.
 
@@ -356,6 +360,8 @@ def prompt(
             type. Ignored with a preamble.
         preamble: A UTF-8 text file whose text opens the prompt, or None for
             the style's.
+        visual: Art direction to use in place of the record's visual field,
+            or None for the field's.
 
     Returns:
         str: The prompt.
@@ -368,9 +374,11 @@ def prompt(
     """
     root, _, parsed = _read(record, vault)
     if preamble is not None:
-        return build_prompt(preamble.read_text(encoding="utf-8-sig"), parsed)
-    chosen = choose_style(root, parsed, style)
-    return build_prompt(chosen.prompt if chosen else "", parsed)
+        text = preamble.read_text(encoding="utf-8-sig")
+    else:
+        chosen = choose_style(root, parsed, style)
+        text = chosen.prompt if chosen else ""
+    return build_prompt(text, parsed, visual)
 
 
 def _destination(output: str | None, record: Path, directory: str) -> PurePosixPath:
