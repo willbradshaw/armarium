@@ -18,13 +18,14 @@ from armarium.extensions import (
     update_extension,
 )
 from armarium.find import find_records
-from armarium.illustrate import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, ingest
+from armarium.illustrate import ingest
 from armarium.init import init_vault
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.player import add_player
 from armarium.session import add_session
+from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
 from armarium.trace import trace_outbound, trace_record
 from armarium.transcribe import (
     DEFAULT_LANGUAGE,
@@ -320,8 +321,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         description=(
             "Take a picture into the vault's assets/ as a WebP, trimmed of "
             "plain borders and shrunk until it fits the size budget, and set "
-            "the record's image field to its path. Prints the image's path, "
-            "then validates the record."
+            "the record's image field to its path. A style, the one named or "
+            f"else the one in {STYLE_DIRECTORY}/ that illustrates the record's "
+            "type, replaces the defaults below with its own. Prints the "
+            "image's path, then validates the record."
         ),
     )
     picture.add_argument(
@@ -333,31 +336,46 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "picture", type=Path, help="picture to take in, in any common format"
     )
     picture.add_argument(
+        "--style",
+        metavar="NAME",
+        help=(
+            f"style in {STYLE_DIRECTORY}/ to use (default: the one that "
+            "illustrates the record's type, if any)"
+        ),
+    )
+    where = picture.add_mutually_exclusive_group()
+    where.add_argument(
+        "--directory",
+        metavar="DIR",
+        help=(
+            "vault-relative folder inside assets/ to write NAME.webp into, NAME "
+            f"the record's (default: {ART_DIRECTORY})"
+        ),
+    )
+    where.add_argument(
         "-o",
         "--output",
         help=(
-            "vault-relative .webp path inside assets/ to write "
-            f"(default: {ART_DIRECTORY}/NAME.webp, NAME the record's)"
+            "vault-relative .webp path inside assets/ to write (default: "
+            "NAME.webp in the directory, NAME the record's)"
         ),
     )
     picture.add_argument(
         "--max-bytes",
         type=_positive,
-        default=MAX_BYTES,
         help=f"largest image to write, in bytes (default: {MAX_BYTES})",
     )
     picture.add_argument(
         "--max-edge",
         type=_positive,
-        default=MAX_EDGE,
         help=f"largest long edge to write, in pixels (default: {MAX_EDGE})",
     )
     picture.add_argument(
         "--opacity",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help=(
             "store a monochrome drawing on white as black opacity on a "
-            "transparent ground"
+            "transparent ground (default: off)"
         ),
     )
     picture.add_argument(
@@ -609,6 +627,8 @@ def main() -> None:
                 args.record,
                 args.picture,
                 args.vault,
+                style=args.style,
+                directory=args.directory,
                 output=args.output,
                 max_bytes=args.max_bytes,
                 max_edge=args.max_edge,
@@ -618,6 +638,8 @@ def main() -> None:
         except (OSError, ValueError) as exc:
             logger.error("Cannot illustrate %s: %s", args.record, exc)
             sys.exit(1)
+        if illustration.style is not None:
+            logger.info("Used style %s", illustration.style)
         logger.info(
             "Wrote %s: %s px on its long edge, %s bytes",
             illustration.image,

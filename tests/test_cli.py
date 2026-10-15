@@ -2100,7 +2100,7 @@ class TestIllustrateCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        image = "assets/art/Harness.webp"
+        image = "assets/art/gear/Harness.webp"
         argv = ["armarium", "illustrate", "ingest", self.RECORD, str(source)]
         monkeypatch.setattr(sys, "argv", [*argv, "--vault", str(starter)])
         main()
@@ -2109,6 +2109,7 @@ class TestIllustrateCommand:
         messages = [line.split("] ", 1)[1] for line in output.err.splitlines()]
         size = (starter / image).stat().st_size
         assert messages == [
+            "INFO: Used style Gear",
             f"INFO: Wrote {image}: 30 px on its long edge, {size} bytes",
             f"INFO: Set image in {self.RECORD}; validating",
             "INFO: Validation completed successfully",
@@ -2169,7 +2170,7 @@ class TestIllustrateCommand:
         err = capsys.readouterr().err
         assert "ERROR: 1 file failed validation" in err
         assert "ERROR: Image and record change retained for inspection" in err
-        assert (starter / "assets/art/Harness.webp").is_file()
+        assert (starter / "assets/art/gear/Harness.webp").is_file()
 
     def test_options(self) -> None:
         args = parse_args(
@@ -2184,8 +2185,10 @@ class TestIllustrateCommand:
                 "5000",
                 "--max-edge",
                 "600",
-                "--opacity",
+                "--no-opacity",
                 "--overwrite",
+                "--style",
+                "Ink",
             ]
         )
         assert (args.stage, args.record, args.picture) == (
@@ -2198,12 +2201,57 @@ class TestIllustrateCommand:
             5000,
             600,
         )
-        assert (args.opacity, args.overwrite, args.vault) == (True, True, None)
+        assert (args.opacity, args.overwrite, args.vault) == (False, True, None)
+        assert (args.style, args.directory) == ("Ink", None)
+
+    def test_directory(self) -> None:
+        args = parse_args(
+            ["illustrate", "ingest", "a.md", "a.png", "--directory", "assets/ink"]
+        )
+        assert (args.directory, args.output) == ("assets/ink", None)
+
+    def test_directory_and_output_exclude_each_other(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        argv = ["illustrate", "ingest", "a.md", "a.png", "--directory", "assets/x"]
+        with pytest.raises(SystemExit):
+            parse_args([*argv, "-o", "assets/a.webp"])
+        assert "not allowed with argument" in capsys.readouterr().err
 
     def test_defaults(self) -> None:
         args = parse_args(["illustrate", "ingest", "a.md", "a.png"])
-        assert (args.output, args.max_bytes, args.max_edge) == (None, 100_000, 1200)
-        assert (args.opacity, args.overwrite) == (False, False)
+        assert (args.style, args.directory, args.output) == (None, None, None)
+        assert (args.max_bytes, args.max_edge) == (None, None)
+        assert (args.opacity, args.overwrite) == (None, False)
+
+    def test_passes_the_options_to_ingest(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[dict[str, object]] = []
+
+        def ingest(*args: object, **options: object) -> object:
+            calls.append(options)
+            raise ValueError("stop")
+
+        monkeypatch.setattr(cli, "ingest", ingest)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "illustrate", "ingest", "a.md", "a.png", "--opacity"],
+        )
+        with pytest.raises(SystemExit):
+            main()
+        assert calls == [
+            {
+                "style": None,
+                "directory": None,
+                "output": None,
+                "max_bytes": None,
+                "max_edge": None,
+                "opacity": True,
+                "overwrite": False,
+            }
+        ]
 
     @pytest.mark.parametrize(
         "arguments",

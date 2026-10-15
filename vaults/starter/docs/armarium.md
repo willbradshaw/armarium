@@ -13,7 +13,7 @@ is the full reference; this page is the short version.
 | `content/` | Content shared by every campaign: characters, places, groups, objects, dates and lore |
 | `campaigns/campaign_N/` | one campaign: its own `content/`, `clues/`, `sessions/`, `notes/` and `reference/` |
 | `notes/` | working notes shared by every campaign |
-| `reference/` | Type records, templates, schemas, statuses, views and installed extensions |
+| `reference/` | Type records, templates, schemas, statuses, views, installed extensions and illustration styles |
 | `bases/` | tables for browsing records, such as `Content.base` |
 | `assets/` | images, maps and handouts |
 | `docs/` | documentation about the vault, such as this page |

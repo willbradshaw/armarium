@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import struct
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -657,3 +658,47 @@ def parse_subtype_directories(
         if not isinstance(path, str) or DIRECTORY.fullmatch(path) is None:
             raise ValueError(f"subtype_directories.{subtype} must be a relative path")
     return dict(value)
+
+
+# -----------------------------------------------------------------------------
+# Images
+# -----------------------------------------------------------------------------
+
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def image_size(path: Path) -> tuple[int, int]:
+    """Read a WebP or PNG image's width and height from its header.
+
+    Args:
+        path: The image file.
+
+    Returns:
+        tuple[int, int]: Width and height in pixels. Lossy, lossless and
+            extended WebP are all read.
+
+    Raises:
+        ValueError: The file is not a WebP or PNG image, or its header is
+            damaged.
+        OSError: The file cannot be read.
+    """
+    with path.open("rb") as stream:
+        head = stream.read(30)
+    if head[:8] == PNG_SIGNATURE and head[12:16] == b"IHDR" and len(head) >= 24:
+        width, height = struct.unpack(">II", head[16:24])
+        return width, height
+    if len(head) < 30 or head[:4] != b"RIFF" or head[8:12] != b"WEBP":
+        raise ValueError("not a WebP or PNG image")
+    chunk = head[12:16]
+    if chunk == b"VP8 " and head[23:26] == b"\x9d\x01\x2a":
+        width, height = struct.unpack("<HH", head[26:30])
+        return width & 0x3FFF, height & 0x3FFF
+    if chunk == b"VP8L" and head[20] == 0x2F:
+        bits = int.from_bytes(head[21:25], "little")
+        return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+    if chunk == b"VP8X":
+        return (
+            int.from_bytes(head[24:27], "little") + 1,
+            int.from_bytes(head[27:30], "little") + 1,
+        )
+    raise ValueError("damaged WebP header")
