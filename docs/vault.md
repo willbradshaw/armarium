@@ -13,7 +13,7 @@ to start a new one. `vaults/example/` is a populated vault with two campaigns.
 ```text
 .obsidian/                    Obsidian settings
   app.json                    link updating
-  appearance.json             enables the snippet
+  appearance.json             enables the snippets
   snippets/
     armarium-prose.css        prose styling
 assets/                       files that are not records: images, handouts
