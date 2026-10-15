@@ -28,6 +28,10 @@ DEFAULT_MODEL_DIR = Path.home() / ".cache" / "whisper-cpp"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_MIN_REPEATS = 4
 
+# Voice-detection settings that keep quieter speech: a lower speech threshold,
+# and more padding around each stretch of speech.
+LOOSE_VAD_ARGS = ("--vad-threshold", "0.3", "--vad-speech-pad-ms", "200")
+
 WHISPER_MODEL_REPO = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main"
 VAD_MODEL_REPO = "https://huggingface.co/ggml-org/whisper-vad/resolve/main"
 VAD_MODEL_PREFIX = "ggml-silero"
@@ -134,6 +138,7 @@ def build_command(
     output_base: Path,
     language: str,
     extra_args: Sequence[str] = (),
+    loose: bool = False,
 ) -> list[str]:
     """Assemble the whisper.cpp invocation for one recording.
 
@@ -147,6 +152,8 @@ def build_command(
         output_base: Output path without ``.txt``, which whisper.cpp appends.
         language: Spoken language code.
         extra_args: Further whisper.cpp arguments, placed last.
+        loose: Loosen voice detection to keep quieter speech. Its arguments
+            come before ``extra_args``, which can override them.
 
     Returns:
         list[str]: The command and its arguments.
@@ -169,6 +176,7 @@ def build_command(
         str(vad_model),
         "--beam-size",
         "5",
+        *(LOOSE_VAD_ARGS if loose else ()),
         *extra_args,
     ]
 
@@ -297,6 +305,7 @@ def transcribe(
     language: str = DEFAULT_LANGUAGE,
     min_repeats: int = DEFAULT_MIN_REPEATS,
     extra_args: Sequence[str] = (),
+    loose: bool = False,
 ) -> Transcription:
     """Transcribe a recording, or collapse the loops in existing raw text.
 
@@ -315,6 +324,8 @@ def transcribe(
         language: Spoken language code.
         min_repeats: Fewest consecutive copies collapsed as a loop.
         extra_args: Further whisper.cpp arguments.
+        loose: Loosen voice detection to keep quieter speech; a ``.txt``
+            source ignores it.
 
     Returns:
         Transcription: The files written and the loops collapsed.
@@ -356,6 +367,7 @@ def transcribe(
             raw.with_suffix(""),
             language,
             extra_args,
+            loose,
         )
         raw.parent.mkdir(parents=True, exist_ok=True)
         run_backend(command, raw)

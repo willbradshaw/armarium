@@ -12,6 +12,7 @@ from armarium import transcribe as module
 from armarium.transcribe import (
     DEFAULT_MODEL,
     DEFAULT_VAD_MODEL,
+    LOOSE_VAD_ARGS,
     VAD_MODEL_REPO,
     WHISPER_MODEL_REPO,
     Transcription,
@@ -175,6 +176,31 @@ class TestBuildCommand:
             tmp_path / "m", tmp_path / "v", tmp_path / "a.wav", tmp_path / "a", "de"
         )
         assert command[-2:] == ["--beam-size", "5"]
+        assert "--vad-threshold" not in command
+
+    @pytest.mark.parametrize(
+        ("extra_args", "tail"),
+        [
+            ((), [*LOOSE_VAD_ARGS]),
+            (
+                ["--vad-threshold", "0.2"],
+                [*LOOSE_VAD_ARGS, "--vad-threshold", "0.2"],
+            ),
+        ],
+    )
+    def test_loose_detection_comes_before_extra_arguments(
+        self, tmp_path: Path, extra_args: list[str], tail: list[str]
+    ) -> None:
+        command = build_command(
+            tmp_path / "m",
+            tmp_path / "v",
+            tmp_path / "a.wav",
+            tmp_path / "a",
+            "en",
+            extra_args,
+            loose=True,
+        )
+        assert command[command.index("--beam-size") + 2 :] == tail
 
 
 class TestRunBackend:
@@ -406,6 +432,23 @@ class TestTranscribe:
                 tmp_path / "s52.raw",
                 "de",
                 ["--threads", "8"],
+            )
+        ]
+
+    @pytest.mark.parametrize("loose", [False, True])
+    def test_passes_loose_detection_to_the_backend(
+        self, tmp_path: Path, backend: list[list[str]], loose: bool
+    ) -> None:
+        audio = self.recording(tmp_path)
+        transcribe(audio, loose=loose, **self.models(tmp_path))
+        assert backend == [
+            build_command(
+                tmp_path / "model.bin",
+                tmp_path / "vad.bin",
+                audio,
+                tmp_path / "s52.raw",
+                "en",
+                loose=loose,
             )
         ]
 

@@ -471,6 +471,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             f"(default: {DEFAULT_MIN_REPEATS})"
         ),
     )
+    recording.add_argument(
+        "--loose",
+        action="store_true",
+        help="loosen voice detection to keep quieter speech",
+    )
     command = commands.add_parser(
         "validate",
         help="validate a Markdown file or directory",
@@ -591,6 +596,7 @@ def main() -> None:
                 language=args.language,
                 min_repeats=args.min_repeats,
                 extra_args=args.whisper_args,
+                loose=args.loose,
             )
         except (OSError, ValueError) as exc:
             logger.error("Cannot transcribe %s: %s", args.source, exc)

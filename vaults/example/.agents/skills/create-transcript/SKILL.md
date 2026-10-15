@@ -62,6 +62,9 @@ takes a recording or a `.txt` file and prints the path of the text to work
 from. In that text, a line starting `[ASR loop:` marks a run of repeated lines
 that it collapsed.
 
+If whole stretches of quieter speech are missing from the text, transcribe again
+with `--loose` to a new output and work from that.
+
 If the command fails, report its message and stop. Do not install software or
 choose another speech-to-text tool unasked.
 

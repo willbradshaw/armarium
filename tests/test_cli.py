@@ -1958,6 +1958,7 @@ class TestTranscribeCommand:
                     "language": DEFAULT_LANGUAGE,
                     "min_repeats": DEFAULT_MIN_REPEATS,
                     "extra_args": ["-t", "8"],
+                    "loose": False,
                 },
             )
         ]
@@ -2029,12 +2030,15 @@ class TestTranscribeCommand:
                 "de",
                 "--min-repeats",
                 "6",
+                "--loose",
             ]
         )
         assert (args.source, args.output) == (Path("s52.wav"), None)
         assert (args.model, args.vad_model) == ("ggml-base.en.bin", "vad.bin")
         assert (args.model_dir, args.language) == (tmp_path, "de")
         assert (args.min_repeats, args.whisper_args) == (6, [])
+        assert args.loose
+        assert not parse_args(["transcribe", "s52.wav"]).loose
 
     @pytest.mark.parametrize(
         ("arguments", "source", "whisper_args"),
