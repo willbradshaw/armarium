@@ -64,6 +64,21 @@ line that was truly said three times stays. The marker names the lines of the
 raw file it replaced, and whatever was said during them is lost to the
 transcript: listen to that stretch of the recording if it matters.
 
+## Quiet speech
+
+Voice detection skips what it takes for silence, and speech much quieter than
+the rest of the recording can be skipped with it.
+If whole stretches of quiet speech are missing from the text, transcribe again
+with `--loose`:
+
+```sh
+armarium transcribe recordings/s52.wav --loose
+```
+
+It lowers the threshold at which voice detection counts a sound as speech, and
+keeps more audio around each stretch of speech. It can let in more noise, so
+use it when the first pass loses speech, not by default.
+
 ## Text from another tool
 
 ```sh
@@ -84,6 +99,7 @@ neither whisper.cpp nor a model.
 | `--model-dir DIR` | where downloaded models are kept |
 | `--language CODE` | spoken language, `en` unless given; `auto` detects it |
 | `--min-repeats N` | fewest copies in a row collapsed as a run |
+| `--loose` | loosens voice detection to keep [quiet speech](#quiet-speech) |
 
 Arguments after `--` are passed to `whisper-cli` unchanged, after the command's
 own:

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium transcribe --loose`, which loosens voice detection to keep quieter speech, and have the `create-transcript` skill use it when a pass loses quiet speech.
 - Add `armarium illustrate prompt` to print the prompt for a record's picture, and optional `image` and `visual` fields, the latter for art direction, on all Content.
 - Add illustration styles in `reference/styles/`, which say where `armarium illustrate ingest` puts each kind of art and how, and hold that art to a size budget in validation.
 - Require a record's `image` path to name a file in the vault.
