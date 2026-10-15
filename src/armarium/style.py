@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from armarium.lib import DIRECTORY, find_files
+from armarium.lib import DIRECTORY, find_files, parse_wikilink
 from armarium.parse import Record
 
 STYLE_DIRECTORY = "reference/styles"
@@ -32,6 +32,10 @@ class Style:
             opacity on a transparent ground.
         max_bytes: The largest art file allowed, in bytes.
         max_edge: The largest long edge allowed, in pixels.
+        references: Link targets of the images, or of the records whose
+            image field names one, that show the style.
+        sample: How many references to send with each candidate, drawn at
+            random, or None to send them all with every request.
     """
 
     name: str
@@ -41,6 +45,8 @@ class Style:
     opacity: bool = False
     max_bytes: int = MAX_BYTES
     max_edge: int = MAX_EDGE
+    references: tuple[str, ...] = ()
+    sample: int | None = None
 
     def applies_to(self, kind: str | None, subtype: object) -> bool:
         """Say whether the style illustrates records of a type and subtype.
@@ -126,6 +132,15 @@ def parse_style(record: Record) -> Style:
     opacity = data.get("opacity")
     if opacity is not None and not isinstance(opacity, bool):
         raise ValueError("opacity must be true or false")
+    references = data.get("references") or []
+    if not isinstance(references, list):
+        raise ValueError("references must list wikilinks")
+    targets: list[str] = []
+    for reference in references:
+        try:
+            targets.append(parse_wikilink(reference))
+        except ValueError as exc:
+            raise ValueError(f"references must list wikilinks: {exc}") from exc
     return Style(
         record.path.stem,
         record.body.text.strip(),
@@ -134,6 +149,8 @@ def parse_style(record: Record) -> Style:
         bool(opacity),
         _count(data, "max_bytes") or MAX_BYTES,
         _count(data, "max_edge") or MAX_EDGE,
+        tuple(targets),
+        _count(data, "sample"),
     )
 
 

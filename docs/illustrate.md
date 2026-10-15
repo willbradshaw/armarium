@@ -1,12 +1,17 @@
 # Illustrating a record
 
 ```sh
-armarium illustrate prompt "content/Lucky Ring.md"
-armarium illustrate ingest "content/Lucky Ring.md" ~/Downloads/ring.png
+armarium illustrate prompt "content/Lucky Ring.md" > prompt.txt
+armarium illustrate generate "content/Lucky Ring.md" --prompt prompt.txt
+armarium illustrate ingest "content/Lucky Ring.md" ".scratch/illustrate/Lucky Ring-2.png"
 ```
 
 `armarium illustrate prompt RECORD` prints what an image model should be told
 to paint a record's picture; see [Prompts](#prompts).
+
+`armarium illustrate generate RECORD --prompt FILE` sends that prompt to an
+image model and writes the candidates it paints to `.scratch/illustrate/`; see
+[Painting](#painting).
 
 `armarium illustrate ingest RECORD PICTURE` takes a picture into a
 [vault](vault.md) as a record's image. It writes the picture into `assets/` as a
@@ -24,7 +29,8 @@ relative to the current directory; with `--vault VAULT`, relative to the vault
 root, so a path printed by [`armarium find`](find.md) can be passed as it is.
 
 `PICTURE` is the picture to take in, in any common format, such as PNG, JPEG or
-WebP. It is a path relative to the current directory, and is never changed.
+WebP, such as a candidate `generate` painted. It is a path relative to the
+current directory, and is never changed.
 
 ## What it writes
 
@@ -108,9 +114,12 @@ overrides it:
 | `opacity` | `true` to store its art as [black opacity](#black-opacity) | `--opacity` | `false` |
 | `max_bytes` | the largest art file, in bytes | `--max-bytes` | 100000 |
 | `max_edge` | the largest long edge, in pixels | `--max-edge` | 1200 |
+| `references` | links to images that show the style, or to records whose `image` does | `--reference` | none |
+| `sample` | how many references to send with each candidate | `--sample` | all of them |
 
 The body says what the style looks like. [`prompt`](#prompts) puts it at the
-start of the prompt for any record illustrated in that style.
+start of the prompt for any record illustrated in that style, and
+[`generate`](#painting) sends its references with the prompt.
 
 `--style NAME` uses the style in `reference/styles/NAME.md`. Without it, the
 command uses the style whose `illustrates` names the record's type, or its type
@@ -152,3 +161,44 @@ style as it does there. `--preamble FILE` is a UTF-8 text file, relative to the
 current directory, that opens the prompt in place of a style's text; it cannot
 be combined with `--style`. Without either, and with no style for the record's
 type, the prompt opens with the record's name.
+
+## Painting
+
+```sh
+armarium illustrate prompt "content/Lucky Ring.md" | armarium illustrate generate "content/Lucky Ring.md" --prompt -
+```
+
+`armarium illustrate generate RECORD --prompt FILE` sends the prompt in `FILE`,
+or on standard input for `--prompt -`, to an image model, and writes the
+candidates it paints to `.scratch/illustrate/` as `NAME-1.png`, `NAME-2.png` and
+so on, `NAME` the record's. It prints each candidate's path; pass the one you
+choose to `ingest`. Nothing in the vault changes until then: a new vault keeps
+`.scratch/` out of Git, and validation skips it.
+
+| Option | Sets | Default |
+| --- | --- | --- |
+| `--count N` | how many candidates to paint | 2 |
+| `--model NAME` | the image model | `gpt-image-2.5-sunburst` |
+| `--reference IMAGE` | an image to send in place of the style's references; repeatable | the style's |
+| `--sample N` | how many references to draw at random for each candidate | the style's, or all |
+| `--overwrite` | replace the record's earlier candidates | off |
+
+`RECORD`, `--vault` and `--style NAME` work as for `ingest`.
+
+**References.** Each request carries the style's reference images, to show the
+model the style. A reference to a record sends the image its `image` names; a
+record without an image file in the vault is left out, with a warning, as is the
+record being illustrated. Sent all at once, many references average out into one
+middling style, so `sample` draws a few at random for each candidate instead,
+one request per candidate, and the command reports each candidate's draw. A
+request may carry at most 16 references.
+
+**Ground.** Art is painted on a transparent ground. For a style stored as
+[black opacity](#black-opacity), it is painted on the ground the prompt
+describes, such as white, and the references are sent laid on white.
+
+**Models.** Only models that paint on a transparent ground are offered:
+`gpt-image-2.5-sunburst`, and the faster, looser `gpt-image-2.5-flare`, from
+OpenAI, or a dated snapshot of either, such as
+`gpt-image-2.5-flare-2026-09-08`. The command reads the API key from
+`OPENAI_API_KEY`. Each candidate is a paid request.

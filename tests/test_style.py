@@ -104,6 +104,8 @@ class TestParseStyle:
             "opacity": True,
             "max_bytes": 5000,
             "max_edge": 600,
+            "references": ["[[Lucky Ring]]", "[[assets/art/gear/Rope.webp|Rope]]"],
+            "sample": 3,
         }
         path = write_style(
             tmp_path, "Gear", fields, "\nPaint the item.\n\nNo text.\n\n"
@@ -118,6 +120,8 @@ class TestParseStyle:
             True,
             5000,
             600,
+            ("Lucky Ring", "assets/art/gear/Rope.webp"),
+            3,
         )
 
     @pytest.mark.parametrize(
@@ -137,6 +141,9 @@ class TestParseStyle:
             ({"opacity": "yes"}, "opacity must be true or false"),
             ({"max_bytes": 0}, "max_bytes must be a whole number"),
             ({"max_edge": "big"}, "max_edge must be a whole number"),
+            ({"references": "[[Ring]]"}, "references must list wikilinks"),
+            ({"references": ["Ring"]}, "references must list wikilinks: "),
+            ({"sample": -2}, "sample must be a whole number"),
         ],
     )
     def test_refuses_a_field_of_the_wrong_form(
