@@ -611,7 +611,7 @@ DIRECTORY_SCOPES = ("shared", "campaign")
 SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear")
 
 # Reference subtypes every vault permits.
-REFERENCE_SUBTYPES = ("Style",)
+REFERENCE_SUBTYPES = ("Style", "Handout")
 
 
 def matches_kind(kinds: Collection[str], kind: str | None, subtype: object) -> bool:

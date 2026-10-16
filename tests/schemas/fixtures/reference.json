@@ -191,6 +191,254 @@
       "frontmatter": {
         "subtype": "My Style"
       }
+    },
+    {
+      "name": "handout with every field",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout",
+        "prints": [
+          "Content/Gear",
+          "Content"
+        ],
+        "page": "a4",
+        "margin": "18mm",
+        "font": "/Library/Fonts/Lora.ttf",
+        "title_size": 48,
+        "min_text_size": 16,
+        "max_text_size": 36.5,
+        "line_spacing": 1.16,
+        "image_share": 0.6,
+        "mark": {
+          "field": "attunement",
+          "text": "A"
+        },
+        "underline_links": true,
+        "lowercase_links": false
+      }
+    },
+    {
+      "name": "handout with no fields",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout"
+      }
+    },
+    {
+      "name": "handout with null fields",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout",
+        "prints": null,
+        "page": null,
+        "margin": null,
+        "font": null,
+        "title_size": null,
+        "min_text_size": null,
+        "max_text_size": null,
+        "line_spacing": null,
+        "image_share": null,
+        "mark": null,
+        "underline_links": null,
+        "lowercase_links": null
+      }
+    },
+    {
+      "name": "handout margin 1in",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": "1in"
+      }
+    },
+    {
+      "name": "handout margin 2.5cm",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": "2.5cm"
+      }
+    },
+    {
+      "name": "handout margin 50pt",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": "50pt"
+      }
+    },
+    {
+      "name": "handout margin 0.7in",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": "0.7in"
+      }
+    },
+    {
+      "name": "handout prints a string",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "prints": "Content/Gear"
+      }
+    },
+    {
+      "name": "handout prints a nested kind",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "prints": [
+          "Content/Gear/Ring"
+        ]
+      }
+    },
+    {
+      "name": "handout page legal",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "page": "legal"
+      }
+    },
+    {
+      "name": "handout margin without a unit",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": "1"
+      }
+    },
+    {
+      "name": "handout margin in feet",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": "1ft"
+      }
+    },
+    {
+      "name": "handout margin a number",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "margin": 1
+      }
+    },
+    {
+      "name": "handout font blank",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "font": " "
+      }
+    },
+    {
+      "name": "handout title size zero",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "title_size": 0
+      }
+    },
+    {
+      "name": "handout text size negative",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "min_text_size": -1
+      }
+    },
+    {
+      "name": "handout text size a string",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "max_text_size": "big"
+      }
+    },
+    {
+      "name": "handout line spacing below one",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "line_spacing": 0.9
+      }
+    },
+    {
+      "name": "handout image share one",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "image_share": 1
+      }
+    },
+    {
+      "name": "handout image share zero",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "image_share": 0
+      }
+    },
+    {
+      "name": "handout mark without text",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "mark": {
+          "field": "attunement"
+        }
+      }
+    },
+    {
+      "name": "handout mark without field",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "mark": {
+          "text": "A"
+        }
+      }
+    },
+    {
+      "name": "handout mark blank text",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "mark": {
+          "field": "a",
+          "text": " "
+        }
+      }
+    },
+    {
+      "name": "handout mark extra key",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "mark": {
+          "field": "a",
+          "text": "A",
+          "size": 3
+        }
+      }
+    },
+    {
+      "name": "handout underline a string",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "underline_links": "yes"
+      }
+    },
+    {
+      "name": "handout lowercase a number",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Handout",
+        "lowercase_links": 1
+      }
     }
   ]
 }

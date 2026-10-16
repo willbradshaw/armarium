@@ -151,14 +151,15 @@ clue index.
 `reference/` when shared by every [campaign](campaign.md), or
 `campaigns/campaign_N/reference/` when specific to one, including subfolders
 such as `indexes/` but not those that belong to another type (`types/`,
-`statuses/`, `players/`). A record of subtype `Style` sits in `styles/`.
+`statuses/`, `players/`). A record of subtype `Style` sits in `styles/`, and
+one of subtype `Handout` in `handouts/`.
 
 ### Frontmatter
 
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[Reference]]` |
-| `subtype` | optional | `Style`, an [illustration style](illustrate.md#styles), whose fields the schema checks |
+| `subtype` | optional | `Style`, an [illustration style](illustrate.md#styles), or `Handout`, a [handout layout](handout.md#layouts); the schema checks the fields of each |
 
 ### Body
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `Handout` layouts, Reference records in `reference/handouts/` that say how a kind of record prints as a handout.
 - Allow in the shared `reference/` the subfolders the Reference Type record's `subtype_directories` declares, rather than `styles/` by name.
 - Add `Sessions.base` and `Clues.base` to the starter vault's `bases/`, grouping every campaign's Sessions and Clues by campaign.
 - Add Reference subtypes, starting with `Style`: styles now need `subtype: Style`, the Reference schema checks their fields, and the Reference Type record's `subtype_directories` keeps them in `reference/styles/`.

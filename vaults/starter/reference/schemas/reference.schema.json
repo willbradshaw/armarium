@@ -21,7 +21,7 @@
         "subtype": {
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-          "description": "Optional. Style for an illustration style. Membership requires a separate vault-aware check."
+          "description": "Optional. Style for an illustration style, Handout for a handout layout. Membership requires a separate vault-aware check."
         }
       },
       "additionalProperties": true,
@@ -40,15 +40,8 @@
           "then": {
             "properties": {
               "illustrates": {
-                "type": [
-                  "array",
-                  "null"
-                ],
-                "description": "The record kinds the style applies to, each a type or Type/Subtype, such as Content/Gear.",
-                "items": {
-                  "type": "string",
-                  "pattern": "^[^/\\s](?:[^/]*[^/\\s])?(?:/[^/\\s](?:[^/]*[^/\\s])?)?$"
-                }
+                "$ref": "#/$defs/kinds",
+                "description": "The record kinds the style applies to, each a type or Type/Subtype, such as Content/Gear."
               },
               "directory": {
                 "type": [
@@ -89,6 +82,116 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Handout"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "properties": {
+              "prints": {
+                "$ref": "#/$defs/kinds",
+                "description": "The record kinds the layout applies to, each a type or Type/Subtype, such as Content/Gear."
+              },
+              "page": {
+                "enum": [
+                  "letter",
+                  "a4",
+                  null
+                ],
+                "description": "The paper size."
+              },
+              "margin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9]+(?:\\.[0-9]+)?(?:in|mm|cm|pt)$",
+                "description": "The margin on every side, as a length such as 0.7in or 18mm."
+              },
+              "font": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "\\S",
+                "description": "A standard PDF font, such as Times-Roman, or the path of a TrueType font file, absolute or relative to the vault root."
+              },
+              "title_size": {
+                "$ref": "#/$defs/size",
+                "description": "The title's font size, in points."
+              },
+              "min_text_size": {
+                "$ref": "#/$defs/size",
+                "description": "The smallest font size the rules text may take, in points."
+              },
+              "max_text_size": {
+                "$ref": "#/$defs/size",
+                "description": "The largest font size the rules text may take, in points."
+              },
+              "line_spacing": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "The distance between lines of text, as a multiple of the font size."
+              },
+              "image_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "description": "The share of the space below the title that the rules text leaves to the picture."
+              },
+              "mark": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "required": [
+                  "field",
+                  "text"
+                ],
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "The frontmatter field that, when true, puts the mark on the page."
+                  },
+                  "text": {
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "The text of the mark, printed in the page's top right corner."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "underline_links": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the text of a link is underlined."
+              },
+              "lowercase_links": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the text of a link is printed in lowercase."
+              }
+            }
+          }
         }
       ]
     },
@@ -108,6 +211,23 @@
         "null"
       ],
       "minimum": 1
+    },
+    "size": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "exclusiveMinimum": 0
+    },
+    "kinds": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "pattern": "^[^/\\s](?:[^/]*[^/\\s])?(?:/[^/\\s](?:[^/]*[^/\\s])?)?$"
+      }
     }
   }
 }
