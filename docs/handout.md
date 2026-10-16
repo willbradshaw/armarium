@@ -102,7 +102,7 @@ A letter, in a handwriting font, with no name at the top:
 ```markdown
 ---
 type: "[[Reference]]"
-subtype: Handout
+subtype: Layout
 callout: handout
 title: false
 font: assets/fonts/HomemadeApple-Regular.ttf

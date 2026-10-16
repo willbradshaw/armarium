@@ -448,7 +448,7 @@
       "name": "handout callout with a hyphen",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "callout": "player-letter"
       }
     },
@@ -456,7 +456,7 @@
       "name": "handout callout with a space",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "callout": "hand out"
       }
     },
@@ -464,7 +464,7 @@
       "name": "handout callout empty",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "callout": ""
       }
     },
@@ -472,7 +472,7 @@
       "name": "handout callout a list",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "callout": [
           "rules"
         ]
@@ -482,7 +482,7 @@
       "name": "handout title a string",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "title": "no"
       }
     }
