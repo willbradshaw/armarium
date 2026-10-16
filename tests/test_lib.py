@@ -24,11 +24,13 @@ from armarium.lib import (
     find_vault,
     image_size,
     iter_wikilinks,
+    matches_kind,
     parse_directories,
     parse_subtype_directories,
     parse_wikilink,
     record_files,
     split_wikilink,
+    wikilink_text,
 )
 from armarium.parse import Body, Frontmatter, Record
 
@@ -901,6 +903,43 @@ class TestParseDirectories:
     def test_unusable(self, value: object, message: str) -> None:
         with pytest.raises(ValueError, match=f"^{message}$"):
             parse_directories(value)
+
+
+class TestMatchesKind:
+    @pytest.mark.parametrize(
+        ("kinds", "kind", "subtype", "expected"),
+        [
+            (("Content/Gear",), "Content", "Gear", True),
+            (("Content/Gear",), "Content", "NPC", False),
+            (("Content/Gear",), "Content", None, False),
+            (("Content",), "Content", "NPC", True),
+            (("Content",), "Note", None, False),
+            (("Note", "Content/Gear"), "Note", None, True),
+            (("Content/Gear",), None, "Gear", False),
+            (("Content/3",), "Content", 3, False),
+            ((), "Content", "Gear", False),
+        ],
+    )
+    def test_matches_type_or_type_and_subtype(
+        self, kinds: tuple[str, ...], kind: str | None, subtype: object, expected: bool
+    ) -> None:
+        assert matches_kind(kinds, kind, subtype) is expected
+
+
+class TestWikilinkText:
+    @pytest.mark.parametrize(
+        ("contents", "expected"),
+        [
+            ("Luck", "Luck"),
+            ("spells/Fire Bolt", "Fire Bolt"),
+            ("Fire Bolt#Range", "Fire Bolt"),
+            ("Fire Bolt|fire bolt", "fire bolt"),
+            ("Fire Bolt\\|bolt", "bolt"),
+            (" Luck ", "Luck"),
+        ],
+    )
+    def test_gives_the_alias_or_file_name(self, contents: str, expected: str) -> None:
+        assert wikilink_text(contents) == expected
 
 
 class TestParseSubtypeDirectories:

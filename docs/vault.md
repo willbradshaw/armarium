@@ -93,6 +93,8 @@ declaration is optional, and the starter vault makes none for Content.
 
 The Reference Type record may declare it too. The starter vault's
 `{ Style: styles }` keeps [styles](illustrate.md#styles) in `reference/styles/`.
+A declared subfolder is optional, and may sit in the shared `reference/` beside
+the folders the skeleton requires there, but not in a campaign's.
 
 A vault may add a type of its own: a Type record in `reference/types/` with a
 `directories` declaration and a matching schema in `reference/schemas/`. Its

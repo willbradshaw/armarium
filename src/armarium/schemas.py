@@ -14,7 +14,7 @@ from referencing import Registry, Resource
 from referencing.exceptions import NoSuchResource, Unresolvable
 from referencing.jsonschema import DRAFT202012
 
-from armarium.lib import Diagnostic
+from armarium.lib import Diagnostic, find_files
 from armarium.parse import Record
 
 
@@ -207,3 +207,46 @@ def select_schema(
         return load(path, root), []
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         return None, [Diagnostic(relative, "schema.invalid", str(exc))]
+
+
+def read_subtype_records(root: Path, directory: str, subtype: str) -> list[Record]:
+    """Read the Reference records of a subtype in a folder, schema-checked.
+
+    Args:
+        root: Vault root.
+        directory: Vault-relative folder to read, with its subfolders.
+        subtype: The Reference subtype to read, such as Style.
+
+    Returns:
+        list[Record]: The folder's Reference records of that subtype, in path
+            order; other records are passed over. Empty when the folder does
+            not exist.
+
+    Raises:
+        ValueError: A record cannot be parsed, or one of the subtype fails
+            the vault's Reference schema.
+        OSError: A file cannot be read.
+    """
+    folder = root / directory
+    if not folder.is_dir() or folder.is_symlink():
+        return []
+    records: list[Record] = []
+    for path in find_files(folder, ".md"):
+        record, diagnostics = Record.parse(path, root)
+        relative = path.relative_to(root).as_posix()
+        if record is None:
+            raise ValueError(f"{relative}: {diagnostics[0].message}")
+        if (
+            record.frontmatter.type != "Reference"
+            or record.frontmatter.get("subtype") != subtype
+        ):
+            continue
+        schema, diagnostics = select_schema(record, root)
+        if schema is not None:
+            diagnostics = schema.validate(record)
+        if diagnostics:
+            failure = diagnostics[0]
+            field = f"{failure.field}: " if failure.field else ""
+            raise ValueError(f"{relative}: {field}{failure.message}")
+        records.append(record)
+    return records

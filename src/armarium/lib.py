@@ -61,6 +61,20 @@ def split_wikilink(value: object, *, canonical: bool = False) -> tuple[str, str]
     return target, anchor
 
 
+def wikilink_text(contents: str) -> str:
+    """Give the text a reader sees for a wikilink.
+
+    Args:
+        contents: What lies between the link's double brackets.
+
+    Returns:
+        str: The display alias, or else the name of the target's file
+            without its folders or anchor.
+    """
+    target, _, alias = contents.replace("\\|", "|").partition("|")
+    return (alias or target.partition("#")[0].rsplit("/", 1)[-1]).strip()
+
+
 def parse_wikilink(value: object, *, canonical: bool = False) -> str:
     """Extract the file target from one complete wikilink.
 
@@ -598,6 +612,24 @@ SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear"
 
 # Reference subtypes every vault permits.
 REFERENCE_SUBTYPES = ("Style",)
+
+
+def matches_kind(kinds: Collection[str], kind: str | None, subtype: object) -> bool:
+    """Say whether a record's type and subtype are among some record kinds.
+
+    Args:
+        kinds: Record kinds, each a type or ``Type/Subtype``, such as
+            ``Content/Gear``.
+        kind: The record's type name, or None for an untyped record.
+        subtype: The record's subtype field, if any.
+
+    Returns:
+        bool: Whether the type, or the type and subtype, is among kinds.
+    """
+    return kind is not None and (
+        kind in kinds or (isinstance(subtype, str) and f"{kind}/{subtype}" in kinds)
+    )
+
 
 # A declared directory: a relative path without empty, . or .. segments.
 DIRECTORY = re.compile(r"(?!\.\.?(?:/|$))[^/]+(?:/(?!\.\.?(?:/|$))[^/]+)*")

@@ -525,6 +525,42 @@ class TestBodyLinks:
         assert body.links is body.links
 
 
+class TestBodyCallout:
+    @pytest.mark.parametrize(
+        ("text", "kind", "expected"),
+        [
+            (
+                "> [!rules]\n> *Ring*, rare.\n>\n> Grants [[Luck]].\n\n## Notes\n",
+                "rules",
+                "*Ring*, rare.\n\nGrants [[Luck]].",
+            ),
+            ("> [!RULES]- Folded\n> Text.\nAfter\n", "rules", "Text."),
+            ("Intro.\n\n> [!rules]\n>   Indented.\n", "rules", "Indented."),
+            (
+                "> [!rules]\n> | A |\n> | - |\n> | 1 |\n",
+                "rules",
+                "| A |\n| - |\n| 1 |",
+            ),
+            ("> [!rules]\n>\n", "rules", ""),
+            ("> [!note]\n> Not rules.\n", "rules", ""),
+            ("> Just a quote.\n", "rules", ""),
+            ("## Notes\n- N/A\n", "rules", ""),
+            (
+                "> [!rules]\n> Rules.\n\n> [!handout]\n> Dear Vey,\n",
+                "handout",
+                "Dear Vey,",
+            ),
+            ("> [!handout]\n> One.\n\n> [!handout]\n> Two.\n", "Handout", "One."),
+            ("> [!handouts]\n> Not this.\n", "handout", ""),
+            ("> [!a.b]\n> Dotted.\n\n> [!aXb]\n> Not this.\n", "a.b", "Dotted."),
+        ],
+    )
+    def test_reads_the_first_callout_of_a_type(
+        self, text: str, kind: str, expected: str
+    ) -> None:
+        assert Body(text, 5).callout(kind) == expected
+
+
 class TestBodyScanLinks:
     @pytest.mark.parametrize(
         ("text", "start"),
