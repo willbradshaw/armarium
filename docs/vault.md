@@ -92,9 +92,9 @@ NPCs there. Subtypes left out may sit anywhere in the Content directory. The
 declaration is optional, and the starter vault makes none for Content.
 
 The Reference Type record may declare it too. The starter vault's
-`{ Style: styles, Handout: handouts }` keeps [styles](illustrate.md#styles) in
+`{ Style: styles, Layout: layouts }` keeps [styles](illustrate.md#styles) in
 `reference/styles/` and [handout layouts](handout.md#layouts) in
-`reference/handouts/`.
+`reference/layouts/`.
 A declared subfolder is optional, and may sit in the shared `reference/` beside
 the folders the skeleton requires there, but not in a campaign's.
 
@@ -131,5 +131,5 @@ Optional [extensions](extensions.md) are declared in `reference/extensions.json`
 their schemas, templates and reference pages live in `reference/extensions/NAME/`.
 Illustration [styles](illustrate.md#styles) are Reference records of subtype
 `Style` in the optional `reference/styles/`, and
-[handout layouts](handout.md#layouts) are those of subtype `Handout` in the
-optional `reference/handouts/`.
+[handout layouts](handout.md#layouts) are those of subtype `Layout` in the
+optional `reference/layouts/`.

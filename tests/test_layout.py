@@ -35,7 +35,7 @@ def reference_schema(tmp_path: Path) -> None:
 def write_layout(root: Path, name: str, fields: dict[str, Any]) -> Path:
     path = root / LAYOUT_DIRECTORY / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    metadata = {"type": "[[Reference]]", "subtype": "Handout", **fields}
+    metadata = {"type": "[[Reference]]", "subtype": "Layout", **fields}
     path.write_text(f"---\n{yaml.safe_dump(metadata)}---\n")
     return path
 
@@ -84,8 +84,8 @@ class TestParseLayout:
     def test_takes_defaults(self, tmp_path: Path, extra: str) -> None:
         parsed = record(
             tmp_path,
-            f'---\ntype: "[[Reference]]"\nsubtype: Handout{extra}\n---\n',
-            "reference/handouts/Plain.md",
+            f'---\ntype: "[[Reference]]"\nsubtype: Layout{extra}\n---\n',
+            "reference/layouts/Plain.md",
         )
         assert parse_layout(parsed) == Layout("Plain")
 
@@ -164,7 +164,7 @@ class TestReadLayouts:
     ) -> None:
         write_layout(tmp_path, "Gear", fields)
         with pytest.raises(
-            ValueError, match=f"^reference/handouts/Gear.md: frontmatter.{message}"
+            ValueError, match=f"^reference/layouts/Gear.md: frontmatter.{message}"
         ):
             read_layouts(tmp_path)
 
@@ -200,7 +200,7 @@ class TestChooseLayout:
     @pytest.mark.parametrize(
         ("name", "message"),
         [
-            ("Missing", "no layout Missing in reference/handouts/"),
+            ("Missing", "no layout Missing in reference/layouts/"),
             (None, "layouts Gear, All all apply; choose one with --layout"),
         ],
     )

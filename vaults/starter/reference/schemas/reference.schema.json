@@ -21,7 +21,7 @@
         "subtype": {
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9]*$",
-          "description": "Optional. Style for an illustration style, Handout for a handout layout. Membership requires a separate vault-aware check."
+          "description": "Optional. Style for an illustration style, Layout for a handout layout. Membership requires a separate vault-aware check."
         }
       },
       "additionalProperties": true,
@@ -87,7 +87,7 @@
           "if": {
             "properties": {
               "subtype": {
-                "const": "Handout"
+                "const": "Layout"
               }
             },
             "required": [

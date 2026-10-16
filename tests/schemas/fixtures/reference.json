@@ -196,7 +196,7 @@
       "name": "handout with every field",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "prints": [
           "Content/Gear",
           "Content"
@@ -221,14 +221,14 @@
       "name": "handout with no fields",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout"
+        "subtype": "Layout"
       }
     },
     {
       "name": "handout with null fields",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "prints": null,
         "page": null,
         "margin": null,
@@ -247,7 +247,7 @@
       "name": "handout margin 1in",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": "1in"
       }
     },
@@ -255,7 +255,7 @@
       "name": "handout margin 2.5cm",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": "2.5cm"
       }
     },
@@ -263,7 +263,7 @@
       "name": "handout margin 50pt",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": "50pt"
       }
     },
@@ -271,7 +271,7 @@
       "name": "handout margin 0.7in",
       "valid": true,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": "0.7in"
       }
     },
@@ -279,7 +279,7 @@
       "name": "handout prints a string",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "prints": "Content/Gear"
       }
     },
@@ -287,7 +287,7 @@
       "name": "handout prints a nested kind",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "prints": [
           "Content/Gear/Ring"
         ]
@@ -297,7 +297,7 @@
       "name": "handout page legal",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "page": "legal"
       }
     },
@@ -305,7 +305,7 @@
       "name": "handout margin without a unit",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": "1"
       }
     },
@@ -313,7 +313,7 @@
       "name": "handout margin in feet",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": "1ft"
       }
     },
@@ -321,7 +321,7 @@
       "name": "handout margin a number",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "margin": 1
       }
     },
@@ -329,7 +329,7 @@
       "name": "handout font blank",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "font": " "
       }
     },
@@ -337,7 +337,7 @@
       "name": "handout title size zero",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "title_size": 0
       }
     },
@@ -345,7 +345,7 @@
       "name": "handout text size negative",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "min_text_size": -1
       }
     },
@@ -353,7 +353,7 @@
       "name": "handout text size a string",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "max_text_size": "big"
       }
     },
@@ -361,7 +361,7 @@
       "name": "handout line spacing below one",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "line_spacing": 0.9
       }
     },
@@ -369,7 +369,7 @@
       "name": "handout image share one",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "image_share": 1
       }
     },
@@ -377,7 +377,7 @@
       "name": "handout image share zero",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "image_share": 0
       }
     },
@@ -385,7 +385,7 @@
       "name": "handout mark without text",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "mark": {
           "field": "attunement"
         }
@@ -395,7 +395,7 @@
       "name": "handout mark without field",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "mark": {
           "text": "A"
         }
@@ -405,7 +405,7 @@
       "name": "handout mark blank text",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "mark": {
           "field": "a",
           "text": " "
@@ -416,7 +416,7 @@
       "name": "handout mark extra key",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "mark": {
           "field": "a",
           "text": "A",
@@ -428,7 +428,7 @@
       "name": "handout underline a string",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "underline_links": "yes"
       }
     },
@@ -436,7 +436,7 @@
       "name": "handout lowercase a number",
       "valid": false,
       "frontmatter": {
-        "subtype": "Handout",
+        "subtype": "Layout",
         "lowercase_links": 1
       }
     }

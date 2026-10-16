@@ -9,7 +9,7 @@ from armarium.lib import matches_kind
 from armarium.parse import Record
 from armarium.schemas import read_subtype_records
 
-LAYOUT_DIRECTORY = "reference/handouts"
+LAYOUT_DIRECTORY = "reference/layouts"
 
 # Points in each unit a length may be given in.
 POINTS = {"pt": 1.0, "in": 72.0, "cm": 72 / 2.54, "mm": 72 / 25.4}
@@ -149,7 +149,7 @@ def read_layouts(root: Path) -> dict[str, Layout]:
 
     Returns:
         dict[str, Layout]: Layout name to layout, in path order, for each
-            layout in reference/handouts/ and its subfolders. Empty when the
+            layout in reference/layouts/ and its subfolders. Empty when the
             folder does not exist.
 
     Raises:
@@ -159,7 +159,7 @@ def read_layouts(root: Path) -> dict[str, Layout]:
     """
     return {
         record.path.stem: parse_layout(record)
-        for record in read_subtype_records(root, LAYOUT_DIRECTORY, "Handout")
+        for record in read_subtype_records(root, LAYOUT_DIRECTORY, "Layout")
     }
 
 

@@ -3,13 +3,13 @@
 ## Layouts
 
 A layout says how one kind of record prints as a player handout. Each is a
-[Reference](type.md#reference) record of subtype `Handout` in
-`reference/handouts/`, named for the layout.
+[Reference](type.md#reference) record of subtype `Layout` in
+`reference/layouts/`, named for the layout.
 
 ```markdown
 ---
 type: "[[Reference]]"
-subtype: Handout
+subtype: Layout
 prints: [Content/Gear]
 font: assets/fonts/Lora-Regular.ttf
 title_size: 48

@@ -152,14 +152,14 @@ clue index.
 `campaigns/campaign_N/reference/` when specific to one, including subfolders
 such as `indexes/` but not those that belong to another type (`types/`,
 `statuses/`, `players/`). A record of subtype `Style` sits in `styles/`, and
-one of subtype `Handout` in `handouts/`.
+one of subtype `Layout` in `layouts/`.
 
 ### Frontmatter
 
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[Reference]]` |
-| `subtype` | optional | `Style`, an [illustration style](illustrate.md#styles), or `Handout`, a [handout layout](handout.md#layouts); the schema checks the fields of each |
+| `subtype` | optional | `Style`, an [illustration style](illustrate.md#styles), or `Layout`, a [handout layout](handout.md#layouts); the schema checks the fields of each |
 
 ### Body
 
