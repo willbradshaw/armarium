@@ -293,35 +293,26 @@ class ContentBaseTests(unittest.TestCase):
 
 
 class SessionsBaseTests(unittest.TestCase):
-    """Check bases/Sessions.base lists Sessions newest first, with their links."""
+    """Check bases/Sessions.base's one table of Sessions."""
 
-    BASE = base("Sessions.base")
+    (VIEW,) = base("Sessions.base")["views"]
 
     def test_sorts_newest_first(self):
-        for view in self.BASE["views"]:
-            with self.subTest(view=view["name"]):
-                self.assertEqual(
-                    view["sort"], [{"property": "session_number", "direction": "DESC"}]
-                )
+        self.assertEqual(
+            self.VIEW["sort"], [{"property": "session_number", "direction": "DESC"}]
+        )
 
-    def test_linking_records_are_selected_by_type(self):
-        for formula, kind in [
-            ("appeared", "Content"),
-            ("clues", "Clue"),
-            ("transcript", "Transcript"),
-        ]:
-            with self.subTest(formula=formula):
-                self.assertEqual(
-                    self.BASE["formulas"][formula],
-                    "file.backlinks.filter(value.asFile().properties.type"
-                    f' == link("reference/types/{kind}"))',
-                )
-
-    def test_preparation_shows_every_prepared_list(self):
-        view = {view["name"]: view for view in self.BASE["views"]}["Preparation"]
+    def test_shows_every_prepared_list(self):
         prepared = {field for field in type_fields("Session") if "prepared" in field}
-        self.assertEqual(prepared, set(view["order"]) & prepared)
         self.assertEqual(len(prepared), 3)
+        self.assertLessEqual(prepared, set(self.VIEW["order"]))
+
+    def test_transcript_is_the_linking_transcript(self):
+        self.assertEqual(
+            base("Sessions.base")["formulas"]["transcript"],
+            "file.backlinks.filter(value.asFile().properties.type"
+            ' == link("reference/types/Transcript"))',
+        )
 
 
 class CluesBaseTests(unittest.TestCase):
