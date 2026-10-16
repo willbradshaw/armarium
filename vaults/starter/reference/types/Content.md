@@ -67,6 +67,10 @@ has left play, for example through sale, loss, destruction or consumption.
 Gear begins with a `> [!rules]` callout containing its rules text, optionally
 followed by an image embed. An empty callout is allowed for a stub.
 
+Any Content may hold a `> [!handout]` callout before Notes: the words the
+players are given on a handout of it, such as a letter's text, exactly as they
+read them.
+
 All subtypes share Notes, Active Clues and Appearances, in that order.
 
 ### Notes

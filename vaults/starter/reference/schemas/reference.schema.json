@@ -100,6 +100,21 @@
                 "$ref": "#/$defs/kinds",
                 "description": "The record kinds the layout applies to, each a type or Type/Subtype, such as Content/Gear."
               },
+              "callout": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "The type of the callout whose text prints, such as rules or handout."
+              },
+              "title": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the record's name prints at the top of the page."
+              },
               "page": {
                 "enum": [
                   "letter",
