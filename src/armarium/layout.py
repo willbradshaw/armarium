@@ -57,16 +57,18 @@ class Layout:
             defaults used when no layout applies.
         prints: Record kinds the layout applies to, each a type or
             ``Type/Subtype``, such as ``Content/Gear``.
+        callout: The type of the callout whose text prints, such as rules.
+        title: Whether the record's name prints at the top of the page.
         page: The paper size, letter or a4.
         margin: The margin on every side, in points.
         font: A standard PDF font's name, or the path of a TrueType font
             file, absolute or relative to the vault root.
         title_size: The title's font size, in points.
-        min_text_size: The smallest font size of the rules text, in points.
-        max_text_size: The largest font size of the rules text, in points.
+        min_text_size: The smallest font size of the text, in points.
+        max_text_size: The largest font size of the text, in points.
         line_spacing: The distance between lines, as a multiple of the size.
-        image_share: The share of the space below the title that the rules
-            text leaves to the picture.
+        image_share: The share of the space below the title that the text
+            leaves to the picture.
         mark: Text printed in the top right corner when a field is true, or
             None for no mark.
         underline_links: Whether link text is underlined.
@@ -75,6 +77,8 @@ class Layout:
 
     name: str = ""
     prints: tuple[str, ...] = ()
+    callout: str = "rules"
+    title: bool = True
     page: str = "letter"
     margin: float = 0.7 * POINTS["in"]
     font: str = "Times-Roman"
@@ -117,6 +121,8 @@ def parse_layout(record: Record) -> Layout:
     fields: dict[str, Any] = {
         name: data.get(name)
         for name in (
+            "callout",
+            "title",
             "page",
             "font",
             "title_size",
