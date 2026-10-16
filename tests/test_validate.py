@@ -2872,7 +2872,11 @@ class TestValidateVault:
                 False,
                 "reference/styles/gear.json is not Markdown and belongs in assets/",
             ),
-            ("campaigns/campaign_1/reference/styles", True, None),
+            (
+                "campaigns/campaign_1/reference/styles",
+                True,
+                "campaigns/campaign_1/reference/styles is not in the vault skeleton",
+            ),
             ("campaigns/campaign_1/reference/Notes.md", False, None),
             ("reference/views/clues.base", False, None),
             ("reference/views/nested/clues.BASE", False, None),
@@ -2961,6 +2965,10 @@ class TestValidateVault:
         [
             ("reference/places/towns/Map.md", None),
             ("reference/places/Other.md", None),
+            (
+                "campaigns/campaign_1/reference/places/towns/Map.md",
+                "campaigns/campaign_1/reference/places is not in the vault skeleton",
+            ),
             (
                 "reference/styles/Gear.md",
                 "reference/styles is not in the vault skeleton",

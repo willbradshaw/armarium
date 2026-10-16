@@ -475,8 +475,8 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
     definitions = [file for file in find_files(types) if file.suffix.lower() == ".md"]
     # Subfolders declared per subtype, checked once extensions are loaded.
     subfolders: dict[str, tuple[str, object]] = {}
-    # Each type's declared directories, where its subtypes' subfolders lie.
-    homes: dict[str, list[str]] = {}
+    # Each type's shared directory, where its subtypes' subfolders lie.
+    homes: dict[str, str] = {}
     # Directories the skeleton allows without requiring them.
     allowed: set[Path] = set()
     for file in definitions:
@@ -498,15 +498,8 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
         except ValueError as exc:
             findings.add("vault.type", f"{relative}: {exc}")
             continue
-        homes[file.stem] = [
-            home
-            for scope, path in directories.items()
-            for home in (
-                [path]
-                if scope == "shared"
-                else [f"campaigns/{c}/{path}" for c in found]
-            )
-        ]
+        if "shared" in directories:
+            homes[file.stem] = directories["shared"]
         for scope, path in directories.items():
             if scope == "shared":
                 require(path, True)
@@ -543,17 +536,20 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
             except ValueError as exc:
                 findings.add("vault.type", f"{relative}: {exc}")
                 continue
-            # A declared subfolder is optional; it may sit in a directory, such
-            # as reference/, that otherwise holds only the skeleton's folders.
-            for home in homes.get(name, []):
-                for subfolder in parsed.values():
-                    folder = Path(home, subfolder)
-                    allowed.add(folder)
-                    allowed.update(
-                        parent
-                        for parent in folder.parents
-                        if parent.is_relative_to(home) and parent != Path(home)
-                    )
+            # A declared subfolder is optional; it may sit in a shared directory,
+            # such as reference/, that otherwise holds only the skeleton's
+            # folders. Campaign directories gain none.
+            if name not in homes:
+                continue
+            home = Path(homes[name])
+            for subfolder in parsed.values():
+                folder = home / subfolder
+                allowed.add(folder)
+                allowed.update(
+                    parent
+                    for parent in folder.parents
+                    if parent.is_relative_to(home) and parent != home
+                )
 
     # 4. Report entries outside the vault skeleton
     named = {

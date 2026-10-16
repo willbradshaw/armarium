@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Allow in `reference/` whichever subfolder the Reference Type record's `subtype_directories` declares for styles, not only `styles/`.
+- Allow in the shared `reference/` the subfolders the Reference Type record's `subtype_directories` declares, rather than `styles/` by name.
 - Add `Sessions.base` and `Clues.base` to the starter vault's `bases/`, grouping every campaign's Sessions and Clues by campaign.
 - Add Reference subtypes, starting with `Style`: styles now need `subtype: Style`, the Reference schema checks their fields, and the Reference Type record's `subtype_directories` keeps them in `reference/styles/`.
 - Ship the `illustrate-record` agent skill, and a CSS snippet that shows black-opacity art in `assets/art/ink/` as white on Obsidian's dark theme.
