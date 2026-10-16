@@ -92,7 +92,9 @@ NPCs there. Subtypes left out may sit anywhere in the Content directory. The
 declaration is optional, and the starter vault makes none for Content.
 
 The Reference Type record may declare it too. The starter vault's
-`{ Style: styles }` keeps [styles](illustrate.md#styles) in `reference/styles/`.
+`{ Style: styles, Layout: layouts }` keeps [styles](illustrate.md#styles) in
+`reference/styles/` and [handout layouts](handout.md#layouts) in
+`reference/layouts/`.
 A declared subfolder is optional, and may sit in the shared `reference/` beside
 the folders the skeleton requires there, but not in a campaign's.
 
@@ -128,4 +130,6 @@ This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
 Optional [extensions](extensions.md) are declared in `reference/extensions.json`;
 their schemas, templates and reference pages live in `reference/extensions/NAME/`.
 Illustration [styles](illustrate.md#styles) are Reference records of subtype
-`Style` in the optional `reference/styles/`.
+`Style` in the optional `reference/styles/`, and
+[handout layouts](handout.md#layouts) are those of subtype `Layout` in the
+optional `reference/layouts/`.

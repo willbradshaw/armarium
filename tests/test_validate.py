@@ -268,7 +268,7 @@ class TestValidateMarkdown:
         [
             ("Reference", "Style", []),
             ("Reference", None, []),
-            ("Reference", "Gear", ["subtype must be one of Style"]),
+            ("Reference", "Gear", ["subtype must be one of Style, Layout"]),
             ("Note", "Anything", []),
         ],
     )
