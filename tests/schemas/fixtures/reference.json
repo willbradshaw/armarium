@@ -23,6 +23,174 @@
       "frontmatter": {
         "type": "[[types/Reference]]"
       }
+    },
+    {
+      "name": "style with every field",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Style",
+        "illustrates": [
+          "Content/Gear",
+          "Note"
+        ],
+        "directory": "assets/art/gear",
+        "opacity": true,
+        "max_bytes": 5000,
+        "max_edge": 600,
+        "references": [
+          "[[Lucky Ring]]",
+          "[[assets/art/gear/Rope.webp]]"
+        ],
+        "sample": 3
+      }
+    },
+    {
+      "name": "style with no fields",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Style"
+      }
+    },
+    {
+      "name": "style with null fields",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Style",
+        "illustrates": null,
+        "directory": null,
+        "opacity": null,
+        "max_bytes": null,
+        "max_edge": null,
+        "references": null,
+        "sample": null
+      }
+    },
+    {
+      "name": "style illustrates a string",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "illustrates": "Content/Gear"
+      }
+    },
+    {
+      "name": "style illustrates a nested kind",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "illustrates": [
+          "Content/Gear/Ring"
+        ]
+      }
+    },
+    {
+      "name": "style illustrates a padded kind",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "illustrates": [
+          " Content"
+        ]
+      }
+    },
+    {
+      "name": "style directory outside assets",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "directory": "content"
+      }
+    },
+    {
+      "name": "style directory is assets itself",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "directory": "assets"
+      }
+    },
+    {
+      "name": "style directory climbs out",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "directory": "assets/../content"
+      }
+    },
+    {
+      "name": "style directory ends in a slash",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "directory": "assets/art/"
+      }
+    },
+    {
+      "name": "style opacity a string",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "opacity": "yes"
+      }
+    },
+    {
+      "name": "style max_bytes zero",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "max_bytes": 0
+      }
+    },
+    {
+      "name": "style max_edge a fraction",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "max_edge": 2.5
+      }
+    },
+    {
+      "name": "style sample a boolean",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "sample": true
+      }
+    },
+    {
+      "name": "style reference not a link",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "references": [
+          "Ring"
+        ]
+      }
+    },
+    {
+      "name": "style reference with an alias",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Style",
+        "references": [
+          "[[Rope|Rope]]"
+        ]
+      }
+    },
+    {
+      "name": "other subtypes ignore style fields",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Index",
+        "directory": "content"
+      }
+    },
+    {
+      "name": "subtype not a name",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "My Style"
+      }
     }
   ]
 }

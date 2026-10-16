@@ -97,13 +97,14 @@ selector for its own folder to the snippet.
 ## Styles
 
 A style says how one kind of art is made and stored. Each is a
-[Reference](type.md#reference) record in `reference/styles/`, named for the
-style, and a new vault has one, `Gear`. Its `references` is empty until the
-vault has Gear art to show the style:
+[Reference](type.md#reference) record of subtype `Style` in `reference/styles/`,
+named for the style, and a new vault has one, `Gear`. Its `references` is empty
+until the vault has Gear art to show the style:
 
 ```markdown
 ---
 type: "[[Reference]]"
+subtype: Style
 illustrates: [Content/Gear]
 directory: assets/art/gear
 references: []
@@ -134,10 +135,11 @@ command uses the style whose `illustrates` names the record's type, or its type
 and subtype, such as `Content/Gear`; if several do, it stops and asks for
 `--style`, and if none does, the defaults above apply.
 
-[Validation](validate.md) checks each style's fields, and holds every file in
-its `directory` and the folders inside it to its budget: each must be a WebP or
-PNG image within `max_bytes` and `max_edge`. A style that cannot be read stops
-the command until it is fixed.
+The vault's Reference schema checks each style's fields, and
+[validation](validate.md) holds every file in its `directory` and the folders
+inside it to its budget: each must be a WebP or PNG image within `max_bytes`
+and `max_edge`. A style that cannot be read or fails the schema stops the
+command until it is fixed.
 
 ## Prompts
 

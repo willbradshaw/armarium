@@ -1,5 +1,6 @@
 ---
 type: "[[Reference]]"
+subtype: Style
 illustrates: [Content/Gear]
 directory: assets/art/gear
 references: []

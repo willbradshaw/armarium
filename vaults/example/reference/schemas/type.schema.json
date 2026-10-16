@@ -38,7 +38,7 @@
             "object",
             "null"
           ],
-          "description": "On the Content Type record, the subfolder of each Content directory that holds records of a subtype. Subtypes left out may sit anywhere in the Content directory.",
+          "description": "On the Content and Reference Type records, the subfolder of each of the type's directories that holds records of a subtype. Subtypes left out may sit anywhere in the type's directory.",
           "propertyNames": {
             "pattern": "^[A-Za-z][A-Za-z0-9]*$"
           },

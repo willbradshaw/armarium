@@ -57,7 +57,7 @@ class VaultIndex:
         self._schemas: dict[Path, Schema | Exception] = {}
         self._declarations: dict[str, dict[str, str]] | None = None
         self._names: dict[str, list[Name]] | None = None
-        self._subtype_directories: dict[str, str] | None = None
+        self._subtype_directories: dict[str, dict[str, str]] = {}
         for path in find_files(self.root) if files is None else files:
             relative = path.relative_to(self.root)
             # Markdown links may include or omit .md; asset extensions matter.
@@ -246,23 +246,26 @@ class VaultIndex:
                 continue
         return declarations
 
-    def subtype_directories(self) -> dict[str, str]:
-        """Read the subfolder the Content Type record declares for each subtype.
+    def subtype_directories(self, kind: str) -> dict[str, str]:
+        """Read the subfolder a Type record declares for each subtype.
+
+        Args:
+            kind: The type, such as Content.
 
         Returns:
-            dict[str, str]: Content subtype to its declared subfolder below
-                each Content directory. Empty when reference/types/Content.md
-                declares none, cannot be read, or holds an unusable
-                declaration, which validate_vault reports. Read once per
-                validation run; callers must not modify the mapping.
+            dict[str, str]: Subtype to its declared subfolder below each of
+                the type's directories. Empty when its Type record declares
+                none, cannot be read, or holds an unusable declaration, which
+                validate_vault reports. Read once per type per validation run;
+                callers must not modify the mapping.
         """
-        if self._subtype_directories is None:
-            self._subtype_directories = self._read_subtype_directories()
-        return self._subtype_directories
+        if kind not in self._subtype_directories:
+            self._subtype_directories[kind] = self._read_subtype_directories(kind)
+        return self._subtype_directories[kind]
 
-    def _read_subtype_directories(self) -> dict[str, str]:
-        """Parse the Content Type record for subtype_directories."""
-        path = self.root / "reference/types/Content.md"
+    def _read_subtype_directories(self, kind: str) -> dict[str, str]:
+        """Parse a type's Type record for subtype_directories."""
+        path = self.root / "reference/types" / f"{kind}.md"
         if path.is_symlink() or not path.is_file():
             return {}
         record, _ = self.parse(path)
@@ -271,7 +274,8 @@ class VaultIndex:
         try:
             return parse_subtype_directories(
                 record.frontmatter.get("subtype_directories"),
-                self.extension_set().subtypes,
+                kind,
+                self.extension_set().subtypes_of(kind),
             )
         except LOAD_ERRORS:
             return {}

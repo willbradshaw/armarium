@@ -264,6 +264,32 @@ class TestValidateMarkdown:
             assert "Gear" in found[0].message and "Relic" not in found[0].message
 
     @pytest.mark.parametrize(
+        ("kind", "subtype", "expected"),
+        [
+            ("Reference", "Style", []),
+            ("Reference", None, []),
+            ("Reference", "Gear", ["subtype must be one of Style"]),
+            ("Note", "Anything", []),
+        ],
+    )
+    def test_reference_subtype(
+        self,
+        vault: Path,
+        write_record: Callable[..., Path],
+        kind: str,
+        subtype: str | None,
+        expected: list[str],
+    ) -> None:
+        (vault / f"reference/schemas/{kind.lower()}.schema.json").write_text("true")
+        fields = {"type": f"[[{kind}]]"}
+        if subtype is not None:
+            fields["subtype"] = subtype
+        result = validate_markdown(write_record(fields))
+        assert [
+            d.message for d in result.diagnostics if d.rule == "record.subtype"
+        ] == expected
+
+    @pytest.mark.parametrize(
         "kind", [None, 42, "Widget", "[[Widget|Alias]]", "[[Widget#Heading]]"]
     )
     @pytest.mark.parametrize(
@@ -1924,6 +1950,40 @@ class TestValidateSubdirectory:
         # A record of another type never reads the declaration.
         assert index.records == {}
 
+    @pytest.mark.parametrize(
+        "relative, expected",
+        [
+            ("reference/styles/Gear.md", None),
+            ("reference/styles/items/Gear.md", None),
+            ("campaigns/campaign_2/reference/styles/Gear.md", None),
+            ("reference/Gear.md", "reference/styles"),
+            (
+                "campaigns/campaign_2/reference/Gear.md",
+                "campaigns/campaign_2/reference/styles",
+            ),
+        ],
+    )
+    def test_reference_subtype(
+        self, tmp_path: Path, relative: str, expected: str | None
+    ) -> None:
+        write_records(
+            tmp_path,
+            {
+                "reference/types/Reference.md": (
+                    f"{type_record('Reference')}\nsubtype_directories: {{Style: styles}}"
+                )
+            },
+        )
+        record = Record(
+            tmp_path / relative,
+            Frontmatter({"type": "[[Reference]]", "subtype": "Style"}),
+            Body("", 1),
+        )
+        result = validate_subdirectory(record, VaultIndex(tmp_path)).diagnostics
+        assert [d.message for d in result] == (
+            [f"Style Reference belongs in {expected}"] if expected else []
+        )
+
     def test_claimed_by_a_longer_declaration(self, tmp_path: Path) -> None:
         write_records(
             tmp_path,
@@ -2555,7 +2615,10 @@ class TestValidateImage:
 
 
 class TestValidateStyle:
-    STYLE = 'type: "[[Reference]]"\ndirectory: assets/art\nmax_bytes: 100\nmax_edge: 40'
+    STYLE = (
+        'type: "[[Reference]]"\nsubtype: Style\n'
+        "directory: assets/art\nmax_bytes: 100\nmax_edge: 40"
+    )
 
     @staticmethod
     def check(
@@ -2606,35 +2669,12 @@ class TestValidateStyle:
             ),
         ]
 
-    @pytest.mark.parametrize(
-        ("fields", "message"),
-        [
-            ("illustrates: Gear", "illustrates must list record types"),
-            ("directory: content", "directory must be a folder inside assets/"),
-            ("max_bytes: 0", "max_bytes must be a whole number of at least 1"),
-        ],
-    )
-    def test_reports_an_invalid_style(
-        self, tmp_path: Path, fields: str, message: str
-    ) -> None:
-        write_records(
-            tmp_path, {"reference/styles/Gear.md": f'type: "[[Reference]]"\n{fields}'}
-        )
+    @pytest.mark.parametrize("subtype", ["", "\nsubtype: Index"])
+    def test_only_style_records_are_styles(self, tmp_path: Path, subtype: str) -> None:
+        style = self.STYLE.replace("\nsubtype: Style", subtype)
+        write_records(tmp_path, {"reference/styles/Gear.md": style})
         self.png(tmp_path / "assets/art/wide.png", 4000, 30)
-        assert [
-            (rule, text.startswith(message)) for rule, text, _ in self.check(tmp_path)
-        ] == [("style.invalid", True)]
-
-    @pytest.mark.parametrize(
-        "relative",
-        ["reference/Gear.md", "campaigns/campaign_1/reference/styles/Gear.md"],
-    )
-    def test_only_records_in_the_styles_folder_are_styles(
-        self, tmp_path: Path, relative: str
-    ) -> None:
-        write_records(tmp_path, {relative: self.STYLE})
-        self.png(tmp_path / "assets/art/wide.png", 4000, 30)
-        assert self.check(tmp_path, relative) == []
+        assert self.check(tmp_path) == []
 
     def test_a_missing_directory_holds_no_art(self, tmp_path: Path) -> None:
         write_records(tmp_path, {"reference/styles/Gear.md": self.STYLE})
@@ -3131,7 +3171,20 @@ class TestValidateVault:
                 False,
                 "subtype_directories must map Content subtypes to relative paths",
             ),
-            ("Note", "{NPC: npcs}", False, "only Content declares subtype_directories"),
+            ("Reference", "{Style: styles}", False, None),
+            (
+                "Reference",
+                "{NPC: npcs}",
+                False,
+                "subtype_directories names NPC, which is not a Reference subtype "
+                "this vault permits",
+            ),
+            (
+                "Note",
+                "{NPC: npcs}",
+                False,
+                "only Content and Reference declare subtype_directories",
+            ),
             ("Note", "", False, None),
         ],
     )

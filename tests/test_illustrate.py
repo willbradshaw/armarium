@@ -41,6 +41,7 @@ from armarium.parse import Frontmatter, Record
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE
 
 STARTER = Path(__file__).resolve().parents[1] / "vaults/starter"
+BROKEN_STYLE = '---\ntype: "[[Reference]]"\nsubtype: Style\nopacity: maybe\n---\n'
 
 
 @pytest.fixture
@@ -400,7 +401,7 @@ class TestPrompt:
 
     def test_uses_the_style_named(self, vault: Path) -> None:
         (vault / "reference/styles/Ink.md").write_text(
-            '---\ntype: "[[Reference]]"\n---\nInk it.\n'
+            '---\ntype: "[[Reference]]"\nsubtype: Style\n---\nInk it.\n'
         )
         assert (
             prompt(TestIngest.RECORD, vault, style="Ink")
@@ -427,7 +428,7 @@ class TestPrompt:
     ) -> None:
         preamble = tmp_path / "intro.txt"
         preamble.write_bytes(b"\xef\xbb\xbfSketch it.\n")
-        (vault / "reference/styles/Broken.md").write_text("no type\n")
+        (vault / "reference/styles/Broken.md").write_text(BROKEN_STYLE)
         assert (
             prompt(TestIngest.RECORD, vault, style=style, preamble=preamble)
             == "Sketch it.\n\n<subject>Harness</subject>"
@@ -458,8 +459,10 @@ class TestPrompt:
         assert path.read_text() == before
 
     def test_refuses_a_broken_style(self, vault: Path) -> None:
-        (vault / "reference/styles/Broken.md").write_text("no type\n")
-        with pytest.raises(ValueError, match="reference/styles/Broken.md: a style"):
+        (vault / "reference/styles/Broken.md").write_text(BROKEN_STYLE)
+        with pytest.raises(
+            ValueError, match="reference/styles/Broken.md: frontmatter.opacity: "
+        ):
             prompt(TestIngest.RECORD, vault)
 
 
@@ -650,7 +653,7 @@ class TestIngest:
         (vault / "reference/styles/Gear.md").unlink()
         for title, fields in styles.items():
             (vault / f"reference/styles/{title}.md").write_text(
-                f'---\ntype: "[[Reference]]"\n{fields}\n---\nPaint it.\n'
+                f'---\ntype: "[[Reference]]"\nsubtype: Style\n{fields}\n---\nPaint it.\n'
             )
         illustration = ingest(self.RECORD, tmp_path / "a.png", vault, style=name)
         assert (illustration.image, illustration.style) == (image, style)
@@ -667,7 +670,7 @@ class TestIngest:
 
         monkeypatch.setattr(module, "encode", encode)
         (vault / "reference/styles/Gear.md").write_text(
-            '---\ntype: "[[Reference]]"\nillustrates: [Content/Gear]\n'
+            '---\ntype: "[[Reference]]"\nsubtype: Style\nillustrates: [Content/Gear]\n'
             "opacity: true\nmax_bytes: 5000\nmax_edge: 600\n---\n"
         )
         illustration = ingest(
@@ -721,7 +724,11 @@ class TestIngest:
                 "illustrates: [Content]",
                 "styles Gear, Other all apply; choose one",
             ),
-            (None, "max_edge: 0", "reference/styles/Other.md: max_edge must be"),
+            (
+                None,
+                "max_edge: 0",
+                "reference/styles/Other.md: frontmatter.max_edge: 0 is less than",
+            ),
         ],
     )
     def test_refuses_without_one_usable_style(
@@ -734,7 +741,7 @@ class TestIngest:
     ) -> None:
         if extra is not None:
             (vault / "reference/styles/Other.md").write_text(
-                f'---\ntype: "[[Reference]]"\n{extra}\n---\n'
+                f'---\ntype: "[[Reference]]"\nsubtype: Style\n{extra}\n---\n'
             )
         source = picture(tmp_path / "a.png", (30, 20))
         with pytest.raises(ValueError, match=message):
@@ -838,7 +845,7 @@ class Painter:
 
 def style(vault: Path, fields: str, name: str = "Gear") -> None:
     (vault / f"reference/styles/{name}.md").write_text(
-        f'---\ntype: "[[Reference]]"\nillustrates: [Content/Gear]\n{fields}\n---\n'
+        f'---\ntype: "[[Reference]]"\nsubtype: Style\nillustrates: [Content/Gear]\n{fields}\n---\n'
     )
 
 

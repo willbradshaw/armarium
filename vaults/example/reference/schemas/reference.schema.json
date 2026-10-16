@@ -17,12 +17,97 @@
       "properties": {
         "type": {
           "const": "[[Reference]]"
+        },
+        "subtype": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+          "description": "Optional. Style for an illustration style. Membership requires a separate vault-aware check."
         }
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Style"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "properties": {
+              "illustrates": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "The record kinds the style applies to, each a type or Type/Subtype, such as Content/Gear.",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[^/\\s](?:[^/]*[^/\\s])?(?:/[^/\\s](?:[^/]*[^/\\s])?)?$"
+                }
+              },
+              "directory": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^assets(?:/(?!\\.\\.?(?:/|$))[^/]+)+$",
+                "description": "The folder inside assets/ that the style's art goes in."
+              },
+              "opacity": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the style's art is a drawing on white stored as black opacity on a transparent ground."
+              },
+              "max_bytes": {
+                "$ref": "#/$defs/count",
+                "description": "The largest art file allowed, in bytes."
+              },
+              "max_edge": {
+                "$ref": "#/$defs/count",
+                "description": "The largest long edge allowed, in pixels."
+              },
+              "references": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "Links to images that show the style, or to records whose image does.",
+                "items": {
+                  "$ref": "#/$defs/wikilink"
+                }
+              },
+              "sample": {
+                "$ref": "#/$defs/count",
+                "description": "How many references to send with each candidate, drawn at random."
+              }
+            }
+          }
+        }
+      ]
     },
     "body": {
       "type": "string"
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\]$",
+      "description": "Canonical internal wikilink without an alias or anchor. Existence and target kind must be checked separately."
+    },
+    "count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
     }
   }
 }

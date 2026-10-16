@@ -119,7 +119,7 @@ supplies a template:
 }
 ```
 
-Content is the only type with subtypes. Names start with a letter and contain
+Only Content subtypes can be declared; Reference has a fixed set. Names start with a letter and contain
 only letters and digits, and may not repeat a core subtype or one another
 enabled extension declares. Records of a declared subtype meet the core Content
 requirements and the extension's schema.
@@ -128,8 +128,8 @@ requirements and the extension's schema.
 
 A rule's `links` restricts which records the wikilinks in a frontmatter field
 may point to. Each key is a top-level field; its value gives the record `type`
-a link in that field must target and, when that type is Content, optionally
-the `subtypes` allowed:
+a link in that field must target and, when that type is Content or Reference,
+optionally the `subtypes` allowed:
 
 ```json
 {

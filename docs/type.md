@@ -151,13 +151,14 @@ clue index.
 `reference/` when shared by every [campaign](campaign.md), or
 `campaigns/campaign_N/reference/` when specific to one, including subfolders
 such as `indexes/` but not those that belong to another type (`types/`,
-`statuses/`, `players/`).
+`statuses/`, `players/`). A record of subtype `Style` sits in `styles/`.
 
 ### Frontmatter
 
 | Field | Presence | Value |
 | --- | --- | --- |
 | `type` | required | `[[Reference]]` |
+| `subtype` | optional | `Style`, an [illustration style](illustrate.md#styles), whose fields the schema checks |
 
 ### Body
 
@@ -264,7 +265,7 @@ Type records.
 | --- | --- | --- |
 | `type` | required | `[[Type]]` |
 | `directories` | required | a mapping of `shared` and/or `campaign` to a relative path without `..` or a leading `/`; every declared directory must exist |
-| `subtype_directories` | optional, on the Content Type record only | null, or a mapping of Content subtype to a relative path below each Content directory, [where records of that subtype live](vault.md#where-records-live); each subtype must be one the vault permits |
+| `subtype_directories` | optional, on the Content and Reference Type records only | null, or a mapping of subtype to a relative path below each of the type's directories, [where records of that subtype live](vault.md#where-records-live); each subtype must be one the vault permits |
 
 ### Body
 

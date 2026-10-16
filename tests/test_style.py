@@ -1,5 +1,6 @@
 """Style records declare how a kind of art is made and stored."""
 
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -10,18 +11,30 @@ from armarium.parse import Record
 from armarium.style import (
     STYLE_DIRECTORY,
     Style,
-    _count,
     art_directory,
     choose_style,
+    is_style,
     parse_style,
     read_styles,
 )
+
+SCHEMA = (
+    Path(__file__).resolve().parents[1]
+    / "vaults/starter/reference/schemas/reference.schema.json"
+)
+
+
+@pytest.fixture(autouse=True)
+def reference_schema(tmp_path: Path) -> None:
+    target = tmp_path / "reference/schemas/reference.schema.json"
+    target.parent.mkdir(parents=True)
+    shutil.copy(SCHEMA, target)
 
 
 def write_style(root: Path, name: str, fields: dict[str, Any], body: str = "") -> Path:
     path = root / STYLE_DIRECTORY / f"{name}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    metadata = {"type": "[[Reference]]", **fields}
+    metadata = {"type": "[[Reference]]", "subtype": "Style", **fields}
     path.write_text(f"---\n{yaml.safe_dump(metadata)}---\n{body}")
     return path
 
@@ -75,25 +88,31 @@ class TestArtDirectory:
             art_directory(value)
 
 
-class TestCount:
+class TestIsStyle:
     @pytest.mark.parametrize(
-        ("data", "expected"), [({}, None), ({"n": None}, None), ({"n": 3}, 3)]
+        ("frontmatter", "expected"),
+        [
+            ('type: "[[Reference]]"\nsubtype: Style', True),
+            ('type: "[[Reference]]"', False),
+            ('type: "[[Reference]]"\nsubtype: Index', False),
+            ('type: "[[types/Content]]"\nsubtype: Style', False),
+            ("subtype: Style", False),
+        ],
     )
-    def test_reads_a_positive_number(
-        self, data: dict[str, Any], expected: int | None
+    def test_needs_reference_and_style(
+        self, tmp_path: Path, frontmatter: str, expected: bool
     ) -> None:
-        assert _count(data, "n") == expected
-
-    @pytest.mark.parametrize("value", [0, -1, 2.5, "3", True])
-    def test_refuses_anything_else(self, value: object) -> None:
-        with pytest.raises(ValueError, match="n must be a whole number of at least 1"):
-            _count({"n": value}, "n")
+        parsed = record(tmp_path, f"---\n{frontmatter}\n---\n")
+        assert is_style(parsed) is expected
 
 
 class TestParseStyle:
-    def test_takes_defaults(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("value", ["", "\nillustrates:\nreferences:\nsample:"])
+    def test_takes_defaults(self, tmp_path: Path, value: str) -> None:
         parsed = record(
-            tmp_path, '---\ntype: "[[Reference]]"\n---\n', "reference/styles/Plain.md"
+            tmp_path,
+            f'---\ntype: "[[Reference]]"\nsubtype: Style{value}\n---\n',
+            "reference/styles/Plain.md",
         )
         assert parse_style(parsed) == Style("Plain", "")
 
@@ -104,7 +123,7 @@ class TestParseStyle:
             "opacity": True,
             "max_bytes": 5000,
             "max_edge": 600,
-            "references": ["[[Lucky Ring]]", "[[assets/art/gear/Rope.webp|Rope]]"],
+            "references": ["[[Lucky Ring]]", "[[assets/art/gear/Rope.webp]]"],
             "sample": 3,
         }
         path = write_style(
@@ -124,37 +143,6 @@ class TestParseStyle:
             3,
         )
 
-    @pytest.mark.parametrize(
-        ("fields", "message"),
-        [
-            ({"illustrates": "Content/Gear"}, "illustrates must list record types"),
-            ({"illustrates": ["Content/"]}, "illustrates must list record types"),
-            (
-                {"illustrates": ["Content/Gear/Ring"]},
-                "illustrates must list record types",
-            ),
-            ({"illustrates": [" Content"]}, "illustrates must list record types"),
-            ({"illustrates": [3]}, "illustrates must list record types"),
-            ({"type": None}, "a style must be a Reference record"),
-            ({"type": "[[Content]]"}, "a style must be a Reference record"),
-            ({"directory": "content"}, "directory must be a folder inside assets/"),
-            ({"opacity": "yes"}, "opacity must be true or false"),
-            ({"max_bytes": 0}, "max_bytes must be a whole number"),
-            ({"max_edge": "big"}, "max_edge must be a whole number"),
-            ({"references": "[[Ring]]"}, "references must list wikilinks"),
-            ({"references": ["Ring"]}, "references must list wikilinks: "),
-            ({"sample": -2}, "sample must be a whole number"),
-        ],
-    )
-    def test_refuses_a_field_of_the_wrong_form(
-        self, tmp_path: Path, fields: dict[str, Any], message: str
-    ) -> None:
-        path = write_style(tmp_path, "Gear", fields)
-        parsed, _ = Record.parse(path, tmp_path)
-        assert parsed is not None
-        with pytest.raises(ValueError, match=message):
-            parse_style(parsed)
-
 
 class TestReadStyles:
     def test_reads_every_style_in_path_order(self, tmp_path: Path) -> None:
@@ -166,26 +154,66 @@ class TestReadStyles:
             "Scrolls": Style("Scrolls", "", opacity=True),
         }
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            '---\ntype: "[[Reference]]"\nmax_edge: 0\n---\n',
+            '---\ntype: "[[Reference]]"\nsubtype: Index\n---\n',
+            "Just some notes.\n",
+        ],
+    )
+    def test_passes_over_other_records(self, tmp_path: Path, text: str) -> None:
+        write_style(tmp_path, "Gear", {})
+        (tmp_path / STYLE_DIRECTORY / "Other.md").write_text(text)
+        assert read_styles(tmp_path) == {"Gear": Style("Gear", "")}
+
     def test_a_vault_without_styles_has_none(self, tmp_path: Path) -> None:
         assert read_styles(tmp_path) == {}
 
     @pytest.mark.parametrize(
-        ("text", "message"),
+        ("fields", "message"),
         [
-            ("---\ntype: [\n---\n", "reference/styles/Bad.md: "),
-            (
-                '---\ntype: "[[Reference]]"\nmax_edge: 0\n---\n',
-                "reference/styles/Bad.md: max_edge",
-            ),
-            ("Just some style text.\n", "reference/styles/Bad.md: a style must be"),
+            ({"illustrates": "Content/Gear"}, "illustrates: 'Content/Gear' is not"),
+            ({"illustrates": ["Content/"]}, "illustrates.0: 'Content/' does not"),
+            ({"illustrates": ["Content/Gear/Ring"]}, "illustrates.0: "),
+            ({"illustrates": [" Content"]}, "illustrates.0: "),
+            ({"illustrates": [3]}, "illustrates.0: 3 is not"),
+            ({"directory": "content"}, "directory: 'content' does not"),
+            ({"directory": "assets"}, "directory: 'assets' does not"),
+            ({"directory": "assets/../content"}, "directory: "),
+            ({"directory": "assets/art/"}, "directory: "),
+            ({"opacity": "maybe"}, "opacity: 'maybe' is not"),
+            ({"max_bytes": 0}, "max_bytes: 0 is less than the minimum of 1"),
+            ({"max_edge": "big"}, "max_edge: 'big' is not"),
+            ({"max_edge": 2.5}, "max_edge: 2.5 is not"),
+            ({"references": "[[Ring]]"}, "references: '\\[\\[Ring\\]\\]' is not"),
+            ({"references": ["Ring"]}, "references.0: 'Ring' does not"),
+            ({"references": ["[[Rope|Rope]]"]}, "references.0: "),
+            ({"sample": -2}, "sample: -2 is less than the minimum of 1"),
         ],
     )
-    def test_refuses_a_style_it_cannot_read(
-        self, tmp_path: Path, text: str, message: str
+    def test_refuses_a_field_of_the_wrong_form(
+        self, tmp_path: Path, fields: dict[str, Any], message: str
     ) -> None:
+        write_style(tmp_path, "Gear", fields)
+        with pytest.raises(
+            ValueError, match=f"^reference/styles/Gear.md: frontmatter.{message}"
+        ):
+            read_styles(tmp_path)
+
+    def test_refuses_a_record_it_cannot_parse(self, tmp_path: Path) -> None:
         write_style(tmp_path, "Good", {})
-        (tmp_path / STYLE_DIRECTORY / "Bad.md").write_text(text)
-        with pytest.raises(ValueError, match=message):
+        (tmp_path / STYLE_DIRECTORY / "Bad.md").write_text("---\ntype: [\n---\n")
+        with pytest.raises(ValueError, match="^reference/styles/Bad.md: "):
+            read_styles(tmp_path)
+
+    def test_refuses_without_a_reference_schema(self, tmp_path: Path) -> None:
+        write_style(tmp_path, "Gear", {})
+        (tmp_path / "reference/schemas/reference.schema.json").unlink()
+        with pytest.raises(
+            ValueError,
+            match="^reference/styles/Gear.md: no vault-local schema for Reference$",
+        ):
             read_styles(tmp_path)
 
 
