@@ -146,100 +146,175 @@ class ViewTests(unittest.TestCase):
                 )
 
 
-def content_fields() -> dict[str, str | None]:
-    """Map each documented Content field to its subtype, or None for all."""
+def type_fields(kind: str) -> dict[str, str | None]:
+    """Map each field docs/type.md documents for a type to its subtype, or None."""
     docs = Path(__file__).resolve().parents[2] / "docs/type.md"
-    section = docs.read_text().split("\n## Content\n", 1)[1].split("\n## ", 1)[0]
+    section = docs.read_text().split(f"\n## {kind}\n", 1)[1].split("\n## ", 1)[0]
     return {
         field: subtype or None
-        for field, subtype in re.findall(
-            r"^\| `(\w+)` \| (?:required|optional)(?: for (\w+))?", section, re.M
+        for names, subtype in re.findall(
+            r"^\| ((?:`\w+`(?:, )?)+) \| (?:required|optional)(?: for (\w+))?",
+            section,
+            re.M,
         )
+        for field in re.findall(r"`(\w+)`", names)
     }
 
 
-class ContentBaseTests(unittest.TestCase):
-    """Check bases/Content.base against the Content type and example vault."""
+def base(name: str) -> dict:
+    return yaml.safe_load((ROOT / "starter/bases" / name).read_text())
 
-    BASE = yaml.safe_load((ROOT / "starter/bases/Content.base").read_text())
-    SUBTYPES = {"NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear"}
 
-    def records(self, subtype: str) -> list[dict]:
-        vault = ROOT / "example"
-        return [
-            metadata
-            for path in vault.rglob("*.md")
-            if path.relative_to(vault).parts[0] in {"content", "campaigns"}
-            and (metadata := frontmatter(path)).get("type") == "[[types/Content]]"
-            and metadata.get("subtype") == subtype
-        ]
+def example_records(kind: str, subtype: str | None = None) -> list[Path]:
+    """Find the example vault's records of a type, and optionally a subtype."""
+    vault = ROOT / "example"
+    return [
+        path
+        for path in vault.rglob("*.md")
+        if path.relative_to(vault).parts[0] in {"content", "campaigns"}
+        and (metadata := frontmatter(path)).get("type") == f"[[types/{kind}]]"
+        and (subtype is None or metadata.get("subtype") == subtype)
+    ]
 
-    def test_selects_content_by_type_outside_templates(self):
-        self.assertEqual(
-            self.BASE["filters"],
-            {
-                "and": [
-                    'file.ext == "md"',
-                    '!file.inFolder("reference")',
-                    'type == link("reference/types/Content")',
-                ]
-            },
-        )
+
+class BrowsingBaseTests(unittest.TestCase):
+    """Check every base in bases/ against its type and the example vault."""
+
+    TYPES = {
+        "Content.base": "Content",
+        "Sessions.base": "Session",
+        "Clues.base": "Clue",
+    }
+    CAMPAIGN = 'file.folder.split("/")[1]'
 
     @staticmethod
     def subtype(view: dict) -> str | None:
-        """Return the subtype a table selects, or None for all Content."""
-        if "filters" not in view:
-            return None
-        return re.fullmatch(r'subtype == "([A-Za-z]+)"', view["filters"])[1]
+        """Return the Content subtype a table selects, or None."""
+        match = re.fullmatch(r'subtype == "([A-Za-z]+)"', view.get("filters", ""))
+        return match and match[1]
+
+    def test_ships_one_base_per_browsed_type(self):
+        self.assertEqual(
+            {path.name for path in (ROOT / "starter/bases").iterdir()},
+            set(self.TYPES),
+        )
+
+    def test_selects_records_by_type_outside_templates(self):
+        for name, kind in self.TYPES.items():
+            with self.subTest(base=name):
+                self.assertEqual(
+                    base(name)["filters"],
+                    {
+                        "and": [
+                            'file.ext == "md"',
+                            '!file.inFolder("reference")',
+                            f'type == link("reference/types/{kind}")',
+                        ]
+                    },
+                )
+                self.assertTrue(example_records(kind))
+
+    def test_columns_are_labelled_and_defined(self):
+        for name in self.TYPES:
+            data = base(name)
+            formulas = {f"formula.{key}" for key in data.get("formulas", {})}
+            used = set()
+            for view in data["views"]:
+                self.assertEqual(view["type"], "table")
+                for column in view["order"]:
+                    with self.subTest(base=name, view=view["name"], column=column):
+                        if column.startswith("formula."):
+                            self.assertIn(column, formulas)
+                        key = column if "." in column else f"note.{column}"
+                        self.assertIn(key, data["properties"])
+                        used.add(key)
+                if "groupBy" in view:
+                    used.add(view["groupBy"]["property"])
+            with self.subTest(base=name):
+                self.assertEqual(used, set(data["properties"]))
+                self.assertLessEqual(formulas, used)
+
+    def test_fields_are_documented_for_the_type_and_subtype(self):
+        for name, kind in self.TYPES.items():
+            fields = type_fields(kind)
+            for view in base(name)["views"]:
+                subtype = self.subtype(view)
+                properties = view["order"] + [
+                    sort["property"] for sort in view.get("sort", [])
+                ]
+                for field in (p for p in properties if "." not in p):
+                    with self.subTest(base=name, view=view["name"], field=field):
+                        self.assertIn(field, fields)
+                        self.assertIn(fields[field], {None, subtype})
+
+    def test_campaign_records_are_grouped_by_campaign_folder(self):
+        for name in ("Sessions.base", "Clues.base"):
+            data = base(name)
+            with self.subTest(base=name):
+                self.assertEqual(data["formulas"]["campaign"], self.CAMPAIGN)
+                for view in data["views"]:
+                    self.assertEqual(
+                        view["groupBy"],
+                        {"property": "formula.campaign", "direction": "ASC"},
+                    )
+                campaigns = {
+                    path.relative_to(ROOT / "example").parts[1]
+                    for path in example_records(self.TYPES[name])
+                }
+                self.assertGreater(len(campaigns), 1)
+
+
+class ContentBaseTests(unittest.TestCase):
+    """Check bases/Content.base's tables against the core subtypes."""
+
+    BASE = base("Content.base")
+    SUBTYPES = {"NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear"}
 
     def test_opens_on_all_content(self):
         first = self.BASE["views"][0]
         self.assertEqual(first["name"], "All")
-        self.assertIsNone(self.subtype(first))
+        self.assertNotIn("filters", first)
         self.assertIn("subtype", first["order"])
 
     def test_each_core_subtype_has_one_table(self):
-        subtypes = []
-        for view in self.BASE["views"][1:]:
-            with self.subTest(view=view["name"]):
-                self.assertEqual(view["type"], "table")
-                subtypes.append(self.subtype(view))
+        subtypes = [BrowsingBaseTests.subtype(view) for view in self.BASE["views"][1:]]
         self.assertCountEqual(subtypes, self.SUBTYPES)
-
-    def test_columns_are_labelled_and_defined(self):
-        formulas = {f"formula.{name}" for name in self.BASE["formulas"]}
-        used = set()
-        for view in self.BASE["views"]:
-            for column in view["order"]:
-                with self.subTest(view=view["name"], column=column):
-                    if column.startswith("formula."):
-                        self.assertIn(column, formulas)
-                        key = column
-                    elif column.startswith("file."):
-                        key = column
-                    else:
-                        key = f"note.{column}"
-                    self.assertIn(key, self.BASE["properties"])
-                    used.add(key)
-        self.assertEqual(used, set(self.BASE["properties"]))
-        self.assertLessEqual(formulas, used)
-
-    def test_note_columns_are_documented_fields_of_their_subtype(self):
-        fields = content_fields()
-        for view in self.BASE["views"]:
-            subtype = self.subtype(view)
-            for column in view["order"]:
-                if "." in column:
-                    continue
-                with self.subTest(view=view["name"], column=column):
-                    self.assertIn(column, fields)
-                    self.assertIn(fields[column], {None, subtype})
-
-    def test_each_table_has_example_records(self):
         for subtype in self.SUBTYPES:
             with self.subTest(subtype=subtype):
-                self.assertTrue(self.records(subtype))
+                self.assertTrue(example_records("Content", subtype))
+
+    def test_scope_names_the_campaign_or_shared(self):
+        self.assertEqual(
+            self.BASE["formulas"]["scope"],
+            f'if(file.inFolder("campaigns"), {BrowsingBaseTests.CAMPAIGN}, "shared")',
+        )
+
+
+class SessionsBaseTests(unittest.TestCase):
+    """Check bases/Sessions.base lists Sessions newest first."""
+
+    def test_sorts_newest_first(self):
+        (view,) = base("Sessions.base")["views"]
+        self.assertEqual(
+            view["sort"], [{"property": "session_number", "direction": "DESC"}]
+        )
+
+
+class CluesBaseTests(unittest.TestCase):
+    """Check bases/Clues.base agrees with the campaign clue index."""
+
+    def test_opens_on_all_clues(self):
+        self.assertNotIn("filters", base("Clues.base")["views"][0])
+
+    def test_active_table_matches_the_index(self):
+        index = yaml.safe_load(
+            (ROOT / "starter/reference/views/clue-index.base").read_text()
+        )
+        active = {view["name"]: view for view in base("Clues.base")["views"]}["Active"]
+        self.assertEqual(
+            active["filters"],
+            {view["name"]: view for view in index["views"]}["Active"]["filters"],
+        )
 
 
 if __name__ == "__main__":

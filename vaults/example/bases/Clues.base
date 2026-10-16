@@ -1,0 +1,45 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - '!file.inFolder("reference")'
+    - 'type == link("reference/types/Clue")'
+formulas:
+  campaign: 'file.folder.split("/")[1]'
+  text: 'note.text'
+properties:
+  file.name:
+    displayName: ID
+  formula.campaign:
+    displayName: Campaign
+  note.status:
+    displayName: Status
+  formula.text:
+    displayName: Text
+  note.subjects:
+    displayName: Subjects
+  note.first_session:
+    displayName: First Session
+  note.last_session:
+    displayName: Last Session
+views:
+  - type: table
+    name: All
+    groupBy:
+      property: formula.campaign
+      direction: ASC
+    order: [file.name, status, formula.text, subjects, first_session, last_session]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Active
+    filters: '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
+    groupBy:
+      property: formula.campaign
+      direction: ASC
+    order: [file.name, status, formula.text, subjects, first_session, last_session]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC

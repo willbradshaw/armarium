@@ -1,0 +1,30 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - '!file.inFolder("reference")'
+    - 'type == link("reference/types/Session")'
+formulas:
+  campaign: 'file.folder.split("/")[1]'
+properties:
+  file.name:
+    displayName: Session
+  formula.campaign:
+    displayName: Campaign
+  note.date:
+    displayName: Date
+  note.in_game_start_date:
+    displayName: In-game Start
+  note.in_game_end_date:
+    displayName: In-game End
+  note.players_absent:
+    displayName: Players Absent
+views:
+  - type: table
+    name: Sessions
+    groupBy:
+      property: formula.campaign
+      direction: ASC
+    order: [file.name, date, in_game_start_date, in_game_end_date, players_absent]
+    sort:
+      - property: session_number
+        direction: DESC
