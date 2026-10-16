@@ -569,7 +569,7 @@ def handout(
             from the vault root; without one, from the working directory.
         output: The PDF to write, relative to the working directory.
         vault: Vault root, or None to discover it from the first record.
-        layout: The layout in reference/handouts/ to print every record in,
+        layout: The layout in reference/layouts/ to print every record in,
             or None to choose one per record.
         overwrite: Whether to replace an existing file at output.
 

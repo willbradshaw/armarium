@@ -464,13 +464,13 @@ class TestHandout:
         assert result.vault == vault.resolve()
 
     def test_each_record_takes_its_layout(self, vault: Path, tmp_path: Path) -> None:
-        (vault / "reference/handouts").mkdir()
-        (vault / "reference/handouts/Gear.md").write_text(
-            '---\ntype: "[[Reference]]"\nsubtype: Handout\nprints: [Content/Gear]\n'
+        (vault / "reference/layouts").mkdir()
+        (vault / "reference/layouts/Gear.md").write_text(
+            '---\ntype: "[[Reference]]"\nsubtype: Layout\nprints: [Content/Gear]\n'
             "max_text_size: 20\n---\n"
         )
-        (vault / "reference/handouts/Big.md").write_text(
-            '---\ntype: "[[Reference]]"\nsubtype: Handout\nmax_text_size: 30\n---\n'
+        (vault / "reference/layouts/Big.md").write_text(
+            '---\ntype: "[[Reference]]"\nsubtype: Layout\nmax_text_size: 30\n---\n'
         )
         write_record(vault, "Ring")
         output = tmp_path / "loot.pdf"
@@ -525,9 +525,9 @@ class TestHandout:
     def test_refuses_layouts_with_different_pages(
         self, vault: Path, tmp_path: Path
     ) -> None:
-        (vault / "reference/handouts").mkdir()
-        (vault / "reference/handouts/Spells.md").write_text(
-            '---\ntype: "[[Reference]]"\nsubtype: Handout\nprints: [Content/Lore]\n'
+        (vault / "reference/layouts").mkdir()
+        (vault / "reference/layouts/Spells.md").write_text(
+            '---\ntype: "[[Reference]]"\nsubtype: Layout\nprints: [Content/Lore]\n'
             "page: a4\n---\n"
         )
         write_record(vault, "Ring")
