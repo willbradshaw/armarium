@@ -12,7 +12,7 @@ from jsonschema.exceptions import SchemaError
 from referencing.exceptions import NoSuchResource
 
 from armarium.parse import Body, Frontmatter, Record
-from armarium.schemas import Schema, _check_schema, select_schema
+from armarium.schemas import Schema, _check_schema, read_subtype_records, select_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -549,3 +549,66 @@ class TestExtensionSchemaPaths:
         (root / "reference/schemas/core.schema.json").write_text("true")
         path.write_text('{"$ref": "../../../schemas/core.schema.json"}')
         assert Schema.load(path, root).validate(record) == []
+
+
+class TestReadSubtypeRecords:
+    SCHEMA = {
+        "properties": {"frontmatter": {"properties": {"size": {"type": "integer"}}}}
+    }
+
+    @staticmethod
+    def write(root: Path, relative: str, text: str) -> None:
+        path = root / "reference/things" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+    def test_reads_the_subtype_in_path_order(
+        self, root: Path, write_schema: Callable[..., Path]
+    ) -> None:
+        write_schema(self.SCHEMA, "reference.schema.json")
+        thing = '---\ntype: "[[Reference]]"\nsubtype: Thing\nsize: 2\n---\n'
+        self.write(root, "b.md", thing)
+        self.write(root, "nested/a.md", thing)
+        self.write(root, "other.md", '---\ntype: "[[Reference]]"\nsize: x\n---\n')
+        self.write(
+            root, "content.md", '---\ntype: "[[Content]]"\nsubtype: Thing\n---\n'
+        )
+        self.write(root, "notes.txt", "not a record")
+        records = read_subtype_records(root, "reference/things", "Thing")
+        assert [r.path.relative_to(root).as_posix() for r in records] == [
+            "reference/things/b.md",
+            "reference/things/nested/a.md",
+        ]
+
+    def test_a_missing_folder_holds_none(self, root: Path) -> None:
+        assert read_subtype_records(root, "reference/things", "Thing") == []
+
+    @pytest.mark.parametrize(
+        ("text", "schema", "message"),
+        [
+            ("---\ntype: [\n---\n", True, "^reference/things/a.md: "),
+            (
+                '---\ntype: "[[Reference]]"\nsubtype: Thing\nsize: x\n---\n',
+                True,
+                "^reference/things/a.md: frontmatter.size: 'x' is not of type",
+            ),
+            (
+                '---\ntype: "[[Reference]]"\nsubtype: Thing\n---\n',
+                False,
+                "^reference/things/a.md: no vault-local schema for Reference$",
+            ),
+        ],
+    )
+    def test_refuses_a_record_it_cannot_use(
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        text: str,
+        schema: bool,
+        message: str,
+    ) -> None:
+        if schema:
+            write_schema(self.SCHEMA, "reference.schema.json")
+        self.write(root, "a.md", text)
+        with pytest.raises(ValueError, match=message):
+            read_subtype_records(root, "reference/things", "Thing")

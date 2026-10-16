@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from armarium.lib import DIRECTORY, find_files, parse_wikilink
+from armarium.lib import DIRECTORY, matches_kind, parse_wikilink
 from armarium.parse import Record
-from armarium.schemas import select_schema
+from armarium.schemas import read_subtype_records
 
 STYLE_DIRECTORY = "reference/styles"
 ART_DIRECTORY = "assets/art"
@@ -54,10 +54,7 @@ class Style:
             bool: Whether the type, or the type and subtype, is among
                 illustrates.
         """
-        return kind is not None and (
-            kind in self.illustrates
-            or (isinstance(subtype, str) and f"{kind}/{subtype}" in self.illustrates)
-        )
+        return matches_kind(self.illustrates, kind, subtype)
 
 
 def art_directory(value: object) -> str:
@@ -141,26 +138,10 @@ def read_styles(root: Path) -> dict[str, Style]:
             Reference schema.
         OSError: A file cannot be read.
     """
-    directory = root / STYLE_DIRECTORY
-    if not directory.is_dir() or directory.is_symlink():
-        return {}
-    styles: dict[str, Style] = {}
-    for path in find_files(directory, ".md"):
-        record, diagnostics = Record.parse(path, root)
-        relative = path.relative_to(root).as_posix()
-        if record is None:
-            raise ValueError(f"{relative}: {diagnostics[0].message}")
-        if not is_style(record):
-            continue
-        schema, diagnostics = select_schema(record, root)
-        if schema is not None:
-            diagnostics = schema.validate(record)
-        if diagnostics:
-            failure = diagnostics[0]
-            field = f"{failure.field}: " if failure.field else ""
-            raise ValueError(f"{relative}: {field}{failure.message}")
-        styles[path.stem] = parse_style(record)
-    return styles
+    return {
+        record.path.stem: parse_style(record)
+        for record in read_subtype_records(root, STYLE_DIRECTORY, "Style")
+    }
 
 
 def choose_style(root: Path, record: Record, name: str | None = None) -> Style | None:

@@ -2872,11 +2872,7 @@ class TestValidateVault:
                 False,
                 "reference/styles/gear.json is not Markdown and belongs in assets/",
             ),
-            (
-                "campaigns/campaign_1/reference/styles",
-                True,
-                "campaigns/campaign_1/reference/styles is not in the vault skeleton",
-            ),
+            ("campaigns/campaign_1/reference/styles", True, None),
             ("campaigns/campaign_1/reference/Notes.md", False, None),
             ("reference/views/clues.base", False, None),
             ("reference/views/nested/clues.BASE", False, None),
@@ -2943,6 +2939,10 @@ class TestValidateVault:
         self, tmp_path: Path, relative: str, directory: bool, message: str | None
     ) -> None:
         make_vault(tmp_path)
+        (tmp_path / "reference/types/Reference.md").write_text(
+            f"---\n{type_record('Reference')}\nsubtype_directories: "
+            "{Style: styles}\n---\n"
+        )
         path = tmp_path / relative
         if directory:
             path.mkdir(parents=True)
@@ -2955,6 +2955,35 @@ class TestValidateVault:
             if d.rule == "vault.entry"
         ]
         assert result == ([("vault.entry", message)] if message else [])
+
+    @pytest.mark.parametrize(
+        ("relative", "message"),
+        [
+            ("reference/places/towns/Map.md", None),
+            ("reference/places/Other.md", None),
+            (
+                "reference/styles/Gear.md",
+                "reference/styles is not in the vault skeleton",
+            ),
+        ],
+    )
+    def test_declared_subfolders(
+        self, tmp_path: Path, relative: str, message: str | None
+    ) -> None:
+        make_vault(tmp_path)
+        (tmp_path / "reference/types/Reference.md").write_text(
+            f"---\n{type_record('Reference')}\nsubtype_directories: "
+            "{Style: places/towns}\n---\n"
+        )
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("true")
+        result = [
+            d.message
+            for d in validate_vault(tmp_path).diagnostics
+            if d.rule == "vault.entry"
+        ]
+        assert result == ([message] if message else [])
 
     def test_reported_directory_is_not_descended(self, tmp_path: Path) -> None:
         make_vault(tmp_path)

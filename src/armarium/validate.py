@@ -40,7 +40,7 @@ from armarium.lib import (
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
-from armarium.style import STYLE_DIRECTORY, is_style, parse_style
+from armarium.style import is_style, parse_style
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 # Infrastructure every vault must contain. Together with the directories Type
@@ -475,6 +475,10 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
     definitions = [file for file in find_files(types) if file.suffix.lower() == ".md"]
     # Subfolders declared per subtype, checked once extensions are loaded.
     subfolders: dict[str, tuple[str, object]] = {}
+    # Each type's declared directories, where its subtypes' subfolders lie.
+    homes: dict[str, list[str]] = {}
+    # Directories the skeleton allows without requiring them.
+    allowed: set[Path] = set()
     for file in definitions:
         relative = file.relative_to(root).as_posix()
         record, failures = Record.parse(file, root)
@@ -494,15 +498,23 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
         except ValueError as exc:
             findings.add("vault.type", f"{relative}: {exc}")
             continue
+        homes[file.stem] = [
+            home
+            for scope, path in directories.items()
+            for home in (
+                [path]
+                if scope == "shared"
+                else [f"campaigns/{c}/{path}" for c in found]
+            )
+        ]
         for scope, path in directories.items():
             if scope == "shared":
                 require(path, True)
             for name in found if scope == "campaign" else ():
                 require(f"campaigns/{name}/{path}", True)
 
-    for optional in ("reference/extensions", STYLE_DIRECTORY):
-        if (root / optional).exists():
-            require(optional, True)
+    if (root / "reference/extensions").exists():
+        require("reference/extensions", True)
 
     # Extension declarations are optional, but every enabled rule must be usable.
     extension_schemas: set[Path] = set()
@@ -525,12 +537,28 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
             )
         elif extensions is not None:
             try:
-                parse_subtype_directories(declared, name, extensions.subtypes_of(name))
+                parsed = parse_subtype_directories(
+                    declared, name, extensions.subtypes_of(name)
+                )
             except ValueError as exc:
                 findings.add("vault.type", f"{relative}: {exc}")
+                continue
+            # A declared subfolder is optional; it may sit in a directory, such
+            # as reference/, that otherwise holds only the skeleton's folders.
+            for home in homes.get(name, []):
+                for subfolder in parsed.values():
+                    folder = Path(home, subfolder)
+                    allowed.add(folder)
+                    allowed.update(
+                        parent
+                        for parent in folder.parents
+                        if parent.is_relative_to(home) and parent != Path(home)
+                    )
 
     # 4. Report entries outside the vault skeleton
-    named = {Path(relative) for relative, directory in required.items() if directory}
+    named = {
+        Path(relative) for relative, directory in required.items() if directory
+    } | allowed
     pending = [root]
     while pending:
         directory = pending.pop()

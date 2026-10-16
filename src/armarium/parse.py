@@ -622,6 +622,33 @@ class Body(Section):
             (entries if entries else blocks).append(block)
         super().__init__("", 0, start_line, tuple(blocks), Section.nest(entries))
 
+    def callout(self, kind: str) -> str:
+        """Read a callout of one type, such as the rules callout of Gear.
+
+        Args:
+            kind: The callout's type, such as ``rules`` for ``> [!rules]``;
+                case does not matter.
+
+        Returns:
+            str: The Markdown of the body's first callout of that type,
+                without its marker line or quote markers; empty when the body
+                has none.
+        """
+        marker = re.compile(rf"\[!{re.escape(kind)}\][+-]?(?:[ \t].*)?", re.IGNORECASE)
+        for block in self.iter_blocks():
+            if block.kind == "quote" and marker.match(
+                block.children[0].text if block.children else ""
+            ):
+                break
+        else:
+            return ""
+        lines: list[str] = []
+        for line in self.text.splitlines()[block.line - self.line + 1 :]:
+            if not line.lstrip().startswith(">"):
+                break
+            lines.append(re.sub(r"^\s*>\s?", "", line))
+        return "\n".join(lines).strip()
+
     @cached_property
     def links(self) -> tuple[Link, ...]:
         """Find every wikilink in the body, line by line.

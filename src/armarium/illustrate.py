@@ -15,7 +15,7 @@ import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
 from armarium.index import VaultIndex
-from armarium.lib import WIKILINK
+from armarium.lib import WIKILINK, wikilink_text
 from armarium.painters import Reference, find_painter
 from armarium.parse import Frontmatter, Record
 from armarium.style import MAX_BYTES, MAX_EDGE, Style, art_directory, choose_style
@@ -24,8 +24,6 @@ from armarium.trace import locate
 FIELD = "image"
 # The field holding a record's art direction.
 VISUAL = "visual"
-# The first line of the callout holding a record's rules text.
-RULES = re.compile(r"\[!rules\][+-]?(?:[ \t].*)?", re.IGNORECASE)
 # Emphasis markers around a run of text.
 EMPHASIS = re.compile(r"(\*{1,3}|_{1,3})(.+?)\1")
 # Each long edge tried is this fraction of the one before, rounded down to
@@ -260,12 +258,9 @@ def _plain(text: str) -> str:
         str: The text with each wikilink replaced by its display text, or
             else by its target's name, and emphasis markers removed.
     """
-
-    def label(match: re.Match[str]) -> str:
-        target, _, alias = match.group(1).partition("|")
-        return alias or target.partition("#")[0].rsplit("/", 1)[-1]
-
-    return EMPHASIS.sub(r"\2", WIKILINK.sub(label, text)).strip()
+    return EMPHASIS.sub(
+        r"\2", WIKILINK.sub(lambda match: wikilink_text(match[1]), text)
+    ).strip()
 
 
 def rules_text(record: Record) -> str:
@@ -275,23 +270,10 @@ def rules_text(record: Record) -> str:
         record: The record.
 
     Returns:
-        str: The text of the record's first ``> [!rules]`` callout, without
-            its marker line or quote markers, as `_plain` gives it; empty
-            when the record has none.
+        str: The text of the record's first ``> [!rules]`` callout, as
+            `_plain` gives it; empty when the record has none.
     """
-    for block in record.body.iter_blocks():
-        if block.kind == "quote" and RULES.match(
-            block.children[0].text if block.children else ""
-        ):
-            break
-    else:
-        return ""
-    lines: list[str] = []
-    for line in record.body.text.splitlines()[block.line - record.body.line + 1 :]:
-        if not line.lstrip().startswith(">"):
-            break
-        lines.append(re.sub(r"^\s*>\s?", "", line))
-    return _plain("\n".join(lines))
+    return _plain(record.body.callout("rules"))
 
 
 def build_prompt(preamble: str, record: Record, visual: str | None = None) -> str:
