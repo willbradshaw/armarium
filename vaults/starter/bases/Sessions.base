@@ -5,6 +5,9 @@ filters:
     - 'type == link("reference/types/Session")'
 formulas:
   campaign: 'file.folder.split("/")[1]'
+  appeared: 'file.backlinks.filter(value.asFile().properties.type == link("reference/types/Content"))'
+  clues: 'file.backlinks.filter(value.asFile().properties.type == link("reference/types/Clue"))'
+  transcript: 'file.backlinks.filter(value.asFile().properties.type == link("reference/types/Transcript"))'
 properties:
   file.name:
     displayName: Session
@@ -18,13 +21,36 @@ properties:
     displayName: In-game End
   note.players_absent:
     displayName: Players Absent
+  formula.appeared:
+    displayName: Appeared
+  formula.clues:
+    displayName: Clues
+  formula.transcript:
+    displayName: Transcript
+  note.prepared_clues:
+    displayName: Prepared Clues
+  note.prepared_locations:
+    displayName: Prepared Locations
+  note.prepared_npcs:
+    displayName: Prepared NPCs
 views:
   - type: table
     name: Sessions
     groupBy:
       property: formula.campaign
       direction: ASC
-    order: [file.name, date, in_game_start_date, in_game_end_date, players_absent]
+    order: [file.name, date, in_game_start_date, in_game_end_date, players_absent, formula.appeared, formula.clues, formula.transcript]
+    rowHeight: medium
+    sort:
+      - property: session_number
+        direction: DESC
+  - type: table
+    name: Preparation
+    groupBy:
+      property: formula.campaign
+      direction: ASC
+    order: [file.name, date, prepared_clues, prepared_locations, prepared_npcs]
+    rowHeight: medium
     sort:
       - property: session_number
         direction: DESC

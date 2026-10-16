@@ -218,7 +218,7 @@ class BrowsingBaseTests(unittest.TestCase):
         for name in self.TYPES:
             data = base(name)
             formulas = {f"formula.{key}" for key in data.get("formulas", {})}
-            used = set()
+            used, sorted_by = set(), set()
             for view in data["views"]:
                 self.assertEqual(view["type"], "table")
                 for column in view["order"]:
@@ -230,9 +230,11 @@ class BrowsingBaseTests(unittest.TestCase):
                         used.add(key)
                 if "groupBy" in view:
                     used.add(view["groupBy"]["property"])
+                sorted_by |= {sort["property"] for sort in view.get("sort", [])}
             with self.subTest(base=name):
                 self.assertEqual(used, set(data["properties"]))
-                self.assertLessEqual(formulas, used)
+                # A formula only sorted by needs no label.
+                self.assertLessEqual(formulas, used | sorted_by)
 
     def test_fields_are_documented_for_the_type_and_subtype(self):
         for name, kind in self.TYPES.items():
@@ -291,13 +293,35 @@ class ContentBaseTests(unittest.TestCase):
 
 
 class SessionsBaseTests(unittest.TestCase):
-    """Check bases/Sessions.base lists Sessions newest first."""
+    """Check bases/Sessions.base lists Sessions newest first, with their links."""
+
+    BASE = base("Sessions.base")
 
     def test_sorts_newest_first(self):
-        (view,) = base("Sessions.base")["views"]
-        self.assertEqual(
-            view["sort"], [{"property": "session_number", "direction": "DESC"}]
-        )
+        for view in self.BASE["views"]:
+            with self.subTest(view=view["name"]):
+                self.assertEqual(
+                    view["sort"], [{"property": "session_number", "direction": "DESC"}]
+                )
+
+    def test_linking_records_are_selected_by_type(self):
+        for formula, kind in [
+            ("appeared", "Content"),
+            ("clues", "Clue"),
+            ("transcript", "Transcript"),
+        ]:
+            with self.subTest(formula=formula):
+                self.assertEqual(
+                    self.BASE["formulas"][formula],
+                    "file.backlinks.filter(value.asFile().properties.type"
+                    f' == link("reference/types/{kind}"))',
+                )
+
+    def test_preparation_shows_every_prepared_list(self):
+        view = {view["name"]: view for view in self.BASE["views"]}["Preparation"]
+        prepared = {field for field in type_fields("Session") if "prepared" in field}
+        self.assertEqual(prepared, set(view["order"]) & prepared)
+        self.assertEqual(len(prepared), 3)
 
 
 class CluesBaseTests(unittest.TestCase):
@@ -305,6 +329,28 @@ class CluesBaseTests(unittest.TestCase):
 
     def test_opens_on_all_clues(self):
         self.assertNotIn("filters", base("Clues.base")["views"][0])
+
+    def test_sorts_by_status_then_id(self):
+        statuses = [
+            path.stem
+            for path in (ROOT / "starter/reference/statuses").glob("*.md")
+            if "Clue" in path.read_text()
+        ]
+        order = re.findall(
+            r'link\("reference/statuses/(\w+)"\)',
+            base("Clues.base")["formulas"]["status_order"],
+        )
+        self.assertEqual(
+            order,
+            ["Pending", "Hinted", "Revealed", "Dormant", "Abandoned", "Superseded"],
+        )
+        self.assertCountEqual(order, statuses)
+        for view in base("Clues.base")["views"]:
+            with self.subTest(view=view["name"]):
+                self.assertEqual(
+                    [sort["property"] for sort in view["sort"]],
+                    ["formula.status_order", "file.name"],
+                )
 
     def test_active_table_matches_the_index(self):
         index = yaml.safe_load(

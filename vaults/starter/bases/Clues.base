@@ -6,6 +6,7 @@ filters:
 formulas:
   campaign: 'file.folder.split("/")[1]'
   text: 'note.text'
+  status_order: '[link("reference/statuses/Pending"), link("reference/statuses/Hinted"), link("reference/statuses/Revealed"), link("reference/statuses/Dormant"), link("reference/statuses/Abandoned"), link("reference/statuses/Superseded")].map(if(value == status, index, -1)).filter(value >= 0)[0]'
 properties:
   file.name:
     displayName: ID
@@ -30,6 +31,8 @@ views:
     order: [file.name, status, formula.text, subjects, first_session, last_session]
     rowHeight: medium
     sort:
+      - property: formula.status_order
+        direction: ASC
       - property: file.name
         direction: ASC
   - type: table
@@ -41,5 +44,7 @@ views:
     order: [file.name, status, formula.text, subjects, first_session, last_session]
     rowHeight: medium
     sort:
+      - property: formula.status_order
+        direction: ASC
       - property: file.name
         direction: ASC
