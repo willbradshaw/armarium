@@ -370,16 +370,33 @@ class TestPage:
         assert account.picture is None
         assert not any(isinstance(flowable, Image) for flowable in flowables)
         with_picture = Layout(image_share=0.9)
-        assert (
-            account.text_size
-            > fit(
-                parsed(vault, path).body.callout("rules"),
-                with_picture,
-                TIMES,
-                WIDTH,
-                100,
-            )[0]
+        rules = parsed(vault, path).body.callout("rules")
+        assert account.text_size > fit(rules, with_picture, TIMES, WIDTH, 100)[0]
+
+    def test_a_letter_prints_its_handout_callout_without_a_name(
+        self, vault: Path
+    ) -> None:
+        text = (
+            "> [!rules]\n> Not this.\n\n"
+            "> [!handout]\n> Captain,\n>\n> The *Tern* sails at dawn.\n\n## Notes\n"
         )
+        path = write_record(vault, "Letter", text, attunement="true")
+        layout = Layout(callout="handout", title=False, mark=Mark("attunement", "A"))
+        flowables, account = page(vault, parsed(vault, path), layout)
+        assert [flowable.text for flowable in flowables[:-1]] == [
+            "Captain,",
+            "The <i>Tern</i> sails at dawn.",
+        ]
+        assert isinstance(flowables[-1], PageBreak)
+        assert account.picture is None
+
+    def test_without_a_name_the_text_has_more_room(self, vault: Path) -> None:
+        text = "> [!rules]\n" + "> A long line of rules text runs on.\n" * 40
+        path = write_record(vault, "Ring", text)
+        record = parsed(vault, path)
+        titled = page(vault, record, Layout(max_text_size=40))[1]
+        untitled = page(vault, record, Layout(max_text_size=40, title=False))[1]
+        assert untitled.text_size > titled.text_size
 
     @pytest.mark.parametrize(
         ("attuned", "marked"), [("true", True), ("false", False), ('"yes"', False)]
@@ -407,13 +424,23 @@ class TestPage:
             "its text leaves no room for its picture",
         )
 
-    def test_refuses_a_record_without_rules_text(self, vault: Path) -> None:
-        for body_text in ("## Notes\n", "> [!rules]\n>\n"):
-            path = write_record(vault, "Ring", body_text)
-            with pytest.raises(
-                ValueError, match="content/Ring.md has no rules text to print"
-            ):
-                page(vault, parsed(vault, path), Layout())
+    @pytest.mark.parametrize(
+        ("body_text", "callout"),
+        [
+            ("## Notes\n", "rules"),
+            ("> [!rules]\n>\n", "rules"),
+            (RULES, "handout"),
+        ],
+    )
+    def test_refuses_a_record_without_the_callout(
+        self, vault: Path, body_text: str, callout: str
+    ) -> None:
+        path = write_record(vault, "Ring", body_text)
+        with pytest.raises(
+            ValueError,
+            match=re.escape(f"content/Ring.md has no [!{callout}] text to print"),
+        ):
+            page(vault, parsed(vault, path), Layout(callout=callout))
 
     def test_refuses_a_picture_it_cannot_read(self, vault: Path) -> None:
         (vault / "assets/art").mkdir(parents=True)
@@ -490,7 +517,7 @@ class TestHandout:
             (["content/Missing.md"], "loot.pdf", "does not exist"),
             (["content/notes.txt"], "loot.pdf", "is not a Markdown record"),
             (["content/Broken.md"], "loot.pdf", "cannot parse content/Broken.md: "),
-            (["content/Bare.md"], "loot.pdf", "has no rules text to print"),
+            (["content/Bare.md"], "loot.pdf", "has no \\[!rules\\] text to print"),
         ],
     )
     def test_refuses(

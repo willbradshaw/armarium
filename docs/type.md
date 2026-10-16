@@ -77,6 +77,9 @@ The callout may be empty for a stub. Object describes narrative artifacts; Gear
 describes equipment with recorded mechanics, whether magical or mundane. Both
 use the same [possession fields](campaign.md#state).
 
+Any Content may hold a `> [!handout]` callout before Notes: the words the
+players are given on a [handout](handout.md) of it, such as a letter's text.
+
 `## Notes`, `## Active Clues` and `## Appearances`, in that order. Active
 Clues holds exactly one `.base` embed and nothing else. Appearances is one
 list of `- [[S-N-NNN]]: what happened` items, or the single item `- N/A` when

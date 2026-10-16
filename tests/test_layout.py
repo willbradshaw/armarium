@@ -92,6 +92,8 @@ class TestParseLayout:
     def test_reads_every_field(self, tmp_path: Path) -> None:
         fields = {
             "prints": ["Content/Gear", "Content/Spell"],
+            "callout": "handout",
+            "title": False,
             "page": "a4",
             "margin": "18mm",
             "font": "fonts/Lora.ttf",
@@ -110,6 +112,8 @@ class TestParseLayout:
         assert parse_layout(parsed) == Layout(
             "Gear",
             ("Content/Gear", "Content/Spell"),
+            "handout",
+            False,
             "a4",
             18 * POINTS["mm"],
             "fonts/Lora.ttf",
@@ -142,6 +146,9 @@ class TestReadLayouts:
         [
             ({"prints": "Content/Gear"}, "prints: 'Content/Gear' is not"),
             ({"prints": ["Content/Gear/Ring"]}, "prints.0: "),
+            ({"callout": "hand out"}, "callout: 'hand out' does not match"),
+            ({"callout": ""}, "callout: '' does not match"),
+            ({"title": "no"}, "title: 'no' is not"),
             ({"page": "legal"}, "page: 'legal' is not one of"),
             ({"margin": "1"}, "margin: '1' does not match"),
             ({"margin": "-1in"}, "margin: '-1in' does not match"),

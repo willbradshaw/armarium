@@ -37,7 +37,7 @@ from armarium.parse import Record
 from armarium.trace import locate
 
 PAGES = {"letter": LETTER, "a4": A4}
-# The gap between the rules text and the picture.
+# The gap between the text and the picture.
 GAP = 0.25 * POINTS["in"]
 # Room left unused below the picture, against rounding in measurement.
 SLACK = 0.25 * POINTS["in"]
@@ -62,7 +62,7 @@ class Page:
     Attributes:
         record: The record's vault-relative path.
         layout: The layout it printed in, or "" for the defaults.
-        text_size: The font size its rules text took, in points.
+        text_size: The font size its text took, in points.
         picture: The height its picture took, in inches, or None without one.
         notes: What a reader should know about the page, such as text that
             had to shrink below the layout's smallest size.
@@ -232,7 +232,7 @@ def _flowables(
 
     Returns:
         list[Flowable]: Paragraphs, lists and tables. Code prints as text;
-            rules and HTML are left out.
+            horizontal rules and HTML are left out.
     """
     flowables: list[Flowable] = []
     for first, last in _children(tokens, start, end):
@@ -300,10 +300,10 @@ def _rows(tokens: Sequence[Token], start: int, end: int) -> Iterator[tuple[int, 
 def body(
     markdown: str, layout: Layout, font: Font, size: float, width: float
 ) -> list[Flowable]:
-    """Lay out rules text at one font size.
+    """Lay out a callout's text at one font size.
 
     Args:
-        markdown: The rules text.
+        markdown: The text.
         layout: The layout setting line spacing and link text.
         font: The font to print in.
         size: The font size, in points.
@@ -319,7 +319,7 @@ def body(
     )
     tokens = MARKDOWN.parse(marked)
     style = ParagraphStyle(
-        "rules",
+        "text",
         fontName=font.name,
         fontSize=size,
         leading=size * layout.line_spacing,
@@ -350,10 +350,10 @@ def height(flowables: Sequence[Flowable], width: float) -> float:
 def fit(
     markdown: str, layout: Layout, font: Font, width: float, target: float
 ) -> tuple[float, float]:
-    """Choose the largest font size at which rules text fits its space.
+    """Choose the largest font size at which text fits its space.
 
     Args:
-        markdown: The rules text.
+        markdown: The text.
         layout: The layout giving the range of sizes.
         font: The font to print in.
         width: The width the text fills, in points.
@@ -450,38 +450,40 @@ def page(root: Path, record: Record, layout: Layout) -> tuple[list[Flowable], Pa
             it.
 
     Raises:
-        ValueError: The record has no rules text, its image names no
-            readable picture, or the layout's font cannot be used.
+        ValueError: The record has no text in the layout's callout, its
+            image names no readable picture, or the layout's font cannot be
+            used.
     """
     relative = record.path.relative_to(root).as_posix()
-    markdown = record.body.callout("rules")
+    markdown = record.body.callout(layout.callout)
     if not markdown:
-        raise ValueError(f"{relative} has no rules text to print")
+        raise ValueError(f"{relative} has no [!{layout.callout}] text to print")
     font = register_font(layout.font, root)
     page_width, page_height = PAGES[layout.page]
     width = page_width - 2 * layout.margin
-    room = page_height - 2 * layout.margin
+    room = page_height - 2 * layout.margin - SLACK
     flowables: list[Flowable] = []
     notes: list[str] = []
 
-    title_style = ParagraphStyle(
-        "title",
-        fontName=font.name,
-        fontSize=layout.title_size,
-        leading=layout.title_size * 1.15,
-        spaceAfter=layout.title_size * 0.15,
-    )
-    mark = layout.mark
-    if mark is not None and record.frontmatter.get(mark.field) is True:
-        size = layout.title_size * MARK_SCALE
-        flowables.append(Corner(mark.text, font.name, size))
-        title_style.rightIndent = (
-            pdfmetrics.stringWidth(mark.text, font.name, size)
-            + layout.title_size * 0.25
+    if layout.title:
+        title_style = ParagraphStyle(
+            "title",
+            fontName=font.name,
+            fontSize=layout.title_size,
+            leading=layout.title_size * 1.15,
+            spaceAfter=layout.title_size * 0.15,
         )
-    title = Paragraph(escape(record.path.stem, quote=False), title_style)
-    flowables.append(title)
-    room -= height([title], width) + SLACK
+        mark = layout.mark
+        if mark is not None and record.frontmatter.get(mark.field) is True:
+            size = layout.title_size * MARK_SCALE
+            flowables.append(Corner(mark.text, font.name, size))
+            title_style.rightIndent = (
+                pdfmetrics.stringWidth(mark.text, font.name, size)
+                + layout.title_size * 0.25
+            )
+        title = Paragraph(escape(record.path.stem, quote=False), title_style)
+        flowables.append(title)
+        room -= height([title], width)
 
     picture = _picture(root, record)
     if picture is None:
@@ -559,10 +561,11 @@ def handout(
 ) -> Handout:
     """Print records as a handout: one page each, in order, in one PDF.
 
-    Each page holds the record's name, its rules callout and its picture,
-    in the layout that prints the record's kind, or the named one, or the
-    defaults. The text takes the largest size at which it fits its share of
-    the page, and the picture the room left.
+    Each page holds the record's name, the text of the callout its layout
+    names, rules by default, and its picture. The layout is the one that
+    prints the record's kind, or the named one, or the defaults. The text
+    takes the largest size at which it fits its share of the page, and the
+    picture the room left.
 
     Args:
         records: The records' paths. With a vault, relative ones are taken
@@ -578,7 +581,7 @@ def handout(
 
     Raises:
         ValueError: A record is not a Markdown record in the vault or has no
-            rules text, a layout cannot be read or chosen, the output is not
+            text to print, a layout cannot be read or chosen, the output is not
             a .pdf path or exists without overwrite, or a picture or font
             cannot be used.
         OSError: A file cannot be read or the PDF cannot be written.

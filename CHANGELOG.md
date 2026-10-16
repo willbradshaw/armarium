@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let a handout layout print another callout than `rules`, with or without the record's name, and let any Content hold a `> [!handout]` callout of the words players are given, such as a letter's.
 - Add `armarium handout` to print records' rules text as handouts in a PDF, in their handout layouts, adding ReportLab as a dependency.
 - Add handout layouts, Reference records of subtype `Layout` in `reference/layouts/` that say how a kind of record prints as a handout.
 - Allow in the shared `reference/` the subfolders the Reference Type record's `subtype_directories` declares, rather than `styles/` by name.
