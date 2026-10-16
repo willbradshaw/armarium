@@ -18,8 +18,10 @@ from armarium.extensions import (
     update_extension,
 )
 from armarium.find import find_records
+from armarium.handout import handout
 from armarium.illustrate import CANDIDATE_DIRECTORY, COUNT, generate, ingest, prompt
 from armarium.init import init_vault
+from armarium.layout import LAYOUT_DIRECTORY
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
@@ -459,6 +461,48 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     picture.add_argument(
         "--overwrite", action="store_true", help="replace an existing image file"
     )
+    printing = commands.add_parser(
+        "handout",
+        help="print records as player handouts in a PDF",
+        description=(
+            "Print each record on a page of its own, in the order given, in one "
+            "PDF: its name, its rules callout and its picture. A layout, the one "
+            f"named or else the one in {LAYOUT_DIRECTORY}/ that prints the "
+            "record's type, sets the page, the font and the picture's share; "
+            "the text takes the largest size at which it fits. Prints the PDF's "
+            "path. Changes no record."
+        ),
+    )
+    printing.add_argument(
+        "records",
+        nargs="+",
+        type=Path,
+        metavar="RECORD",
+        help="record to print; with --vault, relative to the vault root",
+    )
+    printing.add_argument(
+        "-o",
+        "--output",
+        required=True,
+        type=Path,
+        help="PDF to write, relative to the current directory",
+    )
+    printing.add_argument(
+        "--layout",
+        metavar="NAME",
+        help=(
+            f"layout in {LAYOUT_DIRECTORY}/ to print every record in (default: "
+            "the one that prints each record's type, if any)"
+        ),
+    )
+    printing.add_argument(
+        "--overwrite", action="store_true", help="replace an existing PDF"
+    )
+    printing.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the first record)",
+    )
     recording = commands.add_parser(
         "transcribe",
         help="transcribe a recording to raw text with whisper.cpp",
@@ -666,6 +710,33 @@ def main() -> None:
                     ", ".join(candidate.references),
                 )
             print(candidate.path)
+        return
+    if args.command == "handout":
+        try:
+            printed = handout(
+                args.records,
+                args.output,
+                args.vault,
+                layout=args.layout,
+                overwrite=args.overwrite,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot print the handout: %s", exc)
+            sys.exit(1)
+        for page in printed.pages:
+            picture = (
+                "no picture" if page.picture is None else f"picture {page.picture}in"
+            )
+            logger.info(
+                "%s: layout %s, text %spt, %s",
+                page.record,
+                page.layout or "defaults",
+                f"{page.text_size:g}",
+                picture,
+            )
+            for note in page.notes:
+                logger.warning("%s: %s", page.record, note)
+        print(printed.output)
         return
     if args.command == "transcribe":
         try:

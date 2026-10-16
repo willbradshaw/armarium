@@ -22,6 +22,7 @@ from armarium.cli import (
     main,
     parse_args,
 )
+from armarium.handout import Handout, Page
 from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
@@ -2521,6 +2522,98 @@ class TestIllustrateGenerateCommand:
     ) -> None:
         with pytest.raises(SystemExit) as exc:
             parse_args(["illustrate", "generate", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestHandoutCommand:
+    def test_prints_the_pdf_and_logs_each_page(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[tuple[object, ...]] = []
+
+        def handout(*args: object, **options: object) -> Handout:
+            calls.append((*args, options))
+            return Handout(
+                Path("v"),
+                Path("loot.pdf"),
+                (
+                    Page("content/Ring.md", "Gear", 22.5, 4.1),
+                    Page("content/Rope.md", "", 12, None, ("its text overflows",)),
+                ),
+            )
+
+        monkeypatch.setattr(cli, "handout", handout)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "handout",
+                "content/Ring.md",
+                "content/Rope.md",
+                "-o",
+                "loot.pdf",
+                "--layout",
+                "Gear",
+                "--overwrite",
+                "--vault",
+                "v",
+            ],
+        )
+        main()
+        output = capsys.readouterr()
+        assert output.out == "loot.pdf\n"
+        assert (
+            "INFO: content/Ring.md: layout Gear, text 22.5pt, picture 4.1in"
+            in output.err
+        )
+        assert (
+            "INFO: content/Rope.md: layout defaults, text 12pt, no picture"
+            in output.err
+        )
+        assert "WARNING: content/Rope.md: its text overflows" in output.err
+        assert calls == [
+            (
+                [Path("content/Ring.md"), Path("content/Rope.md")],
+                Path("loot.pdf"),
+                Path("v"),
+                {"layout": "Gear", "overwrite": True},
+            )
+        ]
+
+    def test_exits_with_one_when_it_cannot_print(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        missing = str(tmp_path / "missing.md")
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "handout", missing, "-o", "loot.pdf"]
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "ERROR: Cannot print the handout: " in output.err
+
+    def test_defaults(self) -> None:
+        args = parse_args(["handout", "a.md", "-o", "out.pdf"])
+        assert (args.records, args.output, args.layout) == (
+            [Path("a.md")],
+            Path("out.pdf"),
+            None,
+        )
+        assert (args.overwrite, args.vault) == (False, None)
+
+    @pytest.mark.parametrize("arguments", [[], ["a.md"], ["-o", "out.pdf"]])
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["handout", *arguments])
         assert exc.value.code == 2
         assert "usage: armarium" in capsys.readouterr().err
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium handout` to print records' rules text as handouts in a PDF, in their handout layouts, adding ReportLab as a dependency.
 - Add handout layouts, Reference records of subtype `Layout` in `reference/layouts/` that say how a kind of record prints as a handout.
 - Allow in the shared `reference/` the subfolders the Reference Type record's `subtype_directories` declares, rather than `styles/` by name.
 - Add `Sessions.base` and `Clues.base` to the starter vault's `bases/`, grouping every campaign's Sessions and Clues by campaign.

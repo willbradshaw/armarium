@@ -1,10 +1,58 @@
-# Handouts
+# Printing handouts
+
+```sh
+armarium handout "content/Lucky Ring.md" "content/Rope of Climbing.md" -o loot.pdf
+```
+
+`armarium handout RECORD... -o FILE` prints records as player handouts: each on
+a page of its own, in the order given, in one PDF. A page holds the record's
+name, its rules callout and its picture. The command prints the PDF's path and
+changes no record.
+
+A [layout](#layouts) sets the page, the font and how much of the page the
+picture takes.
+
+## Choosing the records
+
+Each `RECORD` is a record's file path, as for
+[`armarium trace`](trace.md#choosing-the-file): without `--vault`, absolute or
+relative to the current directory; with `--vault VAULT`, relative to the vault
+root. Every record must be in the same vault.
+
+A record prints only if it has a `> [!rules]` callout with text in it, as Gear
+does; the command stops on a record without one.
+
+`-o FILE` is the PDF to write, relative to the current directory. Missing
+folders are created. The command replaces no file unless given `--overwrite`.
+
+## What a page holds
+
+- **The name**, the record's filename, at the top.
+- **The rules text**, from the record's first `> [!rules]` callout. Paragraphs,
+  lists, tables, bold and italic print as written. A link prints as its text:
+  its display text, or else the name of the file it links to. An embedded file,
+  such as `![[Ring.webp|500]]`, HTML and horizontal rules are left out.
+- **The picture** the record's `image` field names, below the text and centred.
+  Transparency is kept, so art stored as [black opacity](illustrate.md#black-opacity)
+  prints as ink on the paper. Without an `image`, the page has no picture.
+
+The text takes the largest font size, between the layout's smallest and
+largest and to the nearest half point, at which it fits its share of the page.
+The picture takes the room left, so short text leaves it more than its share.
+Text too long to fit even at the smallest size shrinks to fit, the picture is
+left out if no room remains, and the command warns of both.
+
+The command logs each page's layout, text size and picture height.
 
 ## Layouts
 
-A layout says how one kind of record prints as a player handout. Each is a
+A layout says how one kind of record prints. Each is a
 [Reference](type.md#reference) record of subtype `Layout` in
-`reference/layouts/`, named for the layout.
+`reference/layouts/`, named for the layout. `--layout NAME` prints every record
+in `reference/layouts/NAME.md`. Without it, each record prints in the layout
+whose `prints` names its type, or its type and subtype; if several do, the
+command stops and asks for `--layout`, and if none does, the defaults below
+apply.
 
 ```markdown
 ---
@@ -45,4 +93,8 @@ vault root; it must hold TrueType outlines, in a `.ttf` file or the first font
 of a `.ttc` collection. A font file is one face, so bold and italic text in it
 is underlined instead.
 
-The vault's Reference schema checks each layout's fields.
+Every record in one PDF must share a page size and margin; print records whose
+layouts differ in either to separate files.
+
+The vault's Reference schema checks each layout's fields. A layout that cannot
+be read or fails the schema stops the command until it is fixed.
