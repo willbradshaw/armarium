@@ -1,21 +1,16 @@
 """Read a vault's illustration styles: how each kind of art is made and stored."""
 
-import re
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from armarium.lib import DIRECTORY, find_files, parse_wikilink
 from armarium.parse import Record
+from armarium.schemas import select_schema
 
 STYLE_DIRECTORY = "reference/styles"
 ART_DIRECTORY = "assets/art"
 MAX_BYTES = 100_000
 MAX_EDGE = 1200
-
-# A record kind a style illustrates: a type, or a type and subtype.
-KIND = re.compile(r"[^/\s](?:[^/]*[^/\s])?(?:/[^/\s](?:[^/]*[^/\s])?)?")
 
 
 @dataclass(frozen=True)
@@ -86,71 +81,47 @@ def art_directory(value: object) -> str:
     return value
 
 
-def _count(data: Mapping[str, Any], field: str) -> int | None:
-    """Read an optional positive whole number from a style's frontmatter.
+def is_style(record: Record) -> bool:
+    """Say whether a record is a style: a Reference record of subtype Style.
+
+    Args:
+        record: Any parsed record.
 
     Returns:
-        int | None: The number, or None when the field is absent or null.
-
-    Raises:
-        ValueError: The field holds anything else.
+        bool: Whether the record declares the Reference type and Style subtype.
     """
-    value = data.get(field)
-    if value is None:
-        return None
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise ValueError(f"{field} must be a whole number of at least 1")
-    return value
+    return (
+        record.frontmatter.type == "Reference"
+        and record.frontmatter.get("subtype") == "Style"
+    )
 
 
 def parse_style(record: Record) -> Style:
     """Read a style from its record.
 
     Every field is optional; an absent or null field takes Style's default.
+    The vault's Reference schema checks each field's form.
 
     Args:
-        record: A record in the vault's reference/styles/.
+        record: A style that satisfies the vault's Reference schema.
 
     Returns:
         Style: The style the record declares.
 
     Raises:
-        ValueError: The record is not a Reference record, or a field holds a
-            value of the wrong form.
+        ValueError: A reference is not a wikilink.
     """
     data = record.frontmatter
-    if data.type != "Reference":
-        raise ValueError('a style must be a Reference record, type "[[Reference]]"')
-    illustrates = data.get("illustrates") or []
-    if not isinstance(illustrates, list) or not all(
-        isinstance(kind, str) and KIND.fullmatch(kind) for kind in illustrates
-    ):
-        raise ValueError(
-            "illustrates must list record types, each a type or Type/Subtype"
-        )
-    directory = art_directory(data.get("directory") or ART_DIRECTORY)
-    opacity = data.get("opacity")
-    if opacity is not None and not isinstance(opacity, bool):
-        raise ValueError("opacity must be true or false")
-    references = data.get("references") or []
-    if not isinstance(references, list):
-        raise ValueError("references must list wikilinks")
-    targets: list[str] = []
-    for reference in references:
-        try:
-            targets.append(parse_wikilink(reference))
-        except ValueError as exc:
-            raise ValueError(f"references must list wikilinks: {exc}") from exc
     return Style(
         record.path.stem,
         record.body.text.strip(),
-        tuple(illustrates),
-        directory,
-        bool(opacity),
-        _count(data, "max_bytes") or MAX_BYTES,
-        _count(data, "max_edge") or MAX_EDGE,
-        tuple(targets),
-        _count(data, "sample"),
+        tuple(data.get("illustrates") or ()),
+        data.get("directory") or ART_DIRECTORY,
+        bool(data.get("opacity")),
+        data.get("max_bytes") or MAX_BYTES,
+        data.get("max_edge") or MAX_EDGE,
+        tuple(parse_wikilink(link) for link in data.get("references") or ()),
+        data.get("sample"),
     )
 
 
@@ -161,13 +132,13 @@ def read_styles(root: Path) -> dict[str, Style]:
         root: Vault root.
 
     Returns:
-        dict[str, Style]: Style name to style, in path order, for each
-            Markdown file in reference/styles/ and its subfolders. Empty when
-            the folder does not exist.
+        dict[str, Style]: Style name to style, in path order, for each style
+            in reference/styles/ and its subfolders. Empty when the folder
+            does not exist.
 
     Raises:
-        ValueError: A style cannot be parsed, is not a Reference record, or
-            declares a field wrongly.
+        ValueError: A record cannot be parsed, or a style fails the vault's
+            Reference schema.
         OSError: A file cannot be read.
     """
     directory = root / STYLE_DIRECTORY
@@ -179,10 +150,16 @@ def read_styles(root: Path) -> dict[str, Style]:
         relative = path.relative_to(root).as_posix()
         if record is None:
             raise ValueError(f"{relative}: {diagnostics[0].message}")
-        try:
-            styles[path.stem] = parse_style(record)
-        except ValueError as exc:
-            raise ValueError(f"{relative}: {exc}") from exc
+        if not is_style(record):
+            continue
+        schema, diagnostics = select_schema(record, root)
+        if schema is not None:
+            diagnostics = schema.validate(record)
+        if diagnostics:
+            failure = diagnostics[0]
+            field = f"{failure.field}: " if failure.field else ""
+            raise ValueError(f"{relative}: {field}{failure.message}")
+        styles[path.stem] = parse_style(record)
     return styles
 
 

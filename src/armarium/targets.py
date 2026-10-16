@@ -9,7 +9,7 @@ class Target:
 
     Attributes:
         record_type: Required declared type of the target.
-        subtypes: Permitted Content subtypes, or empty for any subtype.
+        subtypes: Permitted subtypes, or empty for any subtype.
         campaign: Campaign directory name (campaign_N) the target must belong
             to, or None for no fixed campaign.
         local: Whether the target must belong to the campaign containing the

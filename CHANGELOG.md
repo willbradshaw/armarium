@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add Reference subtypes, starting with `Style`: styles now need `subtype: Style`, the Reference schema checks their fields, and the Reference Type record's `subtype_directories` keeps them in `reference/styles/`.
 - Ship the `illustrate-record` agent skill, and a CSS snippet that shows black-opacity art in `assets/art/ink/` as white on Obsidian's dark theme.
 - Make `armarium illustrate generate` paint three candidates by default.
 - Add `armarium illustrate generate` to paint candidate pictures for a record with an image model from a prompt, and `references` and `sample` on illustration styles.

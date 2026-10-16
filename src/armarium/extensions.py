@@ -17,7 +17,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from packaging.version import Version
 
-from armarium.lib import CAMPAIGN_NAME, SUBTYPES
+from armarium.lib import CAMPAIGN_NAME, REFERENCE_SUBTYPES, SUBTYPES
 from armarium.logging import logger
 from armarium.parse import Record
 from armarium.schemas import Schema
@@ -120,6 +120,21 @@ class ExtensionSet:
     rules: list[ExtensionRule]
     subtypes: tuple[str, ...]
 
+    def subtypes_of(self, kind: str | None) -> tuple[str, ...]:
+        """Return the subtypes a type permits.
+
+        Args:
+            kind: The type's name, or None for an untyped record.
+
+        Returns:
+            tuple[str, ...]: The core Content subtypes followed by those
+                enabled extensions declare, the core Reference subtypes, or
+                none for a type without subtypes.
+        """
+        if kind == "Content":
+            return self.subtypes
+        return REFERENCE_SUBTYPES if kind == "Reference" else ()
+
 
 def load_extension_set(root: Path) -> ExtensionSet:
     """Load enabled rules and subtypes, checking every declared schema and template.
@@ -128,10 +143,10 @@ def load_extension_set(root: Path) -> ExtensionSet:
     are relative to reference/. Conflicting template selectors are errors;
     additional schema constraints can be combined freely. A declared Content
     subtype must be new to the vault and have a template from its own extension;
-    a Content rule must select a permitted subtype. A declared link target must
-    bind a field that neither the core nor another rule binds for the same
-    records, never a Content campaign_N block, and may name subtypes only of
-    Content. Invalid or missing files
+    a Content or Reference rule must select a permitted subtype. A declared link
+    target must bind a field that neither the core nor another rule binds for
+    the same records, never a Content campaign_N block, and may name only
+    permitted subtypes of Content or Reference. Invalid or missing files
     raise ValueError or OSError, never silently disabling an extension.
     """
     config = _local_path(root, "reference", "extensions.json")
@@ -197,10 +212,10 @@ def load_extension_set(root: Path) -> ExtensionSet:
                         f"conflicting extension link targets for {kind}/{subtype} "
                         f"field {name}"
                     )
-                if "subtypes" in link and link["type"] != "Content":
+                if "subtypes" in link and link["type"] not in ("Content", "Reference"):
                     raise ValueError(
                         f"extension {extension} names subtypes of {link['type']} "
-                        f"for field {name}; only Content has subtypes"
+                        f"for field {name}; only Content and Reference have subtypes"
                     )
                 links[name] = Target(
                     link["type"], frozenset(link.get("subtypes", ())), local=True
@@ -216,18 +231,21 @@ def load_extension_set(root: Path) -> ExtensionSet:
                     links,
                 )
             )
-    subtypes = (*SUBTYPES, *declared)
+    extension_set = ExtensionSet(rules, (*SUBTYPES, *declared))
     for rule in rules:
         for name, target in rule.links.items():
-            unknown = sorted(target.subtypes - set(subtypes))
+            permitted = extension_set.subtypes_of(target.record_type)
+            unknown = sorted(target.subtypes - set(permitted))
             if unknown:
                 raise ValueError(
-                    f"extension {rule.extension} names unknown Content subtype "
+                    f"extension {rule.extension} names unknown {target.record_type} subtype "
                     f"{unknown[0]} for field {name}"
                 )
-        if rule.kind == "Content" and rule.subtype not in (None, *subtypes):
+        permitted = extension_set.subtypes_of(rule.kind)
+        if permitted and rule.subtype not in (None, *permitted):
             raise ValueError(
-                f"extension {rule.extension} selects unknown Content subtype {rule.subtype}"
+                f"extension {rule.extension} selects unknown {rule.kind} subtype "
+                f"{rule.subtype}"
             )
     for subtype, extension in declared.items():
         if not any(
@@ -238,7 +256,7 @@ def load_extension_set(root: Path) -> ExtensionSet:
                 f"extension {extension} declares Content subtype {subtype} "
                 "without a template for it"
             )
-    return ExtensionSet(rules, subtypes)
+    return extension_set
 
 
 def load_extensions(root: Path) -> list[ExtensionRule]:

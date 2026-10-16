@@ -83,7 +83,10 @@ each Content directory per subtype. With `{ NPC: npcs, Location: locations }`,
 an NPC must sit in `content/npcs/` or `campaigns/campaign_N/content/npcs/`, or
 in a subfolder of it, and [`armarium add content`](add.md#content) files new
 NPCs there. Subtypes left out may sit anywhere in the Content directory. The
-declaration is optional, and the starter vault makes none.
+declaration is optional, and the starter vault makes none for Content.
+
+The Reference Type record may declare it too. The starter vault's
+`{ Style: styles }` keeps [styles](illustrate.md#styles) in `reference/styles/`.
 
 A vault may add a type of its own: a Type record in `reference/types/` with a
 `directories` declaration and a matching schema in `reference/schemas/`. Its
@@ -116,5 +119,5 @@ This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
 
 Optional [extensions](extensions.md) are declared in `reference/extensions.json`;
 their schemas, templates and reference pages live in `reference/extensions/NAME/`.
-Illustration [styles](illustrate.md#styles) are Reference records in the
-optional `reference/styles/`.
+Illustration [styles](illustrate.md#styles) are Reference records of subtype
+`Style` in the optional `reference/styles/`.

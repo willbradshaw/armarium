@@ -40,7 +40,7 @@ from armarium.lib import (
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
-from armarium.style import STYLE_DIRECTORY, parse_style
+from armarium.style import STYLE_DIRECTORY, is_style, parse_style
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
 
 # Infrastructure every vault must contain. Together with the directories Type
@@ -225,17 +225,17 @@ def validate_markdown(
         }
         if infos:
             findings += validate_yaml_blocks(record, relative, infos)
-    # The core schema checks only the subtype's form; enabled extensions
-    # determine which subtypes exist.
-    if (
-        extensions is not None
-        and record.frontmatter.type == "Content"
-        and isinstance(subtype, str)
-        and subtype not in extensions.subtypes
-    ):
+    # The core schema checks only the subtype's form; the core and enabled
+    # extensions determine which subtypes exist.
+    permitted = (
+        extensions.subtypes_of(record.frontmatter.type)
+        if extensions is not None
+        else ()
+    )
+    if permitted and isinstance(subtype, str) and subtype not in permitted:
         findings.add(
             "record.subtype",
-            f"subtype must be one of {', '.join(extensions.subtypes)}",
+            f"subtype must be one of {', '.join(permitted)}",
             "subtype",
         )
     unsupported = int(any(d.rule == "schema.unsupported" for d in diagnostics))
@@ -473,7 +473,7 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
             findings.add(rule, f"cannot check {subject}: reference/types is missing")
         return findings
     definitions = [file for file in find_files(types) if file.suffix.lower() == ".md"]
-    # Subfolders declared per Content subtype, checked once extensions are loaded.
+    # Subfolders declared per subtype, checked once extensions are loaded.
     subfolders: dict[str, tuple[str, object]] = {}
     for file in definitions:
         relative = file.relative_to(root).as_posix()
@@ -515,15 +515,17 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         findings.add("extension.invalid", str(exc))
 
-    # Only Content has subtypes; which exist depends on the enabled extensions.
+    # Only Content and Reference have subtypes; which Content subtypes exist
+    # depends on the enabled extensions.
     for relative, (name, declared) in subfolders.items():
-        if name != "Content":
+        if name not in ("Content", "Reference"):
             findings.add(
-                "vault.type", f"{relative}: only Content declares subtype_directories"
+                "vault.type",
+                f"{relative}: only Content and Reference declare subtype_directories",
             )
         elif extensions is not None:
             try:
-                parse_subtype_directories(declared, extensions.subtypes)
+                parse_subtype_directories(declared, name, extensions.subtypes_of(name))
             except ValueError as exc:
                 findings.add("vault.type", f"{relative}: {exc}")
 
@@ -1333,12 +1335,12 @@ def validate_placement(record: Record, index: VaultIndex) -> Findings:
 
 
 def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
-    """Check a Content record against the subfolder declared for its subtype.
+    """Check a Content or Reference record against its subtype's subfolder.
 
-    The Content Type record may declare subtype_directories, a subfolder per
-    subtype below each Content directory, shared or campaign. A record of a
-    declared subtype belongs in that subfolder or below it; other subtypes may
-    sit anywhere in the Content directory.
+    The Content and Reference Type records may declare subtype_directories, a
+    subfolder per subtype below each of the type's directories, shared or
+    campaign. A record of a declared subtype belongs in that subfolder or below
+    it; other subtypes may sit anywhere in the type's directory.
 
     Args:
         record: Selected record; templates are excluded by the caller.
@@ -1347,15 +1349,16 @@ def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
     Returns:
         Findings: A record.subdirectory error when the record's subtype has a
             declared subfolder and the record lies outside it. Records outside
-            every Content directory are left to validate_placement.
+            every directory of their type are left to validate_placement.
     """
     findings = Findings.from_record(record, index)
+    kind = record.frontmatter.type
     subtype = record.frontmatter.get("subtype")
-    if record.frontmatter.type != "Content" or not isinstance(subtype, str):
+    if kind not in ("Content", "Reference") or not isinstance(subtype, str):
         return findings
-    subdirectory = index.subtype_directories().get(subtype)
+    subdirectory = index.subtype_directories(kind).get(subtype)
     containing = index.containing_directories(record.path)
-    if subdirectory is None or not containing or "Content" not in containing[-1][2]:
+    if subdirectory is None or not containing or kind not in containing[-1][2]:
         return findings
     scope, declared, _ = containing[-1]
     base = (
@@ -1367,7 +1370,7 @@ def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
     if not record.path.relative_to(index.root).is_relative_to(expected):
         findings.add(
             "record.subdirectory",
-            f"{subtype} Content belongs in {expected.as_posix()}",
+            f"{subtype} {kind} belongs in {expected.as_posix()}",
             "subtype",
         )
     return findings
@@ -1649,29 +1652,24 @@ def validate_image(record: Record, index: VaultIndex) -> Findings:
 
 
 def validate_style(record: Record, index: VaultIndex) -> Findings:
-    """Check a style record's fields and hold its art to its size budget.
+    """Hold a style's art to its size budget.
 
     Args:
-        record: Selected record; only records in reference/styles/ and its
-            subfolders are styles.
+        record: Selected record that satisfies its schema; only Reference
+            records of subtype Style are styles.
         index: Index supplying the vault root.
 
     Returns:
-        Findings: A style.invalid error when a field holds a value of the
-            wrong form. Otherwise a style.budget error for each file in the
-            style's directory, or its subfolders, that is not a WebP or PNG
-            image, or is larger than the style's max_bytes or longer on its
-            long edge than its max_edge. A directory that does not exist yet
-            holds no art.
+        Findings: A style.budget error for each file in the style's
+            directory, or its subfolders, that is not a WebP or PNG image, or
+            is larger than the style's max_bytes or longer on its long edge
+            than its max_edge. A directory that does not exist yet holds no
+            art.
     """
     findings = Findings.from_record(record, index)
-    if not record.path.is_relative_to(index.root / STYLE_DIRECTORY):
+    if not is_style(record):
         return findings
-    try:
-        style = parse_style(record)
-    except ValueError as exc:
-        findings.add("style.invalid", str(exc))
-        return findings
+    style = parse_style(record)
     directory = index.root / style.directory
     if directory.is_symlink() or not directory.is_dir():
         return findings

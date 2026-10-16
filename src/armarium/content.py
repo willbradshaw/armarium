@@ -112,7 +112,7 @@ def _subtype_directory(
     if definition is None:
         raise ValueError(f"cannot read Content Type: {failures[0].message}")
     declared = parse_subtype_directories(
-        definition.frontmatter.get("subtype_directories"), subtypes
+        definition.frontmatter.get("subtype_directories"), "Content", subtypes
     )
     return directory / declared[subtype] if subtype in declared else directory
 

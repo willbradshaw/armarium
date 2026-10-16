@@ -9,6 +9,7 @@ import pytest
 
 from armarium.index import VaultIndex
 from armarium.lib import (
+    REFERENCE_SUBTYPES,
     SUBTYPES,
     Diagnostic,
     Findings,
@@ -917,10 +918,31 @@ class TestParseSubtypeDirectories:
         ],
     )
     def test_declaration(self, value: object, expected: dict[str, str]) -> None:
-        parsed = parse_subtype_directories(value, (*SUBTYPES, "Spell"))
+        parsed = parse_subtype_directories(value, "Content", (*SUBTYPES, "Spell"))
         assert parsed == expected
         assert list(parsed) == list(expected)
         assert parsed is not value
+
+    @pytest.mark.parametrize(
+        ("value", "message"),
+        [
+            (
+                ["styles"],
+                "subtype_directories must map Reference subtypes to relative paths",
+            ),
+            (
+                {"NPC": "npcs"},
+                "subtype_directories names NPC, which is not a Reference subtype "
+                "this vault permits",
+            ),
+        ],
+    )
+    def test_names_the_type(self, value: object, message: str) -> None:
+        assert parse_subtype_directories(
+            {"Style": "styles"}, "Reference", REFERENCE_SUBTYPES
+        ) == {"Style": "styles"}
+        with pytest.raises(ValueError, match=f"^{message}$"):
+            parse_subtype_directories(value, "Reference", REFERENCE_SUBTYPES)
 
     MAPPING = "subtype_directories must map Content subtypes to relative paths"
     UNKNOWN = "which is not a Content subtype this vault permits"
@@ -940,7 +962,7 @@ class TestParseSubtypeDirectories:
     )
     def test_unusable(self, value: object, message: str) -> None:
         with pytest.raises(ValueError, match=f"^{message}$"):
-            parse_subtype_directories(value, SUBTYPES)
+            parse_subtype_directories(value, "Content", SUBTYPES)
 
 
 class TestImageSize:

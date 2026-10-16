@@ -40,8 +40,8 @@ are sent, and the picture goes to `assets/art/`. Tell the GM, and ask which
 they want:
 
 - **An existing style:** pass `--style NAME` here, in step 3 and in step 5.
-- **A new style** for this kind of record: draft a Reference record in
-  `reference/styles/` for the GM to approve, with `illustrates` naming the
+- **A new style** for this kind of record: draft a Reference record of
+  subtype `Style` in `reference/styles/` for the GM to approve, with `illustrates` naming the
   record's type and subtype, a `directory` inside `assets/`, and a body saying
   what the art looks like. Validate it, then build the prompt again.
 - **A preamble for this picture only:** write the text the GM gives you to

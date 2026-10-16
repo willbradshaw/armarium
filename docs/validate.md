@@ -96,7 +96,7 @@ Rule identifiers group into families:
 | Family | Reports | Rules on |
 | --- | --- | --- |
 | `parse.` | a file that cannot be read as frontmatter and body | [Records](record.md#anatomy) |
-| `record.` | the `type` field, a Content `subtype` the vault does not permit, templates, placement, the subfolder declared for a Content subtype, filename identity, a name or alias shared with another record, and an `image` path that names no file | [Records](record.md), [Types](type.md), [Extensions](extensions.md) |
+| `record.` | the `type` field, a Content or Reference `subtype` the vault does not permit, templates, placement, the subfolder declared for a subtype, filename identity, a name or alias shared with another record, and an `image` path that names no file | [Records](record.md), [Types](type.md), [Extensions](extensions.md) |
 | `schema.` | a record against its schema; missing, invalid or unmatched schemas | [Records](record.md#types-statuses-and-schemas) |
 | `link.` | links that do not resolve, are malformed or ambiguous, lack their anchor, target the wrong kind of record, repeat, or form a cycle | [Records](record.md#links), [Types](type.md) |
 | `campaign.` | campaign directories and `campaign_N` blocks, and a Session's campaign | [Campaigns](campaign.md) |
@@ -104,6 +104,6 @@ Rule identifiers group into families:
 | `history.` | a Content record's Appearances and campaign blocks | [Campaigns](campaign.md#state), [Content](type.md#content) |
 | `clue.` | a Clue's `subjects` against its `text` | [Clue](type.md#clue) |
 | `transcript.` | the transcript grammar | [Transcript](type.md#transcript) |
-| `style.` | an illustration style's fields, and art in its directory over its size budget | [Illustrating a record](illustrate.md#styles) |
+| `style.` | art in an illustration style's directory over its size budget | [Illustrating a record](illustrate.md#styles) |
 | `extension.` | enabled extension declarations, schemas and templates, and code blocks an extension requires to be YAML | [Extensions](extensions.md) |
 | `vault.` | the vault skeleton, campaign layout, declared directories and stray entries | [Vault layout](vault.md) |

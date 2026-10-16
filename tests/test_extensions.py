@@ -29,7 +29,7 @@ from armarium.extensions import (
     load_extensions,
     remove_extension,
 )
-from armarium.lib import SUBTYPES
+from armarium.lib import REFERENCE_SUBTYPES, SUBTYPES
 from armarium.parse import Record
 from armarium.targets import LINK_TARGETS, Target
 from armarium.validate import validate
@@ -381,6 +381,22 @@ class TestExtensionSet:
             extensions.subtypes = ()  # type: ignore[misc]
 
 
+class TestExtensionSetSubtypesOf:
+    @pytest.mark.parametrize(
+        ("kind", "expected"),
+        [
+            ("Content", ("Lore", "Relic")),
+            ("Reference", REFERENCE_SUBTYPES),
+            ("Note", ()),
+            (None, ()),
+        ],
+    )
+    def test_permitted_subtypes(
+        self, kind: str | None, expected: tuple[str, ...]
+    ) -> None:
+        assert ExtensionSet([], ("Lore", "Relic")).subtypes_of(kind) == expected
+
+
 class TestLoadExtensionSet:
     def test_absent(self, vault: Path) -> None:
         assert load_extension_set(vault) == ExtensionSet([], SUBTYPES)
@@ -403,6 +419,7 @@ class TestLoadExtensionSet:
             ("no-template", "without a template"),
             ("foreign-template", "without a template"),
             ("unknown-rule", "selects unknown Content subtype Relik"),
+            ("unknown-reference-rule", "selects unknown Reference subtype Relic"),
         ],
     )
     def test_invalid_subtypes(
@@ -421,7 +438,12 @@ class TestLoadExtensionSet:
             data["example"]["rules"].remove(relic)
             data["local"] = {"rules": [relic]}
         else:
-            data["local"] = {"rules": [{**relic, "subtype": "Relik"}]}
+            kind, subtype = (
+                ("Content", "Relik")
+                if scenario == "unknown-rule"
+                else ("Reference", "Relic")
+            )
+            data["local"] = {"rules": [{**relic, "type": kind, "subtype": subtype}]}
             data["local"]["rules"][0].pop("template")
         config.write_text(json.dumps(data))
         with pytest.raises(ValueError, match=message):
@@ -441,12 +463,17 @@ class TestLoadExtensionSet:
             (
                 {"region": {"type": "Player", "subtypes": ["PC"]}},
                 None,
-                "only Content has subtypes",
+                "only Content and Reference have subtypes",
             ),
             (
                 {"region": {"type": "Content", "subtypes": ["Relik"]}},
                 None,
                 "unknown Content subtype Relik for field region",
+            ),
+            (
+                {"region": {"type": "Reference", "subtypes": ["Relic"]}},
+                None,
+                "unknown Reference subtype Relic for field region",
             ),
             (
                 {"region": {"type": "Content"}},
@@ -489,6 +516,16 @@ class TestLoadExtensionSet:
         assert [r.links for r in rules] == [
             {"relics": Target("Content", frozenset({"Relic"}), local=True)}
         ] * 2
+
+    def test_links_to_reference_subtype(self, declared: Path) -> None:
+        config = declared / CONFIG
+        data = json.loads(config.read_text())
+        location = data["example"]["rules"][0]
+        location["links"] = {"style": {"type": "Reference", "subtypes": ["Style"]}}
+        config.write_text(json.dumps(data))
+        assert load_extension_set(declared).rules[0].links == {
+            "style": Target("Reference", frozenset({"Style"}), local=True)
+        }
 
     def test_local_rule_for_declared_subtype(self, declared: Path) -> None:
         config = declared / CONFIG

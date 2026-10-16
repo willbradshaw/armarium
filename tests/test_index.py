@@ -328,14 +328,28 @@ class TestVaultIndexSubtypeDirectories:
             autospec=True,
             side_effect=VaultIndex._read_subtype_directories,
         ) as read:
-            first = index.subtype_directories()
-            assert index.subtype_directories() is first
+            first = index.subtype_directories("Content")
+            assert index.subtype_directories("Content") is first
         assert first == {"NPC": "npcs"}
-        read.assert_called_once_with(index)
+        read.assert_called_once_with(index, "Content")
+
+    def test_reads_each_type_record(self, tmp_path: Path) -> None:
+        write_content_type(tmp_path, "subtype_directories: {NPC: npcs}")
+        (tmp_path / "reference/types/Reference.md").write_text(
+            "---\nsubtype_directories: {Style: styles}\n---\n"
+        )
+        index = VaultIndex(tmp_path)
+        assert index.subtype_directories("Content") == {"NPC": "npcs"}
+        assert index.subtype_directories("Reference") == {"Style": "styles"}
+        assert index.subtype_directories("Note") == {}
 
     def test_caches_an_empty_declaration(self, tmp_path: Path) -> None:
         index = VaultIndex(tmp_path)
-        assert index.subtype_directories() is index.subtype_directories() == {}
+        assert (
+            index.subtype_directories("Content")
+            is index.subtype_directories("Content")
+            == {}
+        )
 
 
 class TestVaultIndexReadSubtypeDirectories:
@@ -358,7 +372,7 @@ class TestVaultIndexReadSubtypeDirectories:
     ) -> None:
         path = write_content_type(tmp_path, text)
         index = VaultIndex(tmp_path)
-        assert index._read_subtype_directories() == (
+        assert index._read_subtype_directories("Content") == (
             {"NPC": "npcs", "Location": "places/locations"}
             if expected is None
             else expected
@@ -377,7 +391,7 @@ class TestVaultIndexReadSubtypeDirectories:
             target.write_text("---\nsubtype_directories: {NPC: npcs}\n---\n")
             path.symlink_to(target)
         index = VaultIndex(tmp_path)
-        assert index._read_subtype_directories() == {}
+        assert index._read_subtype_directories("Content") == {}
         assert index.records == {}
 
     def test_extension_subtypes(self, tmp_path: Path) -> None:
@@ -385,14 +399,14 @@ class TestVaultIndexReadSubtypeDirectories:
         index = VaultIndex(tmp_path)
         extensions = ExtensionSet([], ("NPC", "Spell"))
         with patch("armarium.index.load_extension_set", return_value=extensions):
-            assert index._read_subtype_directories() == {"Spell": "spells"}
+            assert index._read_subtype_directories("Content") == {"Spell": "spells"}
 
     def test_unusable_extensions(self, tmp_path: Path) -> None:
         write_content_type(tmp_path, "subtype_directories: {NPC: npcs}")
         index = VaultIndex(tmp_path)
         error = ValueError("invalid extension declaration")
         with patch("armarium.index.load_extension_set", side_effect=error):
-            assert index._read_subtype_directories() == {}
+            assert index._read_subtype_directories("Content") == {}
 
 
 class TestVaultIndexContainingDirectories:

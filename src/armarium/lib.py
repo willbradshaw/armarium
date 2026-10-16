@@ -596,6 +596,9 @@ DIRECTORY_SCOPES = ("shared", "campaign")
 # Content subtypes every vault permits; enabled extensions may declare more.
 SUBTYPES = ("NPC", "PC", "Location", "Faction", "Object", "Lore", "Date", "Gear")
 
+# Reference subtypes every vault permits.
+REFERENCE_SUBTYPES = ("Style",)
+
 # A declared directory: a relative path without empty, . or .. segments.
 DIRECTORY = re.compile(r"(?!\.\.?(?:/|$))[^/]+(?:/(?!\.\.?(?:/|$))[^/]+)*")
 
@@ -625,15 +628,16 @@ def parse_directories(value: object) -> dict[str, str]:
 
 
 def parse_subtype_directories(
-    value: object, subtypes: Collection[str]
+    value: object, kind: str, subtypes: Collection[str]
 ) -> dict[str, str]:
-    """Read the Content Type record's declaration of a subfolder per subtype.
+    """Read a Type record's declaration of a subfolder per subtype.
 
     Args:
-        value: The record's subtype_directories field: a mapping of Content
-            subtype to a relative path below each Content directory, or None
-            when the vault declares none.
-        subtypes: Content subtypes the vault permits.
+        value: The record's subtype_directories field: a mapping of subtype to
+            a relative path below each of the type's directories, or None when
+            the vault declares none.
+        kind: The type the record defines, such as Content.
+        subtypes: Subtypes of that type the vault permits.
 
     Returns:
         dict[str, str]: Subtype to declared subfolder, in declaration order;
@@ -647,12 +651,12 @@ def parse_subtype_directories(
         return {}
     if not isinstance(value, dict):
         raise ValueError(
-            "subtype_directories must map Content subtypes to relative paths"
+            f"subtype_directories must map {kind} subtypes to relative paths"
         )
     for subtype, path in value.items():
         if subtype not in subtypes:
             raise ValueError(
-                f"subtype_directories names {subtype}, which is not a Content "
+                f"subtype_directories names {subtype}, which is not a {kind} "
                 "subtype this vault permits"
             )
         if not isinstance(path, str) or DIRECTORY.fullmatch(path) is None:
