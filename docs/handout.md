@@ -1,15 +1,61 @@
 # Handouts
 
-A handout prints the text of one of a record's callouts. The rules callout that
-opens Gear prints as an item card. Any Content may also hold a `> [!handout]`
-callout before Notes: the words the players are given on a handout of it, such
-as a letter's text, exactly as they read them.
+A handout prints records for the players: each on a page of its own, in the
+order given, in one PDF. A page holds the record's name, the text of one of its
+callouts and its picture. A [layout](#layouts) chooses the callout, and sets
+the page, the font and how much of the page the picture takes. Without one, a
+page prints the `> [!rules]` callout, as for Gear.
+
+A record prints only if it has a callout of its layout's type with text in it.
+
+## What to print
+
+The rules callout that opens Gear prints as an item card. Anything else the
+players are handed, such as a letter, a map's legend or a page of scripture,
+goes in a `> [!handout]` callout in its [Content](type.md#content) record,
+before Notes, worded exactly as the players read it:
+
+```markdown
+> [!handout]
+> Captain,
+>
+> The *Tern* sails at dawn. Bring the ledger, and come alone.
+>
+> — H.
+
+## Notes
+- The harbourmaster's summons, left at the inn for [[Captain Vey]].
+```
+
+A layout whose `callout` is `handout` prints it; see [Layouts](#layouts).
+
+## What a page holds
+
+- **The name**, the record's filename, at the top, unless the layout's `title`
+  is `false`.
+- **The text**, from the record's first callout of the layout's type.
+  Paragraphs, lists, tables, bold and italic print as written. A link prints as
+  its text: its display text, or else the name of the file it links to. An
+  embedded file, such as `![[Ring.webp|500]]`, HTML and horizontal rules are
+  left out.
+- **The picture** the record's `image` field names, below the text and centred.
+  Transparency is kept, so art stored as [black opacity](illustrate.md#black-opacity)
+  prints as ink on the paper. Without an `image`, the page has no picture and
+  the text has all of the space.
+
+The text takes the largest font size, between the layout's smallest and
+largest and to the nearest half point, at which it fits its share of the page.
+The picture takes the room left, so short text leaves it more than its share.
+Text too long to fit even at the smallest size shrinks to fit, and the picture
+is left out if no room remains.
 
 ## Layouts
 
 A layout says how one kind of record prints as a player handout. Each is a
 [Reference](type.md#reference) record of subtype `Layout` in
-`reference/layouts/`, named for the layout.
+`reference/layouts/`, named for the layout. Each record prints in the layout
+whose `prints` names its type, or its type and subtype; if several do, one must
+be chosen by name, and if none does, the defaults below apply.
 
 An item card, with the record's name, a mark for items that need attunement,
 and links underlined:
@@ -70,5 +116,8 @@ The standard fonts are the Times, Helvetica and Courier families, such as
 vault root; it must hold TrueType outlines, in a `.ttf` file or the first font
 of a `.ttc` collection. A font file is one face, so bold and italic text in it
 is underlined instead.
+
+Every record in one PDF must share a page size and margin; print records whose
+layouts differ in either to separate files.
 
 The vault's Reference schema checks each layout's fields.

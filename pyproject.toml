@@ -18,6 +18,7 @@ dependencies = [
   "markdown-it-py>=3,<4",
   "referencing>=0.35,<1",
   "Pillow>=11,<13",
+  "reportlab>=4.4,<6",
 ]
 
 [project.urls]
@@ -37,6 +38,7 @@ dev = [
   "mypy",
   "types-PyYAML",
   "types-jsonschema",
+  "types-reportlab",
 ]
 
 [tool.hatch.build]

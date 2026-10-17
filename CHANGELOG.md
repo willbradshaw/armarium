@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add the renderer that prints records' callouts as handouts in a PDF, each in its handout layout, adding ReportLab as a dependency.
 - Add `callout` and `title` to handout layouts, to print a callout other than `rules` and leave off the record's name, and let any Content hold a `> [!handout]` callout of the words players are given, such as a letter's.
 - Add handout layouts, Reference records of subtype `Layout` in `reference/layouts/` that say how a kind of record prints as a handout.
 - Allow in the shared `reference/` the subfolders the Reference Type record's `subtype_directories` declares, rather than `styles/` by name.
