@@ -18,8 +18,10 @@ from armarium.extensions import (
     update_extension,
 )
 from armarium.find import find_records
+from armarium.handout import handout
 from armarium.illustrate import CANDIDATE_DIRECTORY, COUNT, generate, ingest, prompt
 from armarium.init import init_vault
+from armarium.layout import LAYOUT_DIRECTORY, OVERRIDES
 from armarium.lib import SUBTYPES, find_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
@@ -84,6 +86,14 @@ def _positive(value: str) -> int:
     if size < 1:
         raise argparse.ArgumentTypeError("must be a whole number of at least 1")
     return size
+
+
+def _mark(value: str) -> dict[str, str]:
+    """Parse a mark given as FIELD=TEXT."""
+    field, equals, text = value.partition("=")
+    if not equals:
+        raise argparse.ArgumentTypeError(f"{value!r} is not FIELD=TEXT")
+    return {"field": field, "text": text}
 
 
 def _min_repeats(value: str) -> int:
@@ -459,6 +469,88 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     picture.add_argument(
         "--overwrite", action="store_true", help="replace an existing image file"
     )
+    printing = commands.add_parser(
+        "handout",
+        help="print records as player handouts in a PDF",
+        description=(
+            "Print each record on a page of its own, in the order given, in one "
+            "PDF: its name, the text of one of its callouts and its picture. A "
+            f"layout, the one named or else the one in {LAYOUT_DIRECTORY}/ that "
+            "prints the record's type, chooses the callout and sets the page, "
+            "the font and the picture's share; the text takes the largest size "
+            "at which it fits. Prints the PDF's path. Changes no record."
+        ),
+    )
+    printing.add_argument(
+        "records",
+        nargs="+",
+        type=Path,
+        metavar="RECORD",
+        help="record to print; with --vault, relative to the vault root",
+    )
+    printing.add_argument(
+        "-o",
+        "--output",
+        required=True,
+        type=Path,
+        help="PDF to write, relative to the current directory",
+    )
+    printing.add_argument(
+        "--layout",
+        metavar="NAME",
+        help=(
+            f"layout in {LAYOUT_DIRECTORY}/ to print every record in (default: "
+            "the one that prints each record's type, if any)"
+        ),
+    )
+    printing.add_argument(
+        "--overwrite", action="store_true", help="replace an existing PDF"
+    )
+    overriding = printing.add_argument_group(
+        "layout fields", "set a field of every record's layout in place of its own"
+    )
+    for name, (kind, meaning) in OVERRIDES.items():
+        flag = "--" + name.replace("_", "-")
+        dest = f"override_{name}"
+        if kind == "switch":
+            overriding.add_argument(
+                flag,
+                action=argparse.BooleanOptionalAction,
+                dest=dest,
+                default=argparse.SUPPRESS,
+                help=meaning,
+            )
+        elif kind == "mark":
+            overriding.add_argument(
+                flag,
+                type=_mark,
+                dest=dest,
+                default=argparse.SUPPRESS,
+                metavar="FIELD=TEXT",
+                help=meaning,
+            )
+            overriding.add_argument(
+                f"--no-{name}",
+                action="store_const",
+                const=None,
+                dest=dest,
+                default=argparse.SUPPRESS,
+                help=f"print no {name}",
+            )
+        else:
+            overriding.add_argument(
+                flag,
+                type=float if kind == "number" else str,
+                dest=dest,
+                default=argparse.SUPPRESS,
+                metavar="N" if kind == "number" else "TEXT",
+                help=meaning,
+            )
+    printing.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the first record)",
+    )
     recording = commands.add_parser(
         "transcribe",
         help="transcribe a recording to raw text with whisper.cpp",
@@ -666,6 +758,38 @@ def main() -> None:
                     ", ".join(candidate.references),
                 )
             print(candidate.path)
+        return
+    if args.command == "handout":
+        try:
+            printed = handout(
+                args.records,
+                args.output,
+                args.vault,
+                layout=args.layout,
+                overrides={
+                    name.removeprefix("override_"): value
+                    for name, value in vars(args).items()
+                    if name.startswith("override_")
+                },
+                overwrite=args.overwrite,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot print the handout: %s", exc)
+            sys.exit(1)
+        for page in printed.pages:
+            picture = (
+                "no picture" if page.picture is None else f"picture {page.picture}in"
+            )
+            logger.info(
+                "%s: layout %s, text %spt, %s",
+                page.record,
+                page.layout or "defaults",
+                f"{page.text_size:g}",
+                picture,
+            )
+            for note in page.notes:
+                logger.warning("%s: %s", page.record, note)
+        print(printed.output)
         return
     if args.command == "transcribe":
         try:

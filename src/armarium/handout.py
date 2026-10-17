@@ -2,7 +2,7 @@
 
 import io
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
@@ -31,7 +31,14 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from armarium.layout import POINTS, Layout, choose_layout, read_layouts
+from armarium.layout import (
+    POINTS,
+    Layout,
+    check_overrides,
+    choose_layout,
+    override,
+    read_layouts,
+)
 from armarium.lib import WIKILINK, wikilink_text
 from armarium.parse import Record
 from armarium.trace import locate
@@ -557,6 +564,7 @@ def handout(
     vault: Path | None = None,
     *,
     layout: str | None = None,
+    overrides: Mapping[str, object] | None = None,
     overwrite: bool = False,
 ) -> Handout:
     """Print records as a handout: one page each, in order, in one PDF.
@@ -574,6 +582,8 @@ def handout(
         vault: Vault root, or None to discover it from the first record.
         layout: The layout in reference/layouts/ to print every record in,
             or None to choose one per record.
+        overrides: Layout fields among OVERRIDES, in frontmatter form,
+            to print with in place of each layout's own.
         overwrite: Whether to replace an existing file at output.
 
     Returns:
@@ -581,9 +591,10 @@ def handout(
 
     Raises:
         ValueError: A record is not a Markdown record in the vault or has no
-            text to print, a layout cannot be read or chosen, the output is not
-            a .pdf path or exists without overwrite, or a picture or font
-            cannot be used.
+            text to print, a layout cannot be read or chosen, an override
+            fails the vault's Reference schema, the output is not a .pdf
+            path or exists without overwrite, or a picture or font cannot
+            be used.
         OSError: A file cannot be read or the PDF cannot be written.
     """
     if not records:
@@ -608,7 +619,11 @@ def handout(
         parsed.append(record)
     assert root is not None
     layouts = read_layouts(root)
-    chosen = [choose_layout(layouts, record, layout) for record in parsed]
+    overrides = overrides or {}
+    check_overrides(root, overrides)
+    chosen = [
+        override(choose_layout(layouts, record, layout), overrides) for record in parsed
+    ]
     sizes = {(item.page, item.margin) for item in chosen}
     if len(sizes) > 1:
         raise ValueError("the layouts differ in page size or margin; print them apart")

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium handout` to print records as handouts in a PDF, with a flag to set each field of their layouts.
 - Add the renderer that prints records' callouts as handouts in a PDF, each in its handout layout, adding ReportLab as a dependency.
 - Add `callout` and `title` to handout layouts, to print a callout other than `rules` and leave off the record's name, and let any Content hold a `> [!handout]` callout of the words players are given, such as a letter's.
 - Add handout layouts, Reference records of subtype `Layout` in `reference/layouts/` that say how a kind of record prints as a handout.

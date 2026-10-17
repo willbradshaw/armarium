@@ -508,6 +508,36 @@ class TestHandout:
         assert chosen.pages == (Page("content/Ring.md", "Gear", 20, None),)
         assert named.pages == (Page("content/Ring.md", "Big", 30, None),)
 
+    def test_overrides_take_the_place_of_layout_fields(
+        self, vault: Path, tmp_path: Path
+    ) -> None:
+        (vault / "reference/layouts").mkdir()
+        (vault / "reference/layouts/Gear.md").write_text(
+            '---\ntype: "[[Reference]]"\nsubtype: Layout\nprints: [Content/Gear]\n'
+            "max_text_size: 20\n---\n"
+        )
+        write_record(vault, "Ring")
+        result = handout(
+            [Path("content/Ring.md")],
+            tmp_path / "loot.pdf",
+            vault,
+            overrides={"max_text_size": 15, "min_text_size": 10},
+        )
+        assert result.pages == (Page("content/Ring.md", "Gear", 15, None),)
+
+    def test_refuses_an_override_the_schema_refuses(
+        self, vault: Path, tmp_path: Path
+    ) -> None:
+        write_record(vault, "Ring")
+        with pytest.raises(ValueError, match="^--margin: '2furlongs' does not match"):
+            handout(
+                [Path("content/Ring.md")],
+                tmp_path / "loot.pdf",
+                vault,
+                overrides={"margin": "2furlongs"},
+            )
+        assert not (tmp_path / "loot.pdf").exists()
+
     @pytest.mark.parametrize(
         ("records", "output", "message"),
         [
@@ -560,9 +590,10 @@ class TestHandout:
         write_record(vault, "Ring")
         lore = write_record(vault, "Rumour")
         lore.write_text(lore.read_text().replace("subtype: Gear", "subtype: Lore"))
+        records = [Path("content/Ring.md"), Path("content/Rumour.md")]
         with pytest.raises(ValueError, match="differ in page size or margin"):
-            handout(
-                [Path("content/Ring.md"), Path("content/Rumour.md")],
-                tmp_path / "loot.pdf",
-                vault,
-            )
+            handout(records, tmp_path / "loot.pdf", vault)
+        result = handout(
+            records, tmp_path / "loot.pdf", vault, overrides={"page": "a4"}
+        )
+        assert len(result.pages) == 2

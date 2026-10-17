@@ -9,10 +9,14 @@ import yaml
 
 from armarium.layout import (
     LAYOUT_DIRECTORY,
+    OVERRIDES,
     POINTS,
     Layout,
     Mark,
+    _fields,
+    check_overrides,
     choose_layout,
+    override,
     parse_layout,
     points,
     read_layouts,
@@ -77,6 +81,30 @@ class TestLayoutAppliesTo:
         self, prints: tuple[str, ...], kind: str, subtype: str, expected: bool
     ) -> None:
         assert Layout(prints=prints).applies_to(kind, subtype) is expected
+
+
+class TestFields:
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            ({}, {}),
+            ({"callout": None, "margin": None, "prints": ["Content"]}, {}),
+            (
+                {"title": False, "max_text_size": 18, "font": "Helvetica"},
+                {"title": False, "max_text_size": 18, "font": "Helvetica"},
+            ),
+            ({"margin": "1in"}, {"margin": 72.0}),
+            ({"mark": {"field": "a", "text": "A"}}, {"mark": Mark("a", "A")}),
+            ({"mark": None}, {"mark": None}),
+        ],
+    )
+    def test_reads_the_fields_that_are_set(
+        self, data: dict[str, Any], expected: dict[str, Any]
+    ) -> None:
+        assert _fields(data) == expected
+
+    def test_covers_every_field_but_name_and_prints(self) -> None:
+        assert set(OVERRIDES) == set(Layout.__dataclass_fields__) - {"name", "prints"}
 
 
 class TestParseLayout:
@@ -174,6 +202,65 @@ class TestReadLayouts:
             ValueError, match=f"^reference/layouts/Gear.md: frontmatter.{message}"
         ):
             read_layouts(tmp_path)
+
+
+class TestCheckOverrides:
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {},
+            {"callout": "handout", "title": False, "margin": "18mm"},
+            {"max_text_size": 18.5, "image_share": 0.3},
+            {"mark": {"field": "attunement", "text": "A"}},
+            {"mark": None},
+        ],
+    )
+    def test_accepts_what_a_layout_may_hold(
+        self, tmp_path: Path, overrides: dict[str, object]
+    ) -> None:
+        check_overrides(tmp_path, overrides)
+
+    @pytest.mark.parametrize(
+        ("overrides", "message"),
+        [
+            ({"margin": "2furlongs"}, "^--margin: '2furlongs' does not match"),
+            ({"page": "legal"}, "^--page: 'legal' is not one of"),
+            ({"image_share": 1.5}, "^--image-share: 1.5 is greater than"),
+            ({"mark": {"field": "", "text": "A"}}, "^--mark: "),
+            ({"prints": ["Content"]}, "^cannot override prints$"),
+            ({"name": "x", "colour": "red"}, "^cannot override colour, name$"),
+        ],
+    )
+    def test_refuses_what_a_layout_may_not_hold(
+        self, tmp_path: Path, overrides: dict[str, object], message: str
+    ) -> None:
+        with pytest.raises(ValueError, match=message):
+            check_overrides(tmp_path, overrides)
+
+    def test_needs_the_vault_schema(self, tmp_path: Path) -> None:
+        (tmp_path / "reference/schemas/reference.schema.json").unlink()
+        with pytest.raises(ValueError, match="no vault-local schema for Reference"):
+            check_overrides(tmp_path, {"title": False})
+
+
+class TestOverride:
+    def test_replaces_only_the_fields_given(self) -> None:
+        layout = Layout(
+            name="Gear", prints=("Content/Gear",), font="Helvetica", mark=Mark("a", "A")
+        )
+        assert override(layout, {"title": False, "margin": "1in", "mark": None}) == (
+            Layout(
+                name="Gear",
+                prints=("Content/Gear",),
+                font="Helvetica",
+                title=False,
+                margin=72.0,
+            )
+        )
+
+    def test_without_overrides_the_layout_is_unchanged(self) -> None:
+        layout = Layout(name="Gear", max_text_size=30)
+        assert override(layout, {}) == layout
 
 
 class TestChooseLayout:
