@@ -58,6 +58,9 @@ agrees, then build the prompt again.
 
 ## 3. Paint candidates
 
+If the GM gives you a picture of their own, paint nothing: take it in as the
+candidate at step 5.
+
 The image model charges for every candidate. Tell the GM how many you will
 paint, three unless they say otherwise, and paint only when they agree.
 

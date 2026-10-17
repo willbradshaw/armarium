@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Ship the `make-handouts` agent skill, point `prepare-session` to it, and let `illustrate-record` take in a picture the GM supplies.
 - Add `armarium handout` to print records as handouts in a PDF, with a flag to set each field of their layouts.
 - Add the renderer that prints records' callouts as handouts in a PDF, each in its handout layout, adding ReportLab as a dependency.
 - Add `callout` and `title` to handout layouts, to print a callout other than `rules` and leave off the record's name, and let any Content hold a `> [!handout]` callout of the words players are given, such as a letter's.
