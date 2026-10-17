@@ -8,6 +8,39 @@ page prints the `> [!rules]` callout, as for Gear.
 
 A record prints only if it has a callout of its layout's type with text in it.
 
+## Printing
+
+```sh
+armarium handout "content/Lucky Ring.md" "content/Rope of Climbing.md" -o loot.pdf
+armarium handout "content/Harbourmaster's Letter.md" --layout Letter -o letter.pdf
+armarium handout "content/Lucky Ring.md" --max-text-size 18 --no-mark -o ring.pdf
+```
+
+`armarium handout RECORD... -o FILE` prints the records in one PDF. It prints
+the PDF's path and changes no record.
+
+Each `RECORD` is a record's file path, as for
+[`armarium trace`](trace.md#choosing-the-file): without `--vault`, absolute or
+relative to the current directory; with `--vault VAULT`, relative to the vault
+root. Every record must be in the same vault. The command stops on a record
+without text to print.
+
+`-o FILE` is the PDF to write, relative to the current directory. Missing
+folders are created. The command replaces no file unless given `--overwrite`.
+
+`--layout NAME` prints every record in `reference/layouts/NAME.md`. Without it,
+each record prints in its own [layout](#layouts), and the command stops if
+several apply to one record.
+
+A flag for each layout field but `prints` sets that field for every record, in
+place of its layout's own; the [fields table](#layouts) names each flag. A
+switch such as `--title` has a `--no-` form, such as `--no-title`. `--mark`
+takes `FIELD=TEXT`, as in `--mark attunement=A`, and `--no-mark` prints no mark.
+The vault's Reference schema checks each value as it would a layout's.
+
+The command logs each page's layout, text size and picture height, and warns
+when text shrinks below the smallest size or a picture is left out.
+
 ## What to print
 
 The rules callout that opens Gear prints as an item card. Anything else the
@@ -55,7 +88,7 @@ A layout says how one kind of record prints as a player handout. Each is a
 [Reference](type.md#reference) record of subtype `Layout` in
 `reference/layouts/`, named for the layout. Each record prints in the layout
 whose `prints` names its type, or its type and subtype; if several do, one must
-be chosen by name, and if none does, the defaults below apply.
+be chosen with `--layout`, and if none does, the defaults below apply.
 
 An item card, with the record's name, a mark for items that need attunement,
 and links underlined:
@@ -91,22 +124,22 @@ line_spacing: 1.8
 
 Every field is optional:
 
-| Field | Holds | Default |
-| --- | --- | --- |
-| `prints` | the record types the layout applies to, each a type or `Type/Subtype` | none |
-| `callout` | the type of the callout whose text prints, such as `rules` or `handout` | `rules` |
-| `title` | `false` to leave the record's name off the page | `true` |
-| `page` | the paper size: `letter` or `a4` | `letter` |
-| `margin` | the margin on every side, as a length such as `0.7in`, `18mm`, `2cm` or `50pt` | `0.7in` |
-| `font` | a standard PDF font, or the path of a TrueType font file | `Times-Roman` |
-| `title_size` | the name's font size, in points | 36 |
-| `min_text_size` | the text's smallest font size, in points | 12 |
-| `max_text_size` | the text's largest font size, in points | 24 |
-| `line_spacing` | the distance between lines, as a multiple of the font size | 1.2 |
-| `image_share` | the share of the space below the name that the text leaves to the picture, between 0 and 1 | 0.5 |
-| `mark` | a `field` and `text`: the text prints beside the name, in the page's top right corner, when the record's field is `true` | none |
-| `underline_links` | `true` to underline link text | `false` |
-| `lowercase_links` | `true` to print link text in lowercase | `false` |
+| Field | Flag | Holds | Default |
+| --- | --- | --- | --- |
+| `prints` | none | the record types the layout applies to, each a type or `Type/Subtype` | none |
+| `callout` | `--callout` | the type of the callout whose text prints, such as `rules` or `handout` | `rules` |
+| `title` | `--[no-]title` | `false` to leave the record's name off the page | `true` |
+| `page` | `--page` | the paper size: `letter` or `a4` | `letter` |
+| `margin` | `--margin` | the margin on every side, as a length such as `0.7in`, `18mm`, `2cm` or `50pt` | `0.7in` |
+| `font` | `--font` | a standard PDF font, or the path of a TrueType font file | `Times-Roman` |
+| `title_size` | `--title-size` | the name's font size, in points | 36 |
+| `min_text_size` | `--min-text-size` | the text's smallest font size, in points | 12 |
+| `max_text_size` | `--max-text-size` | the text's largest font size, in points | 24 |
+| `line_spacing` | `--line-spacing` | the distance between lines, as a multiple of the font size | 1.2 |
+| `image_share` | `--image-share` | the share of the space below the name that the text leaves to the picture, between 0 and 1 | 0.5 |
+| `mark` | `--mark FIELD=TEXT`, `--no-mark` | a `field` and `text`: the text prints beside the name, in the page's top right corner, when the record's field is `true` | none |
+| `underline_links` | `--[no-]underline-links` | `true` to underline link text | `false` |
+| `lowercase_links` | `--[no-]lowercase-links` | `true` to print link text in lowercase | `false` |
 
 The mark sits beside the name, so a layout without a title prints no mark. The
 body is free Markdown, such as a note on what the layout is for.

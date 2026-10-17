@@ -16,12 +16,14 @@ import pytest
 from armarium import cli
 from armarium.cli import (
     _jobs,
+    _mark,
     _min_repeats,
     _positive,
     _subtype_choices,
     main,
     parse_args,
 )
+from armarium.handout import Handout, Page
 from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
@@ -2523,6 +2525,176 @@ class TestIllustrateGenerateCommand:
             parse_args(["illustrate", "generate", *arguments])
         assert exc.value.code == 2
         assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestHandoutCommand:
+    def test_prints_the_pdf_and_logs_each_page(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        calls: list[tuple[object, ...]] = []
+
+        def handout(*args: object, **options: object) -> Handout:
+            calls.append((*args, options))
+            return Handout(
+                Path("v"),
+                Path("loot.pdf"),
+                (
+                    Page("content/Ring.md", "Gear", 22.5, 4.1),
+                    Page("content/Rope.md", "", 12, None, ("its text overflows",)),
+                ),
+            )
+
+        monkeypatch.setattr(cli, "handout", handout)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "armarium",
+                "handout",
+                "content/Ring.md",
+                "content/Rope.md",
+                "-o",
+                "loot.pdf",
+                "--layout",
+                "Gear",
+                "--overwrite",
+                "--vault",
+                "v",
+                "--no-title",
+                "--max-text-size",
+                "18",
+            ],
+        )
+        main()
+        output = capsys.readouterr()
+        assert output.out == "loot.pdf\n"
+        assert (
+            "INFO: content/Ring.md: layout Gear, text 22.5pt, picture 4.1in"
+            in output.err
+        )
+        assert (
+            "INFO: content/Rope.md: layout defaults, text 12pt, no picture"
+            in output.err
+        )
+        assert "WARNING: content/Rope.md: its text overflows" in output.err
+        assert calls == [
+            (
+                [Path("content/Ring.md"), Path("content/Rope.md")],
+                Path("loot.pdf"),
+                Path("v"),
+                {
+                    "layout": "Gear",
+                    "overrides": {"title": False, "max_text_size": 18.0},
+                    "overwrite": True,
+                },
+            )
+        ]
+
+    def test_exits_with_one_when_it_cannot_print(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        missing = str(tmp_path / "missing.md")
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "handout", missing, "-o", "loot.pdf"]
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "ERROR: Cannot print the handout: " in output.err
+
+    def test_defaults(self) -> None:
+        args = parse_args(["handout", "a.md", "-o", "out.pdf"])
+        assert (args.records, args.output, args.layout) == (
+            [Path("a.md")],
+            Path("out.pdf"),
+            None,
+        )
+        assert (args.overwrite, args.vault) == (False, None)
+
+    def test_sets_no_layout_field_unless_asked(self) -> None:
+        args = parse_args(["handout", "a.md", "-o", "out.pdf"])
+        assert not [name for name in vars(args) if name.startswith("override_")]
+
+    @pytest.mark.parametrize(
+        ("arguments", "expected"),
+        [
+            (["--callout", "handout"], {"callout": "handout"}),
+            (["--title"], {"title": True}),
+            (["--no-title"], {"title": False}),
+            (["--page", "a4", "--margin", "18mm"], {"page": "a4", "margin": "18mm"}),
+            (["--font", "Helvetica"], {"font": "Helvetica"}),
+            (
+                ["--title-size", "40", "--min-text-size", "10"],
+                {"title_size": 40.0, "min_text_size": 10.0},
+            ),
+            (
+                ["--max-text-size", "20.5", "--line-spacing", "1.5"],
+                {"max_text_size": 20.5, "line_spacing": 1.5},
+            ),
+            (["--image-share", "0.3"], {"image_share": 0.3}),
+            (
+                ["--mark", "attunement=A"],
+                {"mark": {"field": "attunement", "text": "A"}},
+            ),
+            (["--mark", "magic=A=B"], {"mark": {"field": "magic", "text": "A=B"}}),
+            (["--no-mark"], {"mark": None}),
+            (
+                ["--underline-links", "--no-lowercase-links"],
+                {"underline_links": True, "lowercase_links": False},
+            ),
+        ],
+    )
+    def test_sets_layout_fields(
+        self, arguments: list[str], expected: dict[str, object]
+    ) -> None:
+        args = parse_args(["handout", "a.md", "-o", "out.pdf", *arguments])
+        assert {
+            name.removeprefix("override_"): value
+            for name, value in vars(args).items()
+            if name.startswith("override_")
+        } == expected
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["a.md"],
+            ["-o", "out.pdf"],
+            ["a.md", "-o", "out.pdf", "--mark", "attunement"],
+            ["a.md", "-o", "out.pdf", "--max-text-size", "big"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["handout", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+
+class TestMark:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            ("attunement=A", {"field": "attunement", "text": "A"}),
+            ("magic=A=B", {"field": "magic", "text": "A=B"}),
+            ("=", {"field": "", "text": ""}),
+        ],
+    )
+    def test_splits_at_the_first_equals(
+        self, value: str, expected: dict[str, str]
+    ) -> None:
+        assert _mark(value) == expected
+
+    def test_refuses_a_value_without_an_equals(self) -> None:
+        with pytest.raises(argparse.ArgumentTypeError, match="is not FIELD=TEXT"):
+            _mark("attunement")
 
 
 class TestPositive:

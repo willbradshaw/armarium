@@ -1,15 +1,37 @@
 """Read a vault's handout layouts: how each kind of record prints as a handout."""
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from armarium.lib import matches_kind
-from armarium.parse import Record
-from armarium.schemas import read_subtype_records
+from armarium.parse import Body, Frontmatter, Record
+from armarium.schemas import read_subtype_records, select_schema
 
 LAYOUT_DIRECTORY = "reference/layouts"
+
+# Each layout field that may be given in place of a layout's own, with the
+# kind of value it takes (text, a number, a switch or a mark) and what it sets.
+OVERRIDES = {
+    "callout": ("text", "the type of the callout whose text prints"),
+    "title": ("switch", "print the record's name at the top"),
+    "page": ("text", "the paper size: letter or a4"),
+    "margin": ("text", "the margin on every side, such as 0.7in or 18mm"),
+    "font": ("text", "a standard PDF font, or the path of a TrueType font file"),
+    "title_size": ("number", "the name's font size, in points"),
+    "min_text_size": ("number", "the text's smallest font size, in points"),
+    "max_text_size": ("number", "the text's largest font size, in points"),
+    "line_spacing": ("number", "the distance between lines, times the font size"),
+    "image_share": (
+        "number",
+        "the share of the space below the name left to the picture, 0 to 1",
+    ),
+    "mark": ("mark", "TEXT beside the name when the record's FIELD is true"),
+    "underline_links": ("switch", "underline link text"),
+    "lowercase_links": ("switch", "print link text in lowercase"),
+}
 
 # Points in each unit a length may be given in.
 POINTS = {"pt": 1.0, "in": 72.0, "cm": 72 / 2.54, "mm": 72 / 25.4}
@@ -104,6 +126,31 @@ class Layout:
         return matches_kind(self.prints, kind, subtype)
 
 
+def _fields(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Read the fields a layout sets, other than prints.
+
+    Args:
+        data: Layout fields as frontmatter holds them, such as margin as a
+            length and mark as a mapping.
+
+    Returns:
+        dict[str, Any]: Layout's attribute for each field that is set, with
+            margin in points and mark a Mark. A null field is not set, except
+            mark, whose null removes the mark.
+    """
+    fields = {
+        name: data[name]
+        for name in OVERRIDES
+        if name not in ("margin", "mark") and data.get(name) is not None
+    }
+    if data.get("margin") is not None:
+        fields["margin"] = points(data["margin"])
+    if "mark" in data:
+        mark = data["mark"]
+        fields["mark"] = None if mark is None else Mark(mark["field"], mark["text"])
+    return fields
+
+
 def parse_layout(record: Record) -> Layout:
     """Read a layout from its record.
 
@@ -117,34 +164,59 @@ def parse_layout(record: Record) -> Layout:
         Layout: The layout the record declares.
     """
     data = record.frontmatter
-    defaults = Layout()
-    fields: dict[str, Any] = {
-        name: data.get(name)
-        for name in (
-            "callout",
-            "title",
-            "page",
-            "font",
-            "title_size",
-            "min_text_size",
-            "max_text_size",
-            "line_spacing",
-            "image_share",
-            "underline_links",
-            "lowercase_links",
-        )
-        if data.get(name) is not None
-    }
-    mark = data.get("mark")
-    margin = data.get("margin")
     return replace(
-        defaults,
+        Layout(),
         name=record.path.stem,
         prints=tuple(data.get("prints") or ()),
-        margin=defaults.margin if margin is None else points(margin),
-        mark=None if mark is None else Mark(mark["field"], mark["text"]),
-        **fields,
+        **_fields(data),
     )
+
+
+def check_overrides(root: Path, overrides: Mapping[str, object]) -> None:
+    """Check layout fields given in place of a layout's own, as its record would be.
+
+    Args:
+        root: Vault root, whose Reference schema checks the fields.
+        overrides: Fields among OVERRIDES, in frontmatter form.
+
+    Raises:
+        ValueError: A field is not among OVERRIDES, the vault has no
+            Reference schema, or a value fails it.
+    """
+    unknown = sorted(set(overrides) - set(OVERRIDES))
+    if unknown:
+        raise ValueError(f"cannot override {', '.join(unknown)}")
+    record = Record(
+        root / LAYOUT_DIRECTORY / "overrides.md",
+        Frontmatter({"type": "[[Reference]]", "subtype": "Layout", **overrides}),
+        Body(""),
+    )
+    schema, diagnostics = select_schema(record, root)
+    if schema is not None:
+        diagnostics = schema.validate(record)
+    if diagnostics:
+        failure = diagnostics[0]
+        _, _, path = failure.field.partition(".")
+        name = path.partition(".")[0]
+        raise ValueError(
+            f"--{name.replace('_', '-')}: {failure.message}"
+            if name
+            else failure.message
+        )
+
+
+def override(layout: Layout, overrides: Mapping[str, object]) -> Layout:
+    """Replace some of a layout's fields.
+
+    Args:
+        layout: The layout.
+        overrides: Fields that check_overrides accepts, in frontmatter form.
+
+    Returns:
+        Layout: The layout with those fields in place of its own; its name
+            and prints are unchanged.
+    """
+    return replace(layout, **_fields(overrides))
 
 
 def read_layouts(root: Path) -> dict[str, Layout]:
