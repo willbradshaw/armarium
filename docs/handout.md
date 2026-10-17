@@ -32,14 +32,7 @@ folders are created. The command replaces no file unless given `--overwrite`.
 each record prints in its own [layout](#layouts), and the command stops if
 several apply to one record.
 
-A flag for each layout field but `prints` sets that field for every record, in
-place of its layout's own; the [fields table](#layouts) names each flag. A
-switch such as `--title` has a `--no-` form, such as `--no-title`. `--mark`
-takes `FIELD=TEXT`, as in `--mark attunement=A`, and `--no-mark` prints no mark.
-The vault's Reference schema checks each value as it would a layout's.
-
-The command logs each page's layout, text size and picture height, and warns
-when text shrinks below the smallest size or a picture is left out.
+Flags set individual [layout fields](#layouts) in place of the layout's own.
 
 ## What to print
 
