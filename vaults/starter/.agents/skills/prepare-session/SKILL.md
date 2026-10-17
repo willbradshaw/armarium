@@ -273,5 +273,8 @@ armarium validate .
 Fix every error your change introduced. If the vault had errors before you
 started, report them; do not fix them unasked.
 
+If the Session prepares anything the players will be handed, such as rewards
+or a letter, offer to print it with the `make-handouts` skill.
+
 Then say which Session you prepared, which records you created or changed, and
 what is still to decide.

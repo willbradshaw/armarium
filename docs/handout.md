@@ -147,3 +147,10 @@ Every record in one PDF must share a page size and margin; print records whose
 layouts differ in either to separate files.
 
 The vault's Reference schema checks each layout's fields.
+
+## With an agent
+
+A new vault ships the `make-handouts` [skill](agents.md), which walks a coding
+agent through printing handouts: it lists the records with the GM, asks the GM
+for any text or picture a record lacks, prints them and passes on the
+warnings.
