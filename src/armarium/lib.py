@@ -6,7 +6,7 @@ import re
 import struct
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import TYPE_CHECKING, Literal
 
 from armarium.logging import logger
@@ -208,7 +208,7 @@ class Findings:
             record: Parsed record inside the indexed vault.
             index: Index supplying the vault root the path is relative to.
         """
-        return cls(record.path.relative_to(index.root).as_posix())
+        return cls(relative_posix(record.path, index.root))
 
     def __add__(self, other: "Findings") -> "Findings":
         """Combine two collections for the same file, in order.
@@ -385,6 +385,48 @@ class Result:
 # -----------------------------------------------------------------------------
 # Vault discovery
 # -----------------------------------------------------------------------------
+
+
+def relative_parts(path: PurePath, root: PurePath) -> tuple[str, ...]:
+    """Split a path into its parts below a directory containing it.
+
+    The same as ``path.relative_to(root).parts``, which builds a path for
+    each of root's parents in turn: validation does this for every record
+    and link.
+
+    Args:
+        path: Path inside root, in the same absolute or relative form.
+        root: Containing directory.
+
+    Returns:
+        tuple[str, ...]: The parts after root's, empty for root itself.
+
+    Raises:
+        ValueError: The path is not root or inside it.
+    """
+    parts, base = path.parts, root.parts
+    if parts[: len(base)] == base:
+        return parts[len(base) :]
+    return path.relative_to(root).parts
+
+
+def relative_posix(path: PurePath, root: PurePath) -> str:
+    """Write a path relative to a directory containing it, with slashes.
+
+    The same as ``path.relative_to(root).as_posix()``; see relative_parts.
+
+    Raises:
+        ValueError: The path is not root or inside it.
+    """
+    return "/".join(relative_parts(path, root)) or "."
+
+
+def is_inside(path: PurePath, root: PurePath) -> bool:
+    """Tell whether a path is a directory or lies inside it.
+
+    The same as ``path.is_relative_to(root)``; see relative_parts.
+    """
+    return path.parts[: len(root.parts)] == root.parts or path.is_relative_to(root)
 
 
 class VaultNotFoundError(ValueError):
@@ -593,7 +635,7 @@ def find_campaign(path: Path, root: Path) -> str | None:
     Raises:
         ValueError: The path is not inside root.
     """
-    parts = path.relative_to(root).parts
+    parts = relative_parts(path, root)
     if len(parts) > 2 and parts[0] == "campaigns" and CAMPAIGN_NAME.fullmatch(parts[1]):
         return parts[1]
     return None
