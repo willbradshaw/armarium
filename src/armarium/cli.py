@@ -27,7 +27,7 @@ from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.painters import PAINTERS
 from armarium.player import add_player
-from armarium.relink import Plan, validate_changed
+from armarium.relink import Plan
 from armarium.rename import rename
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
@@ -693,14 +693,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def report_plan(plan: Plan, *, dry_run: bool) -> None:
-    """Print a plan's changes, then validate the records it changed.
+    """Print a plan's changes and the links it leaves as written.
 
     Args:
         plan: The changes, made unless this is a dry run.
         dry_run: Whether the changes were only planned.
-
-    Raises:
-        SystemExit: Status 1 when a changed record fails validation.
     """
     for change in plan.changes:
         print(change.output)
@@ -715,21 +712,6 @@ def report_plan(plan: Plan, *, dry_run: bool) -> None:
         "to rewrite" if dry_run else "rewritten",
         files,
         "file" if files == 1 else "files",
-    )
-    if dry_run:
-        return
-    result = validate_changed(plan.root, plan.touched)
-    for diagnostic in result.diagnostics:
-        if diagnostic.severity != "info":
-            diagnostic.report()
-    if result.failed:
-        failed_files = result.failed_files
-        noun = "file" if failed_files == 1 else "files"
-        logger.error("%s changed %s failed validation", failed_files, noun)
-        sys.exit(1)
-    logger.info(
-        "The changed records are valid; run armarium validate on the vault "
-        "to check the rest"
     )
 
 

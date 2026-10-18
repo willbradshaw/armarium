@@ -4,7 +4,7 @@ import codecs
 import json
 import os
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -16,7 +16,6 @@ from armarium.extensions import is_template
 from armarium.index import VaultIndex, link_key
 from armarium.lib import (
     WIKILINK,
-    Result,
     find_files,
     record_files,
     relative_posix,
@@ -25,7 +24,6 @@ from armarium.lib import (
 )
 from armarium.parse import Body, Frontmatter
 from armarium.trace import mentioning, sharing, spellings
-from armarium.validate import validate_markdown
 
 # Failures decoding or parsing a record's text.
 PARSE_ERRORS = (UnicodeError, yaml.YAMLError, ValueError, RecursionError)
@@ -86,7 +84,6 @@ class Plan:
     """Every file change one command makes, worked out before any is made.
 
     Attributes:
-        root: Resolved vault directory.
         texts: New contents of each file whose text changes, by its path
             before any rename.
         renamed: Each renamed file's path to its new path.
@@ -96,22 +93,11 @@ class Plan:
             with why, for the user to check.
     """
 
-    root: Path
     texts: dict[Path, str] = field(default_factory=dict)
     renamed: dict[Path, Path] = field(default_factory=dict)
     deleted: set[Path] = field(default_factory=set)
     changes: list[Change] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
-
-    @property
-    def touched(self) -> list[Path]:
-        """List the records that remain after the change and were changed.
-
-        Returns:
-            list[Path]: Their paths after any rename, in path order.
-        """
-        paths = {self.renamed.get(path, path) for path in [*self.texts, *self.renamed]}
-        return sorted(paths - self.deleted)
 
     def apply(self) -> None:
         """Write the new texts, then rename and delete files.
@@ -488,7 +474,7 @@ class Relinker:
             ValueError: A record that may link to a touched file cannot be
                 parsed, or its frontmatter cannot be rewritten; each is named.
         """
-        plan = Plan(self.root)
+        plan = Plan()
         problems: list[str] = []
         for path, data in mentioning(self.root, self.targets):
             relative = relative_posix(path, self.root)
@@ -651,17 +637,3 @@ def _scalar(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(_scalar(item) or "null" for item in value) + "]"
     return json.dumps(value, ensure_ascii=False)
-
-
-def validate_changed(root: Path, paths: Iterable[Path]) -> Result:
-    """Validate the records a change touched, sharing one index.
-
-    Args:
-        root: Resolved vault directory.
-        paths: The records, as Plan.touched gives them.
-
-    Returns:
-        Result: Their findings and counts.
-    """
-    index = VaultIndex(root)
-    return Result.combine(validate_markdown(path, root, index=index) for path in paths)

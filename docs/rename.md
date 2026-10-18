@@ -6,9 +6,8 @@ armarium rename "content/Quay Nine.md" "Quay Ten" --vault ../my-vault
 
 `armarium rename PATH NAME` renames a [record](record.md) in its folder and
 rewrites every [link](record.md#links) to it in the
-[vault](vault.md), then validates the records it changed. Rename records this
-way rather than in a file manager: a file renamed by hand leaves every link to
-it broken.
+[vault](vault.md). Rename records this way rather than in a file manager: a
+file renamed by hand leaves every link to it broken.
 
 ## Choosing the record and the name
 
@@ -76,8 +75,6 @@ campaigns/campaign_1/sessions/S-1-002.md	Notes > Events	65	[[Quay Nine|the quay]
 
 `--dry-run` prints the same lines and changes nothing.
 
-The command then validates every record it changed and reports their
-findings, as [`armarium validate`](validate.md#output) does. It exits with `0`
-when they are valid, `1` when one is not or the record cannot be renamed, and
-`2` for a usage error. Run `armarium validate` on the vault afterwards to
-check the rest.
+The command exits with `0` once the record is renamed, `1` when it cannot
+be renamed, and `2` for a usage error. Run [`armarium validate`](validate.md)
+on the vault afterwards.

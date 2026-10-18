@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from armarium.parse import Frontmatter
-from armarium.relink import validate_changed
 from armarium.rename import check_name, clashes, read_record, rename
 from armarium.validate import validate
 
@@ -137,7 +136,6 @@ class TestRename:
         text = (example / "campaigns/campaign_1/content/Quay Nine.md").read_text()
         assert 'parent_location: "[[Briselle]]"' in text
         assert "[[Briselle|Briselle]]" in text
-        assert not validate_changed(example, plan.touched).failed
         assert not validate(example).failed
 
     def test_lengthens_links_to_a_record_of_another_campaign(

@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from armarium.lib import Result
 from armarium.relink import (
     _DROP,
     Change,
@@ -19,7 +18,6 @@ from armarium.relink import (
     _write,
     emit,
     rewrite_frontmatter,
-    validate_changed,
 )
 
 SESSION = """---
@@ -90,18 +88,10 @@ class TestChangeOutput:
         assert change.output == expected
 
 
-class TestPlanTouched:
-    def test_paths_after_the_change(self, tmp_path: Path) -> None:
-        a, b, c, d = (tmp_path / name for name in ("a.md", "b.md", "c.md", "d.md"))
-        plan = Plan(tmp_path, texts={c: "", d: ""}, renamed={a: b}, deleted={d})
-        assert plan.touched == [b, c]
-
-
 class TestPlanApply:
     def test_writes_renames_and_deletes(self, tmp_path: Path) -> None:
         old, other, gone = (write(tmp_path, n, "x") for n in ("a.md", "b.md", "c.md"))
         plan = Plan(
-            tmp_path,
             texts={old: "new a", other: "new b", gone: "never written"},
             renamed={old: tmp_path / "A2.md"},
             deleted={gone},
@@ -113,7 +103,7 @@ class TestPlanApply:
 
     def test_case_only_rename(self, tmp_path: Path) -> None:
         old = write(tmp_path, "quay.md", "x")
-        Plan(tmp_path, renamed={old: tmp_path / "Quay.md"}).apply()
+        Plan(renamed={old: tmp_path / "Quay.md"}).apply()
         assert [p.name for p in tmp_path.iterdir()] == ["Quay.md"]
 
 
@@ -685,15 +675,3 @@ class TestScalar:
     )
     def test_scalar(self, value: object, expected: str) -> None:
         assert _scalar(value) == expected
-
-
-class TestValidateChanged:
-    def test_validates_each_path(self, tmp_path: Path) -> None:
-        root = tmp_path.resolve() / "vault"
-        (root / "reference/types").mkdir(parents=True)
-        (root / "campaigns").mkdir()
-        record = write(root, "content/Quay.md", "no frontmatter\n")
-        result = validate_changed(root, [record])
-        assert isinstance(result, Result)
-        assert result.checked == 1
-        assert [d.rule for d in result.diagnostics] == ["record.type"]
