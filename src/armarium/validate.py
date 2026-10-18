@@ -23,6 +23,7 @@ from armarium.index import (
     link_key,
     name_key,
     read_aliases,
+    session_number,
 )
 from armarium.lib import (
     CAMPAIGN_NAME,
@@ -750,9 +751,7 @@ def _read_appearances(
     findings = Findings.from_record(record, index)
     # 1. Find and validate the Appearances section.
     history: list[tuple[str, int, Path]] = []
-    sections = [
-        s for s in record.body.walk() if s.level == 2 and s.title == "Appearances"
-    ]
+    sections = record.body.titled("Appearances")
     if findings.diagnose(not sections, "history.format", "no Appearances heading"):
         return history, findings
     section = sections[0]
@@ -805,12 +804,13 @@ def _read_appearances(
     scope = find_campaign(record.path, index.root)
     for line, session in linked:
         stem = session.path.stem
-        ordinal = session.frontmatter.get("session_number")
+        ordinal = session_number(session.frontmatter)
         campaign = find_campaign(session.path, index.root)
-        if isinstance(ordinal, bool) or not isinstance(ordinal, int):
+        if ordinal is None:
+            value = session.frontmatter.get("session_number")
             findings.add(
                 "history.entry",
-                f"invalid session number in {stem}: {ordinal!r}",
+                f"invalid session number in {stem}: {value!r}",
                 line=line,
             )
             continue
@@ -948,8 +948,8 @@ def validate_clue(record: Record, index: VaultIndex) -> Findings:
         session = (
             index.parse(resolved)[0] if resolved and resolved.suffix == ".md" else None
         )
-        ordinal = session.frontmatter.get("session_number") if session else None
-        if error or isinstance(ordinal, bool) or not isinstance(ordinal, int):
+        ordinal = session_number(session.frontmatter) if session else None
+        if error or ordinal is None:
             reason = error or f"{field} does not link a numbered Session"
             findings.add("history.order", f"cannot order {field}: {reason}", field)
             continue
@@ -1541,10 +1541,9 @@ def validate_filename(record: Record, index: VaultIndex) -> Findings:
         findings.add("record.identity", f"{kind} filename must match {pattern}")
         return findings
     # 3. Compare a Session's ordinal with its filename
-    ordinal = record.frontmatter.get("session_number")
-    # bool is an int subclass, so compare the exact type.
+    ordinal = session_number(record.frontmatter)
     findings.diagnose(
-        kind == "Session" and (type(ordinal) is not int or ordinal != int(match[1])),
+        kind == "Session" and ordinal != int(match[1]),
         "record.identity",
         "session_number must match filename ordinal",
         "session_number",

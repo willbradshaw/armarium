@@ -23,6 +23,7 @@ from armarium.index import (
     read_aliases,
     read_names,
     read_record,
+    session_number,
     spellings,
 )
 from armarium.index import sharing as files_sharing
@@ -986,3 +987,54 @@ class TestFindRecords:
         assert find_records(example, example / "content") == [
             path for path in find_records(example) if path.parent == example / "content"
         ]
+
+
+class TestSessionNumber:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [(3, 3), (0, 0), (True, None), ("3", None), (3.0, None), (None, None)],
+    )
+    def test_whole_numbers_only(self, value: object, expected: int | None) -> None:
+        assert session_number(Frontmatter({"session_number": value})) == expected
+
+    def test_missing(self) -> None:
+        assert session_number(Frontmatter()) is None
+
+
+class TestVaultIndexResolveLink:
+    @pytest.mark.parametrize(
+        ("contents", "expected"),
+        [
+            ("Captain Mara Vey", "content/Captain Mara Vey.md"),
+            ("Captain Mara Vey#Notes|Mara", "content/Captain Mara Vey.md"),
+            (" content/Captain Mara Vey.md ", "content/Captain Mara Vey.md"),
+            ("#Notes", None),
+            ("Nobody", None),
+            ("a]]b", None),
+        ],
+    )
+    def test_resolve(self, example: Path, contents: str, expected: str | None) -> None:
+        found = VaultIndex(example).resolve_link(contents, example / "notes/x.md")
+        assert found == (None if expected is None else example / expected)
+
+
+class TestVaultIndexSessionOrder:
+    @pytest.mark.parametrize(
+        ("relative", "text", "expected"),
+        [
+            (
+                "campaigns/campaign_2/sessions/S-2-004.md",
+                "session_number: 4",
+                ("campaign_2", 4),
+            ),
+            ("campaigns/campaign_2/sessions/S-2-004.md", "session_number: x", None),
+            ("campaigns/campaign_2/sessions/S-2-004.md", "session_number: [", None),
+            ("notes/S-2-004.md", "session_number: 4", None),
+            ("campaigns/campaign_2/sessions/S-2-004.txt", "session_number: 4", None),
+        ],
+    )
+    def test_order(
+        self, example: Path, relative: str, text: str, expected: tuple[str, int] | None
+    ) -> None:
+        path = write_named(example, relative, f"---\n{text}\n---\n")
+        assert VaultIndex(example).session_order(path) == expected
