@@ -739,6 +739,9 @@ class TestReadRecord:
         assert record.frontmatter.type in {"Content", "Note"}
 
     def test_scan_spelling(self, example: Path) -> None:
+        # A case-insensitive filesystem opens the file under another spelling.
+        if not (example / "content/CAPTAIN MARA VEY.md").exists():
+            pytest.skip("filesystem is case-sensitive")
         path = read_record(Path("content/CAPTAIN MARA VEY.md"), example)[1]
         assert path.name == "Captain Mara Vey.md"
 
