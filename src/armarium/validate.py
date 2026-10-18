@@ -38,6 +38,8 @@ from armarium.lib import (
     parse_subtype_directories,
     parse_wikilink,
     record_files,
+    relative_parts,
+    relative_posix,
 )
 from armarium.parse import Record, Section, load_yaml
 from armarium.schemas import Schema, select_schema
@@ -183,7 +185,7 @@ def validate_markdown(
         raise ValueError("target must be a regular Markdown file, not a symlink")
     root = check_vault(path, vault) if vault is not None else find_vault(path)
     path = path.resolve()
-    relative = path.relative_to(root).as_posix()
+    relative = relative_posix(path, root)
     if index is not None and index.root != root:
         raise ValueError("index must belong to the selected vault")
     record, diagnostics = (
@@ -586,7 +588,7 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
         # An ancestor of a required directory is closed to other entries.
         closed = parent in ancestors
         for child in find_children(directory):
-            entry = child.relative_to(root)
+            entry = parent / child.name
             location = entry.as_posix()
             if location in (
                 UNSCANNED_DIRECTORIES if child.is_dir() else UNSCANNED_FILES
@@ -1415,7 +1417,7 @@ def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
         else Path("campaigns", find_campaign(record.path, index.root) or "", declared)
     )
     expected = base / subdirectory
-    if not record.path.relative_to(index.root).is_relative_to(expected):
+    if not Path(*relative_parts(record.path, index.root)).is_relative_to(expected):
         findings.add(
             "record.subdirectory",
             f"{subtype} {kind} belongs in {expected.as_posix()}",
@@ -1553,7 +1555,7 @@ def validate_campaigns(record: Record, index: VaultIndex) -> Findings:
     """
     findings = Findings.from_record(record, index)
     # 1. Check the record's directory
-    parts = record.path.relative_to(index.root).parts
+    parts = relative_parts(record.path, index.root)
     findings.diagnose(
         parts[0] == "campaigns" and not CAMPAIGN_NAME.fullmatch(parts[1]),
         "campaign.name",
@@ -1687,7 +1689,7 @@ def validate_image(record: Record, index: VaultIndex) -> Findings:
     if not isinstance(value, str) or not value.strip() or IMAGE_URL.match(value):
         return findings
     found = any(
-        path.relative_to(index.root).as_posix() == value
+        relative_posix(path, index.root) == value
         for path in index.targets.get(link_key(value), set())
     )
     findings.diagnose(

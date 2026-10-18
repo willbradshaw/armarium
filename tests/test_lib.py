@@ -1,7 +1,7 @@
 """Shared syntax and vault-discovery utilities."""
 
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from typing import Literal
 from unittest.mock import patch
 
@@ -23,12 +23,15 @@ from armarium.lib import (
     find_files,
     find_vault,
     image_size,
+    is_inside,
     iter_wikilinks,
     matches_kind,
     parse_directories,
     parse_subtype_directories,
     parse_wikilink,
     record_files,
+    relative_parts,
+    relative_posix,
     split_wikilink,
     wikilink_text,
 )
@@ -844,6 +847,55 @@ class TestFindCampaign:
     def test_outside(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError):
             find_campaign(tmp_path.parent / "outside.md", tmp_path)
+
+
+# Paths and directories that relative_parts, relative_posix and is_inside
+# compare, with the directory last. Each must agree with pathlib.
+RELATIVE_CASES = [
+    (PurePosixPath("/vault/content/a b/record.md"), PurePosixPath("/vault")),
+    (PurePosixPath("/vault"), PurePosixPath("/vault")),
+    (PurePosixPath("content/record.md"), PurePosixPath("content")),
+    (PurePosixPath("/vault2/record.md"), PurePosixPath("/vault")),
+    (PurePosixPath("/record.md"), PurePosixPath("/vault")),
+    (PurePosixPath("/vault"), PurePosixPath("/vault/content")),
+    (PurePosixPath("vault/record.md"), PurePosixPath("/vault")),
+    (PurePosixPath("/Vault/record.md"), PurePosixPath("/vault")),
+    # Windows paths compare without regard to case.
+    (PureWindowsPath("C:/Vault/Content/record.md"), PureWindowsPath("c:/vault")),
+    (PureWindowsPath("D:/vault/record.md"), PureWindowsPath("C:/vault")),
+]
+
+
+class TestRelativeParts:
+    @pytest.mark.parametrize(("path", "root"), RELATIVE_CASES)
+    def test_matches_relative_to(self, path: PurePath, root: PurePath) -> None:
+        if path.is_relative_to(root):
+            assert relative_parts(path, root) == path.relative_to(root).parts
+        else:
+            with pytest.raises(ValueError):
+                relative_parts(path, root)
+
+
+class TestRelativePosix:
+    @pytest.mark.parametrize(("path", "root"), RELATIVE_CASES)
+    def test_matches_relative_to(self, path: PurePath, root: PurePath) -> None:
+        if path.is_relative_to(root):
+            assert relative_posix(path, root) == path.relative_to(root).as_posix()
+        else:
+            with pytest.raises(ValueError):
+                relative_posix(path, root)
+
+
+class TestIsInside:
+    @pytest.mark.parametrize(("path", "root"), RELATIVE_CASES)
+    def test_matches_is_relative_to(self, path: PurePath, root: PurePath) -> None:
+        assert is_inside(path, root) is path.is_relative_to(root)
+
+    def test_cases_cover_both_answers(self) -> None:
+        assert {path.is_relative_to(root) for path, root in RELATIVE_CASES} == {
+            True,
+            False,
+        }
 
 
 class TestParseDirectories:

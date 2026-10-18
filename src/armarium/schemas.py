@@ -14,7 +14,7 @@ from referencing import Registry, Resource
 from referencing.exceptions import NoSuchResource, Unresolvable
 from referencing.jsonschema import DRAFT202012
 
-from armarium.lib import Diagnostic, find_files
+from armarium.lib import Diagnostic, find_files, relative_posix
 from armarium.parse import Record
 
 
@@ -132,7 +132,7 @@ class Schema:
         Raises:
             ValueError: The record lies outside the vault.
         """
-        relative = record.path.absolute().relative_to(self.root).as_posix()
+        relative = relative_posix(record.path.absolute(), self.root)
         try:
             resource = Resource.from_contents(
                 self.contents, default_specification=DRAFT202012
@@ -193,7 +193,7 @@ def select_schema(
     parsed_type = record.frontmatter.type
     if parsed_type is None:
         raise ValueError("schema selection requires a canonical record type")
-    relative = record.path.absolute().relative_to(root.absolute()).as_posix()
+    relative = relative_posix(record.path.absolute(), root.absolute())
     path = root / "reference/schemas" / f"{parsed_type.lower()}.schema.json"
     if not path.exists():
         return None, [

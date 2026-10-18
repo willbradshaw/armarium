@@ -14,9 +14,11 @@ from armarium.lib import (
     Diagnostic,
     find_campaign,
     find_files,
+    is_inside,
     parse_directories,
     parse_subtype_directories,
     record_files,
+    relative_parts,
 )
 from armarium.parse import Frontmatter, Record
 from armarium.schemas import Schema
@@ -144,7 +146,7 @@ class VaultIndex:
         Raises:
             ValueError: source is not a full path inside this vault.
         """
-        if not source.is_relative_to(self.root):
+        if not is_inside(source, self.root):
             raise ValueError("source must be inside the indexed vault")
         if not target:
             return source, None
@@ -192,7 +194,7 @@ class VaultIndex:
         Raises:
             ValueError: The path is outside this vault or is not Markdown.
         """
-        if not path.is_relative_to(self.root) or path.suffix.lower() != ".md":
+        if not is_inside(path, self.root) or path.suffix.lower() != ".md":
             raise ValueError("target must be Markdown inside the indexed vault")
         if path not in self.records:
             self.records[path] = Record.parse(path, self.root)
@@ -298,7 +300,7 @@ class VaultIndex:
         """
         # Compare path components rather than building a Path per declaration:
         # this runs for every record and every type-bound link target.
-        parts = path.relative_to(self.root).parts
+        parts = relative_parts(path, self.root)
         scope = find_campaign(path, self.root)
         bases: dict[str, tuple[str, ...] | None] = {
             "shared": (),

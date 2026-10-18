@@ -16,7 +16,14 @@ from yaml.constructor import SafeConstructor
 from yaml.nodes import MappingNode
 from yaml.reader import Reader
 
-from armarium.lib import CAMPAIGN_NAME, Diagnostic, iter_wikilinks, parse_wikilink
+from armarium.lib import (
+    CAMPAIGN_NAME,
+    Diagnostic,
+    is_inside,
+    iter_wikilinks,
+    parse_wikilink,
+    relative_posix,
+)
 
 
 class FrontmatterConstructor(SafeConstructor):
@@ -727,9 +734,9 @@ class Record:
         Raises:
             ValueError: path is not lexically inside root (a caller contract error).
         """
-        relative = path.relative_to(root).as_posix()
+        relative = relative_posix(path, root)
         try:
-            if not path.resolve().is_relative_to(root.resolve()):
+            if not is_inside(path.resolve(), root.resolve()):
                 raise ValueError("record escapes the vault boundary")
             text = path.read_text(encoding="utf-8-sig")
             frontmatter, length = Frontmatter.parse(text)

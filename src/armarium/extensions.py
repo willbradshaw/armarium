@@ -17,7 +17,12 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 from packaging.version import Version
 
-from armarium.lib import CAMPAIGN_NAME, REFERENCE_SUBTYPES, SUBTYPES
+from armarium.lib import (
+    CAMPAIGN_NAME,
+    REFERENCE_SUBTYPES,
+    SUBTYPES,
+    relative_parts,
+)
 from armarium.logging import logger
 from armarium.parse import Record
 from armarium.schemas import Schema
@@ -565,7 +570,7 @@ def update_extension(
 
 def is_template(path: Path, root: Path) -> bool:
     """Recognize core and extension template directories without loading records."""
-    relative = path.relative_to(root)
+    relative = Path(*relative_parts(path, root))
     return relative.is_relative_to("reference/templates") or (
         len(relative.parts) >= 5
         and relative.parts[:2] == ("reference", "extensions")
