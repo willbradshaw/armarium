@@ -16,12 +16,13 @@ file renamed by hand leaves every link to it broken.
 relative to the current directory; with `--vault VAULT`, relative to the vault
 root, so a path printed by [`armarium find`](find.md) can be passed as it is.
 
-`NAME` is the new filename without `.md`. The record stays in its folder. The
-name may not be blank, start or end with whitespace, start with a dot, end with
-`.md` or hold any of `# ^ [ ] | \ / :`. It must be free among the records that
-can see the record, as [names](record.md#names) require: no other record of the
-same campaign, or shared, may have it as its filename or an alias. A name that
-differs only in case is a rename.
+`NAME` is the new filename without `.md`. The record stays in its folder. As
+with [`armarium add`](add.md), the name may not be blank, start or end with
+whitespace or a dot, hold doubled or non-space whitespace, end with `.md`, or
+hold a control character or any of `# ^ [ ] | \ / : * ? " < >`. It must be
+free among the records that can see the record, as [names](record.md#names)
+require: no other record of the same campaign, or shared, may have it as its
+filename or an alias. A name that differs only in case is a rename.
 
 The command refuses to rename Types, Statuses, Sessions, Clues and
 Transcripts, whose names the vault fixes, and each campaign's

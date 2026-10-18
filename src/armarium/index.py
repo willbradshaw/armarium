@@ -23,6 +23,10 @@ from armarium.lib import (
 from armarium.parse import Frontmatter, Record
 from armarium.schemas import Schema
 
+# Types whose records are structure, not things looked up by name: indexes,
+# overviews and the type system itself. Their names may repeat.
+STRUCTURAL_TYPES = frozenset({"Reference", "Status", "Type"})
+
 # Failures loading a schema or the extension set, kept to raise again for each record.
 LOAD_ERRORS = (OSError, ValueError, SchemaError, RecursionError)
 
@@ -216,6 +220,37 @@ class VaultIndex:
         if self._names is None:
             self._names = read_names(self.root)
         return self._names
+
+    def sharing_name(self, path: Path, name: str) -> list["Name"]:
+        """List the other records that go by a name where a record is visible.
+
+        A record is visible among the shared records and those of its own
+        campaign, or of every campaign for a shared record. Records of two
+        different campaigns may share a name.
+
+        Args:
+            path: The record.
+            name: A name, as a filename or an alias writes it.
+
+        Returns:
+            list[Name]: Each filename or alias of another record that equals
+                the name, unless that record belongs to a different campaign
+                or is a structural record. A record that cannot be parsed
+                counts, since its type is unknown.
+        """
+        scope = find_campaign(path, self.root)
+        found: list[Name] = []
+        for other in self.names().get(name_key(name), []):
+            if other.path == path:
+                continue
+            visible = find_campaign(other.path, self.root)
+            if scope is not None and visible is not None and scope != visible:
+                continue
+            parsed, _ = self.parse(other.path)
+            if parsed is not None and parsed.frontmatter.type in STRUCTURAL_TYPES:
+                continue
+            found.append(other)
+        return found
 
     def declared_directories(self) -> dict[str, dict[str, str]]:
         """Read where each Type record declares that its records live.

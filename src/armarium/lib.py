@@ -61,6 +61,41 @@ def split_wikilink(value: object, *, canonical: bool = False) -> tuple[str, str]
     return target, anchor
 
 
+# Characters a record's name may not hold: Obsidian's link syntax, path
+# separators and characters some filesystems reserve.
+NAME_FORBIDDEN = re.compile(r'[#^\[\]|\\/:*?"<>\x00-\x1f]')
+
+
+def check_name(name: str) -> None:
+    """Require a name that a record's filename can take.
+
+    Args:
+        name: The name, without a path or .md.
+
+    Raises:
+        ValueError: The name is blank, has surrounding, doubled or non-space
+            whitespace, starts or ends with a dot, ends with .md, or holds a
+            character of link syntax, a path separator, a character some
+            filesystems reserve or a control character.
+    """
+    if not name.strip():
+        raise ValueError("name must not be blank")
+    if NAME_FORBIDDEN.search(name):
+        raise ValueError(
+            'name must not contain any of # ^ [ ] | \\ / : * ? " < > or a '
+            "control character"
+        )
+    if name != " ".join(name.split()):
+        raise ValueError(
+            "name must not start or end with whitespace, or hold doubled or "
+            "non-space whitespace"
+        )
+    if name.lower().endswith(".md"):
+        raise ValueError("name must be given without .md")
+    if name.startswith(".") or name.endswith("."):
+        raise ValueError("name must not start or end with a dot")
+
+
 def wikilink_text(contents: str) -> str:
     """Give the text a reader sees for a wikilink.
 

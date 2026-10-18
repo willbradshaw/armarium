@@ -17,6 +17,7 @@ from armarium.lib import (
     VaultNotFoundError,
     _find_wikilink_candidates,
     _visible,
+    check_name,
     check_vault,
     find_campaign,
     find_children,
@@ -976,6 +977,36 @@ class TestMatchesKind:
         self, kinds: tuple[str, ...], kind: str | None, subtype: object, expected: bool
     ) -> None:
         assert matches_kind(kinds, kind, subtype) is expected
+
+
+class TestCheckName:
+    @pytest.mark.parametrize(
+        "name", ["Mara", "Port Briselle", "Wren's Rest", "12 Highsail 312", "Café"]
+    )
+    def test_accepts(self, name: str) -> None:
+        check_name(name)
+
+    @pytest.mark.parametrize(
+        ("name", "message"),
+        [
+            ("", "blank"),
+            ("  ", "blank"),
+            (" Mara", "whitespace"),
+            ("Mara ", "whitespace"),
+            ("two  spaces", "whitespace"),
+            ("tab\there", "control character"),
+            ("line\nbreak", "control character"),
+            ("a\x00b", "control character"),
+            (".Mara", "dot"),
+            ("Mara.", "dot"),
+            ("Mara.md", "without .md"),
+            ("entry.MD", "without .md"),
+            *((f"Ma{c}ra", "must not contain") for c in '#^[]|\\/:*?"<>'),
+        ],
+    )
+    def test_refuses(self, name: str, message: str) -> None:
+        with pytest.raises(ValueError, match=message):
+            check_name(name)
 
 
 class TestWikilinkText:

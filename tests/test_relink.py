@@ -1,5 +1,6 @@
 """Relinking plans the link changes that moving a record needs."""
 
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from armarium.relink import (
     RelinkPlan,
     _display,
     _quote,
+    read_record,
 )
 
 SESSION = """---
@@ -32,6 +34,16 @@ The crew met at [[Quay Nine|the quay]] and again at [[content/Quay Nine#Notes]].
 
 ![[Quay Nine.md]] and [[Port Briselle]].
 """
+
+
+EXAMPLE = Path(__file__).resolve().parents[1] / "vaults/example"
+
+
+@pytest.fixture
+def example(tmp_path: Path) -> Path:
+    root = tmp_path.resolve() / "example"
+    shutil.copytree(EXAMPLE, root)
+    return root
 
 
 def write(root: Path, relative: str, text: str = "") -> Path:
@@ -125,6 +137,48 @@ class TestRelinkPlanReport:
         ]
         assert "WARNING: docs/a.md:1: [[A]] not changed" in output.err
         assert f"INFO: {summary}" in output.err
+
+
+class TestReadRecord:
+    @pytest.mark.parametrize(
+        "relative",
+        ["content/Captain Mara Vey.md", "notes/Coast design notes.md"],
+    )
+    def test_record(self, example: Path, relative: str) -> None:
+        assert read_record(example, example / relative).type in {"Content", "Note"}
+
+    @pytest.mark.parametrize(
+        ("relative", "message"),
+        [
+            ("assets/handouts/.gitkeep", "is not a record"),
+            ("AGENTS.md", "is not a record"),
+            ("reference/templates/Content.md", "is not a record"),
+            ("reference/types/Content.md", "is a Type record"),
+            ("reference/statuses/Pending.md", "is a Status record"),
+            ("campaigns/campaign_1/sessions/S-1-001.md", "is a Session record"),
+            ("campaigns/campaign_1/clues/C-1-0001.md", "is a Clue record"),
+            (
+                "campaigns/campaign_1/reference/Campaign.md",
+                "is a file every campaign requires",
+            ),
+            (
+                "campaigns/campaign_2/reference/indexes/Clues.md",
+                "is a file every campaign requires",
+            ),
+        ],
+    )
+    def test_refuses(self, example: Path, relative: str, message: str) -> None:
+        path = example / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+        with pytest.raises(ValueError, match=message):
+            read_record(example, path)
+
+    def test_unparseable(self, example: Path) -> None:
+        path = example / "notes/Broken.md"
+        path.write_text("---\na: [\n---\n")
+        with pytest.raises(ValueError, match="cannot parse notes/Broken.md"):
+            read_record(example, path)
 
 
 class TestRelinkerInit:

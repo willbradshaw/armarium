@@ -12,7 +12,6 @@ from armarium.add import (
     _render_campaign,
     add_campaign,
     check_destination,
-    check_name,
     infer_campaign,
     read_template,
     record_directory,
@@ -248,32 +247,6 @@ class TestRequireCampaign:
         monkeypatch.chdir(vault / "campaigns/campaign_1")
         assert require_campaign(vault, None) == 1
         assert require_campaign(vault, 2) == 2
-
-
-class TestCheckName:
-    @pytest.mark.parametrize(
-        "name",
-        [
-            "",
-            " spaced",
-            "two  spaces",
-            ".hidden",
-            "end.",
-            "entry.MD",
-            "a/b",
-            "a\\b",
-            "a#b",
-            "a\x00b",
-            "a\nb",
-        ],
-    )
-    def test_invalid(self, name: str) -> None:
-        with pytest.raises(ValueError, match="plain record name"):
-            check_name(name)
-
-    @pytest.mark.parametrize("name", ["Alex", "Port Briselle", "Café"])
-    def test_valid(self, name: str) -> None:
-        check_name(name)
 
 
 class TestRecordDirectory:

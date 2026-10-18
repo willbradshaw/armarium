@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import unquote
 
 from armarium.changes import FileChange, FileChanges, report_changes
+from armarium.edit import rewrite_frontmatter
 from armarium.extensions import is_template
 from armarium.index import VaultIndex, link_key
 from armarium.lib import (
@@ -19,8 +20,9 @@ from armarium.lib import (
     wikilink_text,
 )
 from armarium.logging import logger
-from armarium.parse import PARSE_ERRORS, Body, Frontmatter, rewrite_frontmatter
+from armarium.parse import PARSE_ERRORS, Body, Frontmatter
 from armarium.trace import mentioning, sharing, spellings
+from armarium.validate import CAMPAIGN_FILES
 
 # One link, embedded or not: the embed mark, then the link's contents.
 LINK = re.compile(r"(!?)" + WIKILINK.pattern)
@@ -36,6 +38,16 @@ MARKDOWN_LINK = re.compile(r"\]\(<?([^()<>]+?)>?\)")
 
 # A list item dropped from frontmatter.
 _DROP = object()
+
+# Types whose records have names the vault gives them, or that define the vault.
+FIXED_TYPES = ("Clue", "Session", "Status", "Transcript", "Type")
+
+# A campaign's required files, such as campaigns/campaign_1/reference/Campaign.md.
+REQUIRED = re.compile(
+    r"campaigns/campaign_[1-9][0-9]*/("
+    + "|".join(re.escape(path) for path in CAMPAIGN_FILES)
+    + ")"
+)
 
 
 @dataclass(frozen=True)
@@ -94,6 +106,41 @@ class RelinkPlan:
         for note in self.notes:
             logger.warning(note)
         report_changes(applied, dry_run=dry_run)
+
+
+def read_record(root: Path, path: Path) -> Frontmatter:
+    """Read the frontmatter of a record that a command may rename or remove.
+
+    Args:
+        root: Resolved vault directory.
+        path: The record, inside the vault.
+
+    Returns:
+        Frontmatter: The record's frontmatter.
+
+    Raises:
+        ValueError: The file is not a record of the vault, cannot be parsed,
+            is of a type whose names the vault fixes or that defines the
+            vault, or is a file a campaign requires.
+    """
+    relative = relative_posix(path, root)
+    if (
+        path.suffix.lower() != ".md"
+        or path not in record_files(path.parent, root)
+        or is_template(path, root)
+    ):
+        raise ValueError(f"{relative} is not a record")
+    try:
+        frontmatter = Frontmatter.parse(path.read_text(encoding="utf-8-sig"))[0]
+    except PARSE_ERRORS as exc:
+        raise ValueError(f"cannot parse {relative}: {exc}") from exc
+    if frontmatter.type in FIXED_TYPES:
+        raise ValueError(
+            f"{relative} is a {frontmatter.type} record, whose name the vault fixes"
+        )
+    if REQUIRED.fullmatch(relative):
+        raise ValueError(f"{relative} is a file every campaign requires")
+    return frontmatter
 
 
 class Relinker:
@@ -465,7 +512,7 @@ class Relinker:
 
 def _display(target: str) -> str:
     """Give the name a reader sees for a link target with no display alias."""
-    name = target.rsplit("/", 1)[-1]
+    name = wikilink_text(target)
     return name[:-3] if link_key(name).endswith(".md") else name
 
 

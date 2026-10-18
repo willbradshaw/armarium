@@ -1,5 +1,6 @@
 """File resolution and lazy parsing are independent of record validation."""
 
+import shutil
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +20,22 @@ from armarium.index import (
 from armarium.lib import find_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
+
+EXAMPLE = Path(__file__).resolve().parents[1] / "vaults/example"
+
+
+@pytest.fixture
+def example(tmp_path: Path) -> Path:
+    root = tmp_path.resolve() / "example"
+    shutil.copytree(EXAMPLE, root)
+    return root
+
+
+def sharing(root: Path, path: Path, name: str) -> list[str]:
+    """List the paths sharing_name gives, relative to the vault."""
+    others = VaultIndex(root).sharing_name(path, name)
+    return [other.path.relative_to(root).as_posix() for other in others]
+
 
 # A case-only pair cannot coexist on case-insensitive filesystems such as
 # macOS, so tests patch find_files to index one without creating it.
@@ -654,6 +671,39 @@ class TestReadNames:
         with patch.object(Body, "__init__") as body:
             read_names(vault)
         assert not body.called
+
+
+class TestVaultIndexSharingName:
+    @pytest.mark.parametrize(
+        ("relative", "name", "expected"),
+        [
+            ("content/Captain Mara Vey.md", "Wake-lark", ["content/Wake-lark.md"]),
+            (
+                "content/Captain Mara Vey.md",
+                "Bram Kest",
+                ["campaigns/campaign_2/content/Bram Kest.md"],
+            ),
+            ("campaigns/campaign_1/content/Esme Calder.md", "Bram Kest", []),
+            ("content/Captain Mara Vey.md", "Captain Mara Vey", []),
+            ("content/Captain Mara Vey.md", "Nobody", []),
+            ("content/Captain Mara Vey.md", "Content", []),
+        ],
+    )
+    def test_sharing(
+        self, example: Path, relative: str, name: str, expected: list[str]
+    ) -> None:
+        assert sharing(example, example / relative, name) == expected
+
+    def test_structural_records_take_no_part(self, example: Path) -> None:
+        path = example / "reference/Glossary.md"
+        path.write_text('---\ntype: "[[Reference]]"\n---\n')
+        mara = example / "content/Captain Mara Vey.md"
+        assert sharing(example, mara, "Glossary") == []
+
+    def test_unparseable_record_counts(self, example: Path) -> None:
+        (example / "notes/Gull.md").write_text("---\na: [\n---\n")
+        mara = example / "content/Captain Mara Vey.md"
+        assert sharing(example, mara, "Gull") == ["notes/Gull.md"]
 
 
 class TestVaultIndexNames:

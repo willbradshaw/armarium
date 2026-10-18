@@ -6,7 +6,6 @@ from typing import Any
 
 from armarium.add import (
     check_destination,
-    check_name,
     merge_frontmatter,
     read_template,
     record_directory,
@@ -15,6 +14,7 @@ from armarium.add import (
     select_vault,
     write_record,
 )
+from armarium.lib import check_name
 
 
 def add_player(

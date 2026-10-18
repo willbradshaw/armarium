@@ -9,7 +9,6 @@ from typing import Any
 
 from armarium.add import (
     check_destination,
-    check_name,
     infer_campaign,
     merge_frontmatter,
     read_template,
@@ -19,7 +18,7 @@ from armarium.add import (
     write_record,
 )
 from armarium.extensions import content_subtypes
-from armarium.lib import CAMPAIGN_NAME, parse_subtype_directories
+from armarium.lib import CAMPAIGN_NAME, check_name, parse_subtype_directories
 from armarium.parse import Record
 
 

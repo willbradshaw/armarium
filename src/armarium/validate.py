@@ -17,7 +17,13 @@ from armarium.extensions import (
     is_template,
     load_extension_set,
 )
-from armarium.index import VaultIndex, link_key, name_key, read_aliases
+from armarium.index import (
+    STRUCTURAL_TYPES,
+    VaultIndex,
+    link_key,
+    name_key,
+    read_aliases,
+)
 from armarium.lib import (
     CAMPAIGN_NAME,
     UNSCANNED_DIRECTORIES,
@@ -1426,11 +1432,6 @@ def validate_subdirectory(record: Record, index: VaultIndex) -> Findings:
     return findings
 
 
-# Types whose records are structure, not things looked up by name: indexes,
-# overviews and the type system itself. Their names may repeat.
-STRUCTURAL_TYPES = frozenset({"Reference", "Status", "Type"})
-
-
 def validate_names(record: Record, index: VaultIndex) -> Findings:
     """Check that the record's names identify it alone where it is visible.
 
@@ -1454,22 +1455,15 @@ def validate_names(record: Record, index: VaultIndex) -> Findings:
     findings = Findings.from_record(record, index)
     if record.frontmatter.type in STRUCTURAL_TYPES:
         return findings
-    scope = find_campaign(record.path, index.root)
     own = [(record.path.stem, False)]
     own += [(alias, True) for alias in read_aliases(record.frontmatter)]
     seen: set[tuple[str, bool, Path, bool]] = set()
     for text, alias in own:
-        for other in index.names().get(name_key(text), []):
+        for other in index.sharing_name(record.path, text):
             key = (name_key(text), alias, other.path, other.alias)
-            if other.path == record.path or key in seen:
+            if key in seen:
                 continue
             seen.add(key)
-            visible = find_campaign(other.path, index.root)
-            if scope is not None and visible is not None and scope != visible:
-                continue
-            parsed, _ = index.parse(other.path)
-            if parsed is not None and parsed.frontmatter.type in STRUCTURAL_TYPES:
-                continue
             relative = other.path.relative_to(index.root).as_posix()
             if alias:
                 relation = "also an alias" if other.alias else "the name"

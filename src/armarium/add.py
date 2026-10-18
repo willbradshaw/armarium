@@ -56,22 +56,6 @@ def require_campaign(root: Path, campaign: int | None) -> int:
     return campaign
 
 
-def check_name(name: str) -> None:
-    """Reject names that are empty, non-plain, path-like or include .md."""
-    if (
-        not name
-        or name != " ".join(name.split())
-        or name.startswith(".")
-        or name.endswith(".")
-        or name.lower().endswith(".md")
-        or any(c in name for c in '/\\\x00[]#|:*?"<>')
-        or any(ord(c) < 32 for c in name)
-    ):
-        raise ValueError(
-            "name must be a plain record name without .md, path separators, or reserved characters"
-        )
-
-
 def record_directory(root: Path, kind: str, campaign: int | str | None) -> Path:
     """Read a Type's scoped directory and require a real, existing write path.
 

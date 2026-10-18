@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Hold `armarium add` and `armarium rename` to the same rules for a record's name, refusing `^` in added names and `* ? " < >`, control characters and a final dot in new names.
 - Add `armarium rename` to rename a record in its folder and rewrite every link to it.
 - Add a shared way for commands to check, report and make their planned file changes, with a dry run that changes nothing, making them all or none and restoring the vault when a change fails or is interrupted.
 - Speed up schema validation about tenfold by checking records with jsonschema-rs first, adding it as a dependency; jsonschema still reports each failure.
