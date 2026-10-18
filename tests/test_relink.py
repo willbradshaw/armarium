@@ -5,17 +5,18 @@ from pathlib import Path
 
 import pytest
 
+from armarium.changes import FileChange
 from armarium.relink import (
     _DROP,
     Change,
     Plan,
     Relinker,
     _display,
+    _encode,
     _fields,
     _quote,
     _reads_as,
     _scalar,
-    _write,
     emit,
     rewrite_frontmatter,
 )
@@ -89,32 +90,51 @@ class TestChangeOutput:
 
 
 class TestPlanApply:
-    def test_writes_renames_and_deletes(self, tmp_path: Path) -> None:
-        old, other, gone = (write(tmp_path, n, "x") for n in ("a.md", "b.md", "c.md"))
-        plan = Plan(
+    def plan(self, root: Path) -> Plan:
+        old, other, gone = (write(root, n, "x") for n in ("a.md", "b.md", "c.md"))
+        return Plan(
+            root,
             texts={old: "new a", other: "new b", gone: "never written"},
-            renamed={old: tmp_path / "A2.md"},
+            renamed={old: root / "A2.md"},
             deleted={gone},
         )
-        plan.apply()
-        assert sorted(p.name for p in tmp_path.iterdir()) == ["A2.md", "b.md"]
-        assert (tmp_path / "A2.md").read_text() == "new a"
-        assert other.read_text() == "new b"
+
+    @pytest.mark.parametrize(
+        ("dry_run", "names"),
+        [(False, ["A2.md", "b.md"]), (True, ["a.md", "b.md", "c.md"])],
+    )
+    def test_writes_renames_and_deletes(
+        self, tmp_path: Path, dry_run: bool, names: list[str]
+    ) -> None:
+        root = tmp_path.resolve()
+        changes = self.plan(root).apply(dry_run=dry_run)
+        assert changes == [
+            FileChange("replace", "a.md"),
+            FileChange("move", "a.md", "A2.md"),
+            FileChange("replace", "b.md"),
+            FileChange("delete", "c.md"),
+        ]
+        assert sorted(p.name for p in root.iterdir()) == names
+        if not dry_run:
+            assert (root / "A2.md").read_text() == "new a"
+            assert (root / "b.md").read_text() == "new b"
 
     def test_case_only_rename(self, tmp_path: Path) -> None:
-        old = write(tmp_path, "quay.md", "x")
-        Plan(renamed={old: tmp_path / "Quay.md"}).apply()
-        assert [p.name for p in tmp_path.iterdir()] == ["Quay.md"]
+        root = tmp_path.resolve()
+        old = write(root, "quay.md", "x")
+        Plan(root, renamed={old: root / "Quay.md"}).apply()
+        assert [p.name for p in root.iterdir()] == ["Quay.md"]
 
 
-class TestWrite:
+class TestEncode:
     @pytest.mark.parametrize("bom", [b"", codecs.BOM_UTF8])
-    def test_keeps_bom_and_line_endings(self, tmp_path: Path, bom: bytes) -> None:
+    def test_keeps_bom(self, tmp_path: Path, bom: bytes) -> None:
         path = tmp_path / "a.md"
         path.write_bytes(bom + b"old\r\n")
-        _write(path, "new\r\nline\r\n")
-        assert path.read_bytes() == bom + b"new\r\nline\r\n"
-        assert [p.name for p in tmp_path.iterdir()] == ["a.md"]
+        assert (
+            _encode(path, "n\u00e9w\r\nline\r\n")
+            == bom + "n\u00e9w\r\nline\r\n".encode()
+        )
 
 
 class TestRelinkerInit:

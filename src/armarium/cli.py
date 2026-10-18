@@ -9,6 +9,7 @@ from pathlib import Path
 from jsonschema.exceptions import SchemaError
 
 from armarium.add import add_campaign, select_vault
+from armarium.changes import FileChange, report_changes
 from armarium.clue import add_clue
 from armarium.content import add_content
 from armarium.extensions import (
@@ -692,27 +693,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def report_plan(plan: Plan, *, dry_run: bool) -> None:
-    """Print a plan's changes and the links it leaves as written.
+def report_plan(plan: Plan, files: list[FileChange], *, dry_run: bool) -> None:
+    """Print a plan's changes, the links it leaves as written, and its files.
 
     Args:
         plan: The changes, made unless this is a dry run.
+        files: Each file's change, as Plan.apply returns them.
         dry_run: Whether the changes were only planned.
     """
     for change in plan.changes:
         print(change.output)
     for note in plan.notes:
         logger.warning(note)
-    links = sum(1 for change in plan.changes if change.where or change.line)
-    files = len(plan.texts.keys() - plan.deleted)
-    logger.info(
-        "%s %s %s in %s %s",
-        links,
-        "link" if links == 1 else "links",
-        "to rewrite" if dry_run else "rewritten",
-        files,
-        "file" if files == 1 else "files",
-    )
+    report_changes(files, dry_run=dry_run)
 
 
 def main() -> None:
@@ -767,12 +760,11 @@ def main() -> None:
     if args.command == "rename":
         try:
             plan = rename(args.path, args.name, args.vault)
-            if not args.dry_run:
-                plan.apply()
+            files = plan.apply(dry_run=args.dry_run)
         except (OSError, ValueError) as exc:
             logger.error("Cannot rename %s: %s", args.path, exc)
             sys.exit(1)
-        report_plan(plan, dry_run=args.dry_run)
+        report_plan(plan, files, dry_run=args.dry_run)
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:

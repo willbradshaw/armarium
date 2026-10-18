@@ -53,7 +53,8 @@ files, and Markdown links such as `[map](Quay%20Nine.md)` anywhere.
 
 Every change is worked out before any file is written. If a record that may
 link to the renamed one cannot be parsed, or its frontmatter cannot be
-rewritten to hold the new link, the command names it and changes nothing. A
+rewritten to hold the new link, the command names it and changes nothing. If
+writing a file fails or is interrupted, every file is put back as it was. A
 frontmatter field is edited in place where it can be; otherwise it is written
 afresh, double-quoted, and the rest of the frontmatter is kept.
 
@@ -73,7 +74,10 @@ campaigns/campaign_1/sessions/S-1-002.md	Notes > Events	65	[[Quay Nine|the quay]
 3. The link's line number, for a body link; empty otherwise.
 4. The change.
 
-`--dry-run` prints the same lines and changes nothing.
+Standard error then lists each file the command changes, such as
+`content/Quay Nine.md: moved to content/Quay Ten.md`, and how many.
+`--dry-run` checks the change as a real run would and prints the same lines,
+saying what would change, without changing anything.
 
 The command exits with `0` once the record is renamed, `1` when it cannot
 be renamed, and `2` for a usage error. Run [`armarium validate`](validate.md)

@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from armarium import cli
+from armarium.changes import FileChange
 from armarium.cli import (
     _jobs,
     _mark,
@@ -2945,6 +2946,8 @@ class TestRenameCommand:
         )
         assert (example / "content/Lark.md").exists() is not dry_run
         assert (example / "content/Wake-lark.md").exists() is dry_run
+        moved = "would be moved" if dry_run else "moved"
+        assert f"content/Wake-lark.md: {moved} to content/Lark.md" in output.err
 
     def test_exits_with_one(
         self,
@@ -2989,7 +2992,7 @@ class TestRenameCommand:
 
 class TestReportPlan:
     PLAN = Plan(
-        texts={Path("content/Wake-lark.md"): ""},
+        Path("vault"),
         changes=[
             Change("content/Lark.md", "", 0, "renamed"),
             Change("content/Wake-lark.md", "Notes", 3, "[[A]] → [[B]]"),
@@ -2999,13 +3002,17 @@ class TestReportPlan:
 
     @pytest.mark.parametrize(
         ("dry_run", "summary"),
-        [(True, "1 link to rewrite in 1 file"), (False, "1 link rewritten in 1 file")],
+        [
+            (True, "content/Lark.md: would be replaced"),
+            (False, "content/Lark.md: replaced"),
+        ],
     )
     def test_reports(
         self, capsys: pytest.CaptureFixture[str], dry_run: bool, summary: str
     ) -> None:
         configure_logging()
-        report_plan(self.PLAN, dry_run=dry_run)
+        files = [FileChange("replace", "content/Lark.md")]
+        report_plan(self.PLAN, files, dry_run=dry_run)
         output = capsys.readouterr()
         assert output.out.splitlines() == [
             "content/Lark.md\t\t\trenamed",

@@ -2,7 +2,6 @@
 
 import codecs
 import json
-import os
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -12,6 +11,7 @@ from urllib.parse import unquote
 
 import yaml
 
+from armarium.changes import FileChange, FileChanges
 from armarium.extensions import is_template
 from armarium.index import VaultIndex, link_key
 from armarium.lib import (
@@ -84,6 +84,7 @@ class Plan:
     """Every file change one command makes, worked out before any is made.
 
     Attributes:
+        root: Resolved vault directory.
         texts: New contents of each file whose text changes, by its path
             before any rename.
         renamed: Each renamed file's path to its new path.
@@ -93,40 +94,38 @@ class Plan:
             with why, for the user to check.
     """
 
+    root: Path
     texts: dict[Path, str] = field(default_factory=dict)
     renamed: dict[Path, Path] = field(default_factory=dict)
     deleted: set[Path] = field(default_factory=set)
     changes: list[Change] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
-    def apply(self) -> None:
-        """Write the new texts, then rename and delete files.
+    def apply(self, *, dry_run: bool = False) -> list[FileChange]:
+        """Write the new texts, then rename and delete files, all or none.
 
-        Each file is replaced whole, so a reader never sees half of it.
+        Args:
+            dry_run: Check the changes as a real run would, making none.
+
+        Returns:
+            list[FileChange]: Each file's change, made or, on a dry run,
+                planned.
 
         Raises:
-            OSError: A file cannot be written, renamed or deleted; the
-                changes made until then are kept.
+            ValueError: A file lies outside the vault.
+            OSError: A file cannot be read, written, renamed or deleted;
+                the vault is restored.
         """
-        for path, text in self.texts.items():
-            if path not in self.deleted:
-                _write(path, text)
-        for old, new in self.renamed.items():
-            old.rename(new)
-        for path in sorted(self.deleted):
-            path.unlink()
+        writes = {path: _encode(path, text) for path, text in self.texts.items()}
+        changes = FileChanges(self.root, writes, dict(self.renamed), set(self.deleted))
+        return changes.apply(dry_run=dry_run)
 
 
-def _write(path: Path, text: str) -> None:
-    """Replace a file's text, keeping a byte order mark it opens with."""
+def _encode(path: Path, text: str) -> bytes:
+    """Encode a file's new text, keeping a byte order mark it opens with."""
     with path.open("rb") as file:
         bom = file.read(len(codecs.BOM_UTF8)) == codecs.BOM_UTF8
-    temporary = path.with_name(f".{path.name}.armarium")
-    with temporary.open(
-        "w", encoding="utf-8-sig" if bom else "utf-8", newline=""
-    ) as file:
-        file.write(text)
-    os.replace(temporary, path)
+    return (codecs.BOM_UTF8 if bom else b"") + text.encode("utf-8")
 
 
 class Relinker:
@@ -474,7 +473,7 @@ class Relinker:
             ValueError: A record that may link to a touched file cannot be
                 parsed, or its frontmatter cannot be rewritten; each is named.
         """
-        plan = Plan()
+        plan = Plan(self.root)
         problems: list[str] = []
         for path, data in mentioning(self.root, self.targets):
             relative = relative_posix(path, self.root)
