@@ -1,4 +1,9 @@
-# Armarium
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/armarium-banner-dark.svg">
+    <img src="docs/assets/armarium-banner.svg" alt="Armarium" width="900">
+  </picture>
+</p>
 
 A system-general starter for tabletop roleplaying knowledge bases in Obsidian.
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add the Armarium logo, shown as a banner at the top of the README.
 - Ship the `make-handouts` agent skill, point `prepare-session` to it, and let `illustrate-record` take in a picture the GM supplies.
 - Add `armarium handout` to print records as handouts in a PDF, with a flag to set each field of their layouts.
 - Add the renderer that prints records' callouts as handouts in a PDF, each in its handout layout, adding ReportLab as a dependency.
