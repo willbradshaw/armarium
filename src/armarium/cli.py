@@ -28,7 +28,7 @@ from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.painters import PAINTERS
 from armarium.player import add_player
-from armarium.relink import Plan
+from armarium.relink import RelinkPlan
 from armarium.rename import rename
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
@@ -693,19 +693,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def report_plan(plan: Plan, files: list[FileChange], *, dry_run: bool) -> None:
+def report_plan(plan: RelinkPlan, applied: list[FileChange], *, dry_run: bool) -> None:
     """Print a plan's changes, the links it leaves as written, and its files.
 
     Args:
         plan: The changes, made unless this is a dry run.
-        files: Each file's change, as Plan.apply returns them.
+        applied: Each file's change, as applying plan.files returns them.
         dry_run: Whether the changes were only planned.
     """
     for change in plan.changes:
         print(change.output)
     for note in plan.notes:
         logger.warning(note)
-    report_changes(files, dry_run=dry_run)
+    report_changes(applied, dry_run=dry_run)
 
 
 def main() -> None:
@@ -760,11 +760,11 @@ def main() -> None:
     if args.command == "rename":
         try:
             plan = rename(args.path, args.name, args.vault)
-            files = plan.apply(dry_run=args.dry_run)
+            applied = plan.files.apply(dry_run=args.dry_run)
         except (OSError, ValueError) as exc:
             logger.error("Cannot rename %s: %s", args.path, exc)
             sys.exit(1)
-        report_plan(plan, files, dry_run=args.dry_run)
+        report_plan(plan, applied, dry_run=args.dry_run)
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:

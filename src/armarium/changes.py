@@ -1,5 +1,6 @@
 """Make a planned set of changes to a vault's files, all of them or none."""
 
+import codecs
 import os
 import shutil
 import tempfile
@@ -77,6 +78,45 @@ class FileChanges:
     writes: dict[Path, bytes] = field(default_factory=dict)
     moves: dict[Path, Path] = field(default_factory=dict)
     deletes: set[Path] = field(default_factory=set)
+
+    def read_text(self, path: Path) -> str:
+        """Read a file's text as the planned writes leave it.
+
+        Args:
+            path: The file, as the writes name it.
+
+        Returns:
+            str: Its planned text, or else its text on disk, without a byte
+                order mark.
+
+        Raises:
+            OSError: The file has no planned write and cannot be read.
+            UnicodeError: The text is not UTF-8.
+        """
+        content = self.writes.get(path)
+        if content is None:
+            content = (self.root / path).read_bytes()
+        return content.decode("utf-8-sig")
+
+    def write_text(self, path: Path, text: str) -> None:
+        """Plan a file's new text, keeping a byte order mark it opens with.
+
+        Args:
+            path: The file, absolute or relative to root.
+            text: Its new text, with the line endings to write.
+
+        Raises:
+            OSError: The file exists but cannot be read.
+        """
+        current = self.writes.get(path)
+        if current is None:
+            target = self.root / path
+            current = b""
+            if target.exists():
+                with target.open("rb") as file:
+                    current = file.read(len(codecs.BOM_UTF8))
+        bom = codecs.BOM_UTF8 if current.startswith(codecs.BOM_UTF8) else b""
+        self.writes[path] = bom + text.encode("utf-8")
 
     def _resolve(self, path: Path) -> Path:
         """Place a path in the vault, refusing one outside it.

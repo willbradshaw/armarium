@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from armarium import cli
-from armarium.changes import FileChange
+from armarium.changes import FileChange, FileChanges
 from armarium.cli import (
     _jobs,
     _mark,
@@ -29,7 +29,7 @@ from armarium.handout import Handout, Page
 from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import configure_logging, logger
-from armarium.relink import Change, Plan
+from armarium.relink import RelinkChange, RelinkPlan
 from armarium.transcribe import (
     DEFAULT_LANGUAGE,
     DEFAULT_MIN_REPEATS,
@@ -2991,11 +2991,11 @@ class TestRenameCommand:
 
 
 class TestReportPlan:
-    PLAN = Plan(
-        Path("vault"),
+    PLAN = RelinkPlan(
+        FileChanges(Path("vault")),
         changes=[
-            Change("content/Lark.md", "", 0, "renamed"),
-            Change("content/Wake-lark.md", "Notes", 3, "[[A]] → [[B]]"),
+            RelinkChange("content/Lark.md", "", 0, "renamed"),
+            RelinkChange("content/Wake-lark.md", "Notes", 3, "[[A]] → [[B]]"),
         ],
         notes=["docs/a.md:1: [[A]] not changed: not a record"],
     )

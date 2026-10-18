@@ -127,11 +127,11 @@ class TestRename:
         assert plan.changes[0].output == (
             "content/Port Briselle.md\t\t\trenamed to content/Briselle.md"
         )
-        assert plan.renamed == {
+        assert plan.files.moves == {
             example / "content/Port Briselle.md": example / "content/Briselle.md"
         }
         assert (example / "content/Port Briselle.md").exists()
-        plan.apply()
+        plan.files.apply()
         assert not (example / "content/Port Briselle.md").exists()
         text = (example / "campaigns/campaign_1/content/Quay Nine.md").read_text()
         assert 'parent_location: "[[Briselle]]"' in text
@@ -143,7 +143,7 @@ class TestRename:
     ) -> None:
         esme = example / "campaigns/campaign_1/content/Esme Calder.md"
         plan = rename(esme, "Bram Kest")
-        plan.apply()
+        plan.files.apply()
         peter = example / "campaigns/campaign_2/reference/players/Peter.md"
         assert '"[[campaign_2/content/Bram Kest]]"' in peter.read_text()
         ellis = example / "campaigns/campaign_1/reference/players/Ellis.md"
@@ -152,7 +152,7 @@ class TestRename:
 
     def test_case_only(self, example: Path) -> None:
         plan = rename(Path("content/Wake-lark.md"), "Wake-Lark", example)
-        plan.apply()
+        plan.files.apply()
         assert "Wake-Lark.md" in [p.name for p in (example / "content").iterdir()]
         assert not validate(example).failed
 
@@ -160,7 +160,7 @@ class TestRename:
         path = example / "content/Wake-lark.md"
         path.write_text(path.read_text() + "\nSee [[Wake-lark#Notes]].\n")
         plan = rename(path, "Lark")
-        assert "See [[Lark#Notes]]." in plan.texts[path]
+        assert "See [[Lark#Notes]]." in plan.files.read_text(path)
 
     @pytest.mark.parametrize(
         ("relative", "name", "message"),

@@ -6,8 +6,8 @@ from pathlib import Path
 from armarium.extensions import is_template
 from armarium.index import name_key, read_names
 from armarium.lib import find_campaign, record_files, relative_posix
-from armarium.parse import Frontmatter
-from armarium.relink import PARSE_ERRORS, Change, Plan, Relinker
+from armarium.parse import PARSE_ERRORS, Frontmatter
+from armarium.relink import RelinkChange, Relinker, RelinkPlan
 from armarium.trace import locate
 from armarium.validate import CAMPAIGN_FILES, STRUCTURAL_TYPES
 
@@ -118,7 +118,7 @@ def clashes(root: Path, path: Path, name: str, frontmatter: Frontmatter) -> list
     return found
 
 
-def rename(path: Path, name: str, vault: Path | None = None) -> Plan:
+def rename(path: Path, name: str, vault: Path | None = None) -> RelinkPlan:
     """Plan renaming a record in its folder and rewriting every link to it.
 
     Args:
@@ -129,7 +129,7 @@ def rename(path: Path, name: str, vault: Path | None = None) -> Plan:
             location.
 
     Returns:
-        Plan: The rename and the link changes, not yet made.
+        RelinkPlan: The rename and the link changes, not yet made.
 
     Raises:
         ValueError: The record cannot be renamed, the name is unusable or
@@ -149,9 +149,9 @@ def rename(path: Path, name: str, vault: Path | None = None) -> Plan:
     if taken:
         raise ValueError(f"{name} is already a name of {', '.join(taken)}")
     plan = Relinker(root, {located: new}).plan()
-    plan.renamed[located] = new
+    plan.files.moves[located] = new
     relative = relative_posix(located, root)
     plan.changes.insert(
-        0, Change(relative, "", 0, f"renamed to {relative_posix(new, root)}")
+        0, RelinkChange(relative, "", 0, f"renamed to {relative_posix(new, root)}")
     )
     return plan

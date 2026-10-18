@@ -1,25 +1,10 @@
-"""Relinking plans and makes the link changes that moving a record needs."""
+"""Relinking plans the link changes that moving a record needs."""
 
-import codecs
 from pathlib import Path
 
 import pytest
 
-from armarium.changes import FileChange
-from armarium.relink import (
-    _DROP,
-    Change,
-    Plan,
-    Relinker,
-    _display,
-    _encode,
-    _fields,
-    _quote,
-    _reads_as,
-    _scalar,
-    emit,
-    rewrite_frontmatter,
-)
+from armarium.relink import _DROP, RelinkChange, Relinker, _display, _quote
 
 SESSION = """---
 type: "[[Session]]"
@@ -73,68 +58,23 @@ def relinker(root: Path, moves: dict[str, str | None], **options: bool) -> Relin
     )
 
 
-class TestChangeOutput:
+class TestRelinkChangeOutput:
     @pytest.mark.parametrize(
         ("change", "expected"),
         [
             (
-                Change("a.md", "Notes", 4, "[[A]] → [[B]]"),
+                RelinkChange("a.md", "Notes", 4, "[[A]] → [[B]]"),
                 "a.md\tNotes\t4\t[[A]] → [[B]]",
             ),
-            (Change("a.md", "subjects", 0, "x"), "a.md\tsubjects\t\tx"),
-            (Change("a.md", "", 0, "renamed to b.md"), "a.md\t\t\trenamed to b.md"),
+            (RelinkChange("a.md", "subjects", 0, "x"), "a.md\tsubjects\t\tx"),
+            (
+                RelinkChange("a.md", "", 0, "renamed to b.md"),
+                "a.md\t\t\trenamed to b.md",
+            ),
         ],
     )
-    def test_tab_separated(self, change: Change, expected: str) -> None:
+    def test_tab_separated(self, change: RelinkChange, expected: str) -> None:
         assert change.output == expected
-
-
-class TestPlanApply:
-    def plan(self, root: Path) -> Plan:
-        old, other, gone = (write(root, n, "x") for n in ("a.md", "b.md", "c.md"))
-        return Plan(
-            root,
-            texts={old: "new a", other: "new b", gone: "never written"},
-            renamed={old: root / "A2.md"},
-            deleted={gone},
-        )
-
-    @pytest.mark.parametrize(
-        ("dry_run", "names"),
-        [(False, ["A2.md", "b.md"]), (True, ["a.md", "b.md", "c.md"])],
-    )
-    def test_writes_renames_and_deletes(
-        self, tmp_path: Path, dry_run: bool, names: list[str]
-    ) -> None:
-        root = tmp_path.resolve()
-        changes = self.plan(root).apply(dry_run=dry_run)
-        assert changes == [
-            FileChange("replace", "a.md"),
-            FileChange("move", "a.md", "A2.md"),
-            FileChange("replace", "b.md"),
-            FileChange("delete", "c.md"),
-        ]
-        assert sorted(p.name for p in root.iterdir()) == names
-        if not dry_run:
-            assert (root / "A2.md").read_text() == "new a"
-            assert (root / "b.md").read_text() == "new b"
-
-    def test_case_only_rename(self, tmp_path: Path) -> None:
-        root = tmp_path.resolve()
-        old = write(root, "quay.md", "x")
-        Plan(root, renamed={old: root / "Quay.md"}).apply()
-        assert [p.name for p in root.iterdir()] == ["Quay.md"]
-
-
-class TestEncode:
-    @pytest.mark.parametrize("bom", [b"", codecs.BOM_UTF8])
-    def test_keeps_bom(self, tmp_path: Path, bom: bytes) -> None:
-        path = tmp_path / "a.md"
-        path.write_bytes(bom + b"old\r\n")
-        assert (
-            _encode(path, "n\u00e9w\r\nline\r\n")
-            == bom + "n\u00e9w\r\nline\r\n".encode()
-        )
 
 
 class TestRelinkerInit:
@@ -458,7 +398,7 @@ class TestRelinkerValue:
         texts: list[str],
     ) -> None:
         relinked = relinker(vault, {"content/Quay Nine.md": None})
-        changes: list[Change] = []
+        changes: list[RelinkChange] = []
         result = relinked._value(
             value,
             "field",
@@ -472,7 +412,7 @@ class TestRelinkerValue:
 
     def test_locations(self, vault: Path) -> None:
         relinked = relinker(vault, {"content/Quay Nine.md": "content/Quay Ten.md"})
-        changes: list[Change] = []
+        changes: list[RelinkChange] = []
         result = relinked._value(
             {"campaign_1": {"held_by": ["[[Quay Nine]]"]}, "x": "[[Quay Nine]]"},
             "",
@@ -529,19 +469,20 @@ class TestRelinkerPlan:
         plan = relinker(
             vault, {"content/Quay Nine.md": "campaigns/campaign_1/content/Harbour.md"}
         ).plan()
-        assert sorted(p.relative_to(vault).as_posix() for p in plan.texts) == [
+        files = plan.files
+        assert sorted(p.relative_to(vault).as_posix() for p in files.writes) == [
             "campaigns/campaign_1/sessions/S-1-001.md",
             "campaigns/campaign_2/content/Gull.md",
             "content/Quay Nine.md",
         ]
-        assert plan.texts[vault / "content/Quay Nine.md"] == (
+        assert files.read_text(vault / "content/Quay Nine.md") == (
             "---\n---\n## Notes\nSee [[campaign_1/content/Harbour#Notes]].\n"
         )
-        assert plan.texts[vault / "campaigns/campaign_2/content/Gull.md"] == (
+        assert files.read_text(vault / "campaigns/campaign_2/content/Gull.md") == (
             "---\n---\nAt [[campaign_2/content/Harbour]].\n"
         )
         assert len(plan.notes) == 4
-        assert all(path.read_text() != plan.texts.get(path) for path in plan.texts)
+        assert all(path.read_text() != files.read_text(path) for path in files.writes)
 
     def test_refuses_unparseable_records(self, vault: Path) -> None:
         write(vault, "content/Broken.md", "---\na: [[[Quay Nine]]\n")
@@ -576,122 +517,3 @@ class TestQuote:
     )
     def test_quote(self, line: str, expected: str) -> None:
         assert _quote(line, line.index("[[X]]")) == expected
-
-
-class TestRewriteFrontmatter:
-    LINES = [
-        "---\n",
-        "# keep\n",
-        'a: "[[X]]"\n',
-        "b:\n",
-        "  - 1\n",
-        "\n",
-        "c: 2\n",
-        "---\n",
-    ]
-
-    def test_edits_lines_when_they_read_as_expected(self) -> None:
-        result = rewrite_frontmatter(
-            self.LINES,
-            {"a": "[[Y]]", "b": [1], "c": 2},
-            lambda line: line.replace("[[X]]", "[[Y]]"),
-        )
-        assert result == [line.replace("[[X]]", "[[Y]]") for line in self.LINES]
-
-    def test_writes_changed_fields_afresh(self) -> None:
-        result = rewrite_frontmatter(
-            self.LINES, {"a": "[[X]]", "b": [], "c": 2, "d": None}, lambda line: line
-        )
-        assert result == [
-            "---\n",
-            "# keep\n",
-            'a: "[[X]]"\n',
-            "b: []\n",
-            "\n",
-            "c: 2\n",
-            "d:\n",
-            "---\n",
-        ]
-
-    def test_keeps_crlf(self) -> None:
-        lines = ["---\r\n", "a: 1\r\n", "---\r\n"]
-        assert rewrite_frontmatter(lines, {"a": 2}) == [
-            "---\r\n",
-            "a: 2\r\n",
-            "---\r\n",
-        ]
-
-    def test_refuses_what_cannot_be_written(self) -> None:
-        with pytest.raises(ValueError, match="edit it by hand"):
-            rewrite_frontmatter(["---\n", "a: 1\n", "---\n"], {"a": float("nan")})
-
-
-class TestReadsAs:
-    @pytest.mark.parametrize(
-        ("lines", "expected"),
-        [
-            (["---\n", "a: 1\n", "---\n"], True),
-            (["---\n", "a: 2\n", "---\n"], False),
-            (["---\n", "a: [\n", "---\n"], False),
-        ],
-    )
-    def test_reads_as(self, lines: list[str], expected: bool) -> None:
-        assert _reads_as(lines, {"a": 1}) is expected
-
-
-class TestFields:
-    def test_spans(self) -> None:
-        lines = [
-            "# comment\n",
-            'type: "[[X]]"\n',
-            "'quoted key': 1\n",
-            "aliases:\n",
-            "- A\n",
-            "  # inner\n",
-            "\n",
-            "# before c\n",
-            "campaign_1:\n",
-            "  first_session:\n",
-        ]
-        assert _fields(lines) == {
-            "type": (1, 2),
-            "quoted key": (2, 3),
-            "aliases": (3, 6),
-            "campaign_1": (8, 10),
-        }
-
-
-class TestEmit:
-    @pytest.mark.parametrize(
-        ("key", "value", "expected"),
-        [
-            ("summary", None, ["summary:"]),
-            ("summary", "A [[Quay]] pilot", ['summary: "A [[Quay]] pilot"']),
-            ("subjects", ["[[A]]", "[[B]]"], ['subjects: ["[[A]]", "[[B]]"]']),
-            ("subjects", [], ["subjects: []"]),
-            ("odd key", 1, ['"odd key": 1']),
-            ("campaign_1", {}, ["campaign_1: {}"]),
-            (
-                "campaign_1",
-                {"first_session": "[[S-1-001]]", "held_by": None},
-                ["campaign_1:", '  first_session: "[[S-1-001]]"', "  held_by:"],
-            ),
-        ],
-    )
-    def test_emit(self, key: str, value: object, expected: list[str]) -> None:
-        assert emit(key, value) == expected
-
-
-class TestScalar:
-    @pytest.mark.parametrize(
-        ("value", "expected"),
-        [
-            (None, ""),
-            (True, "true"),
-            (3, "3"),
-            ("é", '"é"'),
-            ([None, "a", {"b": 1}], '[null, "a", {"b": 1}]'),
-        ],
-    )
-    def test_scalar(self, value: object, expected: str) -> None:
-        assert _scalar(value) == expected
