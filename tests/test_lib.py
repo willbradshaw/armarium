@@ -1,5 +1,6 @@
 """Shared syntax and vault-discovery utilities."""
 
+import json
 import logging
 from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 from typing import Literal
@@ -34,6 +35,7 @@ from armarium.lib import (
     parse_directories,
     parse_subtype_directories,
     parse_wikilink,
+    read_settings,
     record_files,
     relative_parts,
     relative_posix,
@@ -1339,3 +1341,25 @@ class TestManagedFiles:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("copy")
         assert managed_files(tmp_path) == ({relative: b"copy"} if managed else {})
+
+
+class TestReadSettings:
+    def test_reads(self, tmp_path: Path) -> None:
+        settings = {"armarium_version": "1.0.0", "local": ["a.md"]}
+        (tmp_path / "vault.json").write_text(json.dumps(settings))
+        assert read_settings(tmp_path) == settings
+
+    @pytest.mark.parametrize(
+        "settings",
+        [
+            [],
+            {"local": []},
+            {"armarium_version": 1, "local": []},
+            {"armarium_version": "1.0.0"},
+            {"armarium_version": "1.0.0", "local": [1]},
+        ],
+    )
+    def test_refuses_invalid(self, tmp_path: Path, settings: object) -> None:
+        (tmp_path / "vault.json").write_text(json.dumps(settings))
+        with pytest.raises(ValueError, match="invalid vault record"):
+            read_settings(tmp_path)

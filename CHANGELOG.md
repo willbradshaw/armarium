@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium update` to bring the files Armarium copied into a vault up to date, merging the vault's own changes to them.
 - Record in a new vault's `.armarium/` a copy of each starter file Armarium keeps up to date, and the Armarium version that supplied them.
 - Make the `update-record` skill rename, merge and delete records with the commands, and list them in the vault guide.
 - Add `armarium merge` to merge one record into another, repointing the links to it and listing where the two disagree.

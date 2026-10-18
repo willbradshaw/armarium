@@ -9,6 +9,7 @@ from pathlib import Path
 from jsonschema.exceptions import SchemaError
 
 from armarium.add import add_campaign
+from armarium.changes import report_changes
 from armarium.clue import add_clue
 from armarium.content import add_content
 from armarium.delete import delete
@@ -43,6 +44,7 @@ from armarium.transcribe import (
     transcribe,
 )
 from armarium.transcript import add_transcript
+from armarium.update import DESCRIPTIONS, PENDING, update_vault
 from armarium.validate import validate
 
 
@@ -225,6 +227,30 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             type=Path,
             help="vault root (default: discovered from the current directory)",
         )
+    refresh = commands.add_parser(
+        "update",
+        help="bring the vault's copies of Armarium files up to date",
+        description=(
+            "Update the files Armarium copied into the vault to the running "
+            "Armarium's, keeping the vault's own changes and merging them where "
+            "both changed. Validates the vault afterward."
+        ),
+    )
+    refresh.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the current directory)",
+    )
+    refresh.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="report the changes without making them",
+    )
+    refresh.add_argument(
+        "--allow-downgrade",
+        action="store_true",
+        help="allow updating a vault last updated by a newer Armarium",
+    )
     add = commands.add_parser("add", help="add to an existing vault")
     additions = add.add_subparsers(dest="addition", required=True)
     campaign = additions.add_parser("campaign", help="create a new campaign")
@@ -1025,6 +1051,42 @@ def main() -> None:
             ],
         )
         result = validate(destination)
+    elif args.command == "update":
+        try:
+            update = update_vault(
+                args.vault,
+                dry_run=args.dry_run,
+                allow_downgrade=args.allow_downgrade,
+            )
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot update the vault: %s", exc)
+            sys.exit(1)
+        logger.info(
+            "Updating from Armarium %s to %s",
+            update.previous or "(no record)",
+            update.version,
+        )
+        for entry in update.changes:
+            if entry.action in DESCRIPTIONS:
+                report = logger.warning if entry.action == "conflict" else logger.info
+                report("%s: %s", entry.path, DESCRIPTIONS[entry.action])
+        applied = not args.dry_run and not update.conflicts
+        report_changes(update.vault_files, dry_run=not applied)
+        if args.dry_run:
+            return
+        if update.conflicts:
+            count = len(update.conflicts)
+            logger.error(
+                "Nothing changed: %s %s. Resolve each in %s/, removing the "
+                "marker lines, then run armarium update again",
+                count,
+                "file conflicts" if count == 1 else "files conflict",
+                (update.root / PENDING).as_posix(),
+            )
+            sys.exit(1)
+        destination = update.root
+        logger.info("Vault updated; validating")
+        result = validate(destination)
     elif args.command == "add":
         try:
             options = {
@@ -1077,7 +1139,7 @@ def main() -> None:
     else:
         result = validate(args.path, args.vault, jobs=args.jobs)
         result.report()
-    if args.command in {"init", "add", "extension", "illustrate"}:
+    if args.command in {"init", "add", "extension", "illustrate", "update"}:
         for diagnostic in result.diagnostics:
             if diagnostic.severity != "info":
                 diagnostic.report()
@@ -1097,8 +1159,10 @@ def main() -> None:
             logger.error("Extension change retained; see validation diagnostics above")
         elif args.command == "illustrate":
             logger.error("Image and record change retained for inspection")
+        elif args.command == "update":
+            logger.error("Update retained; see validation diagnostics above")
         sys.exit(1)
-    if args.command in {"init", "add", "extension", "illustrate"}:
+    if args.command in {"init", "add", "extension", "illustrate", "update"}:
         logger.info("Validation completed successfully")
 
 

@@ -30,6 +30,7 @@ for details.
 
 | Command | Does | Guide |
 | --- | --- | --- |
+| `armarium update` | brings the files Armarium copied into a vault up to date | [Updating a vault](docs/update.md) |
 | `armarium add` | adds campaigns and records | [Adding to a vault](docs/add.md) |
 | `armarium find` | looks a record up by name or alias | [Finding records](docs/find.md) |
 | `armarium trace` | lists the records that link to a record, or the files it links to | [Tracing links to a record](docs/trace.md) |
