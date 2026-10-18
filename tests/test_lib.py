@@ -29,6 +29,7 @@ from armarium.lib import (
     iter_wikilinks,
     line_ending,
     locate,
+    managed_files,
     matches_kind,
     parse_directories,
     parse_subtype_directories,
@@ -43,6 +44,7 @@ from armarium.lib import (
 from armarium.parse import Body, Frontmatter, Record
 
 _INVALID_BRACKETS = "use [[target]] with balanced double brackets on one line"
+STARTER = Path(__file__).resolve().parents[1] / "vaults/starter"
 
 
 class TestParseWikilink:
@@ -1308,3 +1310,32 @@ class TestLineEnding:
     )
     def test_ending(self, text: str, expected: str) -> None:
         assert line_ending(text) == expected
+
+
+class TestManagedFiles:
+    def test_starter(self) -> None:
+        copies = managed_files(STARTER)
+        assert {"AGENTS.md", ".gitignore", "reference/types/Content.md"} <= set(copies)
+        assert copies["AGENTS.md"] == (STARTER / "AGENTS.md").read_bytes()
+
+    @pytest.mark.parametrize(
+        ("relative", "managed"),
+        [
+            ("AGENTS.md", True),
+            (".agents/skills/interview/SKILL.md", True),
+            ("bases/Content.base", True),
+            ("reference/.gitkeep", True),
+            ("campaigns/campaign_1/reference/Campaign.md", False),
+            ("content/.gitkeep", False),
+            ("notes/.gitkeep", False),
+            ("assets/.gitkeep", False),
+            (".scratch/.gitkeep", False),
+            (".DS_Store", False),
+            ("reference/__pycache__/x.pyc", False),
+        ],
+    )
+    def test_selection(self, tmp_path: Path, relative: str, managed: bool) -> None:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("copy")
+        assert managed_files(tmp_path) == ({relative: b"copy"} if managed else {})

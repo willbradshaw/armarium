@@ -1,13 +1,15 @@
 """Create an independent vault from the starter shipped with Armarium."""
 
+import json
 import shutil
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 
-from armarium.extensions import enable_extension
+from armarium.extensions import armarium_version, enable_extension
+from armarium.lib import RECORD, managed_files
 from armarium.logging import logger
 
 
@@ -30,10 +32,37 @@ def _starter() -> Traversable:
     raise FileNotFoundError("starter files are missing; reinstall Armarium")
 
 
+def write_record(
+    record: Path, copies: Mapping[str, bytes], local: Sequence[str] = ()
+) -> None:
+    """Write a new record of a vault's managed copies.
+
+    The record holds each copy under ``base/`` and, in ``vault.json``, the
+    supplying Armarium version and the managed paths the vault keeps as its own.
+
+    Args:
+        record: Record directory to create; it must not exist.
+        copies: Contents of each managed file by vault-relative path.
+        local: Managed paths the vault keeps as its own.
+
+    Raises:
+        FileExistsError: The record directory already exists.
+    """
+    record.mkdir()
+    for relative, content in copies.items():
+        path = record / "base" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    settings = {"armarium_version": armarium_version(), "local": sorted(local)}
+    (record / "vault.json").write_text(json.dumps(settings, indent=2) + "\n")
+
+
 def init_vault(
     destination: Path, *, force: bool = False, extensions: Sequence[str] = ()
 ) -> Path:
     """Copy the starter into a new directory, optionally replacing an old one.
+
+    The new vault records its managed copies in ``.armarium/``.
 
     Args:
         destination: New vault directory. Missing parents are created.
@@ -62,6 +91,7 @@ def init_vault(
             replacement, backup = workspace / "replacement", workspace / "original"
             try:
                 shutil.copytree(source, replacement)
+                write_record(replacement / RECORD, managed_files(source))
                 for extension in extensions:
                     enable_extension(extension, replacement)
                 destination.rename(backup)
@@ -81,6 +111,7 @@ def init_vault(
         destination.mkdir(parents=True)
         try:
             shutil.copytree(source, destination, dirs_exist_ok=True)
+            write_record(destination / RECORD, managed_files(source))
             for extension in extensions:
                 enable_extension(extension, destination)
         except BaseException:

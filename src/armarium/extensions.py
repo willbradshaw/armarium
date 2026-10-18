@@ -288,7 +288,7 @@ def _extension(name: str) -> Traversable:
     raise ValueError(f"unknown extension: {name}")
 
 
-def _armarium_version() -> str:
+def armarium_version() -> str:
     """Identify the release supplying resources, or the checkout's project version."""
     if files("armarium").joinpath("extensions").is_dir():
         return version("armarium")
@@ -422,7 +422,7 @@ def _install_extension(
                         _local_path(root, f"reference/extensions/{name}", rule[field])
                         rule[field] = f"extensions/{name}/{rule[field]}"
             addition[name]["installed"] = True
-            addition[name]["armarium_version"] = _armarium_version()
+            addition[name]["armarium_version"] = armarium_version()
             declarations.update(addition)
             _write_config(config, json.dumps(declarations, indent=2).encode() + b"\n")
             registered = True
@@ -525,7 +525,7 @@ def update_extension(
     if name not in declarations or not declarations[name].get("installed", False):
         raise ValueError(f"extension is not installed: {name}")
     previous = declarations[name].get("armarium_version")
-    available = _armarium_version()
+    available = armarium_version()
     if (
         previous is not None
         and Version(previous) > Version(available)

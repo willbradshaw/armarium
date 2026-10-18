@@ -1,14 +1,34 @@
 """Starter lookup, exclusive creation and rollback of a failed initialization."""
 
+import json
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
-from armarium.init import _starter, init_vault
+from armarium.init import _starter, init_vault, write_record
+from armarium.lib import RECORD, managed_files
 from armarium.validate import validate
 
 STARTER = Path(__file__).resolve().parents[1] / "vaults/starter"
+
+
+class TestWriteRecord:
+    def test_writes_copies_and_settings(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("armarium.init.armarium_version", lambda: "2.0.0")
+        record = tmp_path / RECORD
+        write_record(record, {"AGENTS.md": b"a", "docs/x.md": b"x"}, ["b", "a"])
+        assert managed_files(record / "base") == {"AGENTS.md": b"a", "docs/x.md": b"x"}
+        assert json.loads((record / "vault.json").read_text()) == {
+            "armarium_version": "2.0.0",
+            "local": ["a", "b"],
+        }
+
+    def test_refuses_existing(self, tmp_path: Path) -> None:
+        with pytest.raises(FileExistsError):
+            write_record(tmp_path, {})
 
 
 class TestStarter:
@@ -114,8 +134,9 @@ class TestInitVault:
         assert {
             p.relative_to(created): p.read_bytes()
             for p in created.rglob("*")
-            if p.is_file()
+            if p.is_file() and not p.is_relative_to(created / RECORD)
         } == expected
+        assert managed_files(created / RECORD / "base") == managed_files(STARTER)
         assert not validate(created).failed
         (created / "reference/types/Content.md").write_text("Customized")
         assert (STARTER / "reference/types/Content.md").read_bytes() == expected[

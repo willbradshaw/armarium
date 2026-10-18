@@ -518,8 +518,36 @@ def check_vault(path: Path, vault: Path) -> Path:
     return root
 
 
+# Entries a checkout or a vault may hold that are never part of Armarium's files.
+IGNORED = frozenset({".DS_Store", "__pycache__"})
+# Where a vault records the copies of starter files Armarium keeps up to date.
+RECORD = Path(".armarium")
+# Top-level starter directories copied only to begin a vault, which owns them.
+SCAFFOLD = frozenset({".scratch", "assets", "campaigns", "content", "notes"})
 # Directories that traversal skips wherever they occur.
 SKIPPED_DIRECTORIES = frozenset({"__pycache__", "node_modules"})
+
+
+def managed_files(source: Path) -> dict[str, bytes]:
+    """Read the starter files Armarium keeps up to date in a vault.
+
+    Args:
+        source: Starter directory, or a record's copy of one.
+
+    Returns:
+        dict[str, bytes]: Each file's contents by its POSIX path relative to
+            source, leaving out the scaffold directories.
+    """
+    copies: dict[str, bytes] = {}
+    for path in sorted(source.rglob("*")):
+        relative = path.relative_to(source)
+        if (
+            path.is_file()
+            and relative.parts[0] not in SCAFFOLD
+            and not IGNORED.intersection(relative.parts)
+        ):
+            copies[relative.as_posix()] = path.read_bytes()
+    return copies
 
 
 def check_destination(

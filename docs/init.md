@@ -24,6 +24,13 @@ directory is removed, so a setup failure leaves the existing directory intact.
 The copy includes `AGENTS.md`, `docs/` and the
 [skills for coding agents](agents.md).
 
+Armarium keeps the copied files up to date, except those in `campaigns/`,
+`content/`, `notes/`, `assets/` and `.scratch/`, which only start the vault off.
+`init` records these managed files in a hidden `.armarium/` directory: a copy of
+each as Armarium supplied it in `.armarium/base/`, and the supplying Armarium
+version in `.armarium/vault.json`. Keep `.armarium/` with the vault, including
+in Git.
+
 `init` does not initialize Git or install Obsidian plugins. After completion,
 open the new vault in Obsidian and enable the plugins listed in
 [the README](../README.md) before editing. After initialization, the vault can be

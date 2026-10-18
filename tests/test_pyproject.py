@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from armarium.lib import managed_files
+
 
 @pytest.fixture(scope="module")
 def installed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Path]:
@@ -806,11 +808,17 @@ class TestPyproject:
         ]
         assert created.stdout == ""
         source = Path(__file__).resolve().parents[1] / "vaults/starter"
+        record = Path(".armarium")
         expected = {
             p.relative_to(source): p.read_bytes()
             for p in source.rglob("*")
             if p.is_file()
         }
+        expected |= {
+            record / "base" / relative: content
+            for relative, content in managed_files(source).items()
+        }
+        expected[record / "vault.json"] = (target / record / "vault.json").read_bytes()
         assert {
             p.relative_to(target): p.read_bytes()
             for p in target.rglob("*")
