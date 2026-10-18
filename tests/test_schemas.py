@@ -1,18 +1,43 @@
 """Schema loading, retrieval, validation and selection contracts."""
 
+import contextlib
 import json
+import math
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+import jsonschema_rs
 import pytest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
-from referencing.exceptions import NoSuchResource
+from referencing import Registry, Resource
+from referencing.exceptions import NoSuchResource, Unresolvable
+from referencing.jsonschema import DRAFT202012
 
 from armarium.parse import Body, Frontmatter, Record
-from armarium.schemas import Schema, _check_schema, read_subtype_records, select_schema
+from armarium.schemas import (
+    RUST_SPACE,
+    SPACE,
+    Schema,
+    UnsupportedSchema,
+    _check_numbers,
+    _check_schema,
+    _class_item,
+    _conforms,
+    _count_rewritten,
+    _rewrite,
+    _rust_char,
+    _rust_class,
+    _rust_formats,
+    _walk_references,
+    read_subtype_records,
+    rust_pattern,
+    rust_schema,
+    select_schema,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,6 +87,316 @@ class TestCheckSchema:
             with pytest.raises(SchemaError):
                 _check_schema('{"type": 12}')
         assert _check_schema.cache_info().currsize == 0
+
+
+def rust_matches(pattern: str, text: str) -> bool:
+    """Search text with a pattern as jsonschema-rs does."""
+    validator = jsonschema_rs.Draft202012Validator({"pattern": pattern})
+    return bool(validator.is_valid(text))
+
+
+# Strings that tell apart how Python and Rust read patterns.
+PROBES = [
+    "",
+    "a",
+    "a\n",
+    "a\nb",
+    "\x1c",
+    " a",
+    "　",
+    "ab]c",
+    "a-b",
+    "[[Port Briselle]]",
+    "[[Port Briselle]]\n",
+    "#x",
+    "aaa",
+    "é",
+    "\n## Notes\nText",
+]
+
+
+class TestRustChar:
+    @pytest.mark.parametrize(
+        ("char", "expected"),
+        [
+            ("a", "a"),
+            ("Z", "Z"),
+            ("7", "7"),
+            ("-", "\\x{2D}"),
+            (" ", "\\x{20}"),
+            ("é", "\\x{E9}"),
+            ("\x1c", "\\x{1C}"),
+            ("😀", "\\x{1F600}"),
+        ],
+    )
+    def test_escapes_all_but_ascii_letters_and_digits(
+        self, char: str, expected: str
+    ) -> None:
+        assert _rust_char(char) == expected
+        assert rust_matches(f"^{expected}$", char)
+
+
+class TestSpace:
+    def test_is_what_python_s_matches(self) -> None:
+        assert SPACE == "".join(
+            chr(code) for code in range(0x110000) if re.match(r"\s", chr(code))
+        )
+
+
+class TestClassItem:
+    @pytest.mark.parametrize(
+        ("pattern", "expected"),
+        [
+            ("a", ("a", 1)),
+            ("\\s", (None, 2)),
+            ("\\S", ("\\S", 2)),
+            ("\\n", ("\n", 2)),
+            ("\\r", ("\r", 2)),
+            ("\\t", ("\t", 2)),
+            ("\\]", ("]", 2)),
+            ("\\\\", ("\\", 2)),
+        ],
+    )
+    def test_reads_one_item(
+        self, pattern: str, expected: tuple[str | None, int]
+    ) -> None:
+        assert _class_item(pattern, 0) == expected
+
+    @pytest.mark.parametrize("pattern", ["", "[", "\\d", "\\w", "\\x41", "\\"])
+    def test_refuses(self, pattern: str) -> None:
+        with pytest.raises(UnsupportedSchema):
+            _class_item(pattern, 0)
+
+
+class TestRustClass:
+    @pytest.mark.parametrize(
+        ("pattern", "expected"),
+        [
+            ("[a-z]x", ("[a-z]", 5)),
+            ("[^a]", ("[^a]", 4)),
+            ("[]a]", ("[\\x{5D}a]", 4)),
+            ("[-a]", ("[\\x{2D}a]", 4)),
+            ("[a-]", ("[a\\x{2D}]", 4)),
+            ("[\\s\\S]", ("(?s:.)", 6)),
+        ],
+    )
+    def test_translates(self, pattern: str, expected: tuple[str, int]) -> None:
+        assert _rust_class(pattern, 0) == expected
+
+    @pytest.mark.parametrize("pattern", ["[a", "[\\S]", "[^\\s\\S]", "[a-\\s]", "[[]"])
+    def test_refuses(self, pattern: str) -> None:
+        with pytest.raises(UnsupportedSchema):
+            _rust_class(pattern, 0)
+
+
+class TestRustPattern:
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            r"\S",
+            r"^\s*$",
+            r"^a$",
+            r"a$|^b",
+            r"^\[\[[^\[\]#|]+\]\]$",
+            r"^\[\[(?!\s*\]\])[^\[\]#|\r\n]+\]\](?![\s\S])",
+            r"[^\s\r\n]",
+            r"[a-z\-]+",
+            r"[]a]",
+            r"a{2}",
+            r"a{2,}",
+            r"(?:a|b)+?c?",
+            r"(?=a)a",
+            r"\.\s*$",
+            r"#x",
+            r"[&&]|[~~]",
+            r"\ |\}|}|]",
+            r"(?:^|\n)## Notes[ \t]*(?=\r?\n|$)",
+            "é",
+        ],
+    )
+    def test_matches_as_python_does(self, pattern: str) -> None:
+        translated = rust_pattern(pattern)
+        for text in PROBES:
+            assert rust_matches(translated, text) is bool(re.search(pattern, text)), (
+                text
+            )
+
+    @pytest.mark.parametrize(
+        "pattern",
+        [
+            r"\d",
+            r"\w",
+            r"\b",
+            r"(?i)a",
+            r"(?P<n>a)",
+            r"(?<=a)b",
+            r"a*+",
+            r"a{,2}",
+            r"\1",
+            r"[[]",
+            r"{",
+            r"a{2}+",
+        ],
+    )
+    def test_refuses_what_it_cannot_translate(self, pattern: str) -> None:
+        with pytest.raises(UnsupportedSchema):
+            rust_pattern(pattern)
+
+
+class TestCheckNumbers:
+    @pytest.mark.parametrize(
+        "value",
+        [None, True, "text", 1.5, -(2**63) + 1, 2**63 - 1, [1, {"a": [2.0]}]],
+    )
+    def test_accepts_exact_json(self, value: Any) -> None:
+        _check_numbers(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [2**63, [-(2**63)], {"a": math.inf}, math.nan, {1: "a"}, (1,), {"a": {1}}],
+    )
+    def test_refuses(self, value: Any) -> None:
+        with pytest.raises(UnsupportedSchema):
+            _check_numbers(value)
+
+
+class TestCountRewritten:
+    @pytest.mark.parametrize(
+        ("value", "count"),
+        [
+            ({}, 0),
+            ({"pattern": "a"}, 1),
+            ({"pattern": "a", "multipleOf": 2}, 1),
+            ([{"patternProperties": {}}, {"x": {"pattern": 1}}], 2),
+            ({"const": {"pattern": "a"}}, 1),
+            ("pattern", 0),
+        ],
+    )
+    def test_counts_objects_holding_rewritten_keys(
+        self, value: Any, count: int
+    ) -> None:
+        assert _count_rewritten(value) == count
+
+
+class TestRewrite:
+    def test_rewrites_every_subschema(self) -> None:
+        schema = {
+            "properties": {"pattern": {"pattern": "a$"}},
+            "patternProperties": {"^b$": {"items": {"pattern": "c$"}}},
+            "allOf": [{"pattern": "d$"}],
+            "$defs": {"e": {"not": {"pattern": "e$"}}},
+            "enum": [{"pattern": "f$"}],
+            "pattern": "g$",
+        }
+        rewritten, found = _rewrite(schema)
+        end = r"(?=\n?\z)"
+        assert rewritten == {
+            "properties": {"pattern": {"pattern": f"a{end}"}},
+            "patternProperties": {f"^b{end}": {"items": {"pattern": f"c{end}"}}},
+            "allOf": [{"pattern": f"d{end}"}],
+            "$defs": {"e": {"not": {"pattern": f"e{end}"}}},
+            "enum": [{"pattern": "f$"}],
+            "pattern": f"g{end}",
+        }
+        # The schema itself and four subschemas; enum holds data, not schemas.
+        assert found == 5
+
+    @pytest.mark.parametrize("schema", [True, None, "text"])
+    def test_leaves_other_values(self, schema: Any) -> None:
+        assert _rewrite(schema) == (schema, 0)
+
+    def test_refuses_multiple_of(self) -> None:
+        with pytest.raises(UnsupportedSchema, match="multipleOf"):
+            _rewrite({"items": {"multipleOf": 0.1}})
+
+
+class TestRustSchema:
+    def test_rewrites(self) -> None:
+        assert rust_schema({"pattern": "\\S"}) == {"pattern": f"[^{RUST_SPACE}]"}
+
+    @pytest.mark.parametrize(
+        "schema",
+        [
+            {"pattern": "\\d"},
+            {"maximum": 2**64},
+            {"x-unknown": {"pattern": "a"}},
+            {"$defs": {"a": {"multipleOf": 2}}},
+        ],
+    )
+    def test_refuses(self, schema: Any) -> None:
+        with pytest.raises(UnsupportedSchema):
+            rust_schema(schema)
+
+
+class TestWalkReferences:
+    def walk(self, schema: Any, others: dict[str, Any] | None = None) -> None:
+        registry: Registry[Any] = Registry().with_resources(
+            [
+                (uri, Resource.from_contents(contents, DRAFT202012))
+                for uri, contents in {
+                    "file:///s.json": schema,
+                    **(others or {}),
+                }.items()
+            ]
+        )
+        _walk_references(schema, registry.resolver("file:///s.json"), (), set())
+
+    @pytest.mark.parametrize(
+        "schema",
+        [
+            True,
+            {"$defs": {"a": {"type": "string"}}, "allOf": [{"$ref": "#/$defs/a"}] * 3},
+            {"properties": {"x": {"$ref": "other.json"}}},
+            {"$id": "file:///dir/inner.json", "$ref": "other.json"},
+        ],
+    )
+    def test_accepts(self, schema: Any) -> None:
+        self.walk(
+            schema,
+            {"file:///other.json": {"type": "string"}, "file:///dir/other.json": {}},
+        )
+
+    @pytest.mark.parametrize(
+        "schema",
+        [
+            {"$ref": "#"},
+            {
+                "$defs": {"a": {"$ref": "#/$defs/b"}, "b": {"$ref": "#/$defs/a"}},
+                "$ref": "#/$defs/a",
+            },
+            {"properties": {"child": {"$ref": "#"}}},
+            {"$ref": "other.json"},
+            {"$dynamicRef": "#a"},
+            json.loads('{"not": ' * 60 + "{}" + "}" * 60),
+        ],
+    )
+    def test_refuses(self, schema: Any) -> None:
+        with pytest.raises(UnsupportedSchema):
+            self.walk(schema, {"file:///other.json": {"$ref": "s.json"}})
+
+    def test_unresolvable(self) -> None:
+        with pytest.raises(Unresolvable):
+            self.walk({"$ref": "#/$defs/missing"})
+
+
+class TestRustFormats:
+    def test_checks_jsonschema_s_formats(self) -> None:
+        formats = _rust_formats()
+        assert set(formats) == set(FormatChecker().checkers)
+        assert formats["date"]("2026-10-18") and not formats["date"]("18/10/2026")
+
+    @pytest.mark.parametrize("value", [5, 1.5, None, True, [], {}])
+    def test_jsonschema_passes_values_that_are_not_strings(self, value: Any) -> None:
+        # jsonschema-rs checks formats of strings only, which is safe only if
+        # jsonschema's checkers pass everything else.
+        checker = FormatChecker()
+        assert all(checker.conforms(value, name) for name in checker.checkers)
+
+
+class TestConforms:
+    @pytest.mark.parametrize(("value", "expected"), [("a@b.c", True), ("ab", False)])
+    def test_uses_the_checker(self, value: str, expected: bool) -> None:
+        assert _conforms(FormatChecker(), "email", value) is expected
 
 
 class TestSchema:
@@ -185,7 +520,130 @@ class TestSchemaRetrieve:
             schema._retrieve(path.as_uri())
 
 
+class TestSchemaRetrieveForRust:
+    def test_rewrites_the_referenced_schema(
+        self, root: Path, write_schema: Callable[..., Path]
+    ) -> None:
+        schema = Schema.load(write_schema(True), root)
+        path = write_schema({"pattern": "a$"}, "helper.json")
+        assert schema._retrieve_for_rust(path.as_uri()) == {"pattern": "a(?=\\n?\\z)"}
+
+    @pytest.mark.parametrize(
+        ("contents", "error"),
+        [({"pattern": "\\d"}, UnsupportedSchema), (None, NoSuchResource)],
+    )
+    def test_raises(
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        contents: Any,
+        error: type[Exception],
+    ) -> None:
+        schema = Schema.load(write_schema(True), root)
+        path = write_schema(contents, "helper.json")
+        uri = path.as_uri() if contents is not None else "https://example.invalid/"
+        with pytest.raises(error):
+            schema._retrieve_for_rust(uri)
+
+
+class TestSchemaRustValidator:
+    @pytest.mark.parametrize(
+        ("contents", "built"),
+        [
+            (True, True),
+            ({"properties": {"body": {"$ref": "helper.json"}}}, True),
+            ({"pattern": "\\d"}, False),
+            ({"$ref": "widget.schema.json"}, False),
+            ({"$ref": "missing.json"}, False),
+            ({"$ref": "https://example.invalid/schema.json"}, False),
+            ({"anyOf": [{"$ref": "#/$defs/missing"}, True]}, False),
+        ],
+    )
+    def test_built_only_where_rust_agrees(
+        self, root: Path, write_schema: Callable[..., Path], contents: Any, built: bool
+    ) -> None:
+        write_schema({"type": "string"}, "helper.json")
+        schema = Schema.load(write_schema(contents), root)
+        assert (schema._rust_validator is not None) is built
+        # Built once per schema.
+        assert schema._rust_validator is schema._rust_validator
+
+
+class TestSchemaPassesInRust:
+    @pytest.mark.parametrize(
+        ("instance", "passes"),
+        [
+            ({"name": "Example"}, True),
+            ({"name": 5}, False),
+            ({"name": "\x1c"}, False),
+            ({"name": "\ud800"}, False),
+            ({1: "Example"}, False),
+            ({"name": "Example", "count": 2**70}, False),
+        ],
+    )
+    def test_passes_only_what_rust_checks_and_passes(
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        instance: dict[Any, Any],
+        passes: bool,
+    ) -> None:
+        schema = Schema.load(
+            write_schema(
+                {"properties": {"name": {"type": "string", "pattern": "\\S"}}}
+            ),
+            root,
+        )
+        assert schema._passes_in_rust(instance) is passes
+
+    def test_without_a_validator(
+        self, root: Path, write_schema: Callable[..., Path]
+    ) -> None:
+        schema = Schema.load(write_schema({"pattern": "\\d"}), root)
+        assert schema._passes_in_rust({}) is False
+
+    def test_a_failing_format_checker(
+        self, root: Path, write_schema: Callable[..., Path]
+    ) -> None:
+        schema = Schema.load(write_schema({"format": "date"}), root)
+        with patch.object(FormatChecker, "conforms", side_effect=RuntimeError):
+            assert schema._passes_in_rust("2026-10-18") is False
+
+
 class TestSchemaValidate:
+    @pytest.mark.parametrize("rust", [False, True])
+    @pytest.mark.parametrize(
+        ("name", "errors"),
+        [("Example", 0), ("\x1c", 1), ("Example\n", 0), ("", 1), ("é", 0)],
+    )
+    def test_same_with_and_without_rust(
+        self,
+        root: Path,
+        write_schema: Callable[..., Path],
+        rust: bool,
+        name: str,
+        errors: int,
+    ) -> None:
+        write_schema(
+            {
+                "properties": {
+                    "frontmatter": {"properties": {"name": {"pattern": "^\\S+$"}}}
+                }
+            }
+        )
+        schema = Schema.load(root / "reference/schemas/widget.schema.json", root)
+        record = Record(
+            root / "content/Example.md", Frontmatter({"name": name}), Body("", 1)
+        )
+        with (
+            patch.object(Schema, "_passes_in_rust", return_value=False)
+            if not rust
+            else (contextlib.nullcontext())
+        ):
+            diagnostics = schema.validate(record)
+        assert len(diagnostics) == errors
+        assert {d.rule for d in diagnostics} <= {"schema.instance"}
+
     @pytest.mark.parametrize(
         "reference",
         [
