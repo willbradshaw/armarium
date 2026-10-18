@@ -27,6 +27,7 @@ from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.painters import PAINTERS
 from armarium.player import add_player
+from armarium.rename import rename
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
 from armarium.trace import trace_outbound, trace_record
@@ -318,6 +319,32 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="record or asset to trace; with --vault, relative to the vault root",
     )
     trace.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the path)",
+    )
+    renaming = commands.add_parser(
+        "rename",
+        help="rename a record and rewrite the links to it",
+        description=(
+            "Rename a record in its folder and rewrite every link to it, then "
+            "validate the records that changed. Each line of output holds a "
+            "changed file's path, the frontmatter field or body headings where a "
+            "link sits, its line number and the change, separated by tabs."
+        ),
+    )
+    renaming.add_argument(
+        "path",
+        type=Path,
+        help="record to rename; with --vault, relative to the vault root",
+    )
+    renaming.add_argument("name", help="new name, without a path or .md")
+    renaming.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="list the changes without making them",
+    )
+    renaming.add_argument(
         "--vault",
         type=Path,
         help="vault root (default: discovered from the path)",
@@ -669,7 +696,8 @@ def main() -> None:
 
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
-            find matches nothing, trace cannot locate its file,
+            find matches nothing, trace cannot locate its file, rename cannot
+            rename or a changed record fails validation,
             transcribe cannot write its text or illustrate cannot take its
             picture in.
             Creation reports validation warnings and errors; validate also reports
@@ -711,6 +739,15 @@ def main() -> None:
             "from" if args.outbound else "to",
             target,
         )
+        return
+    if args.command == "rename":
+        try:
+            plan = rename(args.path, args.name, args.vault)
+            applied = plan.files.apply(dry_run=args.dry_run)
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot rename %s: %s", args.path, exc)
+            sys.exit(1)
+        plan.report(applied, dry_run=args.dry_run)
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:

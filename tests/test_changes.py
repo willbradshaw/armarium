@@ -1,5 +1,6 @@
 """Making a vault's planned file changes together, and undoing them on failure."""
 
+import codecs
 import logging
 import os
 from pathlib import Path
@@ -7,6 +8,8 @@ from pathlib import Path
 import pytest
 
 from armarium.changes import FileChange, FileChanges, report_changes
+
+BOM = codecs.BOM_UTF8
 
 
 def snapshot(root: Path) -> dict[str, bytes | None]:
@@ -26,6 +29,38 @@ def vault(tmp_path: Path) -> Path:
     (root / "sessions").mkdir()
     (root / "sessions/Session 1.md").write_text("Session\n")
     return root
+
+
+class TestFileChangesReadText:
+    @pytest.mark.parametrize(
+        ("writes", "expected"),
+        [({}, "Harbor\n"), ({Path("content/Harbor.md"): BOM + b"New\r\n"}, "New\r\n")],
+    )
+    def test_planned_or_on_disk(
+        self, vault: Path, writes: dict[Path, bytes], expected: str
+    ) -> None:
+        changes = FileChanges(vault, writes)
+        assert changes.read_text(Path("content/Harbor.md")) == expected
+
+    def test_missing_file(self, vault: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            FileChanges(vault).read_text(Path("content/Missing.md"))
+
+
+class TestFileChangesWriteText:
+    @pytest.mark.parametrize("bom", [b"", BOM])
+    @pytest.mark.parametrize("planned", [False, True])
+    def test_keeps_bom(self, vault: Path, bom: bytes, planned: bool) -> None:
+        path = Path("content/Harbor.md")
+        (vault / path).write_bytes(b"" if planned else bom + b"Harbor\n")
+        changes = FileChanges(vault, {path: bom + b"Planned\n"} if planned else {})
+        changes.write_text(path, "N\u00e9w\r\n")
+        assert changes.writes == {path: bom + "N\u00e9w\r\n".encode()}
+
+    def test_new_file(self, vault: Path) -> None:
+        changes = FileChanges(vault)
+        changes.write_text(Path("content/New.md"), "New\n")
+        assert changes.writes == {Path("content/New.md"): b"New\n"}
 
 
 class TestFileChangesResolve:

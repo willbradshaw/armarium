@@ -14,10 +14,11 @@ from armarium.trace import (
     _frontmatter_text,
     _mentions,
     _references,
-    _sharing,
     _spelling,
-    _spellings,
     locate,
+    mentioning,
+    sharing,
+    spellings,
     trace_outbound,
     trace_record,
 )
@@ -99,7 +100,7 @@ class TestSpellings:
         ],
     )
     def test_names(self, name: str, expected: set[str]) -> None:
-        assert _spellings(Path("content") / name) == expected
+        assert spellings(Path("content") / name) == expected
 
 
 class TestSharing:
@@ -126,10 +127,10 @@ class TestSharing:
     def test_files_with_a_spelling(
         self, spellings: set[str], expected: list[int]
     ) -> None:
-        assert _sharing(self.FILES, spellings) == [self.FILES[i] for i in expected]
+        assert sharing(self.FILES, spellings) == [self.FILES[i] for i in expected]
 
     def test_no_files(self) -> None:
-        assert _sharing([], {"mara"}) == []
+        assert sharing([], {"mara"}) == []
 
 
 class TestFinalSegment:
@@ -569,6 +570,45 @@ class TestTraceRecord:
         write(vault.parent, "Loose.md")
         with pytest.raises(ValueError):
             trace_record(Path(relative), vault)
+
+
+class TestMentioning:
+    @pytest.mark.parametrize(
+        ("targets", "expected"),
+        [
+            (
+                ["content/Quay Nine.md"],
+                [
+                    "campaigns/campaign_1/sessions/S-1-001.md",
+                    "content/Quay Nine.md",
+                    "content/Shoal Chart.md",
+                ],
+            ),
+            (
+                ["content/Port Briselle.md"],
+                ["campaigns/campaign_1/sessions/S-1-001.md"],
+            ),
+            (
+                ["content/Port Briselle.md", "content/Mara.md"],
+                ["campaigns/campaign_1/sessions/S-1-001.md", "content/Shoal Chart.md"],
+            ),
+            (["assets/Quay Nine.png"], []),
+        ],
+    )
+    def test_records_that_could_link(
+        self, vault: Path, targets: list[str], expected: list[str]
+    ) -> None:
+        root = vault.resolve()
+        found = list(mentioning(root, [root / target for target in targets]))
+        assert [path.relative_to(root).as_posix() for path, _ in found] == expected
+        assert all(data == path.read_bytes() for path, data in found)
+
+    def test_skips_templates_and_unreadable_files(self, vault: Path) -> None:
+        root = vault.resolve()
+        write(root, "reference/templates/Place.md", "[[Port Briselle]]")
+        write(root, "notes/Locked.md", "[[Port Briselle]]").chmod(0)
+        found = mentioning(root, [root / "content/Port Briselle.md"])
+        assert [path.name for path, _ in found] == ["S-1-001.md"]
 
 
 class TestTraceOutbound:

@@ -2913,3 +2913,75 @@ class TestFrontmatterInput:
                 main()
             assert exc.value.code == 1
             assert not destination.exists()
+
+
+@pytest.fixture
+def example(tmp_path: Path) -> Path:
+    root = tmp_path.resolve() / "example"
+    shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/example", root)
+    return root
+
+
+class TestRenameCommand:
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_renames(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "Lark", "--vault", str(example)]
+        arguments += ["--dry-run"] if dry_run else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "rename", *arguments])
+        main()
+        output = capsys.readouterr()
+        lines = output.out.splitlines()
+        assert lines[0] == "content/Wake-lark.md\t\t\trenamed to content/Lark.md"
+        assert (
+            "content/Captain Mara Vey.md\tsummary\t\t[[Wake-lark]] → [[Lark]]" in lines
+        )
+        assert (example / "content/Lark.md").exists() is not dry_run
+        assert (example / "content/Wake-lark.md").exists() is dry_run
+        moved = "would be moved" if dry_run else "moved"
+        assert f"content/Wake-lark.md: {moved} to content/Lark.md" in output.err
+
+    def test_exits_with_one(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "Port Briselle", "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "rename", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "ERROR: Cannot rename content/Wake-lark.md: " in output.err
+        assert "content/Port Briselle.md already exists" in output.err
+
+    @pytest.mark.parametrize(
+        "arguments", [[], ["content/Mara.md"], ["a.md", "b", "c"], ["a.md", "b", "-j"]]
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["rename", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["rename", "content/Mara.md", "Mara Vey"])
+        assert (args.path, args.name, args.dry_run, args.vault) == (
+            Path("content/Mara.md"),
+            "Mara Vey",
+            False,
+            None,
+        )
+        args = parse_args(
+            ["rename", "a.md", "b", "--dry-run", "--vault", str(tmp_path)]
+        )
+        assert (args.dry_run, args.vault) == (True, tmp_path)
