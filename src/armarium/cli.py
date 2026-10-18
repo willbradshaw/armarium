@@ -340,6 +340,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     renaming.add_argument("name", help="new name, without a path or .md")
     renaming.add_argument(
+        "--alias",
+        action="store_true",
+        help=(
+            "keep the old name as an alias, and as the display text of links "
+            "that have none"
+        ),
+    )
+    renaming.add_argument(
         "--dry-run",
         action="store_true",
         help="list the changes without making them",
@@ -742,7 +750,7 @@ def main() -> None:
         return
     if args.command == "rename":
         try:
-            plan = rename(args.path, args.name, args.vault)
+            plan = rename(args.path, args.name, args.vault, alias=args.alias)
             applied = plan.files.apply(dry_run=args.dry_run)
         except (OSError, ValueError) as exc:
             logger.error("Cannot rename %s: %s", args.path, exc)

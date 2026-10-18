@@ -49,9 +49,28 @@ spelled with the name alone would name both files, so each link to either
 record gets the shortest trailing path that names it alone, such as
 `[[campaign_1/content/Quay Ten]]`.
 
+## Keeping the old name
+
+With `--alias`, the old name stays one of the record's names: it is added to
+the record's `aliases`, and a body link with no display alias of its own
+keeps the old name as its display text, so prose reads as before:
+
+| Before | After |
+| --- | --- |
+| `[[Quay Nine]]` | `[[Quay Ten\|Quay Nine]]` |
+| `[[Quay Nine\|the quay]]` | `[[Quay Ten\|the quay]]` |
+
+Frontmatter links are always written plainly, as `"[[Quay Ten]]"`. Without
+`--alias`, every link reads the new name. An empty or inline `aliases` field
+gains the name in place; a record without one gains it after its `summary`.
+
+## Links left as written
+
 Links outside records are left as written and reported as warnings, for you
 to check: wikilinks in templates, `docs/`, `AGENTS.md`, `.base` and `.canvas`
 files, and Markdown links such as `[map](Quay%20Nine.md)` anywhere.
+
+## Nothing half done
 
 Every change is worked out before any file is written. If a record that may
 link to the renamed one cannot be parsed, or its frontmatter cannot be

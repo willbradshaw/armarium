@@ -2976,13 +2976,30 @@ class TestRenameCommand:
 
     def test_options(self, tmp_path: Path) -> None:
         args = parse_args(["rename", "content/Mara.md", "Mara Vey"])
-        assert (args.path, args.name, args.dry_run, args.vault) == (
+        assert (args.path, args.name, args.alias, args.dry_run, args.vault) == (
             Path("content/Mara.md"),
             "Mara Vey",
+            False,
             False,
             None,
         )
         args = parse_args(
-            ["rename", "a.md", "b", "--dry-run", "--vault", str(tmp_path)]
+            ["rename", "a.md", "b", "--alias", "--dry-run", "--vault", str(tmp_path)]
         )
-        assert (args.dry_run, args.vault) == (True, tmp_path)
+        assert (args.alias, args.dry_run, args.vault) == (True, True, tmp_path)
+
+    def test_alias(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "Lark", "--alias", "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "rename", *arguments])
+        main()
+        lines = capsys.readouterr().out.splitlines()
+        assert lines[1] == "content/Wake-lark.md\taliases\t\tadded Wake-lark"
+        assert (
+            "[[Lark|Wake-lark]]"
+            in (example / "content/Captain Mara Vey.md").read_text()
+        )

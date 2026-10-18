@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+from armarium.index import name_key, read_aliases
 from armarium.lib import line_ending
 from armarium.parse import PARSE_ERRORS, Frontmatter
 
@@ -15,6 +16,12 @@ TOP_KEY = re.compile(r"""("[^"]*"|'[^']*'|(?!- |#)[^\s'"][^:#]*?)[ \t]*:(?:\s|$)
 
 # Keys that YAML reads as written without quotes.
 PLAIN_KEY = re.compile(r"[A-Za-z_][\w-]*")
+
+# An aliases field on one line, empty or holding an inline list.
+ALIASES_LINE = re.compile(r"(aliases[ \t]*:)[ \t]*(?:\[(.*)\])?[ \t]*(\r?\n)?")
+
+# Fields an added aliases field follows, the first present winning.
+ALIASES_AFTER = ("summary", "subtype", "type")
 
 
 def rewrite_frontmatter(
@@ -26,10 +33,12 @@ def rewrite_frontmatter(
 
     The source is first edited line by line, which keeps its formatting.
     When that does not give the expected mapping, each top-level field whose
-    value changes is written afresh, and each new field is added at the end.
+    value changes is written afresh, and each new field is added after the
+    field that precedes it in the expected mapping.
 
     Args:
-        lines: The frontmatter's lines, delimiters included, with endings.
+        lines: The frontmatter's lines, delimiters included, with endings;
+            empty for a record without frontmatter, which then gains it.
         expected: The mapping the frontmatter must read as.
         edit: A function from one source line to its edited text, tried
             first; None to write changed fields afresh at once.
@@ -41,6 +50,8 @@ def rewrite_frontmatter(
         ValueError: Neither way gives the expected mapping.
     """
     newline = line_ending(lines[0] if lines else "")
+    if not lines:
+        lines = ["---" + newline, "---" + newline]
     if edit is not None:
         edited = [lines[0], *(edit(line) for line in lines[1:-1]), lines[-1]]
         if _reads_as(edited, expected):
@@ -48,14 +59,30 @@ def rewrite_frontmatter(
     current = dict(Frontmatter.parse("".join(lines))[0])
     inner = lines[1:-1]
     spans = _fields(inner)
-    for key in reversed(list(spans)):
-        if key in expected and expected[key] != current.get(key):
-            start, end = spans[key]
-            inner[start:end] = [line + newline for line in emit(key, expected[key])]
+    replaced: dict[int, tuple[int, list[str]]] = {}
+    added: dict[int, list[str]] = {}
+    after = 0
     for key, value in expected.items():
+        written = [line + newline for line in emit(key, value)]
         if key not in spans:
-            inner += [line + newline for line in emit(key, value)]
-    rewritten = [lines[0], *inner, lines[-1]]
+            added.setdefault(after, []).extend(written)
+            continue
+        start, after = spans[key]
+        if value != current.get(key):
+            replaced[start] = (after, written)
+    rewritten = [lines[0]]
+    number = 0
+    while True:
+        rewritten += added.get(number, [])
+        if number == len(inner):
+            break
+        if number in replaced:
+            number, written = replaced[number]
+            rewritten += written
+        else:
+            rewritten.append(inner[number])
+            number += 1
+    rewritten.append(lines[-1])
     if not _reads_as(rewritten, expected):
         raise ValueError("its frontmatter cannot be rewritten; edit it by hand")
     return rewritten
@@ -84,6 +111,72 @@ def set_field(text: str, key: str, value: Any) -> str:
     lines = text.splitlines(keepends=True)
     head = rewrite_frontmatter(lines[:length], {**frontmatter, key: value})
     return "".join(head + lines[length:])
+
+
+def place_aliases(data: dict[str, Any], aliases: list[str]) -> dict[str, Any]:
+    """Set a frontmatter mapping's aliases, placing a new field where it reads.
+
+    Args:
+        data: The frontmatter mapping.
+        aliases: The aliases it should hold.
+
+    Returns:
+        dict[str, Any]: The mapping with its aliases; a new aliases field
+            follows the summary, subtype or type, or ends the mapping.
+    """
+    after = next((key for key in ALIASES_AFTER if key in data), None)
+    if "aliases" in data or after is None:
+        return {**data, "aliases": aliases}
+    placed: dict[str, Any] = {}
+    for key, item in data.items():
+        placed[key] = item
+        if key == after:
+            placed["aliases"] = aliases
+    return placed
+
+
+def add_alias(text: str, name: str) -> str | None:
+    """Add a name to a record's aliases, keeping its frontmatter's formatting.
+
+    An empty or inline aliases field gains the name in place; a missing one
+    is placed as place_aliases places it; any other is written afresh as an
+    inline list.
+
+    Args:
+        text: The record's contents.
+        name: The name to add.
+
+    Returns:
+        str | None: The new contents, or None when the record already goes
+            by the name as an alias.
+
+    Raises:
+        ValueError: The frontmatter cannot be parsed, or its aliases field
+            holds neither a list nor a name.
+    """
+    frontmatter, length = Frontmatter.parse(text)
+    data = dict(frontmatter)
+    value = data.get("aliases")
+    if not isinstance(value, (str, list, type(None))):
+        raise ValueError("its aliases field holds neither a list nor a name")
+    if any(name_key(alias) == name_key(name) for alias in read_aliases(frontmatter)):
+        return None
+    aliases = [*([value] if isinstance(value, str) else value or []), name]
+    quoted = json.dumps(name, ensure_ascii=False)
+
+    def edit(line: str) -> str:
+        match = ALIASES_LINE.fullmatch(line)
+        if match is None:
+            return line
+        listed = (match[2] or "").strip()
+        items = f"{listed}, {quoted}" if listed else quoted
+        return f"{match[1]} [{items}]{match[3] or ''}"
+
+    lines = text.splitlines(keepends=True)
+    lines[:length] = rewrite_frontmatter(
+        lines[:length], place_aliases(data, aliases), edit
+    )
+    return "".join(lines)
 
 
 def _reads_as(lines: list[str], expected: dict[str, Any]) -> bool:

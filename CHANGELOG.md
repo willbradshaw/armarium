@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium rename --alias` to keep the old name as an alias and as the wording of links to the record.
 - Run the tests of how commands spell a path given in another case on every filesystem, rather than skipping them where names are case-sensitive.
 - Refuse templates and files that are not records in `armarium illustrate`, `armarium handout` and `armarium trace --outbound`.
 - Hold `armarium add` and `armarium rename` to the same rules for a record's name, refusing `^` in added names, and `* ? " < >`, control characters, a final dot and the name of another entry in the folder, in any case, in new names.

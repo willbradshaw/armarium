@@ -7,8 +7,10 @@ from armarium.edit import (
     _fields,
     _reads_as,
     _scalar,
+    add_alias,
     emit,
     open_quote,
+    place_aliases,
     requote,
     rewrite_frontmatter,
     set_field,
@@ -50,6 +52,33 @@ class TestRewriteFrontmatter:
             "d:\n",
             "---\n",
         ]
+
+    @pytest.mark.parametrize(
+        ("expected", "lines"),
+        [
+            (
+                {"x": 0, "a": "[[X]]", "b": [1], "c": 2},
+                ["x: 0\n", "# keep\n", 'a: "[[X]]"\n', "b:\n", "  - 1\n"],
+            ),
+            (
+                {"a": "[[X]]", "x": 0, "b": [1], "c": 2},
+                ["# keep\n", 'a: "[[X]]"\n', "x: 0\n", "b:\n", "  - 1\n"],
+            ),
+        ],
+    )
+    def test_adds_fields_after_the_field_before(
+        self, expected: dict[str, object], lines: list[str]
+    ) -> None:
+        assert rewrite_frontmatter(self.LINES, expected) == [
+            "---\n",
+            *lines,
+            "\n",
+            "c: 2\n",
+            "---\n",
+        ]
+
+    def test_adds_frontmatter(self) -> None:
+        assert rewrite_frontmatter([], {"a": 1}) == ["---\n", "a: 1\n", "---\n"]
 
     def test_keeps_crlf(self) -> None:
         lines = ["---\r\n", "a: 1\r\n", "---\r\n"]
@@ -214,3 +243,57 @@ class TestRequote:
         assert requote(text, quote) == expected
         if quote:
             assert yaml.safe_load(f"a: {quote}{expected}{quote}") == {"a": text}
+
+
+class TestPlaceAliases:
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            ({"type": 1, "summary": 2, "x": 3}, ["type", "summary", "aliases", "x"]),
+            ({"type": 1, "subtype": 2, "x": 3}, ["type", "subtype", "aliases", "x"]),
+            ({"x": 3, "type": 1}, ["x", "type", "aliases"]),
+            ({"x": 3}, ["x", "aliases"]),
+            ({"aliases": [], "type": 1}, ["aliases", "type"]),
+        ],
+    )
+    def test_order(self, data: dict[str, object], expected: list[str]) -> None:
+        placed = place_aliases(data, ["Old"])
+        assert list(placed) == expected
+        assert placed["aliases"] == ["Old"]
+
+
+class TestAddAlias:
+    @pytest.mark.parametrize(
+        ("frontmatter", "expected"),
+        [
+            ('summary: "x"\naliases:\n', 'summary: "x"\naliases: ["Old"]\n'),
+            ("aliases: []\r\n", 'aliases: ["Old"]\r\n'),
+            ("aliases: [A, 'B']\n", "aliases: [A, 'B', \"Old\"]\n"),
+            ("aliases: Mara\n", 'aliases: ["Mara", "Old"]\n'),
+            ("aliases:\n  - A\n# end\n", 'aliases: ["A", "Old"]\n# end\n'),
+            (
+                'type: "[[T]]"\nsubtype: NPC\nsummary: >\n  long\nstats:\n',
+                'type: "[[T]]"\nsubtype: NPC\nsummary: >\n  long\n'
+                'aliases: ["Old"]\nstats:\n',
+            ),
+            (
+                'type: "[[T]]"\nplays: []\n',
+                'type: "[[T]]"\naliases: ["Old"]\nplays: []\n',
+            ),
+            ("plays: []\n", 'plays: []\naliases: ["Old"]\n'),
+        ],
+    )
+    def test_adds(self, frontmatter: str, expected: str) -> None:
+        assert add_alias(f"---\n{frontmatter}---\nBody\n", "Old") == (
+            f"---\n{expected}---\nBody\n"
+        )
+
+    def test_record_without_frontmatter(self) -> None:
+        assert add_alias("Body\n", "Old") == '---\naliases: ["Old"]\n---\nBody\n'
+
+    def test_already_an_alias(self) -> None:
+        assert add_alias("---\naliases: [old]\n---\n", "Old") is None
+
+    def test_refuses_other_values(self) -> None:
+        with pytest.raises(ValueError, match="neither a list nor a name"):
+            add_alias("---\naliases: 3\n---\n", "Old")

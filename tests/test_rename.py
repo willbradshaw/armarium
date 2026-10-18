@@ -81,3 +81,27 @@ class TestRename:
         with pytest.raises((ValueError, FileExistsError), match=message):
             rename(Path(relative), name, example)
         assert before == {p: p.read_bytes() for p in example.rglob("*") if p.is_file()}
+
+    def test_alias_keeps_the_old_name(self, example: Path) -> None:
+        plan = rename(Path("content/Port Briselle.md"), "Briselle", example, alias=True)
+        assert [c.output for c in plan.changes[:2]] == [
+            "content/Port Briselle.md\t\t\trenamed to content/Briselle.md",
+            "content/Port Briselle.md\taliases\t\tadded Port Briselle",
+        ]
+        plan.files.apply()
+        record = (example / "content/Briselle.md").read_text()
+        assert 'aliases: ["Port Briselle"]\n' in record
+        session = (example / "campaigns/campaign_1/sessions/S-1-001.md").read_text()
+        assert "[[Briselle|Port Briselle]]" in session
+        assert '"[[Briselle]]"' in session
+        assert not validate(example).failed
+
+    def test_alias_on_a_case_only_rename(self, example: Path) -> None:
+        plan = rename(Path("content/Wake-lark.md"), "Wake-Lark", example, alias=True)
+        assert all(change.where != "aliases" for change in plan.changes)
+
+    def test_alias_on_unreadable_aliases(self, example: Path) -> None:
+        path = example / "content/Wake-lark.md"
+        path.write_text(path.read_text().replace("---\n", "---\naliases: 3\n", 1))
+        with pytest.raises(ValueError, match="cannot add an alias to content/Wake"):
+            rename(path, "Lark", alias=True)
