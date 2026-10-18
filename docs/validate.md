@@ -15,16 +15,17 @@ over it as not a vault and reports nothing checked, and a single record
 inside it is refused. `--vault VAULT` names the vault directory explicitly so
 that such a vault is validated anyway and what it lacks is reported.
 `--jobs N` validates a directory's records with `N` worker processes; the
-findings and their order are the same as with one. It helps on vaults of
-thousands of records and slows small runs, since every worker indexes the
-vault. `--help` prints the usage.
+findings and their order are the same as with one. Without it, a vault's
+records get one worker per 500, up to one per CPU, so fewer than 1,000 are
+validated in one process: every worker indexes the vault first, which slows
+small runs. `--help` prints the usage.
 
 ```sh
 armarium validate .                                    # the vault in the current directory
 armarium validate campaigns/campaign_1/clues           # every Clue of one campaign
 armarium validate content/Port\ Briselle.md            # one record
 armarium validate . --vault .                          # a vault missing part of its skeleton
-armarium validate . --jobs 8                           # a large vault, on eight processes
+armarium validate . --jobs 1                           # a large vault, in one process
 ```
 
 ## Scope

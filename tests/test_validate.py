@@ -34,6 +34,7 @@ from armarium.validate import (
     _start_worker,
     _validate_in_worker,
     _validate_wikilink_status,
+    auto_jobs,
     linked_record,
     validate,
     validate_appearances,
@@ -746,14 +747,30 @@ class TestValidateDirectory:
 
     @pytest.mark.parametrize(
         ("jobs", "files", "workers"),
-        [(1, 3, None), (4, 1, None), (4, 0, None), (2, 3, 2), (8, 3, 3)],
+        [
+            (1, 3, None),
+            (4, 1, None),
+            (4, 0, None),
+            (2, 3, 2),
+            (8, 3, 3),
+            (None, 1, None),
+            (None, 3, 2),
+        ],
     )
     def test_worker_processes(
-        self, tmp_path: Path, jobs: int, files: int, workers: int | None
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        jobs: int | None,
+        files: int,
+        workers: int | None,
     ) -> None:
         from concurrent.futures import ProcessPoolExecutor
         from unittest.mock import patch
 
+        # Without jobs, two CPUs give one worker per record, up to two.
+        monkeypatch.setattr(armarium.validate, "RECORDS_PER_JOB", 1)
+        monkeypatch.setattr(armarium.validate.os, "process_cpu_count", lambda: 2)
         make_vault(tmp_path)
         records = tmp_path / "content/records"
         records.mkdir()
@@ -1056,6 +1073,26 @@ class TestValidateDirectory:
         if not found:
             expected += [path / "records", path / "records/deep"]
         assert inferred == expected
+
+
+class TestAutoJobs:
+    @pytest.mark.parametrize(
+        ("records", "cpus", "jobs"),
+        [
+            (0, 8, 1),
+            (999, 8, 1),
+            (1000, 8, 2),
+            (2499, 8, 4),
+            (10_000, 8, 8),
+            (10_000, 1, 1),
+            (10_000, None, 1),
+        ],
+    )
+    def test_one_job_per_records_up_to_the_cpus(
+        self, monkeypatch: pytest.MonkeyPatch, records: int, cpus: int | None, jobs: int
+    ) -> None:
+        monkeypatch.setattr(armarium.validate.os, "process_cpu_count", lambda: cpus)
+        assert auto_jobs(records) == jobs
 
 
 class TestStartWorker:

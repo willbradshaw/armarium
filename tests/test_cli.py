@@ -848,9 +848,9 @@ class TestMain:
         output = capsys.readouterr()
         assert output.out == output.err == ""
 
-    @pytest.mark.parametrize(("options", "jobs"), [([], 1), (["--jobs", "3"], 3)])
+    @pytest.mark.parametrize(("options", "jobs"), [([], None), (["--jobs", "3"], 3)])
     def test_validate_receives_jobs(
-        self, monkeypatch: pytest.MonkeyPatch, options: list[str], jobs: int
+        self, monkeypatch: pytest.MonkeyPatch, options: list[str], jobs: int | None
     ) -> None:
         from unittest.mock import Mock
 
@@ -1204,7 +1204,7 @@ class TestParseArgs:
         args = parse_args(argv)
         assert args.command == "validate" and args.path == Path("record.md")
         assert args.vault == (Path("vault") if explicit else None)
-        assert args.jobs == 1
+        assert args.jobs is None
 
     def test_jobs(self) -> None:
         assert parse_args(["validate", ".", "--jobs", "4"]).jobs == 4
