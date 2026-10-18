@@ -1,5 +1,6 @@
 """Read-only entry points coordinating parsing and record validation."""
 
+import os
 import re
 from collections.abc import Callable, Iterable, Set
 from concurrent.futures import ProcessPoolExecutor
@@ -116,15 +117,22 @@ IMAGE_URL = re.compile(r"[Hh][Tt][Tt][Pp][Ss]?://")
 # Fields that link a record to its predecessor, followed record to record.
 CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
 
+# Records per worker when the number of jobs is chosen automatically. Every
+# worker indexes the whole vault first, so fewer records are faster serially.
+RECORDS_PER_JOB = 500
 
-def validate(path: Path, vault: Path | None = None, *, jobs: int = 1) -> Result:
+
+def validate(
+    path: Path, vault: Path | None = None, *, jobs: int | None = None
+) -> Result:
     """Validate a Markdown file or directory using the appropriate checks.
 
     Args:
         path: File or directory to validate.
         vault: Optional explicit vault boundary, passed to the selected validator.
-        jobs: Worker processes for directory validation; a single file is
-            always validated in this process.
+        jobs: Worker processes for directory validation, or None to choose
+            them by the number of records; a single file is always validated
+            in this process.
 
     Returns:
         Result: Findings and counts from file or recursive directory validation.
@@ -134,7 +142,7 @@ def validate(path: Path, vault: Path | None = None, *, jobs: int = 1) -> Result:
             inferable vault context, or jobs is less than 1.
         OSError: Directory traversal fails.
     """
-    if jobs < 1:
+    if jobs is not None and jobs < 1:
         raise ValueError("jobs must be at least 1")
     if path.is_dir():
         return validate_directory(path, vault, jobs=jobs)
@@ -292,7 +300,7 @@ def validate_yaml_blocks(record: Record, relative: str, infos: Set[str]) -> Find
 
 
 def validate_directory(
-    path: Path, vault: Path | None = None, *, jobs: int = 1
+    path: Path, vault: Path | None = None, *, jobs: int | None = None
 ) -> Result:
     """Validate visible Markdown descendants, discovering vaults as needed.
 
@@ -306,7 +314,8 @@ def validate_directory(
             is found. A selected vault applies to its entire subtree.
         jobs: Worker processes validating each vault's records. With more than
             one, every worker indexes the vault itself; the result is the same
-            as with one, which validates in this process.
+            as with one, which validates in this process. None chooses them
+            for each vault with auto_jobs.
 
     Returns:
         Result: Aggregated findings and counts, with diagnostic paths relative
@@ -322,7 +331,7 @@ def validate_directory(
         OSError: Directory traversal fails. The scan does not claim completeness
             when part of the directory cannot be read.
     """
-    if jobs < 1:
+    if jobs is not None and jobs < 1:
         raise ValueError("jobs must be at least 1")
     if path.is_symlink() or not path.is_dir():
         raise ValueError("directory validation requires a real directory")
@@ -336,6 +345,8 @@ def validate_directory(
         ]
         return Result.combine(results)
     files = record_files(path, context)
+    if jobs is None:
+        jobs = auto_jobs(len(files))
     index: VaultIndex | None = None
     if jobs > 1 and len(files) > 1:
         # Each worker builds its own index; the files keep their order, and
@@ -357,6 +368,19 @@ def validate_directory(
     if path.resolve() == context:
         result += Result(diagnostics=validate_vault(context, index).diagnostics)
     return result.add_context(context, relative_to=path.resolve())
+
+
+def auto_jobs(records: int) -> int:
+    """Choose worker processes for validating a number of records.
+
+    Args:
+        records: Markdown files to validate in one vault.
+
+    Returns:
+        int: One worker per RECORDS_PER_JOB records, up to the CPUs this
+            process may use, and at least one.
+    """
+    return max(1, min(os.process_cpu_count() or 1, records // RECORDS_PER_JOB))
 
 
 # The index of the vault a worker process validates, built when it starts.

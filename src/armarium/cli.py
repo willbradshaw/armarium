@@ -631,8 +631,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     command.add_argument(
         "--jobs",
         type=_jobs,
-        default=1,
-        help="worker processes for validating a directory (default: 1)",
+        help=(
+            "worker processes for validating a directory (default: one per "
+            "500 records, up to one per CPU)"
+        ),
     )
     arguments = list(sys.argv[1:] if argv is None else argv)
     whisper_args: list[str] = []

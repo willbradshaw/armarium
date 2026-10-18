@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Make `armarium validate` choose its worker processes when `--jobs` is not given, one per 500 records up to one per CPU.
 - Add the Armarium logo, shown as a banner at the top of the README.
 - Ship the `make-handouts` agent skill, point `prepare-session` to it, and let `illustrate-record` take in a picture the GM supplies.
 - Add `armarium handout` to print records as handouts in a PDF, with a flag to set each field of their layouts.
