@@ -10,11 +10,10 @@ from armarium.add import (
     read_template,
     record_directory,
     record_text,
-    select_vault,
     write_record,
 )
 from armarium.index import VaultIndex
-from armarium.lib import find_campaign, parse_wikilink
+from armarium.lib import find_campaign, parse_wikilink, select_vault
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import select_schema
 from armarium.validate import validate, validate_transcript

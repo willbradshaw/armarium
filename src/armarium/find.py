@@ -5,9 +5,8 @@ from pathlib import Path
 
 import yaml
 
-from armarium.add import select_vault
 from armarium.index import name_key, read_names
-from armarium.lib import find_campaign
+from armarium.lib import find_campaign, select_vault
 from armarium.parse import Frontmatter
 
 # Match kinds in the order they are listed.

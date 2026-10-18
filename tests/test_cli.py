@@ -1767,7 +1767,7 @@ class TestTraceCommand:
         assert exc.value.code == 1
         output = capsys.readouterr()
         assert output.out == ""
-        assert "is not a Markdown record" in output.err
+        assert "is not a record" in output.err
 
     def test_outbound_option(self) -> None:
         assert parse_args(["trace", "a.md"]).outbound is False

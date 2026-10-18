@@ -11,10 +11,9 @@ from armarium.add import (
     read_template,
     record_directory,
     record_text,
-    select_vault,
     write_record,
 )
-from armarium.lib import check_name
+from armarium.lib import check_name, select_vault
 
 
 def add_note(

@@ -521,6 +521,51 @@ def check_vault(path: Path, vault: Path) -> Path:
 SKIPPED_DIRECTORIES = frozenset({"__pycache__", "node_modules"})
 
 
+def select_vault(vault: Path | None) -> Path:
+    """Resolve an explicit vault root or discover it from the working directory.
+
+    Reject explicit paths inside a vault rather than silently changing their scope.
+    """
+    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
+    root = find_vault(selected)
+    if vault is not None and selected != root:
+        raise ValueError("--vault must name the vault root")
+    return root
+
+
+def locate(path: Path, vault: Path | None) -> tuple[Path, Path]:
+    """Find a file a command names, and the vault it belongs to.
+
+    Args:
+        path: File path. With a vault, a relative path is taken from the vault
+            root; without one, from the working directory.
+        vault: Vault root, or None to discover the vault from the file's
+            location, as validating the file would.
+
+    Returns:
+        tuple[Path, Path]: The resolved vault root and the resolved file.
+
+    Raises:
+        ValueError: The path is a symlink, does not exist or is a directory;
+            no vault encloses it; or it lies outside the given vault.
+    """
+    if vault is not None:
+        path = select_vault(vault) / path
+    if path.is_symlink():
+        raise ValueError(f"{path} is a symlink")
+    if not path.exists():
+        raise ValueError(
+            f"{path} does not exist; give a file path, which armarium find lists "
+            "for a name"
+        )
+    if path.is_dir():
+        raise ValueError(f"{path} is a directory, not a file")
+    # Resolve the directory first, so that .. and symlinked directories do not
+    # select a vault the file is not in.
+    path = path.parent.resolve() / path.name
+    return (find_vault(path) if vault is None else check_vault(path, vault)), path
+
+
 def _visible(directory: str | Path) -> list[os.DirEntry[str]]:
     """List the entries of a directory that traversal keeps, in name order.
 

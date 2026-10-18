@@ -18,7 +18,6 @@ from armarium.add import (
     record_number,
     record_text,
     require_campaign,
-    select_vault,
     write_record,
 )
 from armarium.validate import CAMPAIGN_DIRECTORIES, validate
@@ -188,19 +187,6 @@ class TestAddCampaign:
         with pytest.raises(ValueError, match="real directory"):
             add_campaign(vault)
         assert not (vault / "campaigns/campaign_2").exists()
-
-
-class TestSelectVault:
-    @pytest.mark.parametrize("explicit", [False, True])
-    def test_selection(
-        self, vault: Path, monkeypatch: pytest.MonkeyPatch, explicit: bool
-    ) -> None:
-        monkeypatch.chdir(vault / "content")
-        assert select_vault(vault if explicit else None) == vault
-
-    def test_explicit_subdirectory(self, vault: Path) -> None:
-        with pytest.raises(ValueError, match="must name the vault root"):
-            select_vault(vault / "content")
 
 
 class TestInferCampaign:

@@ -12,13 +12,13 @@ from armarium.add import (
     record_number,
     record_text,
     require_campaign,
-    select_vault,
     write_record,
 )
 from armarium.index import VaultIndex
 from armarium.lib import (
     find_campaign,
     iter_wikilinks,
+    select_vault,
 )
 
 

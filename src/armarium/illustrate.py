@@ -14,12 +14,11 @@ from pathlib import Path, PurePosixPath
 import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
-from armarium.index import VaultIndex
+from armarium.index import VaultIndex, read_record
 from armarium.lib import WIKILINK, wikilink_text
 from armarium.painters import Reference, find_painter
 from armarium.parse import Frontmatter, Record
 from armarium.style import MAX_BYTES, MAX_EDGE, Style, art_directory, choose_style
-from armarium.trace import locate
 
 FIELD = "image"
 # The field holding a record's art direction.
@@ -303,31 +302,6 @@ def build_prompt(preamble: str, record: Record, visual: str | None = None) -> st
     return "\n".join(parts).strip()
 
 
-def _read(record: Path, vault: Path | None) -> tuple[Path, Path, Record]:
-    """Find and parse the record to illustrate.
-
-    Args:
-        record: The record's path. With a vault, a relative path is taken
-            from the vault root; without one, from the working directory.
-        vault: Vault root, or None to discover it from the record's location.
-
-    Returns:
-        tuple[Path, Path, Record]: The vault root, the record's path and the
-            parsed record.
-
-    Raises:
-        ValueError: The record is not a Markdown file in a vault, or cannot
-            be parsed.
-    """
-    root, path = locate(record, vault)
-    if path.suffix != ".md":
-        raise ValueError(f"{path} is not a Markdown record")
-    parsed, diagnostics = Record.parse(path, root)
-    if parsed is None:
-        raise ValueError(f"cannot parse the record: {diagnostics[0].message}")
-    return root, path, parsed
-
-
 def prompt(
     record: Path,
     vault: Path | None = None,
@@ -357,12 +331,12 @@ def prompt(
         str: The prompt.
 
     Raises:
-        ValueError: The record is not a Markdown file in a vault or cannot be
-            parsed; no style has the name, or several apply, as choose_style
+        ValueError: The record is not one of a vault's records or is a
+            template, or cannot be parsed; no style has the name, or several apply, as choose_style
             describes; or the preamble is not UTF-8.
         OSError: A file cannot be read.
     """
-    root, _, parsed = _read(record, vault)
+    root, _, parsed = read_record(record, vault)
     if preamble is not None:
         text = preamble.read_text(encoding="utf-8-sig")
     else:
@@ -461,13 +435,13 @@ def ingest(
         Illustration: What was written.
 
     Raises:
-        ValueError: The record is not a Markdown file in a vault, or cannot
-            be parsed; no style or several apply as choose_style describes;
+        ValueError: The record is not one of a vault's records or is a
+            template, or cannot be parsed; no style or several apply as choose_style describes;
             the directory or destination is not allowed, or the destination
             already exists; or the picture cannot be encoded or the field set.
         OSError: A file cannot be read or written.
     """
-    root, path, parsed = _read(record, vault)
+    root, path, parsed = read_record(record, vault)
     chosen = choose_style(root, parsed, style)
     settings = chosen or Style("", "")
     folder = settings.directory if directory is None else art_directory(directory)
@@ -673,15 +647,15 @@ def generate(
         Generation: What was painted.
 
     Raises:
-        ValueError: The record is not a Markdown file in a vault, or cannot
-            be parsed; the prompt is empty; no painter offers the model; no
+        ValueError: The record is not one of a vault's records or is a
+            template, or cannot be parsed; the prompt is empty; no painter offers the model; no
             style or several apply, as choose_style describes; a reference
             cannot be found or read, or there are more than one request
             takes; a candidate exists; or the painter fails.
         OSError: A file cannot be read or written, or the painter cannot be
             reached.
     """
-    root, path, parsed = _read(record, vault)
+    root, path, parsed = read_record(record, vault)
     if not text.strip():
         raise ValueError("the prompt is empty")
     painter, chosen_model = find_painter(model)

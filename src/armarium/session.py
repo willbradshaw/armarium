@@ -12,9 +12,9 @@ from armarium.add import (
     record_number,
     record_text,
     require_campaign,
-    select_vault,
     write_record,
 )
+from armarium.lib import select_vault
 
 
 def add_session(

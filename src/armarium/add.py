@@ -14,22 +14,10 @@ from typing import Any
 import yaml
 
 from armarium.extensions import load_extensions
-from armarium.lib import CAMPAIGN_NAME, find_files, find_vault, parse_directories
+from armarium.lib import CAMPAIGN_NAME, find_files, parse_directories, select_vault
 from armarium.logging import logger
 from armarium.parse import Record
 from armarium.validate import CAMPAIGN_DIRECTORIES, validate
-
-
-def select_vault(vault: Path | None) -> Path:
-    """Resolve an explicit vault root or discover it from the working directory.
-
-    Reject explicit paths inside a vault rather than silently changing their scope.
-    """
-    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-    root = find_vault(selected)
-    if vault is not None and selected != root:
-        raise ValueError("--vault must name the vault root")
-    return root
 
 
 def infer_campaign(root: Path, campaign: int | None) -> int | None:

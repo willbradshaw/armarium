@@ -130,6 +130,24 @@ CHAIN_FIELDS = {"Content": "parent_location", "Clue": "superseded_by"}
 RECORDS_PER_JOB = 500
 
 
+def is_campaign_file(relative: str) -> bool:
+    """Tell whether a file is one that every campaign requires.
+
+    Args:
+        relative: Vault-relative path, with forward slashes.
+
+    Returns:
+        bool: Whether it is one of CAMPAIGN_FILES in a campaign_N directory.
+    """
+    parts = relative.split("/", 2)
+    return (
+        len(parts) == 3
+        and parts[0] == "campaigns"
+        and CAMPAIGN_NAME.fullmatch(parts[1]) is not None
+        and parts[2] in CAMPAIGN_FILES
+    )
+
+
 def validate(
     path: Path, vault: Path | None = None, *, jobs: int | None = None
 ) -> Result:

@@ -2,10 +2,9 @@
 
 from pathlib import Path
 
-from armarium.index import STRUCTURAL_TYPES, VaultIndex
+from armarium.index import STRUCTURAL_TYPES, VaultIndex, read_record
 from armarium.lib import check_name, relative_posix
-from armarium.relink import RelinkChange, Relinker, RelinkPlan, read_record
-from armarium.trace import locate
+from armarium.relink import RelinkChange, Relinker, RelinkPlan, check_movable
 
 
 def rename(path: Path, name: str, vault: Path | None = None) -> RelinkPlan:
@@ -27,8 +26,9 @@ def rename(path: Path, name: str, vault: Path | None = None) -> RelinkPlan:
             rewritten.
         OSError: A file or directory cannot be read.
     """
-    root, located = locate(path, vault)
-    frontmatter = read_record(root, located)
+    root, located, record = read_record(path, vault)
+    frontmatter = record.frontmatter
+    check_movable(relative_posix(located, root), frontmatter)
     check_name(name)
     if name == located.stem:
         raise ValueError(f"{located.name} already has that name")

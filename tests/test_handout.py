@@ -545,7 +545,7 @@ class TestHandout:
             (["content/Ring.md"], "loot.txt", "loot.txt is not a .pdf path"),
             (["content/Ring.md"], "exists.pdf", "exists.pdf exists; pass --overwrite"),
             (["content/Missing.md"], "loot.pdf", "does not exist"),
-            (["content/notes.txt"], "loot.pdf", "is not a Markdown record"),
+            (["content/notes.txt"], "loot.pdf", "is not a record"),
             (["content/Broken.md"], "loot.pdf", "cannot parse content/Broken.md: "),
             (["content/Bare.md"], "loot.pdf", "has no \\[!rules\\] text to print"),
         ],

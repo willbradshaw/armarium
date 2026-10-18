@@ -1,5 +1,6 @@
 """File resolution and lazy parsing are independent of record validation."""
 
+import re
 import shutil
 from pathlib import Path
 from unittest.mock import patch
@@ -11,12 +12,19 @@ from armarium.extensions import ExtensionSet
 from armarium.index import (
     Name,
     VaultIndex,
+    _frontmatter_text,
+    _mentions,
+    _spelling,
     link_key,
     may_declare_aliases,
+    mentioning,
     name_key,
     read_aliases,
     read_names,
+    read_record,
+    spellings,
 )
+from armarium.index import sharing as files_sharing
 from armarium.lib import find_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
@@ -717,3 +725,236 @@ class TestVaultIndexNames:
         assert first == {
             "mara": [Name(tmp_path.resolve() / "content/Mara.md", False, "Mara")]
         }
+
+
+class TestReadRecord:
+    @pytest.mark.parametrize(
+        "relative",
+        ["content/Captain Mara Vey.md", "notes/Coast design notes.md"],
+    )
+    def test_record(self, example: Path, relative: str) -> None:
+        root, path, record = read_record(Path(relative), example)
+        assert (root, path) == (example, example / relative)
+        assert record.frontmatter.type in {"Content", "Note"}
+
+    def test_scan_spelling(self, example: Path) -> None:
+        path = read_record(Path("content/CAPTAIN MARA VEY.md"), example)[1]
+        assert path.name == "Captain Mara Vey.md"
+
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            "assets/handouts/.gitkeep",
+            "AGENTS.md",
+            "reference/templates/Content.md",
+            "content/.Hidden.md",
+        ],
+    )
+    def test_refuses_what_is_not_a_record(self, example: Path, relative: str) -> None:
+        write_named(example, relative)
+        with pytest.raises(ValueError, match=f"{re.escape(relative)} is not a record"):
+            read_record(Path(relative), example)
+
+    def test_unparseable(self, example: Path) -> None:
+        (example / "notes/Broken.md").write_text("---\na: [\n---\n")
+        with pytest.raises(ValueError, match="cannot parse notes/Broken.md"):
+            read_record(Path("notes/Broken.md"), example)
+
+
+class TestSpellings:
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("Quay Nine.md", {"quay nine.md", "quay nine"}),
+            ("Café.MD", {"café.md", "café"}),
+            ("Cafe\u0301.md", {"café.md", "café"}),
+            ("Quay Nine.md.md", {"quay nine.md.md", "quay nine.md"}),
+            ("Map.PNG", {"map.png"}),
+            ("README", {"readme"}),
+        ],
+    )
+    def test_names(self, name: str, expected: set[str]) -> None:
+        assert spellings(Path("content") / name) == expected
+
+
+class TestSharing:
+    FILES = [
+        Path("content/Mara.md"),
+        Path("notes/MARA.md"),
+        Path("assets/Mara"),
+        Path("assets/Mara.png"),
+        Path("content/Mara.md.md"),
+        Path("content/Quay Nine.md"),
+    ]
+
+    @pytest.mark.parametrize(
+        ("spellings", "expected"),
+        [
+            ({"mara.md", "mara"}, [0, 1, 2, 4]),
+            ({"mara.png"}, [3]),
+            ({"mara.md.md", "mara.md"}, [0, 1, 4]),
+            ({"quay nine"}, [5]),
+            ({"gull"}, []),
+            (set(), []),
+        ],
+    )
+    def test_files_with_a_spelling(
+        self, spellings: set[str], expected: list[int]
+    ) -> None:
+        assert files_sharing(self.FILES, spellings) == [self.FILES[i] for i in expected]
+
+    def test_no_files(self) -> None:
+        assert files_sharing([], {"mara"}) == []
+
+
+class TestSpelling:
+    @pytest.mark.parametrize(
+        ("needle", "text", "expected"),
+        [
+            ("quay nine", "[[quay nine]]", True),
+            ("quay nine", "[[ quay nine ]]", True),
+            ("quay nine", "[[content/quay nine.md]]", True),
+            ("quay nine", "[[/content/quay nine#notes]]", True),
+            ("quay nine", "[[quay nine|the quay]]", True),
+            ("quay nine", "| [[quay nine\\|the quay]] |", True),
+            ("quay nine", "quay nine", False),
+            ("quay nine", "[[old quay nine]]", True),
+            ("quay nine", "[[quay nine", False),
+            ("quay nine", "[[quay ninety]]", False),
+            ("quay nine", "[[quay nine/pier]]", False),
+            ("quay nine", "[[pier|quay nine]]", True),
+            ("quay nine", "[[quay nine.png]]", False),
+            ("c++ (draft)", "[[c++ (draft)]]", True),
+            ("map.png", "![[assets/map.png]]", True),
+        ],
+    )
+    def test_text_pattern(self, needle: str, text: str, expected: bool) -> None:
+        pattern, ascii_bytes = _spelling(needle)
+        assert bool(pattern.search(text)) is expected
+        assert ascii_bytes is not None
+        assert bool(ascii_bytes.search(text.encode())) is expected
+
+    def test_non_ascii_name(self) -> None:
+        pattern, ascii_bytes = _spelling("café")
+        assert pattern.search("[[café]]") and ascii_bytes is None
+
+
+class TestFrontmatterText:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("---\nat: '[[Mara''s Rest]]'\n---\n", "--- at: '[[mara's rest]]'"),
+            (
+                "---\ntext: Seen at [[Quay\n  Nine]].\n---\n",
+                "--- text: seen at [[quay nine]].",
+            ),
+            ("---\nat: \"[[CAFÉ]]\"\n---\nBody ''\n", '--- at: "[[café]]"'),
+            ("﻿---\na: 1\n---\n", "--- a: 1"),
+            ("---\na: 1\n", ""),
+            ("No frontmatter ''\n---\n", ""),
+            ("", ""),
+        ],
+    )
+    def test_text(self, text: str, expected: str) -> None:
+        assert _frontmatter_text(text.encode()) == expected
+
+    def test_undecodable(self) -> None:
+        with pytest.raises(UnicodeError):
+            _frontmatter_text(b"---\na: \xff\n---\n")
+
+
+class TestMentions:
+    @pytest.mark.parametrize(
+        ("text", "needle", "expected"),
+        [
+            ("---\nat: '[[Mara''s Rest]]'\n---\n", "mara's rest", True),
+            ("---\nat: '[[Mara''s Rest]]'\n---\n", "mara's nest", False),
+            ("---\ntext: Seen at [[Quay\n  Nine]].\n---\n", "quay nine", True),
+            ('---\nat: "[[Caf\\xE9]]"\n---\n', "café", True),
+            ("Body, at '[[Mara''s Rest]]'\n", "mara's rest", False),
+            ("---\na: 1\n---\nA table cell \\| here.\n", "quay nine", False),
+            ("See [[Quay Nine]].", "quay nine", True),
+            ("See [[content/QUAY NINE.md|the quay]].", "quay nine", True),
+            ("See [[Quay Eight]].", "quay nine", False),
+            ("Quay Nine, unlinked.", "quay nine", False),
+            ("", "quay nine", False),
+            ("See [[Café]] — twice.", "café", True),
+            ("See [[Cafe\u0301]].", "café", True),
+            ("See [[CAFÉ]].", "café", True),
+            ("See [[Cafe]].", "café", False),
+            ("Seen — at [[Quay Nine]].", "quay nine", True),
+            ("Seen — at [[Quay Eight]].", "quay nine", False),
+        ],
+    )
+    def test_text(self, text: str, needle: str, expected: bool) -> None:
+        assert _mentions(text.encode(), needle) is expected
+
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            (b"\xef\xbb\xbf[[Quay Nine]]", True),
+            (b"[[Quay Nine]] \xff", False),
+        ],
+    )
+    def test_bytes(self, data: bytes, expected: bool) -> None:
+        assert _mentions(data, "quay nine") is expected
+
+
+class TestMentioning:
+    @pytest.fixture
+    def vault(self, tmp_path: Path) -> Path:
+        root = tmp_path / "vault with spaces"
+        write_named(root, "content/Quay Nine.md", "## Notes\nSee [[Quay Nine]].\n")
+        write_named(root, "content/Port Briselle.md")
+        write_named(
+            root,
+            "campaigns/campaign_1/sessions/S-1-001.md",
+            '---\nprepared_locations: ["[[Quay Nine]]", "[[Port Briselle]]"]\n---\n',
+        )
+        write_named(
+            root,
+            "content/Shoal Chart.md",
+            '---\ncampaign_1:\n  held_by: ["[[Mara]]", "[[Quay Nine]]"]\n---\n',
+        )
+        write_named(
+            root, "content/Mara.md", "Quay Nine without a link, and [[Quay Nine\n"
+        )
+        write_named(root, "assets/Quay Nine.png", "image")
+        return root
+
+    @pytest.mark.parametrize(
+        ("targets", "expected"),
+        [
+            (
+                ["content/Quay Nine.md"],
+                [
+                    "campaigns/campaign_1/sessions/S-1-001.md",
+                    "content/Quay Nine.md",
+                    "content/Shoal Chart.md",
+                ],
+            ),
+            (
+                ["content/Port Briselle.md"],
+                ["campaigns/campaign_1/sessions/S-1-001.md"],
+            ),
+            (
+                ["content/Port Briselle.md", "content/Mara.md"],
+                ["campaigns/campaign_1/sessions/S-1-001.md", "content/Shoal Chart.md"],
+            ),
+            (["assets/Quay Nine.png"], []),
+        ],
+    )
+    def test_records_that_could_link(
+        self, vault: Path, targets: list[str], expected: list[str]
+    ) -> None:
+        root = vault.resolve()
+        found = list(mentioning(root, [root / target for target in targets]))
+        assert [path.relative_to(root).as_posix() for path, _ in found] == expected
+        assert all(data == path.read_bytes() for path, data in found)
+
+    def test_skips_templates_and_unreadable_files(self, vault: Path) -> None:
+        root = vault.resolve()
+        write_named(root, "reference/templates/Place.md", "[[Port Briselle]]")
+        write_named(root, "notes/Locked.md", "[[Port Briselle]]").chmod(0)
+        found = mentioning(root, [root / "content/Port Briselle.md"])
+        assert [path.name for path, _ in found] == ["S-1-001.md"]

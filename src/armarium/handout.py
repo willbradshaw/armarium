@@ -31,6 +31,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from armarium.index import read_record
 from armarium.layout import (
     POINTS,
     Layout,
@@ -41,7 +42,6 @@ from armarium.layout import (
 )
 from armarium.lib import WIKILINK, wikilink_text
 from armarium.parse import Record
-from armarium.trace import locate
 
 PAGES = {"letter": LETTER, "a4": A4}
 # The gap between the text and the picture.
@@ -590,8 +590,8 @@ def handout(
         Handout: The vault, the PDF and an account of each page.
 
     Raises:
-        ValueError: A record is not a Markdown record in the vault or has no
-            text to print, a layout cannot be read or chosen, an override
+        ValueError: A record is not one of the vault's records, is a template,
+            cannot be parsed or has no text to print, a layout cannot be read or chosen, an override
             fails the vault's Reference schema, the output is not a .pdf
             path or exists without overwrite, or a picture or font cannot
             be used.
@@ -606,16 +606,11 @@ def handout(
     root: Path | None = None
     parsed: list[Record] = []
     for path in records:
-        found, located = locate(path, vault)
+        found, _, record = read_record(path, vault)
         if root is None:
             root = found
         elif found != root:
             raise ValueError(f"{path} is not in the vault {root}")
-        if located.suffix != ".md":
-            raise ValueError(f"{located} is not a Markdown record")
-        record, diagnostics = Record.parse(located, found)
-        if record is None:
-            raise ValueError(f"cannot parse {path}: {diagnostics[0].message}")
         parsed.append(record)
     assert root is not None
     layouts = read_layouts(root)

@@ -22,7 +22,6 @@ from armarium.illustrate import (
     _destination,
     _on_white,
     _plain,
-    _read,
     _reference,
     _style_references,
     _trimmed,
@@ -358,27 +357,6 @@ class TestBuildPrompt:
     ) -> None:
         record = parsed(tmp_path, "---\ntype: x\n---\n")
         assert build_prompt(preamble, record) == "<subject>Lucky Ring</subject>"
-
-
-class TestRead:
-    def test_finds_and_parses_the_record(self, vault: Path) -> None:
-        root, path, record = _read(TestIngest.RECORD, vault)
-        assert (root, path) == (vault.resolve(), vault.resolve() / TestIngest.RECORD)
-        assert record.frontmatter["subtype"] == "Gear"
-
-    @pytest.mark.parametrize(
-        ("relative", "text", "message"),
-        [
-            ("assets/notes.txt", "text", "is not a Markdown record"),
-            ("content/Bad.md", "---\ntype: [\n---\n", "cannot parse the record: "),
-        ],
-    )
-    def test_refuses_what_is_not_a_record(
-        self, vault: Path, relative: str, text: str, message: str
-    ) -> None:
-        (vault / relative).write_text(text)
-        with pytest.raises(ValueError, match=message):
-            _read(Path(relative), vault)
 
 
 class TestPrompt:
@@ -773,10 +751,10 @@ class TestIngest:
     @pytest.mark.parametrize(
         ("setup", "message"),
         [
-            ("not markdown", "is not a Markdown record"),
+            ("not markdown", "is not a record"),
             ("directory", "is a directory or symlink"),
             ("not a picture", "is not a picture"),
-            ("invalid yaml", "cannot parse the record"),
+            ("invalid yaml", "cannot parse"),
             ("unsettable", "without changing other fields"),
         ],
     )
