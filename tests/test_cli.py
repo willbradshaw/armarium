@@ -22,11 +22,13 @@ from armarium.cli import (
     _subtype_choices,
     main,
     parse_args,
+    report_plan,
 )
 from armarium.handout import Handout, Page
 from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
-from armarium.logging import logger
+from armarium.logging import configure_logging, logger
+from armarium.relink import Change, Plan
 from armarium.transcribe import (
     DEFAULT_LANGUAGE,
     DEFAULT_MIN_REPEATS,
@@ -2913,3 +2915,121 @@ class TestFrontmatterInput:
                 main()
             assert exc.value.code == 1
             assert not destination.exists()
+
+
+@pytest.fixture
+def example(tmp_path: Path) -> Path:
+    root = tmp_path.resolve() / "example"
+    shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/example", root)
+    return root
+
+
+class TestRenameCommand:
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_renames(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "Lark", "--vault", str(example)]
+        arguments += ["--dry-run"] if dry_run else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "rename", *arguments])
+        main()
+        output = capsys.readouterr()
+        lines = output.out.splitlines()
+        assert lines[0] == "content/Wake-lark.md\t\t\trenamed to content/Lark.md"
+        assert (
+            "content/Captain Mara Vey.md\tsummary\t\t[[Wake-lark]] → [[Lark]]" in lines
+        )
+        assert (example / "content/Lark.md").exists() is not dry_run
+        assert (example / "content/Wake-lark.md").exists() is dry_run
+        assert ("The changed records are valid" in output.err) is not dry_run
+
+    def test_exits_with_one(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "Port Briselle", "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "rename", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "ERROR: Cannot rename content/Wake-lark.md: " in output.err
+        assert "content/Port Briselle.md already exists" in output.err
+
+    @pytest.mark.parametrize(
+        "arguments", [[], ["content/Mara.md"], ["a.md", "b", "c"], ["a.md", "b", "-j"]]
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["rename", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["rename", "content/Mara.md", "Mara Vey"])
+        assert (args.path, args.name, args.dry_run, args.vault) == (
+            Path("content/Mara.md"),
+            "Mara Vey",
+            False,
+            None,
+        )
+        args = parse_args(
+            ["rename", "a.md", "b", "--dry-run", "--vault", str(tmp_path)]
+        )
+        assert (args.dry_run, args.vault) == (True, tmp_path)
+
+
+class TestReportPlan:
+    def plan(self, root: Path) -> Plan:
+        record = root / "content/Wake-lark.md"
+        return Plan(
+            root,
+            texts={record: ""},
+            changes=[
+                Change("content/Lark.md", "", 0, "renamed"),
+                Change("content/Wake-lark.md", "Notes", 3, "[[A]] → [[B]]"),
+            ],
+            notes=["docs/a.md:1: [[A]] not changed: not a record"],
+        )
+
+    def test_dry_run(self, example: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        configure_logging()
+        report_plan(self.plan(example), dry_run=True)
+        output = capsys.readouterr()
+        assert output.out.splitlines() == [
+            "content/Lark.md\t\t\trenamed",
+            "content/Wake-lark.md\tNotes\t3\t[[A]] → [[B]]",
+        ]
+        assert "WARNING: docs/a.md:1: [[A]] not changed" in output.err
+        assert "INFO: 1 link to rewrite in 1 file" in output.err
+        assert "valid" not in output.err
+
+    def test_validates_the_changed_records(
+        self, example: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        configure_logging()
+        report_plan(self.plan(example), dry_run=False)
+        err = capsys.readouterr().err
+        assert "INFO: 1 link rewritten in 1 file" in err
+        assert "The changed records are valid" in err
+
+    def test_exits_with_one_when_a_changed_record_fails(
+        self, example: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        configure_logging()
+        (example / "content/Wake-lark.md").write_text("no frontmatter\n")
+        with pytest.raises(SystemExit) as exc:
+            report_plan(self.plan(example), dry_run=False)
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert "record.type" in err
+        assert "ERROR: 1 changed file failed validation" in err

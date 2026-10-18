@@ -1,7 +1,7 @@
 """List the links to a file or from a record, and where each one sits."""
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -46,7 +46,7 @@ class Reference:
         return "\t".join((self.relative, self.where, str(self.line or "")))
 
 
-def _spellings(path: Path) -> set[str]:
+def spellings(path: Path) -> set[str]:
     """List the final target segments with which a link can name a file.
 
     Args:
@@ -57,13 +57,13 @@ def _spellings(path: Path) -> set[str]:
             filename without .md: the last path segments under which a
             VaultIndex files it.
     """
-    spellings = {link_key(path.name)}
+    names = {link_key(path.name)}
     if path.suffix.lower() == ".md":
-        spellings.add(link_key(path.stem))
-    return spellings
+        names.add(link_key(path.stem))
+    return names
 
 
-def _sharing(files: Iterable[Path], spellings: set[str]) -> list[Path]:
+def sharing(files: Iterable[Path], names: set[str]) -> list[Path]:
     """List the files that a link's final target segment can name.
 
     A link resolves among the files sharing its target's final segment, so
@@ -71,12 +71,12 @@ def _sharing(files: Iterable[Path], spellings: set[str]) -> list[Path]:
 
     Args:
         files: Files in the vault.
-        spellings: Final target segments, as _spellings returns them.
+        names: Final target segments, as spellings returns them.
 
     Returns:
         list[Path]: The files with any of the spellings, in the given order.
     """
-    return [path for path in files if not spellings.isdisjoint(_spellings(path))]
+    return [path for path in files if not names.isdisjoint(spellings(path))]
 
 
 def _final_segment(target: str) -> str:
@@ -217,12 +217,12 @@ def _references(
         frontmatter, length = Frontmatter.parse(text)
         body_text = "".join(text.splitlines(keepends=True)[length:])
         links = frontmatter.links + Body.scan_links(body_text, length + 1)
-        spellings = _spellings(target)
+        names = spellings(target)
         relative = path.relative_to(index.root).as_posix()
         references: list[Reference] = []
         body: Body | None = None
         for link in links:
-            if link.error or _final_segment(link.target) not in spellings:
+            if link.error or _final_segment(link.target) not in names:
                 continue
             if index.resolve(link.target, path)[0] != target:
                 continue
@@ -266,32 +266,51 @@ def trace_record(path: Path, vault: Path | None = None) -> tuple[str, list[Refer
         OSError: A directory cannot be read.
     """
     root, located = locate(path, vault)
-    sharing = _sharing(find_files(root), _spellings(located))
+    candidates = sharing(find_files(root), spellings(located))
     # The scan's own path for the file, however the given path spelled it.
-    target = next((file for file in sharing if file.samefile(located)), None)
+    target = next((file for file in candidates if file.samefile(located)), None)
     if target is None:
         raise ValueError(
             f"{located} is not part of the vault: hidden entries, symlinks and "
             "cache directories are skipped"
         )
-    index = VaultIndex(root, sharing)
-    needle = link_key(target.stem if target.suffix.lower() == ".md" else target.name)
+    index = VaultIndex(root, candidates)
     references: set[Reference] = set()
+    for record, data in mentioning(root, [target]):
+        if record != target:
+            references.update(_references(record, data, index, target))
+    return target.relative_to(root).as_posix(), sorted(
+        references, key=lambda r: (r.relative, r.line, r.where)
+    )
+
+
+def mentioning(root: Path, targets: Iterable[Path]) -> Iterator[tuple[Path, bytes]]:
+    """Find the records whose text could hold a link to one of some files.
+
+    Args:
+        root: Resolved vault directory.
+        targets: Files in the vault.
+
+    Yields:
+        tuple[Path, bytes]: Each record that spells one of the files' names as
+            a link target would, with its contents, in path order. Templates,
+            whatever record_files leaves out and files that cannot be read
+            are not yielded; the targets themselves may be.
+    """
+    needles = {
+        link_key(path.stem if path.suffix.lower() == ".md" else path.name)
+        for path in targets
+    }
     for record in record_files(root, root):
         # Validation scans templates too; they are not records that link.
-        if record == target or (
-            "templates" in record.parts and is_template(record, root)
-        ):
+        if "templates" in record.parts and is_template(record, root):
             continue
         try:
             data = record.read_bytes()
         except OSError:
             continue
-        if _mentions(data, needle):
-            references.update(_references(record, data, index, target))
-    return target.relative_to(root).as_posix(), sorted(
-        references, key=lambda r: (r.relative, r.line, r.where)
-    )
+        if any(_mentions(data, needle) for needle in needles):
+            yield record, data
 
 
 def trace_outbound(
@@ -328,11 +347,7 @@ def trace_outbound(
     files = find_files(root)
     # The scan's own path for the record, however the given path spelled it.
     source = next(
-        (
-            file
-            for file in _sharing(files, _spellings(located))
-            if file.samefile(located)
-        ),
+        (file for file in sharing(files, spellings(located)) if file.samefile(located)),
         None,
     )
     if source is None:
@@ -350,7 +365,7 @@ def trace_outbound(
     links = frontmatter.links + body.links
     index = VaultIndex(
         root,
-        _sharing(files, {_final_segment(link.target) for link in links if link.target}),
+        sharing(files, {_final_segment(link.target) for link in links if link.target}),
     )
     references: dict[Reference, None] = {}
     unresolved: list[str] = []

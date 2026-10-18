@@ -27,6 +27,8 @@ from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.painters import PAINTERS
 from armarium.player import add_player
+from armarium.relink import Plan, validate_changed
+from armarium.rename import rename
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
 from armarium.trace import trace_outbound, trace_record
@@ -318,6 +320,32 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="record or asset to trace; with --vault, relative to the vault root",
     )
     trace.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the path)",
+    )
+    renaming = commands.add_parser(
+        "rename",
+        help="rename a record and rewrite the links to it",
+        description=(
+            "Rename a record in its folder and rewrite every link to it, then "
+            "validate the records that changed. Each line of output holds a "
+            "changed file's path, the frontmatter field or body headings where a "
+            "link sits, its line number and the change, separated by tabs."
+        ),
+    )
+    renaming.add_argument(
+        "path",
+        type=Path,
+        help="record to rename; with --vault, relative to the vault root",
+    )
+    renaming.add_argument("name", help="new name, without a path or .md")
+    renaming.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="list the changes without making them",
+    )
+    renaming.add_argument(
         "--vault",
         type=Path,
         help="vault root (default: discovered from the path)",
@@ -664,12 +692,54 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return args
 
 
+def report_plan(plan: Plan, *, dry_run: bool) -> None:
+    """Print a plan's changes, then validate the records it changed.
+
+    Args:
+        plan: The changes, made unless this is a dry run.
+        dry_run: Whether the changes were only planned.
+
+    Raises:
+        SystemExit: Status 1 when a changed record fails validation.
+    """
+    for change in plan.changes:
+        print(change.output)
+    for note in plan.notes:
+        logger.warning(note)
+    links = sum(1 for change in plan.changes if change.where or change.line)
+    files = len(plan.texts.keys() - plan.deleted)
+    logger.info(
+        "%s %s %s in %s %s",
+        links,
+        "link" if links == 1 else "links",
+        "to rewrite" if dry_run else "rewritten",
+        files,
+        "file" if files == 1 else "files",
+    )
+    if dry_run:
+        return
+    result = validate_changed(plan.root, plan.touched)
+    for diagnostic in result.diagnostics:
+        if diagnostic.severity != "info":
+            diagnostic.report()
+    if result.failed:
+        failed_files = result.failed_files
+        noun = "file" if failed_files == 1 else "files"
+        logger.error("%s changed %s failed validation", failed_files, noun)
+        sys.exit(1)
+    logger.info(
+        "The changed records are valid; run armarium validate on the vault "
+        "to check the rest"
+    )
+
+
 def main() -> None:
     """Run the selected command and log its result.
 
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
-            find matches nothing, trace cannot locate its file,
+            find matches nothing, trace cannot locate its file, rename cannot
+            rename or a changed record fails validation,
             transcribe cannot write its text or illustrate cannot take its
             picture in.
             Creation reports validation warnings and errors; validate also reports
@@ -711,6 +781,16 @@ def main() -> None:
             "from" if args.outbound else "to",
             target,
         )
+        return
+    if args.command == "rename":
+        try:
+            plan = rename(args.path, args.name, args.vault)
+            if not args.dry_run:
+                plan.apply()
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot rename %s: %s", args.path, exc)
+            sys.exit(1)
+        report_plan(plan, dry_run=args.dry_run)
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:
