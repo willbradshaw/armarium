@@ -508,7 +508,7 @@ def validate_copies(root: Path) -> Findings:
             not current,
             "vault.outdated",
             f"extension {name} differs from Armarium {armarium_version()}'s; "
-            f"run armarium extension update {name}",
+            "run armarium update --extensions",
         )
     return findings
 

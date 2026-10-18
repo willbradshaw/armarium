@@ -10,7 +10,13 @@ from pathlib import Path
 from packaging.version import Version
 
 from armarium.changes import FileChange, FileChanges
-from armarium.extensions import armarium_version
+from armarium.extensions import (
+    armarium_version,
+    installed_extensions,
+    installed_files,
+    supplied_files,
+    update_extension,
+)
 from armarium.init import starter
 from armarium.lib import RECORD, managed_files, read_settings, select_vault
 
@@ -61,7 +67,8 @@ class Update:
 
     previous is the version the vault's record names, or None for a vault
     without a record. files are the file changes that make the update,
-    including the record's, once planned in full.
+    including the record's, once planned in full. extensions maps each
+    installed extension the update replaces to its file changes.
     """
 
     root: Path
@@ -69,6 +76,7 @@ class Update:
     version: str
     changes: list[Change]
     files: list[FileChange] = field(default_factory=list)
+    extensions: dict[str, list[FileChange]] = field(default_factory=dict)
 
     @property
     def conflicts(self) -> list[str]:
@@ -371,15 +379,56 @@ def _write_pending(update: Update, new: dict[str, bytes]) -> None:
     changes.apply()
 
 
+def outdated_extensions(root: Path) -> dict[str, list[FileChange]]:
+    """Find the installed extensions whose files differ from those Armarium supplies.
+
+    Args:
+        root: Vault root.
+
+    Returns:
+        dict[str, list[FileChange]]: The file changes, by path, that an update
+            of each such extension makes, by extension name.
+
+    Raises:
+        ValueError: The extension configuration is invalid, or Armarium no
+            longer supplies an installed extension.
+        OSError: An extension's files cannot be read.
+    """
+    outdated: dict[str, list[FileChange]] = {}
+    for name in installed_extensions(root):
+        installed, supplied = installed_files(root, name), supplied_files(root, name)
+        changes = [
+            FileChange(
+                "create"
+                if path not in installed
+                else "delete"
+                if path not in supplied
+                else "replace",
+                path,
+            )
+            for path in sorted(installed.keys() | supplied.keys())
+            if installed.get(path) != supplied.get(path)
+        ]
+        if changes:
+            outdated[name] = changes
+    return outdated
+
+
 def update_vault(
-    vault: Path | None = None, *, dry_run: bool = False, allow_downgrade: bool = False
+    vault: Path | None = None,
+    *,
+    dry_run: bool = False,
+    allow_downgrade: bool = False,
+    extensions: bool = False,
 ) -> Update:
     """Bring a vault's managed files up to date with the running Armarium.
 
     A file the vault has not changed is replaced; one both have changed is
     merged by line. Files the vault deleted or keeps as its own are left
     alone. A vault without a record is taken to have been copied from the
-    running Armarium. The record is rewritten even when no file changes.
+    running Armarium. The record is rewritten even when no file changes. With
+    extensions, each out-of-date installed extension is then replaced, as
+    update_extension does, after the managed files.
 
     Where the vault and Armarium changed the same lines, nothing is changed:
     each such merge, both sides marked, is left in PENDING for the vault to
@@ -392,22 +441,28 @@ def update_vault(
             directory.
         dry_run: Plan and check the update without changing the vault or
             PENDING.
-        allow_downgrade: Allow a vault recorded with a newer Armarium.
+        allow_downgrade: Allow a vault or extension recorded with a newer
+            Armarium.
+        extensions: Also update installed extensions.
 
     Returns:
         Update: The changes planned, with their file changes. They were made
             unless this is a dry run or the update has conflicts.
 
     Raises:
-        ValueError: The vault, its record or a managed path is invalid, or
-            the record is newer than the running Armarium without
+        ValueError: The vault, its record, a managed path or an extension is
+            invalid, or the record is newer than the running Armarium without
             allow_downgrade.
-        OSError: Reading or writing fails; the vault is restored.
+        OSError: Reading or writing fails; the managed files, or the
+            extension being updated, are restored. Extensions updated before
+            a failure stay updated.
     """
     root = select_vault(vault)
     with as_file(starter()) as source:
         new = managed_files(source)
     update = plan_update(root, new, allow_downgrade=allow_downgrade)
+    if extensions:
+        update = replace(update, extensions=outdated_extensions(root))
     record = root / RECORD
     local = read_settings(record)["local"] if record.exists() else []
     files = _file_changes(update, new, local).apply(
@@ -415,4 +470,7 @@ def update_vault(
     )
     if update.conflicts and not dry_run:
         _write_pending(update, new)
+    elif not dry_run:
+        for name in update.extensions:
+            update_extension(name, root, allow_downgrade=allow_downgrade)
     return replace(update, files=files)

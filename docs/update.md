@@ -13,7 +13,9 @@ to the vault containing the current directory. `--dry-run` reports the changes
 without making them.
 
 The command never changes records, `campaigns/`, `content/`, `notes/`,
-`assets/`, skill `addenda/`, or files Armarium did not copy.
+`assets/`, the vault's own skill addenda, or files Armarium did not copy.
+Extensions, and the addenda they install, change only with
+[`--extensions`](#extensions).
 
 ## What changes
 
@@ -94,5 +96,17 @@ differs or is missing, to check by hand.
 ## Versions
 
 `.armarium/vault.json` records the `armarium_version` of the last update.
-Updating with an older Armarium requires `--allow-downgrade`. Extensions update
-separately, with [`armarium extension update`](extensions.md#updating).
+Updating with an older Armarium requires `--allow-downgrade`.
+
+## Extensions
+
+```sh
+armarium update --extensions
+```
+
+`--extensions` also updates each installed [extension](extensions.md) whose
+files differ from those the running Armarium supplies, after the vault's other
+files. Each is replaced as [`armarium extension update`](extensions.md#updating)
+replaces it: edits to its installed files are overwritten, not merged. A
+failure restores the extension being updated; those updated before it stay
+updated.

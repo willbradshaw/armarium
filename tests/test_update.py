@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from armarium.changes import FileChange
+from armarium.extensions import enable_extension
 from armarium.init import init_vault
 from armarium.lib import RECORD, managed_files, read_settings
 from armarium.update import (
@@ -26,6 +27,7 @@ from armarium.update import (
     _vault_file,
     _write_pending,
     merge3,
+    outdated_extensions,
     plan_update,
     update_vault,
 )
@@ -36,6 +38,7 @@ AGENTS = "AGENTS.md"
 SNIPPET = ".obsidian/snippets/armarium-opacity-art.css"
 STYLE = "reference/styles/Gear.md"
 SKILL = ".agents/skills/interview/SKILL.md"
+EXTENSION = "reference/extensions/example/README.md"
 
 
 @pytest.fixture
@@ -557,3 +560,53 @@ class TestUpdateVault:
         update_vault(vault)
         assert managed_files(vault / RECORD / "base") == managed_files(upstream)
         assert read_settings(vault / RECORD)["local"] == []
+
+    @pytest.mark.parametrize(
+        ("extensions", "dry_run", "replaced"),
+        [(False, False, False), (True, True, False), (True, False, True)],
+    )
+    def test_extensions(
+        self, vault: Path, extensions: bool, dry_run: bool, replaced: bool
+    ) -> None:
+        enable_extension("example", vault)
+        (vault / EXTENSION).write_text("Edited\n")
+        outdated = {"example": [FileChange("replace", EXTENSION)]}
+        update = update_vault(vault, dry_run=dry_run, extensions=extensions)
+        assert update.extensions == (outdated if extensions else {})
+        assert ((vault / EXTENSION).read_text() == "Edited\n") is not replaced
+        assert outdated_extensions(vault) == ({} if replaced else outdated)
+
+    def test_unknown_extension_changes_nothing(self, vault: Path) -> None:
+        enable_extension("example", vault)
+        config = vault / "reference/extensions.json"
+        data = json.loads(config.read_text())
+        data["retired"] = data.pop("example")
+        config.write_text(json.dumps(data))
+        record = (vault / RECORD / "vault.json").read_bytes()
+        with pytest.raises(ValueError, match="unknown extension"):
+            update_vault(vault, extensions=True)
+        assert (vault / RECORD / "vault.json").read_bytes() == record
+
+
+class TestOutdatedExtensions:
+    def test_none_installed(self, vault: Path) -> None:
+        assert outdated_extensions(vault) == {}
+
+    def test_current(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        assert outdated_extensions(vault) == {}
+
+    def test_lists_changed_paths(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        enable_extension("example", vault)
+        addendum = ".agents/skills/prepare-session/addenda/dnd-5-5.md"
+        (vault / addendum).unlink()
+        (vault / EXTENSION).write_text("Edited\n")
+        (vault / "reference/extensions/example/extra.md").write_text("Extra\n")
+        assert outdated_extensions(vault) == {
+            "dnd-5-5": [FileChange("create", addendum)],
+            "example": [
+                FileChange("replace", EXTENSION),
+                FileChange("delete", "reference/extensions/example/extra.md"),
+            ],
+        }

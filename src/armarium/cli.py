@@ -249,7 +249,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     refresh.add_argument(
         "--allow-downgrade",
         action="store_true",
-        help="allow updating a vault last updated by a newer Armarium",
+        help="allow updating a vault or extension last updated by a newer Armarium",
+    )
+    refresh.add_argument(
+        "--extensions",
+        action="store_true",
+        help="also replace out-of-date installed extensions with their current files",
     )
     add = commands.add_parser("add", help="add to an existing vault")
     additions = add.add_subparsers(dest="addition", required=True)
@@ -1057,6 +1062,7 @@ def main() -> None:
                 args.vault,
                 dry_run=args.dry_run,
                 allow_downgrade=args.allow_downgrade,
+                extensions=args.extensions,
             )
         except (OSError, ValueError) as exc:
             logger.error("Cannot update the vault: %s", exc)
@@ -1071,7 +1077,19 @@ def main() -> None:
                 report = logger.warning if entry.action == "conflict" else logger.info
                 report("%s: %s", entry.path, DESCRIPTIONS[entry.action])
         applied = not args.dry_run and not update.conflicts
-        report_changes(update.vault_files, dry_run=not applied)
+        for name in update.extensions:
+            logger.info(
+                "Extension %s: %s with its current files",
+                name,
+                "replaced" if applied else "would be replaced",
+            )
+        report_changes(
+            [
+                *update.vault_files,
+                *(f for files in update.extensions.values() for f in files),
+            ],
+            dry_run=not applied,
+        )
         if args.dry_run:
             return
         if update.conflicts:
