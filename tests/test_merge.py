@@ -110,15 +110,22 @@ class TestMergerValue:
         assert merger.conflicts == []
 
     @pytest.mark.parametrize(
-        ("kept", "merged"), [("a", "b"), ("[[Tern]]", "[[Copper Finch]]"), ("a", ["a"])]
+        ("kept", "merged", "conflict"),
+        [
+            ("a", "b", '"a" (--into) vs "b" (--from)'),
+            (
+                "[[Tern]]",
+                "[[Copper Finch]]",
+                '"[[Tern]]" (--into) vs "[[Copper Finch]]" (--from)',
+            ),
+            ("a", ["a"], "\"a\" (--into) vs ['a'] (--from)"),
+        ],
     )
     def test_conflict_keeps_the_target(
-        self, merger: Merger, kept: object, merged: object
+        self, merger: Merger, kept: object, merged: object, conflict: str
     ) -> None:
         assert merger.value("field", kept, merged) == kept
-        assert len(merger.conflicts) == 1
-        assert merger.conflicts[0].startswith("field: ")
-        assert OREN in merger.conflicts[0] and SILAS in merger.conflicts[0]
+        assert merger.conflicts == [f"field: {conflict}"]
 
 
 class TestMergerMapping:
@@ -281,7 +288,12 @@ class TestMergerSession:
 class TestShow:
     @pytest.mark.parametrize(
         ("value", "expected"),
-        [("short", "short"), (3, "3"), ("x" * 70, "x" * 57 + "...")],
+        [
+            ("short", '"short"'),
+            (3, "3"),
+            (["a"], "['a']"),
+            ("x" * 70, '"' + "x" * 57 + '..."'),
+        ],
     )
     def test_show(self, value: object, expected: str) -> None:
         assert _show(value) == expected

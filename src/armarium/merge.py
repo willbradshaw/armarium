@@ -136,7 +136,7 @@ class Merger:
         if self.key(kept) != self.key(merged):
             self.conflict(
                 where,
-                f"{_show(kept)} in {self.names[1]}, {_show(merged)} in {self.names[0]}",
+                f"{_show(kept)} (--into) vs {_show(merged)} (--from)",
             )
         return kept
 
@@ -336,9 +336,10 @@ class Merger:
 
 
 def _show(value: Any) -> str:
-    """Write a frontmatter value briefly, for a conflict."""
+    """Write a frontmatter value briefly, for a conflict, quoting text."""
     text = value if isinstance(value, str) else repr(value)
-    return text if len(text) <= 60 else text[:57] + "..."
+    text = text if len(text) <= 60 else text[:57] + "..."
+    return f'"{text}"' if isinstance(value, str) else text
 
 
 def _block_ids(text: str) -> set[str]:

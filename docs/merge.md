@@ -68,9 +68,13 @@ lists each disagreement on standard output, one per line, and changes
 nothing:
 
 ```text
-summary: A pilot of the eastern approaches. in content/Quay Nine.md, A harbour clerk. in content/The Ninth.md
+summary: "A pilot of the eastern approaches." (--into) vs "A harbour clerk." (--from)
 Appearances: both records have an item for S-1-002; keep one
 ```
+
+Each line names the field or section where the records disagree, then what
+disagrees; a differing value is shown from `TARGET` (`--into`), then from
+`SOURCE` (`--from`).
 
 Edit either record so that the two agree, or empty the field or section in
 one of them, then merge again. The records conflict when:
