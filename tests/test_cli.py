@@ -3094,7 +3094,7 @@ class TestMergeCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        arguments = [self.SILAS, self.OREN, "--vault", str(example)]
+        arguments = ["--from", self.SILAS, "--into", self.OREN, "--vault", str(example)]
         monkeypatch.setattr(sys, "argv", ["armarium", "merge", *arguments])
         with pytest.raises(SystemExit) as exc:
             main()
@@ -3118,7 +3118,14 @@ class TestMergeCommand:
         notes = example / "notes"
         (notes / "A.md").write_text('---\ntype: "[[types/Note]]"\n---\nFirst.\n')
         (notes / "B.md").write_text('---\ntype: "[[types/Note]]"\n---\nSecond.\n')
-        arguments = ["notes/A.md", "notes/B.md", "--vault", str(example)]
+        arguments = [
+            "--from",
+            "notes/A.md",
+            "--into",
+            "notes/B.md",
+            "--vault",
+            str(example),
+        ]
         arguments += ["--dry-run"] if dry_run else []
         monkeypatch.setattr(sys, "argv", ["armarium", "merge", *arguments])
         main()
@@ -3135,7 +3142,7 @@ class TestMergeCommand:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        arguments = [self.OREN, self.OREN, "--vault", str(example)]
+        arguments = ["--from", self.OREN, "--into", self.OREN, "--vault", str(example)]
         monkeypatch.setattr(sys, "argv", ["armarium", "merge", *arguments])
         with pytest.raises(SystemExit) as exc:
             main()
@@ -3146,7 +3153,14 @@ class TestMergeCommand:
 
     @pytest.mark.parametrize(
         "arguments",
-        [[], ["a.md"], ["a.md", "b.md", "c.md"], ["a.md", "b.md", "--unlink"]],
+        [
+            [],
+            ["a.md", "b.md"],
+            ["--from", "a.md"],
+            ["--into", "b.md"],
+            ["--from", "a.md", "--into", "b.md", "c.md"],
+            ["--from", "a.md", "--into", "b.md", "--unlink"],
+        ],
     )
     def test_usage_errors(
         self, arguments: list[str], capsys: pytest.CaptureFixture[str]
@@ -3157,7 +3171,7 @@ class TestMergeCommand:
         assert "usage: armarium" in capsys.readouterr().err
 
     def test_options(self, tmp_path: Path) -> None:
-        args = parse_args(["merge", "a.md", "b.md"])
+        args = parse_args(["merge", "--into", "b.md", "--from", "a.md"])
         assert (args.source, args.target, args.dry_run, args.vault) == (
             Path("a.md"),
             Path("b.md"),
@@ -3165,7 +3179,16 @@ class TestMergeCommand:
             None,
         )
         args = parse_args(
-            ["merge", "a.md", "b.md", "--dry-run", "--vault", str(tmp_path)]
+            [
+                "merge",
+                "--from",
+                "a.md",
+                "--into",
+                "b.md",
+                "--dry-run",
+                "--vault",
+                str(tmp_path),
+            ]
         )
         assert (args.dry_run, args.vault) == (True, tmp_path)
 

@@ -1,18 +1,19 @@
 # Merging records
 
 ```sh
-armarium merge "content/The Ninth.md" "content/Quay Nine.md" --vault ../my-vault
+armarium merge --from "content/The Ninth.md" --into "content/Quay Nine.md" --vault ../my-vault
 ```
 
-`armarium merge SOURCE TARGET` merges the [record](record.md) `SOURCE` into
-`TARGET`, for two records that turn out to be one; it repoints every
+`armarium merge --from SOURCE --into TARGET` merges the [record](record.md)
+`SOURCE` into `TARGET`, for two records that turn out to be one; it repoints every
 [link](record.md#links) to `SOURCE` in the [vault](vault.md) and deletes
 `SOURCE`. Merge records this way rather than by hand: a file deleted by hand
 leaves every link to it broken.
 
 ## Choosing the records
 
-`SOURCE` and `TARGET` are file paths, each chosen as for
+Both flags are required, so the command always says which record goes and
+which stays. `SOURCE` and `TARGET` are file paths, each chosen as for
 [`armarium trace`](trace.md#choosing-the-file): without `--vault`, absolute or
 relative to the current directory; with `--vault VAULT`, relative to the vault
 root, so a path printed by [`armarium find`](find.md) can be passed as it is.
@@ -43,13 +44,18 @@ back if writing one fails.
 | --- | --- |
 | `aliases` | `TARGET`'s, then `SOURCE`'s, then `SOURCE`'s filename |
 | a list, such as `content_tags` or `members` | `TARGET`'s items, then `SOURCE`'s that it lacks |
-| any other field | the value both give, or the one that is set |
+| any other field | the value both give; if one record leaves it out or empty, the other's |
 | `first_session` and `last_session` | worked out from the merged Appearances |
-| text before Notes, such as a callout | the text both give, or the one that is set |
+| text before Notes, such as a callout | the text both give; if one record has none, the other's |
 | Notes | `TARGET`'s, then `SOURCE`'s |
-| Active Clues | `TARGET`'s |
+| Active Clues | `TARGET`'s, which lists the Clues about both |
 | Appearances | both lists' items, in campaign and session order |
 | a Note's body | `TARGET`'s, then `SOURCE`'s |
+
+A field counts as empty when it is null, an empty string, an empty list or an
+empty mapping. Every record's Active Clues holds the same Base embed, which
+lists the Clues that link to the record, so `SOURCE`'s is dropped: once the
+Clues about `SOURCE` are repointed, `TARGET`'s lists them too.
 
 The merged record keeps `TARGET`'s order of fields and sections; a field or
 section only `SOURCE` has is added. Read the merged Notes afterwards: the

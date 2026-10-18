@@ -400,13 +400,19 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     merging.add_argument(
-        "source",
+        "--from",
+        dest="source",
+        metavar="SOURCE",
         type=Path,
+        required=True,
         help="record to merge in and delete; with --vault, relative to the vault root",
     )
     merging.add_argument(
-        "target",
+        "--into",
+        dest="target",
+        metavar="TARGET",
         type=Path,
+        required=True,
         help="record to merge it into; with --vault, relative to the vault root",
     )
     merging.add_argument(
@@ -857,7 +863,7 @@ def main() -> None:
         _relink(
             "merge",
             args.source,
-            lambda: merge(args.source, args.target, args.vault),
+            lambda: merge(source=args.source, target=args.target, vault=args.vault),
             dry_run=args.dry_run,
         )
         return

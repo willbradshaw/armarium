@@ -334,7 +334,7 @@ class TestMerge:
     def test_refuses_conflicts(self, example: Path) -> None:
         before = {p: p.read_bytes() for p in example.rglob("*") if p.is_file()}
         with pytest.raises(Conflicts) as exc:
-            merge(Path(SILAS), Path(OREN), example)
+            merge(source=Path(SILAS), target=Path(OREN), vault=example)
         assert [c.split(":")[0] for c in exc.value.details] == [
             "summary",
             "Appearances",
@@ -343,7 +343,7 @@ class TestMerge:
 
     def test_merges(self, example: Path) -> None:
         settle(example)
-        plan = merge(Path(SILAS), Path(OREN), example)
+        plan = merge(source=Path(SILAS), target=Path(OREN), vault=example)
         assert plan.changes[0].output == f"{SILAS}\t\t\tmerged into {OREN}"
         assert plan.notes[-1] == f"{OREN}: review the text merged from {SILAS}"
         assert all(change.relative != SILAS for change in plan.changes[1:])
@@ -362,7 +362,7 @@ class TestMerge:
         note = example / "campaigns/campaign_2/notes/Storm timing.md"
         note.write_text(note.read_text() + "\nSee [[Silas Rook#^gone]].\n")
         with pytest.raises(Conflicts) as exc:
-            merge(Path(SILAS), Path(OREN), example)
+            merge(source=Path(SILAS), target=Path(OREN), vault=example)
         assert len(exc.value.details) == 1
         assert exc.value.details[0].startswith(
             "campaigns/campaign_2/notes/Storm timing.md:"
@@ -388,7 +388,7 @@ class TestMerge:
             )
         )
         with pytest.raises(Conflicts) as exc:
-            merge(Path(SILAS), Path(OREN), example)
+            merge(source=Path(SILAS), target=Path(OREN), vault=example)
         assert exc.value.details == [
             "campaign_2: neither record has this campaign's block"
         ]
@@ -397,7 +397,7 @@ class TestMerge:
         settle(example)
         path = example / SILAS
         path.write_text(path.read_text().replace("- N/A", "- [[S-2-002]]: Later."))
-        merge(Path(SILAS), Path(OREN), example).files.apply()
+        merge(source=Path(SILAS), target=Path(OREN), vault=example).files.apply()
         oren = (example / OREN).read_text()
         assert 'last_session: "[[S-2-002]]"' in oren
         assert "- [[S-2-001]]: Struck" in oren and "- [[S-2-002]]: Later." in oren
@@ -422,16 +422,18 @@ class TestMerge:
     ) -> None:
         if message is None:
             settle(example)
-            assert merge(Path(source), Path(target), example).files.deletes
+            assert merge(
+                source=Path(source), target=Path(target), vault=example
+            ).files.deletes
             return
         with pytest.raises(ValueError, match=message):
-            merge(Path(source), Path(target), example)
+            merge(source=Path(source), target=Path(target), vault=example)
 
     def test_notes(self, example: Path) -> None:
         notes = example / "notes"
         (notes / "A.md").write_text('---\ntype: "[[types/Note]]"\n---\nFirst.\n')
         (notes / "B.md").write_text('---\ntype: "[[types/Note]]"\n---\nSecond.\n')
-        merge(notes / "A.md", notes / "B.md").files.apply()
+        merge(source=notes / "A.md", target=notes / "B.md").files.apply()
         assert (notes / "B.md").read_text() == (
             '---\ntype: "[[types/Note]]"\naliases: ["A"]\n---\nSecond.\n\nFirst.\n'
         )

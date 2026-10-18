@@ -389,7 +389,7 @@ def _join(kept: str, merged: str) -> str:
     )
 
 
-def merge(source: Path, target: Path, vault: Path | None = None) -> RelinkPlan:
+def merge(*, source: Path, target: Path, vault: Path | None = None) -> RelinkPlan:
     """Plan merging one record into another and repointing every link to it.
 
     Args:
