@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Make the `update-record` skill rename, merge and delete records with the commands, and list them in the vault guide.
 - Add `armarium merge` to merge one record into another, repointing the links to it and listing where the two disagree.
 - Add `armarium delete` to delete a record, refusing while links to it remain, and `--unlink` to turn those links into text.
 - Add `armarium rename --alias` to keep the old name as an alias and as the wording of links to the record.

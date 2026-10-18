@@ -1,12 +1,14 @@
 ---
 name: update-record
-description: Creates or edits one record in this Armarium vault, then fixes validation errors. Creates stub records for introduced dangling links.
+description: Creates, edits, renames, merges or deletes one record in this Armarium vault, then fixes validation errors. Creates stub records for introduced dangling links.
 ---
 
 # Update a record
 
 This procedure writes one record and keeps the vault valid. It does not update
-the other records that the change may affect.
+the other records that the change may affect. To rename, merge or delete a
+record, follow [Renaming, merging or deleting a record](#renaming-merging-or-deleting-a-record)
+instead of steps 1 to 5.
 
 You need three things:
 
@@ -100,3 +102,35 @@ started, report them; do not fix them unasked.
 Then say which record you wrote, which stubs you created, and which existing
 records you linked to. Those records and stubs may need updating from the same
 source; that is for whoever asked for this change to decide.
+
+## Renaming, merging or deleting a record
+
+Never rename, move or delete a record's file by hand, in Obsidian or with
+Git: every link to it would break. Use the commands below, which rewrite
+those links. They are described in [Renaming a record](https://github.com/willbradshaw/armarium/blob/main/docs/rename.md),
+[Merging records](https://github.com/willbradshaw/armarium/blob/main/docs/merge.md) and
+[Deleting a record](https://github.com/willbradshaw/armarium/blob/main/docs/delete.md).
+
+1. Find each record's path with `armarium find`, as in step 1.
+2. Run the command with `--dry-run`, and show the user what it would change:
+   - `armarium rename "PATH" "NEW NAME"` gives a record a new name. Add
+     `--alias` when the entity still goes by the old name: it stays an alias,
+     and prose keeps its wording.
+   - `armarium merge --from "SOURCE" --into "TARGET"` combines two records
+     that turn out to be one entity. `SOURCE` goes, and its links point at
+     `TARGET`; make `TARGET` the record whose name the user wants to keep.
+   - `armarium delete "PATH"` deletes a record. Delete only when the user
+     asks for the record to go.
+3. Run the command without `--dry-run` once the user agrees.
+
+When `merge` lists conflicts, show each one to the user and ask which is
+right; do not choose. Edit the records as the user decides, so that they
+agree, then merge again. After the merge, the merged Notes may repeat
+themselves; tidy them only if the user asks.
+
+When `delete` lists the links that remain, show them to the user. Change
+each one as the user decides or, if the user agrees that they should become
+plain text, run `armarium delete "PATH" --unlink`.
+
+Then validate the vault and report, as in step 6. Also report each warning
+about a link the command left as written, for the user to check.
