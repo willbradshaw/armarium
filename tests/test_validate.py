@@ -28,7 +28,6 @@ from armarium.validate import (
     VAULT_TYPES,
     _check_anchor,
     _check_campaign_history,
-    _heading_key,
     _link_targets,
     _read_appearances,
     _start_worker,
@@ -1521,20 +1520,6 @@ class TestCheckAnchor:
         else:
             assert problem is not None
             assert problem[0] == "link.anchor" and problem[1].endswith(message)
-
-
-class TestHeadingKey:
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("Notes", "notes"),
-            ("  Secrets   &  Clues ", "secrets & clues"),
-            ("[[Link]] | Pipe ^id #tag", "link pipe id tag"),
-            ("", ""),
-        ],
-    )
-    def test_normalises(self, text: str, expected: str) -> None:
-        assert _heading_key(text) == expected
 
 
 class TestValidateWikilink:

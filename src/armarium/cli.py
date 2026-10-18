@@ -3,7 +3,7 @@
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
@@ -11,7 +11,7 @@ from jsonschema.exceptions import SchemaError
 from armarium.add import add_campaign
 from armarium.clue import add_clue
 from armarium.content import add_content
-from armarium.delete import StillLinked, delete
+from armarium.delete import delete
 from armarium.extensions import (
     content_subtypes,
     enable_extension,
@@ -25,9 +25,11 @@ from armarium.init import init_vault
 from armarium.layout import LAYOUT_DIRECTORY, OVERRIDES
 from armarium.lib import SUBTYPES, find_vault, select_vault
 from armarium.logging import configure_logging, logger
+from armarium.merge import merge
 from armarium.note import add_note
 from armarium.painters import PAINTERS
 from armarium.player import add_player
+from armarium.relink import Refused, RelinkPlan
 from armarium.rename import rename
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
@@ -139,6 +141,32 @@ def _subtype_choices(argv: Sequence[str] | None) -> tuple[tuple[str, ...] | None
         return content_subtypes(root), " (core subtypes and enabled extensions)"
     except (OSError, ValueError, SchemaError, RecursionError) as exc:
         return None, f"; cannot read the vault's extensions: {exc}"
+
+
+def _relink(
+    command: str, path: Path, plan: Callable[[], RelinkPlan], *, dry_run: bool
+) -> None:
+    """Run a relinking command: plan it, make or show its changes, and report.
+
+    Args:
+        command: The command's name, for an error.
+        path: The record it acts on, for an error.
+        plan: Works out the command's changes.
+        dry_run: Show the changes without making them.
+
+    Raises:
+        SystemExit: The command refused or failed; its details are printed
+            first.
+    """
+    try:
+        planned = plan()
+        applied = planned.files.apply(dry_run=dry_run)
+    except (OSError, ValueError) as exc:
+        for line in exc.details if isinstance(exc, Refused) else []:
+            print(line)
+        logger.error("Cannot %s %s: %s", command, path, exc)
+        sys.exit(1)
+    planned.report(applied, dry_run=dry_run)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -357,6 +385,39 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--vault",
         type=Path,
         help="vault root (default: discovered from the path)",
+    )
+    merging = commands.add_parser(
+        "merge",
+        help="merge a record into another and repoint the links to it",
+        description=(
+            "Merge one record into another of the same type and subtype: "
+            "combine their frontmatter and bodies, repoint every link to the "
+            "first record at the second and delete the first. Where the records "
+            "disagree, list each conflict and change nothing. Each line of "
+            "output holds a changed file's path, the frontmatter field or body "
+            "headings where a link sits, its line number and the change, "
+            "separated by tabs."
+        ),
+    )
+    merging.add_argument(
+        "source",
+        type=Path,
+        help="record to merge in and delete; with --vault, relative to the vault root",
+    )
+    merging.add_argument(
+        "target",
+        type=Path,
+        help="record to merge it into; with --vault, relative to the vault root",
+    )
+    merging.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="list the changes without making them",
+    )
+    merging.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the paths)",
     )
     deleting = commands.add_parser(
         "delete",
@@ -741,7 +802,7 @@ def main() -> None:
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
             find matches nothing, trace cannot locate its file, rename cannot
-            rename, delete cannot delete, a changed record fails validation,
+            rename, merge or delete refuses, a changed record fails validation,
             transcribe cannot write its text or illustrate cannot take its
             picture in.
             Creation reports validation warnings and errors; validate also reports
@@ -785,27 +846,28 @@ def main() -> None:
         )
         return
     if args.command == "rename":
-        try:
-            plan = rename(args.path, args.name, args.vault, alias=args.alias)
-            applied = plan.files.apply(dry_run=args.dry_run)
-        except (OSError, ValueError) as exc:
-            logger.error("Cannot rename %s: %s", args.path, exc)
-            sys.exit(1)
-        plan.report(applied, dry_run=args.dry_run)
+        _relink(
+            "rename",
+            args.path,
+            lambda: rename(args.path, args.name, args.vault, alias=args.alias),
+            dry_run=args.dry_run,
+        )
+        return
+    if args.command == "merge":
+        _relink(
+            "merge",
+            args.source,
+            lambda: merge(args.source, args.target, args.vault),
+            dry_run=args.dry_run,
+        )
         return
     if args.command == "delete":
-        try:
-            plan = delete(args.path, args.vault, unlink=args.unlink)
-            applied = plan.files.apply(dry_run=args.dry_run)
-        except StillLinked as exc:
-            for reference in exc.references:
-                print(reference.text)
-            logger.error("Cannot delete %s: %s", args.path, exc)
-            sys.exit(1)
-        except (OSError, ValueError) as exc:
-            logger.error("Cannot delete %s: %s", args.path, exc)
-            sys.exit(1)
-        plan.report(applied, dry_run=args.dry_run)
+        _relink(
+            "delete",
+            args.path,
+            lambda: delete(args.path, args.vault, unlink=args.unlink),
+            dry_run=args.dry_run,
+        )
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:

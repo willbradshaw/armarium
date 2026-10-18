@@ -10,6 +10,7 @@ from armarium.logging import configure_logging, logger
 from armarium.parse import Frontmatter
 from armarium.relink import (
     _DROP,
+    Refused,
     RelinkChange,
     Relinker,
     RelinkPlan,
@@ -184,6 +185,24 @@ class TestRelinkerDestination:
             vault / "content/Quay Nine.md",
             None,
         )
+
+
+class TestRelinkerLanding:
+    @pytest.mark.parametrize(
+        ("contents", "expected"),
+        [
+            ("Port Briselle", True),
+            ("content/port briselle.md|x", True),
+            ("Quay Nine", False),
+            ("Nowhere", False),
+            ("#Notes", False),
+            ("", False),
+        ],
+    )
+    def test_landing(self, vault: Path, contents: str, expected: bool) -> None:
+        relinked = relinker(vault, {"content/Quay Nine.md": "content/Port Briselle.md"})
+        found = relinked.landing(contents, vault / "notes/Plans.md")
+        assert found == (vault / "content/Port Briselle.md" if expected else None)
 
 
 class TestRelinkerSpell:
@@ -582,6 +601,23 @@ class TestRelinkerValue:
         assert (result is _DROP) if expected == "drop" else result == expected
         assert [c.text for c in changes] == texts
 
+    def test_merged_list_items_repeat(self, vault: Path) -> None:
+        relinked = relinker(vault, {"content/Quay Nine.md": "content/Port Briselle.md"})
+        changes: list[RelinkChange] = []
+        result = relinked._value(
+            ["[[Port Briselle]]", "[[Quay Nine]]", "[[Mara]]", "[[Mara]]"],
+            "subjects",
+            vault / "notes/Plans.md",
+            "notes/Plans.md",
+            changes,
+            listed=False,
+        )
+        assert result == ["[[Port Briselle]]", "[[Mara]]", "[[Mara]]"]
+        assert [c.text for c in changes] == [
+            "[[Quay Nine]] → [[Port Briselle]]",
+            "[[Quay Nine]] removed: repeats [[Port Briselle]]",
+        ]
+
     def test_locations(self, vault: Path) -> None:
         relinked = relinker(vault, {"content/Quay Nine.md": "content/Quay Ten.md"})
         changes: list[RelinkChange] = []
@@ -706,3 +742,10 @@ class TestCheckMovable:
     def test_campaign_file(self, relative: str) -> None:
         with pytest.raises(ValueError, match="is a file every campaign requires"):
             check_movable(relative, Frontmatter({"type": "[[Campaign]]"}))
+
+
+class TestRefused:
+    def test_details(self) -> None:
+        error = Refused("cannot", ["a", "b"])
+        assert (str(error), error.details) == ("cannot", ["a", "b"])
+        assert isinstance(error, ValueError)

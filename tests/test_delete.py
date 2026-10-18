@@ -34,6 +34,7 @@ class TestStillLinked:
         assert str(error).startswith(expected)
         assert "--unlink" in str(error)
         assert error.references == references
+        assert error.details == [reference.text for reference in references]
 
 
 class TestDelete:
