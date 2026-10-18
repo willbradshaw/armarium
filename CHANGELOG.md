@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Speed up schema validation about tenfold by checking records with jsonschema-rs first, adding it as a dependency; jsonschema still reports each failure.
 - Halve the time validation takes to index a vault, which speeds up validating a single record.
 - Speed up validation by about a sixth, comparing paths by their parts rather than through each parent directory.
 - Make `armarium validate` choose its worker processes when `--jobs` is not given, one per 500 records up to one per CPU.
