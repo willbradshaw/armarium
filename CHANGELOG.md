@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a shared way for commands to check, report and make their planned file changes, with a dry run that changes nothing, making them all or none and restoring the vault when a change fails or is interrupted.
 - Speed up schema validation about tenfold by checking records with jsonschema-rs first, adding it as a dependency; jsonschema still reports each failure.
 - Halve the time validation takes to index a vault, which speeds up validating a single record.
 - Speed up validation by about a sixth, comparing paths by their parts rather than through each parent directory.
