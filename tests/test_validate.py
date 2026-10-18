@@ -11,7 +11,12 @@ import pytest
 import yaml
 
 import armarium.validate
-from armarium.extensions import ExtensionRule, ExtensionSet, load_extension_set
+from armarium.extensions import (
+    ExtensionRule,
+    ExtensionSet,
+    armarium_version,
+    load_extension_set,
+)
 from armarium.index import VaultIndex
 from armarium.lib import SUBTYPES, Result, check_vault, find_files, find_vault
 from armarium.parse import Body, Frontmatter, Record
@@ -41,6 +46,7 @@ from armarium.validate import (
     validate_campaigns,
     validate_chains,
     validate_clue,
+    validate_copies,
     validate_directory,
     validate_filename,
     validate_identity_links,
@@ -4251,3 +4257,102 @@ class TestIsCampaignFile:
     )
     def test_paths(self, relative: str, expected: bool) -> None:
         assert is_campaign_file(relative) is expected
+
+
+class TestValidateCopies:
+    @pytest.fixture
+    def vault(self, tmp_path: Path) -> Path:
+        from armarium.init import init_vault
+
+        return init_vault(tmp_path / "vault")
+
+    @pytest.fixture
+    def upstream(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+        source = tmp_path / "upstream"
+        shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/starter", source)
+        monkeypatch.setattr("armarium.validate.starter", lambda: source)
+        return source
+
+    @staticmethod
+    def rules(root: Path) -> list[tuple[str, str]]:
+        return [(d.rule, d.message) for d in validate_copies(root).diagnostics]
+
+    @staticmethod
+    def set_local(root: Path, local: list[str]) -> None:
+        settings = root / ".armarium/vault.json"
+        data = json.loads(settings.read_text())
+        data["local"] = local
+        settings.write_text(json.dumps(data))
+
+    def test_current(self, vault: Path) -> None:
+        assert self.rules(vault) == []
+
+    def test_without_record(self, vault: Path, upstream: Path) -> None:
+        shutil.rmtree(vault / ".armarium")
+        (upstream / "AGENTS.md").write_text("New\n")
+        assert self.rules(vault) == []
+
+    @pytest.mark.parametrize(
+        ("changed", "message"),
+        [
+            (["AGENTS.md"], "1 managed file differs from Armarium"),
+            (["AGENTS.md", "docs/new.md"], "2 managed files differ from Armarium"),
+        ],
+    )
+    def test_outdated(
+        self, vault: Path, upstream: Path, changed: list[str], message: str
+    ) -> None:
+        for relative in changed:
+            (upstream / relative).write_text("New\n")
+        [(rule, text)] = self.rules(vault)
+        assert rule == "vault.outdated"
+        assert message in text
+        assert "such as AGENTS.md; run armarium update" in text
+
+    def test_local_not_outdated(self, vault: Path, upstream: Path) -> None:
+        (upstream / "AGENTS.md").write_text("New\n")
+        self.set_local(vault, ["AGENTS.md"])
+        assert self.rules(vault) == []
+
+    def test_unreadable_record(self, vault: Path) -> None:
+        (vault / ".armarium/vault.json").write_text("[]")
+        [(rule, text)] = self.rules(vault)
+        assert rule == "vault.outdated"
+        assert text.startswith("cannot check managed copies")
+
+    def test_extension(self, vault: Path) -> None:
+        from armarium.extensions import enable_extension
+
+        enable_extension("example", vault)
+        assert self.rules(vault) == []
+        (vault / "reference/extensions/example/README.md").write_text("Edited\n")
+        assert self.rules(vault) == [
+            (
+                "vault.outdated",
+                "extension example differs from Armarium "
+                f"{armarium_version()}'s; "
+                "run armarium extension update example",
+            )
+        ]
+
+    def test_unknown_extension(self, vault: Path) -> None:
+        from armarium.extensions import enable_extension
+
+        enable_extension("example", vault)
+        config = vault / "reference/extensions.json"
+        data = json.loads(config.read_text())
+        data["retired"] = data.pop("example")
+        config.write_text(json.dumps(data))
+        [(rule, text)] = self.rules(vault)
+        assert rule == "vault.outdated"
+        assert text.startswith("cannot check extension retired: unknown extension")
+
+    def test_invalid_configuration(self, vault: Path) -> None:
+        (vault / "reference/extensions.json").write_text("[]")
+        assert self.rules(vault) == []
+
+    def test_part_of_vault_checks(self, vault: Path, upstream: Path) -> None:
+        (upstream / "AGENTS.md").write_text("New\n")
+        assert "vault.outdated" in {
+            d.rule for d in validate(vault).diagnostics if d.severity == "error"
+        }

@@ -107,4 +107,4 @@ Rule identifiers group into families:
 | `transcript.` | the transcript grammar | [Transcript](type.md#transcript) |
 | `style.` | art in an illustration style's directory over its size budget | [Illustrating a record](illustrate.md#styles) |
 | `extension.` | enabled extension declarations, schemas and templates, and code blocks an extension requires to be YAML | [Extensions](extensions.md) |
-| `vault.` | the vault skeleton, campaign layout, declared directories and stray entries | [Vault layout](vault.md) |
+| `vault.` | the vault skeleton, campaign layout, declared directories and stray entries; copies of Armarium files and extensions that are out of date | [Vault layout](vault.md), [Updating a vault](update.md) |
