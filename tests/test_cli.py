@@ -14,7 +14,6 @@ from pathlib import Path
 import pytest
 
 from armarium import cli
-from armarium.changes import FileChange, FileChanges
 from armarium.cli import (
     _jobs,
     _mark,
@@ -23,13 +22,11 @@ from armarium.cli import (
     _subtype_choices,
     main,
     parse_args,
-    report_plan,
 )
 from armarium.handout import Handout, Page
 from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
-from armarium.logging import configure_logging, logger
-from armarium.relink import RelinkChange, RelinkPlan
+from armarium.logging import logger
 from armarium.transcribe import (
     DEFAULT_LANGUAGE,
     DEFAULT_MIN_REPEATS,
@@ -2988,35 +2985,3 @@ class TestRenameCommand:
             ["rename", "a.md", "b", "--dry-run", "--vault", str(tmp_path)]
         )
         assert (args.dry_run, args.vault) == (True, tmp_path)
-
-
-class TestReportPlan:
-    PLAN = RelinkPlan(
-        FileChanges(Path("vault")),
-        changes=[
-            RelinkChange("content/Lark.md", "", 0, "renamed"),
-            RelinkChange("content/Wake-lark.md", "Notes", 3, "[[A]] → [[B]]"),
-        ],
-        notes=["docs/a.md:1: [[A]] not changed: not a record"],
-    )
-
-    @pytest.mark.parametrize(
-        ("dry_run", "summary"),
-        [
-            (True, "content/Lark.md: would be replaced"),
-            (False, "content/Lark.md: replaced"),
-        ],
-    )
-    def test_reports(
-        self, capsys: pytest.CaptureFixture[str], dry_run: bool, summary: str
-    ) -> None:
-        configure_logging()
-        files = [FileChange("replace", "content/Lark.md")]
-        report_plan(self.PLAN, files, dry_run=dry_run)
-        output = capsys.readouterr()
-        assert output.out.splitlines() == [
-            "content/Lark.md\t\t\trenamed",
-            "content/Wake-lark.md\tNotes\t3\t[[A]] → [[B]]",
-        ]
-        assert "WARNING: docs/a.md:1: [[A]] not changed" in output.err
-        assert f"INFO: {summary}" in output.err

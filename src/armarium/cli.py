@@ -9,7 +9,6 @@ from pathlib import Path
 from jsonschema.exceptions import SchemaError
 
 from armarium.add import add_campaign, select_vault
-from armarium.changes import FileChange, report_changes
 from armarium.clue import add_clue
 from armarium.content import add_content
 from armarium.extensions import (
@@ -28,7 +27,6 @@ from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.painters import PAINTERS
 from armarium.player import add_player
-from armarium.relink import RelinkPlan
 from armarium.rename import rename
 from armarium.session import add_session
 from armarium.style import ART_DIRECTORY, MAX_BYTES, MAX_EDGE, STYLE_DIRECTORY
@@ -693,21 +691,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def report_plan(plan: RelinkPlan, applied: list[FileChange], *, dry_run: bool) -> None:
-    """Print a plan's changes, the links it leaves as written, and its files.
-
-    Args:
-        plan: The changes, made unless this is a dry run.
-        applied: Each file's change, as applying plan.files returns them.
-        dry_run: Whether the changes were only planned.
-    """
-    for change in plan.changes:
-        print(change.output)
-    for note in plan.notes:
-        logger.warning(note)
-    report_changes(applied, dry_run=dry_run)
-
-
 def main() -> None:
     """Run the selected command and log its result.
 
@@ -764,7 +747,7 @@ def main() -> None:
         except (OSError, ValueError) as exc:
             logger.error("Cannot rename %s: %s", args.path, exc)
             sys.exit(1)
-        report_plan(plan, applied, dry_run=args.dry_run)
+        plan.report(applied, dry_run=args.dry_run)
         return
     if args.command == "illustrate" and args.stage == "prompt":
         try:

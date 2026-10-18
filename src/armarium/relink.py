@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-from armarium.changes import FileChanges
+from armarium.changes import FileChange, FileChanges, report_changes
 from armarium.extensions import is_template
 from armarium.index import VaultIndex, link_key
 from armarium.lib import (
@@ -18,6 +18,7 @@ from armarium.lib import (
     split_wikilink,
     wikilink_text,
 )
+from armarium.logging import logger
 from armarium.parse import PARSE_ERRORS, Body, Frontmatter, rewrite_frontmatter
 from armarium.trace import mentioning, sharing, spellings
 
@@ -80,6 +81,19 @@ class RelinkPlan:
     files: FileChanges
     changes: list[RelinkChange] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+
+    def report(self, applied: list[FileChange], *, dry_run: bool) -> None:
+        """Print the changes, warn of the links left as written, and log the files.
+
+        Args:
+            applied: Each file's change, as applying files returns them.
+            dry_run: Whether the changes were only planned.
+        """
+        for change in self.changes:
+            print(change.output)
+        for note in self.notes:
+            logger.warning(note)
+        report_changes(applied, dry_run=dry_run)
 
 
 class Relinker:

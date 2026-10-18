@@ -1,10 +1,20 @@
 """Relinking plans the link changes that moving a record needs."""
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from armarium.relink import _DROP, RelinkChange, Relinker, _display, _quote
+from armarium.changes import FileChange, FileChanges
+from armarium.logging import configure_logging, logger
+from armarium.relink import (
+    _DROP,
+    RelinkChange,
+    Relinker,
+    RelinkPlan,
+    _display,
+    _quote,
+)
 
 SESSION = """---
 type: "[[Session]]"
@@ -75,6 +85,46 @@ class TestRelinkChangeOutput:
     )
     def test_tab_separated(self, change: RelinkChange, expected: str) -> None:
         assert change.output == expected
+
+
+@pytest.fixture
+def preserve_logger() -> Iterator[None]:
+    handlers, level, propagate = logger.handlers[:], logger.level, logger.propagate
+    yield
+    logger.handlers, logger.level, logger.propagate = handlers, level, propagate
+
+
+@pytest.mark.usefixtures("preserve_logger")
+class TestRelinkPlanReport:
+    PLAN = RelinkPlan(
+        FileChanges(Path("vault")),
+        changes=[
+            RelinkChange("content/Lark.md", "", 0, "renamed"),
+            RelinkChange("content/Wake-lark.md", "Notes", 3, "[[A]] → [[B]]"),
+        ],
+        notes=["docs/a.md:1: [[A]] not changed: not a record"],
+    )
+
+    @pytest.mark.parametrize(
+        ("dry_run", "summary"),
+        [
+            (True, "content/Lark.md: would be replaced"),
+            (False, "content/Lark.md: replaced"),
+        ],
+    )
+    def test_reports(
+        self, capsys: pytest.CaptureFixture[str], dry_run: bool, summary: str
+    ) -> None:
+        configure_logging()
+        files = [FileChange("replace", "content/Lark.md")]
+        self.PLAN.report(files, dry_run=dry_run)
+        output = capsys.readouterr()
+        assert output.out.splitlines() == [
+            "content/Lark.md\t\t\trenamed",
+            "content/Wake-lark.md\tNotes\t3\t[[A]] → [[B]]",
+        ]
+        assert "WARNING: docs/a.md:1: [[A]] not changed" in output.err
+        assert f"INFO: {summary}" in output.err
 
 
 class TestRelinkerInit:
