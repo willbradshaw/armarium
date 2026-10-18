@@ -61,16 +61,18 @@ class VaultIndex:
         self._names: dict[str, list[Name]] | None = None
         self._subtype_directories: dict[str, dict[str, str]] = {}
         for path in find_files(self.root) if files is None else files:
-            relative = path.relative_to(self.root)
+            relative = "/".join(relative_parts(path, self.root))
             # Markdown links may include or omit .md; asset extensions matter.
-            names = [relative.as_posix()]
+            names = [relative]
             if path.suffix.lower() == ".md":
-                names.append(relative.with_suffix("").as_posix())
+                names.append(relative[:-3])
             for name in names:
-                parts = name.split("/")
+                # link_key never joins or splits across a slash, so the key of
+                # a trailing path is the same trailing path of the full key.
+                parts = link_key(name).split("/")
                 # Index each trailing path, from the full path to the filename.
                 for offset in range(len(parts)):
-                    key = link_key("/".join(parts[offset:]))
+                    key = "/".join(parts[offset:])
                     self.targets.setdefault(key, set()).add(path)
 
     def extension_set(self) -> ExtensionSet:

@@ -61,6 +61,25 @@ class TestVaultIndex:
         assert index.resolve("Quay Nine", root) == (None, "link.missing")
         assert VaultIndex(tmp_path, []).targets == {}
 
+    @pytest.mark.parametrize(
+        "relative",
+        ["Café/Straße.md", "ΟΔΟΣ/Σ́.md", "á/́b.png", "Ǆ/ﬁ.MD"],
+    )
+    def test_each_trailing_path_has_its_own_key(
+        self, tmp_path: Path, relative: str
+    ) -> None:
+        path = tmp_path.resolve() / relative
+        with patch("armarium.index.find_files", return_value=[path]):
+            index = VaultIndex(tmp_path)
+        markdown = relative.lower().endswith(".md")
+        names = [relative, relative[:-3]] if markdown else [relative]
+        # Each key is link_key of the trailing path itself.
+        assert set(index.targets) == {
+            link_key(trailing)
+            for name in names
+            for trailing in (name, name.split("/", 1)[1])
+        }
+
     def test_case_only_pair(self, tmp_path: Path) -> None:
         paths = [tmp_path / name for name in CASE_PAIR]
         with patch("armarium.index.find_files", return_value=paths):

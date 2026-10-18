@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Halve the time validation takes to index a vault, which speeds up validating a single record.
 - Speed up validation by about a sixth, comparing paths by their parts rather than through each parent directory.
 - Make `armarium validate` choose its worker processes when `--jobs` is not given, one per 500 records up to one per CPU.
 - Add the Armarium logo, shown as a banner at the top of the README.
