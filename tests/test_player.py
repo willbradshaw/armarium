@@ -259,7 +259,7 @@ class TestAddPlayer:
         ],
     )
     def test_invalid_name(self, vault: Path, name: str) -> None:
-        with pytest.raises(ValueError, match="plain record name"):
+        with pytest.raises(ValueError, match="name must"):
             add_player(name, vault, campaign=1)
 
     @pytest.mark.parametrize(

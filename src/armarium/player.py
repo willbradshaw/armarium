@@ -5,16 +5,14 @@ from pathlib import Path
 from typing import Any
 
 from armarium.add import (
-    check_destination,
-    check_name,
     merge_frontmatter,
     read_template,
     record_directory,
     record_text,
     require_campaign,
-    select_vault,
     write_record,
 )
+from armarium.lib import check_destination, check_name, select_vault
 
 
 def add_player(

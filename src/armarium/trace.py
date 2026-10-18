@@ -1,17 +1,19 @@
 """List the links to a file or from a record, and where each one sits."""
 
-import re
-from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
 import yaml
 
-from armarium.add import select_vault
-from armarium.extensions import is_template
-from armarium.index import VaultIndex, link_key
-from armarium.lib import check_vault, find_files, find_vault, record_files
+from armarium.index import (
+    VaultIndex,
+    link_key,
+    mentioning,
+    read_record,
+    sharing,
+    spellings,
+)
+from armarium.lib import find_files, locate
 from armarium.parse import Body, Frontmatter
 
 
@@ -46,151 +48,9 @@ class Reference:
         return "\t".join((self.relative, self.where, str(self.line or "")))
 
 
-def spellings(path: Path) -> set[str]:
-    """List the final target segments with which a link can name a file.
-
-    Args:
-        path: A file in the vault.
-
-    Returns:
-        set[str]: Its filename as link_key returns it and, for Markdown, the
-            filename without .md: the last path segments under which a
-            VaultIndex files it.
-    """
-    names = {link_key(path.name)}
-    if path.suffix.lower() == ".md":
-        names.add(link_key(path.stem))
-    return names
-
-
-def sharing(files: Iterable[Path], names: set[str]) -> list[Path]:
-    """List the files that a link's final target segment can name.
-
-    A link resolves among the files sharing its target's final segment, so
-    indexing these files resolves such links exactly as the whole vault would.
-
-    Args:
-        files: Files in the vault.
-        names: Final target segments, as spellings returns them.
-
-    Returns:
-        list[Path]: The files with any of the spellings, in the given order.
-    """
-    return [path for path in files if not names.isdisjoint(spellings(path))]
-
-
 def _final_segment(target: str) -> str:
     """Give the last path segment of a link target, as link_key returns it."""
     return link_key(target).rsplit("/", 1)[-1]
-
-
-def locate(path: Path, vault: Path | None) -> tuple[Path, Path]:
-    """Find the file to trace and the vault it belongs to.
-
-    Args:
-        path: File path. With a vault, a relative path is taken from the vault
-            root; without one, from the working directory.
-        vault: Vault root, or None to discover the vault from the file's
-            location, as validating the file would.
-
-    Returns:
-        tuple[Path, Path]: The resolved vault root and the resolved file.
-
-    Raises:
-        ValueError: The path is a symlink, does not exist or is a directory;
-            no vault encloses it; or it lies outside the given vault.
-    """
-    if vault is not None:
-        path = select_vault(vault) / path
-    if path.is_symlink():
-        raise ValueError(f"{path} is a symlink")
-    if not path.exists():
-        raise ValueError(
-            f"{path} does not exist; give a file path, which armarium find lists "
-            "for a name"
-        )
-    if path.is_dir():
-        raise ValueError(f"{path} is a directory, not a file")
-    # Resolve the directory first, so that .. and symlinked directories do not
-    # select a vault the file is not in.
-    path = path.parent.resolve() / path.name
-    return (find_vault(path) if vault is None else check_vault(path, vault)), path
-
-
-@lru_cache(maxsize=8)
-def _spelling(needle: str) -> tuple[re.Pattern[str], re.Pattern[bytes] | None]:
-    """Build the patterns that find a filename where a link would end with it.
-
-    A link's target ends with the linked file's name, optionally followed by
-    ``.md``, and then the closing brackets, a display alias or an anchor.
-    Starting with the literal name lets the search skip to its occurrences.
-
-    Args:
-        needle: The target's filename as link_key returns it, without .md.
-
-    Returns:
-        tuple[re.Pattern[str], re.Pattern[bytes] | None]: The pattern for
-            text passed through link_key, and its counterpart for lowercased
-            ASCII bytes, or None when the name is not ASCII.
-    """
-    source = re.escape(needle) + r"(?:\.md)?\s*(?:\]\]|\\?\||#)"
-    return re.compile(source), (
-        re.compile(source.encode()) if needle.isascii() else None
-    )
-
-
-def _frontmatter_text(data: bytes) -> str:
-    """Give a file's frontmatter as YAML reads its text, for a cheap search.
-
-    YAML may write a link other than as it reads it: a single-quoted string
-    doubles an apostrophe, and a long string folds onto further lines.
-
-    Args:
-        data: Contents of a Markdown file.
-
-    Returns:
-        str: The source of the frontmatter as link_key returns it, with
-            doubled apostrophes halved and each run of whitespace, line
-            breaks included, made one space. Empty without frontmatter.
-
-    Raises:
-        UnicodeError: The frontmatter cannot be decoded.
-    """
-    text = data[: max(data.find(b"\n---", 3), 0)].decode("utf-8-sig")
-    if not text.startswith("---"):
-        return ""
-    return " ".join(link_key(text).replace("''", "'").split())
-
-
-def _mentions(data: bytes, needle: str) -> bool:
-    """Tell cheaply whether a file's text could hold a link to a target.
-
-    Every link to a file ends its target with the file's name, so a file
-    whose text never spells the name that way cannot link to it and need not
-    be parsed. The text is searched as written, then its frontmatter as YAML
-    reads it.
-
-    Args:
-        data: Contents of a Markdown file.
-        needle: The target's filename as link_key returns it, without .md.
-
-    Returns:
-        bool: Whether the text spells the name as a link target would,
-            ignoring case and Unicode spelling, or its frontmatter holds a
-            backslash, whose escapes only parsing can read. False for text
-            that cannot be decoded.
-    """
-    text, ascii_bytes = _spelling(needle)
-    try:
-        if data.isascii():
-            if ascii_bytes is not None and ascii_bytes.search(data.lower()):
-                return True
-        elif text.search(link_key(data.decode("utf-8-sig"))):
-            return True
-        frontmatter = _frontmatter_text(data)
-    except UnicodeError:
-        return False
-    return "\\" in frontmatter or bool(text.search(frontmatter))
 
 
 def _references(
@@ -284,35 +144,6 @@ def trace_record(path: Path, vault: Path | None = None) -> tuple[str, list[Refer
     )
 
 
-def mentioning(root: Path, targets: Iterable[Path]) -> Iterator[tuple[Path, bytes]]:
-    """Find the records whose text could hold a link to one of some files.
-
-    Args:
-        root: Resolved vault directory.
-        targets: Files in the vault.
-
-    Yields:
-        tuple[Path, bytes]: Each record that spells one of the files' names as
-            a link target would, with its contents, in path order. Templates,
-            whatever record_files leaves out and files that cannot be read
-            are not yielded; the targets themselves may be.
-    """
-    needles = {
-        link_key(path.stem if path.suffix.lower() == ".md" else path.name)
-        for path in targets
-    }
-    for record in record_files(root, root):
-        # Validation scans templates too; they are not records that link.
-        if "templates" in record.parts and is_template(record, root):
-            continue
-        try:
-            data = record.read_bytes()
-        except OSError:
-            continue
-        if any(_mentions(data, needle) for needle in needles):
-            yield record, data
-
-
 def trace_outbound(
     path: Path, vault: Path | None = None
 ) -> tuple[str, list[Reference], list[str]]:
@@ -336,33 +167,15 @@ def trace_outbound(
             several, which validation reports in full.
 
     Raises:
-        ValueError: The path is not a Markdown file that can be parsed, lies
-            in no vault or outside the given one, or is an entry that vault
-            scans skip.
+        ValueError: The path lies in no vault or outside the given one, is
+            not one of its records or is a template, or cannot be parsed.
         OSError: A directory or the record cannot be read.
     """
-    root, located = locate(path, vault)
-    if located.suffix.lower() != ".md":
-        raise ValueError(f"{located} is not a Markdown record, so it holds no links")
-    files = find_files(root)
-    # The scan's own path for the record, however the given path spelled it.
-    source = next(
-        (file for file in sharing(files, spellings(located)) if file.samefile(located)),
-        None,
-    )
-    if source is None:
-        raise ValueError(
-            f"{located} is not part of the vault: hidden entries, symlinks and "
-            "cache directories are skipped"
-        )
+    root, source, record = read_record(path, vault)
     relative = source.relative_to(root).as_posix()
-    try:
-        text = source.read_bytes().decode("utf-8-sig")
-        frontmatter, length = Frontmatter.parse(text)
-        body = Body("".join(text.splitlines(keepends=True)[length:]), length + 1)
-    except (UnicodeError, yaml.YAMLError, ValueError, RecursionError) as exc:
-        raise ValueError(f"cannot parse {relative}: {exc}") from exc
-    links = frontmatter.links + body.links
+    files = find_files(root)
+    body = record.body
+    links = record.frontmatter.links + body.links
     index = VaultIndex(
         root,
         sharing(files, {_final_segment(link.target) for link in links if link.target}),

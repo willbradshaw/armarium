@@ -6,7 +6,6 @@ vault conventions and validate each new record; the CLI validates the whole vaul
 
 import re
 import shutil
-import unicodedata
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -14,22 +13,10 @@ from typing import Any
 import yaml
 
 from armarium.extensions import load_extensions
-from armarium.lib import CAMPAIGN_NAME, find_files, find_vault, parse_directories
+from armarium.lib import CAMPAIGN_NAME, find_files, parse_directories, select_vault
 from armarium.logging import logger
 from armarium.parse import Record
 from armarium.validate import CAMPAIGN_DIRECTORIES, validate
-
-
-def select_vault(vault: Path | None) -> Path:
-    """Resolve an explicit vault root or discover it from the working directory.
-
-    Reject explicit paths inside a vault rather than silently changing their scope.
-    """
-    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
-    root = find_vault(selected)
-    if vault is not None and selected != root:
-        raise ValueError("--vault must name the vault root")
-    return root
 
 
 def infer_campaign(root: Path, campaign: int | None) -> int | None:
@@ -56,22 +43,6 @@ def require_campaign(root: Path, campaign: int | None) -> int:
     return campaign
 
 
-def check_name(name: str) -> None:
-    """Reject names that are empty, non-plain, path-like or include .md."""
-    if (
-        not name
-        or name != " ".join(name.split())
-        or name.startswith(".")
-        or name.endswith(".")
-        or name.lower().endswith(".md")
-        or any(c in name for c in '/\\\x00[]#|:*?"<>')
-        or any(ord(c) < 32 for c in name)
-    ):
-        raise ValueError(
-            "name must be a plain record name without .md, path separators, or reserved characters"
-        )
-
-
 def record_directory(root: Path, kind: str, campaign: int | str | None) -> Path:
     """Read a Type's scoped directory and require a real, existing write path.
 
@@ -95,20 +66,6 @@ def record_directory(root: Path, kind: str, campaign: int | str | None) -> Path:
         if not path.is_dir() or path.is_symlink():
             raise ValueError(f"{path} must be an existing real directory")
     return directory
-
-
-def check_destination(destination: Path, *, normalize: bool = False) -> None:
-    """Refuse case-equivalent entries, optionally normalizing Unicode names.
-
-    Plain user-supplied record names use NFC normalization. Numbered filenames
-    use their existing case-insensitive comparison. Exclusive writing also
-    protects against a destination created after this check.
-    """
-    names = [destination.name, *(p.name for p in destination.parent.iterdir())]
-    if normalize:
-        names = [unicodedata.normalize("NFC", name) for name in names]
-    if names[0].casefold() in {name.casefold() for name in names[1:]}:
-        raise FileExistsError(f"record already exists: {destination}")
 
 
 def read_template(

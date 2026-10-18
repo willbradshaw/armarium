@@ -70,9 +70,9 @@ armarium trace "campaigns/campaign_1/sessions/S-1-002.md" --outbound --vault ../
 ```
 
 `armarium trace PATH --outbound` lists every file that one record links to.
-`PATH` is chosen as above and must be a Markdown record. The output has the
-same three fields, with the linked file's path first; the location and line are
-those of the link in the traced record:
+`PATH` is chosen as above and must be a record, not a template. The output has
+the same three fields, with the linked file's path first; the location and line
+are those of the link in the traced record:
 
 ```text
 content/Captain Mara Vey.md	prepared_npcs

@@ -2,8 +2,9 @@
 
 import re
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -15,13 +16,19 @@ from armarium.lib import (
     find_campaign,
     find_files,
     is_inside,
+    locate,
     parse_directories,
     parse_subtype_directories,
     record_files,
     relative_parts,
+    relative_posix,
 )
 from armarium.parse import Frontmatter, Record
 from armarium.schemas import Schema
+
+# Types whose records are structure, not things looked up by name: indexes,
+# overviews and the type system itself. Their names may repeat.
+STRUCTURAL_TYPES = frozenset({"Reference", "Status", "Type"})
 
 # Failures loading a schema or the extension set, kept to raise again for each record.
 LOAD_ERRORS = (OSError, ValueError, SchemaError, RecursionError)
@@ -216,6 +223,37 @@ class VaultIndex:
         if self._names is None:
             self._names = read_names(self.root)
         return self._names
+
+    def sharing_name(self, path: Path, name: str) -> list["Name"]:
+        """List the other records that go by a name where a record is visible.
+
+        A record is visible among the shared records and those of its own
+        campaign, or of every campaign for a shared record. Records of two
+        different campaigns may share a name.
+
+        Args:
+            path: The record.
+            name: A name, as a filename or an alias writes it.
+
+        Returns:
+            list[Name]: Each filename or alias of another record that equals
+                the name, unless that record belongs to a different campaign
+                or is a structural record. A record that cannot be parsed
+                counts, since its type is unknown.
+        """
+        scope = find_campaign(path, self.root)
+        found: list[Name] = []
+        for other in self.names().get(name_key(name), []):
+            if other.path == path:
+                continue
+            visible = find_campaign(other.path, self.root)
+            if scope is not None and visible is not None and scope != visible:
+                continue
+            parsed, _ = self.parse(other.path)
+            if parsed is not None and parsed.frontmatter.type in STRUCTURAL_TYPES:
+                continue
+            found.append(other)
+        return found
 
     def declared_directories(self) -> dict[str, dict[str, str]]:
         """Read where each Type record declares that its records live.
@@ -431,10 +469,7 @@ def read_names(root: Path) -> dict[str, list[Name]]:
         OSError: A directory cannot be read.
     """
     names: dict[str, list[Name]] = {}
-    for path in record_files(root, root):
-        # Validation scans templates too; they are not records with names.
-        if "templates" in path.parts and is_template(path, root):
-            continue
+    for path in find_records(root):
         names.setdefault(name_key(path.stem), []).append(Name(path, False, path.stem))
         try:
             data = path.read_bytes()
@@ -447,3 +482,204 @@ def read_names(root: Path) -> dict[str, list[Name]]:
             if key := name_key(alias):
                 names.setdefault(key, []).append(Name(path, True, alias))
     return names
+
+
+def find_records(root: Path, directory: Path | None = None) -> list[Path]:
+    """List a vault's records, as record_files does, leaving out templates.
+
+    Validation scans templates with the records; they have no names of their
+    own and hold no links.
+
+    Args:
+        root: Resolved vault directory.
+        directory: The directory within it to scan, or None for the whole
+            vault.
+
+    Returns:
+        list[Path]: The records, in record_files order.
+
+    Raises:
+        ValueError: The directory is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    return [
+        path
+        for path in record_files(directory or root, root)
+        if not ("templates" in path.parts and is_template(path, root))
+    ]
+
+
+def read_record(path: Path, vault: Path | None) -> tuple[Path, Path, Record]:
+    """Find and parse the record a command names.
+
+    Args:
+        path: The record. With a vault, a relative path is taken from the
+            vault root; without one, from the working directory.
+        vault: Vault root, or None to discover the vault from the record's
+            location.
+
+    Returns:
+        tuple[Path, Path, Record]: The resolved vault root, the record's path
+            as a scan of the vault spells it, whatever case the given path
+            used, and the parsed record.
+
+    Raises:
+        ValueError: The file cannot be found in a vault, is not one of its
+            records (hidden entries, symlinks, cache directories, docs/,
+            scripts/ and AGENTS.md are not) or is a template, or cannot be
+            parsed.
+    """
+    root, located = locate(path, vault)
+    key = link_key(located.name)
+    source = next(
+        (
+            file
+            for file in find_records(root, located.parent)
+            if file.parent == located.parent
+            and link_key(file.name) == key
+            and file.samefile(located)
+        ),
+        None,
+    )
+    relative = relative_posix(located, root)
+    if source is None:
+        raise ValueError(f"{relative} is not a record")
+    record, diagnostics = Record.parse(source, root)
+    if record is None:
+        raise ValueError(f"cannot parse {relative}: {diagnostics[0].message}")
+    return root, source, record
+
+
+def spellings(path: Path) -> set[str]:
+    """List the final target segments with which a link can name a file.
+
+    Args:
+        path: A file in the vault.
+
+    Returns:
+        set[str]: Its filename as link_key returns it and, for Markdown, the
+            filename without .md: the last path segments under which a
+            VaultIndex files it.
+    """
+    names = {link_key(path.name)}
+    if path.suffix.lower() == ".md":
+        names.add(link_key(path.stem))
+    return names
+
+
+def sharing(files: Iterable[Path], names: set[str]) -> list[Path]:
+    """List the files that a link's final target segment can name.
+
+    A link resolves among the files sharing its target's final segment, so
+    indexing these files resolves such links exactly as the whole vault would.
+
+    Args:
+        files: Files in the vault.
+        names: Final target segments, as spellings returns them.
+
+    Returns:
+        list[Path]: The files with any of the spellings, in the given order.
+    """
+    return [path for path in files if not names.isdisjoint(spellings(path))]
+
+
+@lru_cache(maxsize=8)
+def _spelling(needle: str) -> tuple[re.Pattern[str], re.Pattern[bytes] | None]:
+    """Build the patterns that find a filename where a link would end with it.
+
+    A link's target ends with the linked file's name, optionally followed by
+    ``.md``, and then the closing brackets, a display alias or an anchor.
+    Starting with the literal name lets the search skip to its occurrences.
+
+    Args:
+        needle: The target's filename as link_key returns it, without .md.
+
+    Returns:
+        tuple[re.Pattern[str], re.Pattern[bytes] | None]: The pattern for
+            text passed through link_key, and its counterpart for lowercased
+            ASCII bytes, or None when the name is not ASCII.
+    """
+    source = re.escape(needle) + r"(?:\.md)?\s*(?:\]\]|\\?\||#)"
+    return re.compile(source), (
+        re.compile(source.encode()) if needle.isascii() else None
+    )
+
+
+def _frontmatter_text(data: bytes) -> str:
+    """Give a file's frontmatter as YAML reads its text, for a cheap search.
+
+    YAML may write a link other than as it reads it: a single-quoted string
+    doubles an apostrophe, and a long string folds onto further lines.
+
+    Args:
+        data: Contents of a Markdown file.
+
+    Returns:
+        str: The source of the frontmatter as link_key returns it, with
+            doubled apostrophes halved and each run of whitespace, line
+            breaks included, made one space. Empty without frontmatter.
+
+    Raises:
+        UnicodeError: The frontmatter cannot be decoded.
+    """
+    text = data[: max(data.find(b"\n---", 3), 0)].decode("utf-8-sig")
+    if not text.startswith("---"):
+        return ""
+    return " ".join(link_key(text).replace("''", "'").split())
+
+
+def _mentions(data: bytes, needle: str) -> bool:
+    """Tell cheaply whether a file's text could hold a link to a target.
+
+    Every link to a file ends its target with the file's name, so a file
+    whose text never spells the name that way cannot link to it and need not
+    be parsed. The text is searched as written, then its frontmatter as YAML
+    reads it.
+
+    Args:
+        data: Contents of a Markdown file.
+        needle: The target's filename as link_key returns it, without .md.
+
+    Returns:
+        bool: Whether the text spells the name as a link target would,
+            ignoring case and Unicode spelling, or its frontmatter holds a
+            backslash, whose escapes only parsing can read. False for text
+            that cannot be decoded.
+    """
+    text, ascii_bytes = _spelling(needle)
+    try:
+        if data.isascii():
+            if ascii_bytes is not None and ascii_bytes.search(data.lower()):
+                return True
+        elif text.search(link_key(data.decode("utf-8-sig"))):
+            return True
+        frontmatter = _frontmatter_text(data)
+    except UnicodeError:
+        return False
+    return "\\" in frontmatter or bool(text.search(frontmatter))
+
+
+def mentioning(root: Path, targets: Iterable[Path]) -> Iterator[tuple[Path, bytes]]:
+    """Find the records whose text could hold a link to one of some files.
+
+    Args:
+        root: Resolved vault directory.
+        targets: Files in the vault.
+
+    Yields:
+        tuple[Path, bytes]: Each record that spells one of the files' names as
+            a link target would, with its contents, in path order. Templates,
+            whatever record_files leaves out and files that cannot be read
+            are not yielded; the targets themselves may be.
+    """
+    needles = {
+        link_key(path.stem if path.suffix.lower() == ".md" else path.name)
+        for path in targets
+    }
+    for record in find_records(root):
+        try:
+            data = record.read_bytes()
+        except OSError:
+            continue
+        if any(_mentions(data, needle) for needle in needles):
+            yield record, data

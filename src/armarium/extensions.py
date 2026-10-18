@@ -22,6 +22,7 @@ from armarium.lib import (
     REFERENCE_SUBTYPES,
     SUBTYPES,
     relative_parts,
+    select_vault,
 )
 from armarium.logging import logger
 from armarium.parse import Record
@@ -376,8 +377,6 @@ def enable_extension(name: str, vault: Path | None = None) -> Path:
     its new directory and restores the previous configuration. Callers validate
     existing records after installation.
     """
-    from armarium.add import select_vault
-
     root = select_vault(vault)
     load_extensions(root)
     config = root / CONFIG
@@ -462,8 +461,6 @@ def remove_extension(name: str, vault: Path | None = None) -> Path:
     for recovery. Local declarations without an installation are unregistered
     without deleting their files.
     """
-    from armarium.add import select_vault
-
     root = select_vault(vault)
     config = _local_path(root, "reference", "extensions.json")
     declarations = _declarations(config) if config.exists() else {}
@@ -522,8 +519,6 @@ def update_extension(
     Local registrations are not installed extensions and cannot be updated.
     Callers validate records afterward; no record migration is performed.
     """
-    from armarium.add import select_vault
-
     root = select_vault(vault)
     config = _local_path(root, "reference", "extensions.json")
     declarations = _declarations(config) if config.exists() else {}

@@ -11,15 +11,12 @@ from armarium.add import (
     _campaign_directories,
     _render_campaign,
     add_campaign,
-    check_destination,
-    check_name,
     infer_campaign,
     read_template,
     record_directory,
     record_number,
     record_text,
     require_campaign,
-    select_vault,
     write_record,
 )
 from armarium.validate import CAMPAIGN_DIRECTORIES, validate
@@ -191,19 +188,6 @@ class TestAddCampaign:
         assert not (vault / "campaigns/campaign_2").exists()
 
 
-class TestSelectVault:
-    @pytest.mark.parametrize("explicit", [False, True])
-    def test_selection(
-        self, vault: Path, monkeypatch: pytest.MonkeyPatch, explicit: bool
-    ) -> None:
-        monkeypatch.chdir(vault / "content")
-        assert select_vault(vault if explicit else None) == vault
-
-    def test_explicit_subdirectory(self, vault: Path) -> None:
-        with pytest.raises(ValueError, match="must name the vault root"):
-            select_vault(vault / "content")
-
-
 class TestInferCampaign:
     @pytest.mark.parametrize(
         ("relative", "explicit", "expected"),
@@ -250,32 +234,6 @@ class TestRequireCampaign:
         assert require_campaign(vault, 2) == 2
 
 
-class TestCheckName:
-    @pytest.mark.parametrize(
-        "name",
-        [
-            "",
-            " spaced",
-            "two  spaces",
-            ".hidden",
-            "end.",
-            "entry.MD",
-            "a/b",
-            "a\\b",
-            "a#b",
-            "a\x00b",
-            "a\nb",
-        ],
-    )
-    def test_invalid(self, name: str) -> None:
-        with pytest.raises(ValueError, match="plain record name"):
-            check_name(name)
-
-    @pytest.mark.parametrize("name", ["Alex", "Port Briselle", "Café"])
-    def test_valid(self, name: str) -> None:
-        check_name(name)
-
-
 class TestRecordDirectory:
     @pytest.mark.parametrize(
         ("campaign", "relative"),
@@ -315,28 +273,6 @@ class TestRecordDirectory:
                 directory.symlink_to(vault / "old-notes")
         with pytest.raises(ValueError):
             record_directory(vault, "Note", None)
-
-
-class TestCheckDestination:
-    @pytest.mark.parametrize("kind", ["file", "directory", "dangling"])
-    def test_collision(self, tmp_path: Path, kind: str) -> None:
-        existing = tmp_path / "ENTRY.md"
-        if kind == "file":
-            existing.touch()
-        elif kind == "directory":
-            existing.mkdir()
-        else:
-            existing.symlink_to(tmp_path / "missing")
-        with pytest.raises(FileExistsError):
-            check_destination(tmp_path / "entry.md")
-
-    def test_unicode(self, tmp_path: Path) -> None:
-        (tmp_path / "Café.md").touch()
-        with pytest.raises(FileExistsError):
-            check_destination(tmp_path / "Cafe\u0301.md", normalize=True)
-
-    def test_available(self, tmp_path: Path) -> None:
-        check_destination(tmp_path / "new.md")
 
 
 class TestReadTemplate:

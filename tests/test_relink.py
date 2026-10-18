@@ -7,13 +7,14 @@ import pytest
 
 from armarium.changes import FileChange, FileChanges
 from armarium.logging import configure_logging, logger
+from armarium.parse import Frontmatter
 from armarium.relink import (
     _DROP,
     RelinkChange,
     Relinker,
     RelinkPlan,
     _display,
-    _quote,
+    check_movable,
 )
 
 SESSION = """---
@@ -553,17 +554,28 @@ class TestDisplay:
         assert _display(target) == expected
 
 
-class TestQuote:
+class TestCheckMovable:
     @pytest.mark.parametrize(
-        ("line", "expected"),
+        "relative",
+        ["content/Mara.md", "campaigns/campaign_1/reference/Mara.md"],
+    )
+    def test_movable(self, relative: str) -> None:
+        check_movable(relative, Frontmatter({"type": "[[Content]]"}))
+
+    @pytest.mark.parametrize(
+        "kind", ["Clue", "Session", "Status", "Transcript", "Type"]
+    )
+    def test_fixed_type(self, kind: str) -> None:
+        with pytest.raises(ValueError, match=f"content/Mara.md is a {kind} record"):
+            check_movable("content/Mara.md", Frontmatter({"type": f"[[{kind}]]"}))
+
+    @pytest.mark.parametrize(
+        "relative",
         [
-            ('a: "[[X]]"', '"'),
-            ("a: '[[X]]'", "'"),
-            ("a: [[X]]", ""),
-            ('a: ["[[Y]]", [[X]]', ""),
-            ('a: "say \\"[[X]]', '"'),
-            ("a: 'it''s [[X]]", "'"),
+            "campaigns/campaign_1/reference/Campaign.md",
+            "campaigns/campaign_2/reference/indexes/Clues.md",
         ],
     )
-    def test_quote(self, line: str, expected: str) -> None:
-        assert _quote(line, line.index("[[X]]")) == expected
+    def test_campaign_file(self, relative: str) -> None:
+        with pytest.raises(ValueError, match="is a file every campaign requires"):
+            check_movable(relative, Frontmatter({"type": "[[Campaign]]"}))

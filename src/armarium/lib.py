@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import struct
+import unicodedata
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePath
@@ -59,6 +60,41 @@ def split_wikilink(value: object, *, canonical: bool = False) -> tuple[str, str]
     if not target and (canonical or not contents.startswith("#")):
         raise ValueError("wikilink target must not be empty")
     return target, anchor
+
+
+# Characters a record's name may not hold: Obsidian's link syntax, path
+# separators and characters some filesystems reserve.
+NAME_FORBIDDEN = re.compile(r'[#^\[\]|\\/:*?"<>\x00-\x1f]')
+
+
+def check_name(name: str) -> None:
+    """Require a name that a record's filename can take.
+
+    Args:
+        name: The name, without a path or .md.
+
+    Raises:
+        ValueError: The name is blank, has surrounding, doubled or non-space
+            whitespace, starts or ends with a dot, ends with .md, or holds a
+            character of link syntax, a path separator, a character some
+            filesystems reserve or a control character.
+    """
+    if not name.strip():
+        raise ValueError("name must not be blank")
+    if NAME_FORBIDDEN.search(name):
+        raise ValueError(
+            'name must not contain any of # ^ [ ] | \\ / : * ? " < > or a '
+            "control character"
+        )
+    if name != " ".join(name.split()):
+        raise ValueError(
+            "name must not start or end with whitespace, or hold doubled or "
+            "non-space whitespace"
+        )
+    if name.lower().endswith(".md"):
+        raise ValueError("name must be given without .md")
+    if name.startswith(".") or name.endswith("."):
+        raise ValueError("name must not start or end with a dot")
 
 
 def wikilink_text(contents: str) -> str:
@@ -484,6 +520,88 @@ def check_vault(path: Path, vault: Path) -> Path:
 
 # Directories that traversal skips wherever they occur.
 SKIPPED_DIRECTORIES = frozenset({"__pycache__", "node_modules"})
+
+
+def check_destination(
+    destination: Path, *, normalize: bool = False, replacing: Path | None = None
+) -> None:
+    """Refuse case-equivalent entries, optionally normalizing Unicode names.
+
+    Plain user-supplied record names use NFC normalization. Numbered filenames
+    use their existing case-insensitive comparison. Exclusive writing also
+    protects against a destination created after this check.
+
+    Args:
+        destination: The path a file is to take.
+        normalize: Compare names in Unicode NFC form.
+        replacing: An entry in the same directory that the file is, such as
+            a record being renamed, which does not count as a collision.
+
+    Raises:
+        FileExistsError: Another entry has an equivalent name.
+    """
+    names = [
+        destination.name,
+        *(
+            p.name
+            for p in destination.parent.iterdir()
+            if replacing is None or p.name != replacing.name
+        ),
+    ]
+    if normalize:
+        names = [unicodedata.normalize("NFC", name) for name in names]
+    if names[0].casefold() in {name.casefold() for name in names[1:]}:
+        raise FileExistsError(f"record already exists: {destination}")
+
+
+def line_ending(text: str) -> str:
+    """Give the line ending a text uses: CRLF when it holds one, else LF."""
+    return "\r\n" if "\r\n" in text else "\n"
+
+
+def select_vault(vault: Path | None) -> Path:
+    """Resolve an explicit vault root or discover it from the working directory.
+
+    Reject explicit paths inside a vault rather than silently changing their scope.
+    """
+    selected = vault.expanduser().resolve() if vault is not None else Path.cwd()
+    root = find_vault(selected)
+    if vault is not None and selected != root:
+        raise ValueError("--vault must name the vault root")
+    return root
+
+
+def locate(path: Path, vault: Path | None) -> tuple[Path, Path]:
+    """Find a file a command names, and the vault it belongs to.
+
+    Args:
+        path: File path. With a vault, a relative path is taken from the vault
+            root; without one, from the working directory.
+        vault: Vault root, or None to discover the vault from the file's
+            location, as validating the file would.
+
+    Returns:
+        tuple[Path, Path]: The resolved vault root and the resolved file.
+
+    Raises:
+        ValueError: The path is a symlink, does not exist or is a directory;
+            no vault encloses it; or it lies outside the given vault.
+    """
+    if vault is not None:
+        path = select_vault(vault) / path
+    if path.is_symlink():
+        raise ValueError(f"{path} is a symlink")
+    if not path.exists():
+        raise ValueError(
+            f"{path} does not exist; give a file path, which armarium find lists "
+            "for a name"
+        )
+    if path.is_dir():
+        raise ValueError(f"{path} is a directory, not a file")
+    # Resolve the directory first, so that .. and symlinked directories do not
+    # select a vault the file is not in.
+    path = path.parent.resolve() / path.name
+    return (find_vault(path) if vault is None else check_vault(path, vault)), path
 
 
 def _visible(directory: str | Path) -> list[os.DirEntry[str]]:

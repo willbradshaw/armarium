@@ -35,6 +35,7 @@ from armarium.validate import (
     _validate_in_worker,
     _validate_wikilink_status,
     auto_jobs,
+    is_campaign_file,
     linked_record,
     validate,
     validate_appearances,
@@ -4247,3 +4248,21 @@ class TestSessionDateLinks:
         if fails:
             expected_field = f"frontmatter.{field}" if target == "plain_text" else field
             assert any(d.field == expected_field for d in result.diagnostics)
+
+
+class TestIsCampaignFile:
+    @pytest.mark.parametrize(
+        ("relative", "expected"),
+        [
+            ("campaigns/campaign_1/reference/Campaign.md", True),
+            ("campaigns/campaign_12/reference/indexes/Clues.md", True),
+            ("campaigns/campaign_1/reference/campaign.md", False),
+            ("campaigns/campaign_x/reference/Campaign.md", False),
+            ("campaigns/campaign_1/content/Campaign.md", False),
+            ("reference/Campaign.md", False),
+            ("archive/campaign_1/reference/Campaign.md", False),
+            ("campaigns/campaign_1", False),
+        ],
+    )
+    def test_paths(self, relative: str, expected: bool) -> None:
+        assert is_campaign_file(relative) is expected

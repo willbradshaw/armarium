@@ -12,6 +12,7 @@ from PIL import Image
 
 from armarium import illustrate as module
 from armarium.content import add_content
+from armarium.edit import set_field
 from armarium.illustrate import (
     CANDIDATE_DIRECTORY,
     Candidate,
@@ -22,7 +23,6 @@ from armarium.illustrate import (
     _destination,
     _on_white,
     _plain,
-    _read,
     _reference,
     _style_references,
     _trimmed,
@@ -34,7 +34,6 @@ from armarium.illustrate import (
     ingest,
     prompt,
     rules_text,
-    set_field,
 )
 from armarium.painters import Reference
 from armarium.parse import Frontmatter, Record
@@ -209,52 +208,6 @@ class TestEncode:
             encode(source, max_bytes=max_bytes)
 
 
-class TestSetField:
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            (
-                "---\ntype: x\nimage:\nsource: s\n---\nBody\n",
-                "---\ntype: x\nimage: assets/a.webp\nsource: s\n---\nBody\n",
-            ),
-            (
-                "---\nimage: >\n  old\n  text\n# kept\n---\n",
-                "---\nimage: assets/a.webp\n# kept\n---\n",
-            ),
-            (
-                "---\nimage:\n- a\n- b\ntags: [ 'x' ]\n---\n",
-                "---\nimage: assets/a.webp\ntags: [ 'x' ]\n---\n",
-            ),
-            (
-                "---\ntype: x\nimage_source: y\n---\nimage: body\n",
-                "---\ntype: x\nimage_source: y\nimage: assets/a.webp\n---\nimage: body\n",
-            ),
-            (
-                "---\r\ntype: x\r\n---\r\nBody\r\n",
-                "---\r\ntype: x\r\nimage: assets/a.webp\r\n---\r\nBody\r\n",
-            ),
-        ],
-    )
-    def test_sets_only_the_field(self, text: str, expected: str) -> None:
-        assert set_field(text, "image", "assets/a.webp") == expected
-
-    def test_quotes_a_value_when_yaml_needs_it(self) -> None:
-        updated = set_field("---\ntype: x\n---\n", "image", "assets/a: b.webp")
-        assert Frontmatter.parse(updated)[0]["image"] == "assets/a: b.webp"
-
-    @pytest.mark.parametrize(
-        ("text", "message"),
-        [
-            ("Body\n", "no frontmatter"),
-            ('---\n"image": old\n---\n', "without changing other fields"),
-            ("---\nimage: &old x\nother: *old\n---\n", "without changing other fields"),
-        ],
-    )
-    def test_refuses(self, text: str, message: str) -> None:
-        with pytest.raises(ValueError, match=message):
-            set_field(text, "image", "assets/a.webp")
-
-
 def parsed(tmp_path: Path, text: str, name: str = "Lucky Ring") -> Record:
     path = tmp_path / f"{name}.md"
     path.write_text(text)
@@ -358,27 +311,6 @@ class TestBuildPrompt:
     ) -> None:
         record = parsed(tmp_path, "---\ntype: x\n---\n")
         assert build_prompt(preamble, record) == "<subject>Lucky Ring</subject>"
-
-
-class TestRead:
-    def test_finds_and_parses_the_record(self, vault: Path) -> None:
-        root, path, record = _read(TestIngest.RECORD, vault)
-        assert (root, path) == (vault.resolve(), vault.resolve() / TestIngest.RECORD)
-        assert record.frontmatter["subtype"] == "Gear"
-
-    @pytest.mark.parametrize(
-        ("relative", "text", "message"),
-        [
-            ("assets/notes.txt", "text", "is not a Markdown record"),
-            ("content/Bad.md", "---\ntype: [\n---\n", "cannot parse the record: "),
-        ],
-    )
-    def test_refuses_what_is_not_a_record(
-        self, vault: Path, relative: str, text: str, message: str
-    ) -> None:
-        (vault / relative).write_text(text)
-        with pytest.raises(ValueError, match=message):
-            _read(Path(relative), vault)
 
 
 class TestPrompt:
@@ -773,11 +705,11 @@ class TestIngest:
     @pytest.mark.parametrize(
         ("setup", "message"),
         [
-            ("not markdown", "is not a Markdown record"),
+            ("not markdown", "is not a record"),
             ("directory", "is a directory or symlink"),
             ("not a picture", "is not a picture"),
-            ("invalid yaml", "cannot parse the record"),
-            ("unsettable", "without changing other fields"),
+            ("invalid yaml", "cannot parse"),
+            ("unsettable", "cannot be rewritten"),
         ],
     )
     def test_writes_nothing_when_it_cannot_ingest(
@@ -801,7 +733,9 @@ class TestIngest:
             path.write_text("---\ntype: [\n---\n")
         else:
             path.write_text(
-                path.read_text().replace("summary:", '"image": x\nsummary:')
+                path.read_text().replace(
+                    "summary:", "image: &old x\nalt: *old\nsummary:"
+                )
             )
         before = path.read_bytes()
         with pytest.raises(ValueError, match=message):

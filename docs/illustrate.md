@@ -40,7 +40,7 @@ in a new vault, whose Gear style names `assets/art/gear`, the command writes
 `assets/art/gear/Lucky Ring.webp` and sets the record's field to match:
 
 ```yaml
-image: assets/art/gear/Lucky Ring.webp
+image: "assets/art/gear/Lucky Ring.webp"
 ```
 
 It prints the image's path on standard output, and the style it used and the

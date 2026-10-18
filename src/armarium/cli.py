@@ -8,7 +8,7 @@ from pathlib import Path
 
 from jsonschema.exceptions import SchemaError
 
-from armarium.add import add_campaign, select_vault
+from armarium.add import add_campaign
 from armarium.clue import add_clue
 from armarium.content import add_content
 from armarium.extensions import (
@@ -22,7 +22,7 @@ from armarium.handout import handout
 from armarium.illustrate import CANDIDATE_DIRECTORY, COUNT, generate, ingest, prompt
 from armarium.init import init_vault
 from armarium.layout import LAYOUT_DIRECTORY, OVERRIDES
-from armarium.lib import SUBTYPES, find_vault
+from armarium.lib import SUBTYPES, find_vault, select_vault
 from armarium.logging import configure_logging, logger
 from armarium.note import add_note
 from armarium.painters import PAINTERS
