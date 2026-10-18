@@ -739,11 +739,20 @@ class TestReadRecord:
         assert record.frontmatter.type in {"Content", "Note"}
 
     def test_scan_spelling(self, example: Path) -> None:
-        # A case-insensitive filesystem opens the file under another spelling.
-        if not (example / "content/CAPTAIN MARA VEY.md").exists():
-            pytest.skip("filesystem is case-sensitive")
-        path = read_record(Path("content/CAPTAIN MARA VEY.md"), example)[1]
-        assert path.name == "Captain Mara Vey.md"
+        # A case-insensitive filesystem opens the record under another
+        # spelling; elsewhere a hard link does, which the scan leaves out.
+        record = example / "content/Captain Mara Vey.md"
+        spelled = example / "content/CAPTAIN MARA VEY.md"
+        if not spelled.exists():
+            spelled.hardlink_to(record)
+
+        def scan(directory: Path, root: Path) -> list[Path]:
+            found = record_files(directory, root)
+            return [path for path in found if path.name != spelled.name]
+
+        with patch("armarium.index.record_files", scan):
+            path = read_record(Path("content/CAPTAIN MARA VEY.md"), example)[1]
+        assert path == record
 
     @pytest.mark.parametrize(
         "relative",

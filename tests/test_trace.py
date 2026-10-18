@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from armarium.index import VaultIndex
-from armarium.lib import record_files
+from armarium.lib import find_files, record_files
 from armarium.parse import Body
 from armarium.trace import (
     Reference,
@@ -232,11 +232,24 @@ class TestTraceRecord:
         ]
 
     def test_reports_the_path_as_the_scan_spells_it(self, vault: Path) -> None:
-        # A case-insensitive filesystem opens the file under another spelling.
+        # A case-insensitive filesystem opens the file under another spelling;
+        # elsewhere a hard link does, which the scans leave out.
         spelled = vault / "content/quay nine.md"
         if not spelled.exists():
-            pytest.skip("filesystem is case-sensitive")
-        target, references = trace_record(spelled)
+            spelled.hardlink_to(vault / "content/Quay Nine.md")
+
+        def files(root: Path) -> list[Path]:
+            return [path for path in find_files(root) if path.name != spelled.name]
+
+        def records(directory: Path, root: Path) -> list[Path]:
+            found = record_files(directory, root)
+            return [path for path in found if path.name != spelled.name]
+
+        with (
+            patch("armarium.trace.find_files", files),
+            patch("armarium.index.record_files", records),
+        ):
+            target, references = trace_record(spelled)
         assert target == "content/Quay Nine.md" and len(references) == 8
 
     def test_skips_non_records(self, vault: Path) -> None:
