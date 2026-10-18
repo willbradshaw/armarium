@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import struct
+import unicodedata
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePath
@@ -519,6 +520,43 @@ def check_vault(path: Path, vault: Path) -> Path:
 
 # Directories that traversal skips wherever they occur.
 SKIPPED_DIRECTORIES = frozenset({"__pycache__", "node_modules"})
+
+
+def check_destination(
+    destination: Path, *, normalize: bool = False, replacing: Path | None = None
+) -> None:
+    """Refuse case-equivalent entries, optionally normalizing Unicode names.
+
+    Plain user-supplied record names use NFC normalization. Numbered filenames
+    use their existing case-insensitive comparison. Exclusive writing also
+    protects against a destination created after this check.
+
+    Args:
+        destination: The path a file is to take.
+        normalize: Compare names in Unicode NFC form.
+        replacing: An entry in the same directory that the file is, such as
+            a record being renamed, which does not count as a collision.
+
+    Raises:
+        FileExistsError: Another entry has an equivalent name.
+    """
+    names = [
+        destination.name,
+        *(
+            p.name
+            for p in destination.parent.iterdir()
+            if replacing is None or p.name != replacing.name
+        ),
+    ]
+    if normalize:
+        names = [unicodedata.normalize("NFC", name) for name in names]
+    if names[0].casefold() in {name.casefold() for name in names[1:]}:
+        raise FileExistsError(f"record already exists: {destination}")
+
+
+def line_ending(text: str) -> str:
+    """Give the line ending a text uses: CRLF when it holds one, else LF."""
+    return "\r\n" if "\r\n" in text else "\n"
 
 
 def select_vault(vault: Path | None) -> Path:

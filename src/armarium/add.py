@@ -6,7 +6,6 @@ vault conventions and validate each new record; the CLI validates the whole vaul
 
 import re
 import shutil
-import unicodedata
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -67,20 +66,6 @@ def record_directory(root: Path, kind: str, campaign: int | str | None) -> Path:
         if not path.is_dir() or path.is_symlink():
             raise ValueError(f"{path} must be an existing real directory")
     return directory
-
-
-def check_destination(destination: Path, *, normalize: bool = False) -> None:
-    """Refuse case-equivalent entries, optionally normalizing Unicode names.
-
-    Plain user-supplied record names use NFC normalization. Numbered filenames
-    use their existing case-insensitive comparison. Exclusive writing also
-    protects against a destination created after this check.
-    """
-    names = [destination.name, *(p.name for p in destination.parent.iterdir())]
-    if normalize:
-        names = [unicodedata.normalize("NFC", name) for name in names]
-    if names[0].casefold() in {name.casefold() for name in names[1:]}:
-        raise FileExistsError(f"record already exists: {destination}")
 
 
 def read_template(

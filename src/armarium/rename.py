@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from armarium.index import STRUCTURAL_TYPES, VaultIndex, read_record
-from armarium.lib import check_name, relative_posix
+from armarium.lib import check_destination, check_name, relative_posix
 from armarium.relink import RelinkChange, Relinker, RelinkPlan, check_movable
 
 
@@ -22,8 +22,10 @@ def rename(path: Path, name: str, vault: Path | None = None) -> RelinkPlan:
 
     Raises:
         ValueError: The record cannot be renamed, the name is unusable or
-            already taken, or a record that may link to it cannot be
-            rewritten.
+            already a record's name, or a record that may link to it cannot
+            be rewritten.
+        FileExistsError: An entry in the record's folder has the name,
+            ignoring case and Unicode normalization.
         OSError: A file or directory cannot be read.
     """
     root, located, record = read_record(path, vault)
@@ -33,8 +35,7 @@ def rename(path: Path, name: str, vault: Path | None = None) -> RelinkPlan:
     if name == located.stem:
         raise ValueError(f"{located.name} already has that name")
     new = located.with_name(f"{name}.md")
-    if new.exists() and not new.samefile(located):
-        raise ValueError(f"{relative_posix(new, root)} already exists")
+    check_destination(new, normalize=True, replacing=located)
     taken: list[str] = []
     if frontmatter.type not in STRUCTURAL_TYPES:
         others = VaultIndex(root).sharing_name(located, name)

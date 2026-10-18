@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from armarium.add import (
-    check_destination,
     merge_frontmatter,
     read_template,
     record_directory,
@@ -14,7 +13,7 @@ from armarium.add import (
     require_campaign,
     write_record,
 )
-from armarium.lib import select_vault
+from armarium.lib import check_destination, select_vault
 
 
 def add_session(

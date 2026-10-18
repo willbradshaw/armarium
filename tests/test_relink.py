@@ -14,7 +14,6 @@ from armarium.relink import (
     Relinker,
     RelinkPlan,
     _display,
-    _quote,
     check_movable,
 )
 
@@ -553,22 +552,6 @@ class TestDisplay:
     )
     def test_display(self, target: str, expected: str) -> None:
         assert _display(target) == expected
-
-
-class TestQuote:
-    @pytest.mark.parametrize(
-        ("line", "expected"),
-        [
-            ('a: "[[X]]"', '"'),
-            ("a: '[[X]]'", "'"),
-            ("a: [[X]]", ""),
-            ('a: ["[[Y]]", [[X]]', ""),
-            ('a: "say \\"[[X]]', '"'),
-            ("a: 'it''s [[X]]", "'"),
-        ],
-    )
-    def test_quote(self, line: str, expected: str) -> None:
-        assert _quote(line, line.index("[[X]]")) == expected
 
 
 class TestCheckMovable:

@@ -22,7 +22,8 @@ whitespace or a dot, hold doubled or non-space whitespace, end with `.md`, or
 hold a control character or any of `# ^ [ ] | \ / : * ? " < >`. It must be
 free among the records that can see the record, as [names](record.md#names)
 require: no other record of the same campaign, or shared, may have it as its
-filename or an alias. A name that differs only in case is a rename.
+filename or an alias. No other entry in the folder may have it either, ignoring
+case and Unicode normalization. A name that differs only in case is a rename.
 
 The command refuses to rename Types, Statuses, Sessions, Clues and
 Transcripts, whose names the vault fixes, and each campaign's

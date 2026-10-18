@@ -78,6 +78,6 @@ class TestRename:
         self, example: Path, relative: str, name: str, message: str
     ) -> None:
         before = {p: p.read_bytes() for p in example.rglob("*") if p.is_file()}
-        with pytest.raises(ValueError, match=message):
+        with pytest.raises((ValueError, FileExistsError), match=message):
             rename(Path(relative), name, example)
         assert before == {p: p.read_bytes() for p in example.rglob("*") if p.is_file()}

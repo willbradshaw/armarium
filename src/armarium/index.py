@@ -469,10 +469,7 @@ def read_names(root: Path) -> dict[str, list[Name]]:
         OSError: A directory cannot be read.
     """
     names: dict[str, list[Name]] = {}
-    for path in record_files(root, root):
-        # Validation scans templates too; they are not records with names.
-        if "templates" in path.parts and is_template(path, root):
-            continue
+    for path in find_records(root):
         names.setdefault(name_key(path.stem), []).append(Name(path, False, path.stem))
         try:
             data = path.read_bytes()
@@ -485,6 +482,31 @@ def read_names(root: Path) -> dict[str, list[Name]]:
             if key := name_key(alias):
                 names.setdefault(key, []).append(Name(path, True, alias))
     return names
+
+
+def find_records(root: Path, directory: Path | None = None) -> list[Path]:
+    """List a vault's records, as record_files does, leaving out templates.
+
+    Validation scans templates with the records; they have no names of their
+    own and hold no links.
+
+    Args:
+        root: Resolved vault directory.
+        directory: The directory within it to scan, or None for the whole
+            vault.
+
+    Returns:
+        list[Path]: The records, in record_files order.
+
+    Raises:
+        ValueError: The directory is a symlink or is not a directory.
+        OSError: A directory cannot be read.
+    """
+    return [
+        path
+        for path in record_files(directory or root, root)
+        if not ("templates" in path.parts and is_template(path, root))
+    ]
 
 
 def read_record(path: Path, vault: Path | None) -> tuple[Path, Path, Record]:
@@ -512,7 +534,7 @@ def read_record(path: Path, vault: Path | None) -> tuple[Path, Path, Record]:
     source = next(
         (
             file
-            for file in record_files(located.parent, root)
+            for file in find_records(root, located.parent)
             if file.parent == located.parent
             and link_key(file.name) == key
             and file.samefile(located)
@@ -520,7 +542,7 @@ def read_record(path: Path, vault: Path | None) -> tuple[Path, Path, Record]:
         None,
     )
     relative = relative_posix(located, root)
-    if source is None or is_template(source, root):
+    if source is None:
         raise ValueError(f"{relative} is not a record")
     record, diagnostics = Record.parse(source, root)
     if record is None:
@@ -654,10 +676,7 @@ def mentioning(root: Path, targets: Iterable[Path]) -> Iterator[tuple[Path, byte
         link_key(path.stem if path.suffix.lower() == ".md" else path.name)
         for path in targets
     }
-    for record in record_files(root, root):
-        # Validation scans templates too; they are not records that link.
-        if "templates" in record.parts and is_template(record, root):
-            continue
+    for record in find_records(root):
         try:
             data = record.read_bytes()
         except OSError:

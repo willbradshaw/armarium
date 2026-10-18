@@ -11,7 +11,6 @@ from armarium.add import (
     _campaign_directories,
     _render_campaign,
     add_campaign,
-    check_destination,
     infer_campaign,
     read_template,
     record_directory,
@@ -274,28 +273,6 @@ class TestRecordDirectory:
                 directory.symlink_to(vault / "old-notes")
         with pytest.raises(ValueError):
             record_directory(vault, "Note", None)
-
-
-class TestCheckDestination:
-    @pytest.mark.parametrize("kind", ["file", "directory", "dangling"])
-    def test_collision(self, tmp_path: Path, kind: str) -> None:
-        existing = tmp_path / "ENTRY.md"
-        if kind == "file":
-            existing.touch()
-        elif kind == "directory":
-            existing.mkdir()
-        else:
-            existing.symlink_to(tmp_path / "missing")
-        with pytest.raises(FileExistsError):
-            check_destination(tmp_path / "entry.md")
-
-    def test_unicode(self, tmp_path: Path) -> None:
-        (tmp_path / "Café.md").touch()
-        with pytest.raises(FileExistsError):
-            check_destination(tmp_path / "Cafe\u0301.md", normalize=True)
-
-    def test_available(self, tmp_path: Path) -> None:
-        check_destination(tmp_path / "new.md")
 
 
 class TestReadTemplate:

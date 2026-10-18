@@ -11,13 +11,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-import yaml
 from PIL import Image, ImageChops, ImageOps, UnidentifiedImageError
 
+from armarium.edit import set_field
 from armarium.index import VaultIndex, read_record
 from armarium.lib import WIKILINK, wikilink_text
 from armarium.painters import Reference, find_painter
-from armarium.parse import Frontmatter, Record
+from armarium.parse import Record
 from armarium.style import MAX_BYTES, MAX_EDGE, Style, art_directory, choose_style
 
 FIELD = "image"
@@ -194,57 +194,6 @@ def encode(
         f"{source} does not fit in {max_bytes} bytes even at the smallest size "
         "and lowest quality"
     )
-
-
-def set_field(text: str, key: str, value: str) -> str:
-    """Set one top-level frontmatter field, leaving every other line as it is.
-
-    The field's line, with any indented lines continuing it, is replaced; an
-    absent field is added at the end of the frontmatter.
-
-    Args:
-        text: Whole text of a record.
-        key: Top-level field name.
-        value: Text the field should hold.
-
-    Returns:
-        str: The record's text with the field set.
-
-    Raises:
-        ValueError: The record has no frontmatter, or the field cannot be set
-            without changing another field.
-        yaml.YAMLError: The frontmatter is invalid YAML.
-    """
-    frontmatter, length = Frontmatter.parse(text)
-    if not length:
-        raise ValueError("record has no frontmatter")
-    lines = text.splitlines(keepends=True)
-    newline = "\r\n" if lines[0].endswith("\r\n") else "\n"
-    dumped = yaml.safe_dump({key: value}, allow_unicode=True, width=1 << 16)
-    line = dumped.rstrip("\n") + newline
-    start = next(
-        (
-            number
-            for number in range(1, length - 1)
-            if re.match(rf"{re.escape(key)}[ \t]*:", lines[number])
-        ),
-        length - 1,
-    )
-    end = start
-    if start < length - 1:
-        end += 1
-        while end < length - 1 and lines[end][:1] in (" ", "\t", "-"):
-            end += 1
-    updated = "".join(lines[:start]) + line + "".join(lines[end:])
-    try:
-        unchanged = dict(Frontmatter.parse(updated)[0]) == {**frontmatter, key: value}
-    except yaml.YAMLError, ValueError:
-        unchanged = False
-    if not unchanged:
-        raise ValueError(
-            f"cannot set {key} without changing other fields; set it by hand"
-        )
-    return updated
 
 
 def _plain(text: str) -> str:

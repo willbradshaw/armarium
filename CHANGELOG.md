@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Refuse templates and files that are not records in `armarium illustrate`, `armarium handout` and `armarium trace --outbound`.
-- Hold `armarium add` and `armarium rename` to the same rules for a record's name, refusing `^` in added names and `* ? " < >`, control characters and a final dot in new names.
+- Hold `armarium add` and `armarium rename` to the same rules for a record's name, refusing `^` in added names, and `* ? " < >`, control characters, a final dot and the name of another entry in the folder, in any case, in new names.
+- Make `armarium illustrate ingest` write the `image` field double-quoted, as other commands write frontmatter.
 - Add `armarium rename` to rename a record in its folder and rewrite every link to it.
 - Add a shared way for commands to check, report and make their planned file changes, with a dry run that changes nothing, making them all or none and restoring the vault when a change fails or is interrupted.
 - Speed up schema validation about tenfold by checking records with jsonschema-rs first, adding it as a dependency; jsonschema still reports each failure.

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from armarium.add import (
-    check_destination,
     infer_campaign,
     merge_frontmatter,
     read_template,
@@ -13,7 +12,7 @@ from armarium.add import (
     record_text,
     write_record,
 )
-from armarium.lib import check_name, select_vault
+from armarium.lib import check_destination, check_name, select_vault
 
 
 def add_note(

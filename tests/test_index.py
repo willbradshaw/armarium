@@ -15,6 +15,7 @@ from armarium.index import (
     _frontmatter_text,
     _mentions,
     _spelling,
+    find_records,
     link_key,
     may_declare_aliases,
     mentioning,
@@ -25,7 +26,7 @@ from armarium.index import (
     spellings,
 )
 from armarium.index import sharing as files_sharing
-from armarium.lib import find_files
+from armarium.lib import find_files, record_files
 from armarium.parse import Body, Frontmatter, Record
 from armarium.schemas import Schema
 
@@ -958,3 +959,18 @@ class TestMentioning:
         write_named(root, "notes/Locked.md", "[[Port Briselle]]").chmod(0)
         found = mentioning(root, [root / "content/Port Briselle.md"])
         assert [path.name for path, _ in found] == ["S-1-001.md"]
+
+
+class TestFindRecords:
+    def test_leaves_out_templates(self, example: Path) -> None:
+        records = find_records(example)
+        assert example / "content/Captain Mara Vey.md" in records
+        assert not any("templates" in path.parts for path in records)
+        assert len(records) == len(
+            [p for p in record_files(example, example) if "templates" not in p.parts]
+        )
+
+    def test_directory(self, example: Path) -> None:
+        assert find_records(example, example / "content") == [
+            path for path in find_records(example) if path.parent == example / "content"
+        ]

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from armarium.add import (
-    check_destination,
     merge_frontmatter,
     read_template,
     record_directory,
@@ -16,6 +15,7 @@ from armarium.add import (
 )
 from armarium.index import VaultIndex
 from armarium.lib import (
+    check_destination,
     find_campaign,
     iter_wikilinks,
     select_vault,

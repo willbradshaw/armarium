@@ -2122,7 +2122,7 @@ class TestIllustrateCommand:
             f"INFO: Set image in {self.RECORD}; validating",
             "INFO: Validation completed successfully",
         ]
-        assert f"image: {image}\n" in (starter / self.RECORD).read_text()
+        assert f'image: "{image}"\n' in (starter / self.RECORD).read_text()
 
     def test_reports_the_image_it_replaces(
         self,
@@ -2960,7 +2960,8 @@ class TestRenameCommand:
         output = capsys.readouterr()
         assert output.out == ""
         assert "ERROR: Cannot rename content/Wake-lark.md: " in output.err
-        assert "content/Port Briselle.md already exists" in output.err
+        assert "record already exists: " in output.err
+        assert "content/Port Briselle.md" in output.err
 
     @pytest.mark.parametrize(
         "arguments", [[], ["content/Mara.md"], ["a.md", "b", "c"], ["a.md", "b", "-j"]]

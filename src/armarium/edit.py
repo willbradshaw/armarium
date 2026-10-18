@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+from armarium.lib import line_ending
 from armarium.parse import PARSE_ERRORS, Frontmatter
 
 # A top-level key opening a line of frontmatter, quoted or plain.
@@ -39,7 +40,7 @@ def rewrite_frontmatter(
     Raises:
         ValueError: Neither way gives the expected mapping.
     """
-    newline = "\r\n" if lines and lines[0].endswith("\r\n") else "\n"
+    newline = line_ending(lines[0] if lines else "")
     if edit is not None:
         edited = [lines[0], *(edit(line) for line in lines[1:-1]), lines[-1]]
         if _reads_as(edited, expected):
@@ -58,6 +59,31 @@ def rewrite_frontmatter(
     if not _reads_as(rewritten, expected):
         raise ValueError("its frontmatter cannot be rewritten; edit it by hand")
     return rewritten
+
+
+def set_field(text: str, key: str, value: Any) -> str:
+    """Set one top-level frontmatter field of a record, keeping its other lines.
+
+    Args:
+        text: Whole text of a record.
+        key: Top-level field name.
+        value: The value the field should hold, as JSON can represent it.
+
+    Returns:
+        str: The record's text with the field set, written as emit writes
+            it; an absent field is added at the end of the frontmatter.
+
+    Raises:
+        ValueError: The record has no frontmatter, or the field cannot be set
+            without changing another field.
+        yaml.YAMLError: The frontmatter is invalid YAML.
+    """
+    frontmatter, length = Frontmatter.parse(text)
+    if not length:
+        raise ValueError("record has no frontmatter")
+    lines = text.splitlines(keepends=True)
+    head = rewrite_frontmatter(lines[:length], {**frontmatter, key: value})
+    return "".join(head + lines[length:])
 
 
 def _reads_as(lines: list[str], expected: dict[str, Any]) -> bool:
@@ -127,3 +153,45 @@ def _scalar(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(_scalar(item) or "null" for item in value) + "]"
     return json.dumps(value, ensure_ascii=False)
+
+
+def open_quote(line: str, position: int) -> str:
+    """Tell which YAML quote, if any, is open at a position in a line.
+
+    Args:
+        line: One line of YAML.
+        position: An index into it.
+
+    Returns:
+        str: ``"`` or ``'`` for the open quote, or empty outside quotes.
+    """
+    quote = ""
+    index = 0
+    while index < position:
+        character = line[index]
+        if quote == '"' and character == "\\":
+            index += 2
+            continue
+        if character == quote:
+            quote = ""
+        elif not quote and character in "\"'":
+            quote = character
+        index += 1
+    return quote
+
+
+def requote(text: str, quote: str) -> str:
+    """Escape text to sit inside a YAML string opened by a quote.
+
+    Args:
+        text: The text.
+        quote: ``"`` or ``'`` for the string's quote, or empty outside one.
+
+    Returns:
+        str: The text as the string must hold it to read as the text.
+    """
+    if quote == '"':
+        return text.replace("\\", "\\\\").replace('"', '\\"')
+    if quote == "'":
+        return text.replace("'", "''")
+    return text

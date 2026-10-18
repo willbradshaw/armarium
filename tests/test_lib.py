@@ -17,6 +17,7 @@ from armarium.lib import (
     VaultNotFoundError,
     _find_wikilink_candidates,
     _visible,
+    check_destination,
     check_name,
     check_vault,
     find_campaign,
@@ -26,6 +27,7 @@ from armarium.lib import (
     image_size,
     is_inside,
     iter_wikilinks,
+    line_ending,
     locate,
     matches_kind,
     parse_directories,
@@ -1261,3 +1263,48 @@ class TestLocate:
         }[kind]
         with pytest.raises(ValueError):
             locate(Path("content/Quay Nine.md"), given)
+
+
+class TestCheckDestination:
+    @pytest.mark.parametrize("kind", ["file", "directory", "dangling"])
+    def test_collision(self, tmp_path: Path, kind: str) -> None:
+        existing = tmp_path / "ENTRY.md"
+        if kind == "file":
+            existing.touch()
+        elif kind == "directory":
+            existing.mkdir()
+        else:
+            existing.symlink_to(tmp_path / "missing")
+        with pytest.raises(FileExistsError):
+            check_destination(tmp_path / "entry.md")
+
+    def test_unicode(self, tmp_path: Path) -> None:
+        (tmp_path / "Café.md").touch()
+        with pytest.raises(FileExistsError):
+            check_destination(tmp_path / "Cafe\u0301.md", normalize=True)
+
+    @pytest.mark.parametrize(
+        ("existing", "new"),
+        [("Mara.md", "MARA.md"), ("Café.md", "Cafe\u0301.md"), ("Mara.md", "Gull.md")],
+    )
+    def test_replacing_itself(self, tmp_path: Path, existing: str, new: str) -> None:
+        (tmp_path / existing).touch()
+        check_destination(tmp_path / new, normalize=True, replacing=tmp_path / existing)
+
+    def test_replacing_leaves_other_entries(self, tmp_path: Path) -> None:
+        (tmp_path / "Mara.md").touch()
+        (tmp_path / "Gull.md").touch()
+        with pytest.raises(FileExistsError):
+            check_destination(tmp_path / "gull.md", replacing=tmp_path / "Mara.md")
+
+    def test_available(self, tmp_path: Path) -> None:
+        check_destination(tmp_path / "new.md")
+
+
+class TestLineEnding:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [("a\r\n", "\r\n"), ("a\nb\r\n", "\r\n"), ("a\n", "\n"), ("", "\n")],
+    )
+    def test_ending(self, text: str, expected: str) -> None:
+        assert line_ending(text) == expected

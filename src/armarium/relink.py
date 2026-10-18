@@ -8,13 +8,18 @@ from typing import Any
 from urllib.parse import unquote
 
 from armarium.changes import FileChange, FileChanges, report_changes
-from armarium.edit import rewrite_frontmatter
-from armarium.extensions import is_template
-from armarium.index import VaultIndex, link_key, mentioning, sharing, spellings
+from armarium.edit import open_quote, requote, rewrite_frontmatter
+from armarium.index import (
+    VaultIndex,
+    find_records,
+    link_key,
+    mentioning,
+    sharing,
+    spellings,
+)
 from armarium.lib import (
     WIKILINK,
     find_files,
-    record_files,
     relative_posix,
     split_wikilink,
     wikilink_text,
@@ -399,11 +404,7 @@ class Relinker:
             new = self.replacement(match[2], source, body=False)
             if new is None or not new.startswith("[["):
                 continue
-            quote = _quote(line, match.start())
-            if quote == '"':
-                new = new.replace("\\", "\\\\").replace('"', '\\"')
-            elif quote == "'":
-                new = new.replace("'", "''")
+            new = requote(new, open_quote(line, match.start()))
             result += [line[last : match.start()], match[1], new]
             last = match.end()
         return "".join(result) + line[last:]
@@ -418,11 +419,7 @@ class Relinker:
         Returns:
             list[str]: One line per link, giving its file, line and link.
         """
-        records = {
-            path
-            for path in record_files(self.root, self.root)
-            if not ("templates" in path.parts and is_template(path, self.root))
-        }
+        records = set(find_records(self.root))
         needles = {link_key(path.stem) for path in self.targets}
         names = {link_key(path.name) for path in self.moves}
         notes: list[str] = []
@@ -490,28 +487,3 @@ def _display(target: str) -> str:
     """Give the name a reader sees for a link target with no display alias."""
     name = wikilink_text(target)
     return name[:-3] if link_key(name).endswith(".md") else name
-
-
-def _quote(line: str, position: int) -> str:
-    """Tell which YAML quote, if any, is open at a position in a line.
-
-    Args:
-        line: One line of YAML.
-        position: An index into it.
-
-    Returns:
-        str: ``"`` or ``'`` for the open quote, or empty outside quotes.
-    """
-    quote = ""
-    index = 0
-    while index < position:
-        character = line[index]
-        if quote == '"' and character == "\\":
-            index += 2
-            continue
-        if character == quote:
-            quote = ""
-        elif not quote and character in "\"'":
-            quote = character
-        index += 1
-    return quote
