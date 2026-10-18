@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `armarium delete` to delete a record, refusing while links to it remain, and `--unlink` to turn those links into text.
 - Add `armarium rename --alias` to keep the old name as an alias and as the wording of links to the record.
 - Run the tests of how commands spell a path given in another case on every filesystem, rather than skipping them where names are case-sensitive.
 - Refuse templates and files that are not records in `armarium illustrate`, `armarium handout` and `armarium trace --outbound`.

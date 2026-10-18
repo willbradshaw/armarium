@@ -3003,3 +3003,79 @@ class TestRenameCommand:
             "[[Lark|Wake-lark]]"
             in (example / "content/Captain Mara Vey.md").read_text()
         )
+
+
+class TestDeleteCommand:
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_unlinks(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "--unlink", "--vault", str(example)]
+        arguments += ["--dry-run"] if dry_run else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "delete", *arguments])
+        main()
+        output = capsys.readouterr()
+        lines = output.out.splitlines()
+        assert lines[0] == "content/Wake-lark.md\t\t\tdeleted"
+        assert (
+            "content/Captain Mara Vey.md\tsummary\t\t[[Wake-lark]] → Wake-lark" in lines
+        )
+        assert (example / "content/Wake-lark.md").exists() is dry_run
+
+    def test_lists_the_links_that_remain(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["content/Wake-lark.md", "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "delete", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert "content/Captain Mara Vey.md\tsummary\t" in output.out.splitlines()
+        assert "ERROR: Cannot delete content/Wake-lark.md: " in output.err
+        assert "pass --unlink" in output.err
+        assert (example / "content/Wake-lark.md").exists()
+
+    def test_exits_with_one(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["reference/types/Note.md", "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "delete", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "reference/types/Note.md is a Type record" in output.err
+
+    @pytest.mark.parametrize("arguments", [[], ["a.md", "b.md"], ["a.md", "--alias"]])
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["delete", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["delete", "content/Mara.md"])
+        assert (args.path, args.unlink, args.dry_run, args.vault) == (
+            Path("content/Mara.md"),
+            False,
+            False,
+            None,
+        )
+        args = parse_args(
+            ["delete", "a.md", "--unlink", "--dry-run", "--vault", str(tmp_path)]
+        )
+        assert (args.unlink, args.dry_run, args.vault) == (True, True, tmp_path)

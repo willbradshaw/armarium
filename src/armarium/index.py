@@ -22,6 +22,7 @@ from armarium.lib import (
     record_files,
     relative_parts,
     relative_posix,
+    split_wikilink,
 )
 from armarium.parse import Frontmatter, Record
 from armarium.schemas import Schema
@@ -163,6 +164,41 @@ class VaultIndex:
         if len(candidates) == 1:
             return next(iter(candidates)), None
         return None, "link.ambiguous" if candidates else "link.missing"
+
+    def resolve_link(self, contents: str, source: Path) -> Path | None:
+        """Find the single file a link names, from what lies between its brackets.
+
+        Args:
+            contents: The link's contents, such as ``Quay Nine#Notes|the quay``.
+            source: The record holding the link.
+
+        Returns:
+            Path | None: The file, or None when the link is malformed, names
+                only a place in its own record, or names no file or several.
+        """
+        try:
+            target, _ = split_wikilink(f"[[{contents}]]")
+        except ValueError:
+            return None
+        return self.resolve(target, source)[0] if target else None
+
+    def session_order(self, path: Path) -> tuple[str, int] | None:
+        """Give where a Session falls: its campaign and its session number.
+
+        Args:
+            path: A file in the vault.
+
+        Returns:
+            tuple[str, int] | None: The campaign directory name and the
+                session_number, or None when the file is not a record in a
+                campaign with a whole session_number.
+        """
+        record = self.parse(path)[0] if path.suffix.lower() == ".md" else None
+        number = None if record is None else session_number(record.frontmatter)
+        campaign = find_campaign(path, self.root)
+        if number is None or campaign is None:
+            return None
+        return campaign, number
 
     def resolve_field(
         self, record: Record, field: str
@@ -482,6 +518,20 @@ def read_names(root: Path) -> dict[str, list[Name]]:
             if key := name_key(alias):
                 names.setdefault(key, []).append(Name(path, True, alias))
     return names
+
+
+def session_number(frontmatter: Frontmatter) -> int | None:
+    """Read a Session's session_number, when it is a whole number.
+
+    Args:
+        frontmatter: The record's frontmatter.
+
+    Returns:
+        int | None: The number, or None when it is missing or not an integer;
+            a boolean, which YAML reads from true or false, is not one.
+    """
+    number = frontmatter.get("session_number")
+    return number if type(number) is int else None
 
 
 def find_records(root: Path, directory: Path | None = None) -> list[Path]:

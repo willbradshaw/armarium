@@ -1,7 +1,7 @@
 """Plan the link changes that renaming or removing a record needs."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -18,14 +18,15 @@ from armarium.index import (
     spellings,
 )
 from armarium.lib import (
+    CAMPAIGN_NAME,
     WIKILINK,
     find_files,
+    line_ending,
     relative_posix,
-    split_wikilink,
     wikilink_text,
 )
 from armarium.logging import logger
-from armarium.parse import PARSE_ERRORS, Body, Frontmatter
+from armarium.parse import PARSE_ERRORS, Block, Body, Frontmatter
 from armarium.validate import is_campaign_file
 
 # One link, embedded or not: the embed mark, then the link's contents.
@@ -105,21 +106,22 @@ class RelinkPlan:
         report_changes(applied, dry_run=dry_run)
 
 
-def check_movable(relative: str, frontmatter: Frontmatter) -> None:
+def check_movable(
+    relative: str, frontmatter: Frontmatter, refused: Collection[str] = FIXED_TYPES
+) -> None:
     """Refuse a record that the relinking commands must leave in place.
 
     Args:
         relative: The record's vault-relative path, with forward slashes.
         frontmatter: Its frontmatter.
+        refused: Types whose records the command leaves alone.
 
     Raises:
-        ValueError: The record is of a type whose names the vault fixes or
-            that defines the vault, or is a file every campaign requires.
+        ValueError: The record is of a refused type, or is a file every
+            campaign requires.
     """
-    if frontmatter.type in FIXED_TYPES:
-        raise ValueError(
-            f"{relative} is a {frontmatter.type} record, whose name the vault fixes"
-        )
+    if frontmatter.type in refused:
+        raise ValueError(f"{relative} is a {frontmatter.type} record")
     if is_campaign_file(relative):
         raise ValueError(f"{relative} is a file every campaign requires")
 
@@ -167,6 +169,7 @@ class Relinker:
             dict.fromkeys([p for p in after if p is not None] + arrivals),
         )
         self.targets = set(self.moves) | set(sharing(files, arriving))
+        self._index: VaultIndex | None = None
 
     def destination(
         self, contents: str, source: Path
@@ -182,11 +185,7 @@ class Relinker:
                 its path after the change, None when it goes; or None when
                 the link is malformed or names a file the change leaves be.
         """
-        try:
-            target, _ = split_wikilink(f"[[{contents}]]")
-        except ValueError:
-            return None
-        found = self.before.resolve(target, source)[0] if target else None
+        found = self.before.resolve_link(contents, source)
         if found is None or found not in self.targets:
             return None
         return found, self.moves.get(found, found)
@@ -308,8 +307,11 @@ class Relinker:
         changes: list[RelinkChange] = []
         data = dict(frontmatter)
         expected = self._value(data, "", path, relative, changes, listed=False)
+        fields = len(changes)
         body: Body | None = None
         rows: set[int] = set()
+        items: dict[int, Block] = {}
+        removed: list[int] = []
         for number in range(length, len(lines)):
             line = lines[number]
             if "[[" not in line or not any(
@@ -319,15 +321,47 @@ class Relinker:
             if body is None:
                 body = Body("".join(lines[length:]), length + 1)
                 rows = {b.line for b in body.iter_blocks() if b.kind == "row"}
+                items = {item.line: item for item in body.list_items("Appearances")}
+            where = " > ".join(body.headings_at(number + 1))
+            item = items.get(number + 1)
+            entry = None if item is None else WIKILINK.match(item.text)
+            if (
+                entry is not None
+                and (found := self.destination(entry[1], path)) is not None
+                and found[1] is None
+            ):
+                lines[number] = ""
+                removed.append(number)
+                changes.append(
+                    RelinkChange(relative, where, number + 1, f"{line.strip()} removed")
+                )
+                continue
             new, changed = self.substitute(
                 line, path, body=True, table=number + 1 in rows
             )
             lines[number] = new
-            where = " > ".join(body.headings_at(number + 1))
             changes += [
                 RelinkChange(relative, where, number + 1, f"{old} → {to}")
                 for old, to in changed
             ]
+        if removed and frontmatter.type == "Content":
+            for where, link in self._appearances(
+                lines, removed, list(items.values()), expected, path
+            ).items():
+                # A field whose Session goes was nulled; say what it became.
+                prior = next(
+                    (i for i, c in enumerate(changes[:fields]) if c.where == where),
+                    None,
+                )
+                text = f"{link[0] or 'null'} → {link[1] or 'null'}"
+                if prior is None:
+                    changes.insert(fields, RelinkChange(relative, where, 0, text))
+                    fields += 1
+                else:
+                    old = changes[prior].text.removesuffix(" removed")
+                    changes[prior] = RelinkChange(
+                        relative, where, 0, f"{old} → {link[1] or 'null'}"
+                    )
         # The body is rewritten first: a rewritten field may change how many
         # lines the frontmatter spans.
         if expected != data:
@@ -335,6 +369,87 @@ class Relinker:
                 lines[:length], expected, lambda line: self._raw(line, path)
             )
         return ("".join(lines), changes) if changes else None
+
+    def _appearances(
+        self,
+        lines: list[str],
+        removed: list[int],
+        items: list[Block],
+        expected: dict[str, Any],
+        path: Path,
+    ) -> dict[str, tuple[str | None, str | None]]:
+        """Bring a Content record's history up to date after removing appearances.
+
+        An Appearances list left empty gets its ``- N/A`` item, and each
+        campaign block's ``first_session`` and ``last_session`` are set to the
+        earliest and latest Sessions of that campaign that remain, or null.
+
+        Args:
+            lines: The record's lines, the removed items already emptied;
+                changed in place.
+            removed: Indices of the removed items' lines.
+            items: The Appearances list's items, as parsed before removal.
+            expected: The frontmatter the record will read as; changed in
+                place.
+            path: The record.
+
+        Returns:
+            dict[str, tuple[str | None, str | None]]: Each campaign block
+                field set to another value, dotted, to its old and new
+                values; the old value is the one read, before links to
+                Sessions that go were nulled.
+        """
+        remaining = [
+            match[1]
+            for item in items
+            if item.line - 1 not in removed
+            and (match := WIKILINK.match(item.text)) is not None
+        ]
+        if not remaining:
+            lines[removed[0]] = "- N/A" + line_ending(lines[removed[0] - 1])
+        changed: dict[str, tuple[str | None, str | None]] = {}
+        found = self.bounds(remaining, path)
+        for campaign, block in expected.items():
+            if not CAMPAIGN_NAME.fullmatch(campaign) or not isinstance(block, dict):
+                continue
+            for name, value in zip(
+                ("first_session", "last_session"), found.get(campaign, (None, None))
+            ):
+                link = None if value is None else f"[[{value}]]"
+                if name in block and block[name] != link:
+                    changed[f"{campaign}.{name}"] = (block[name], link)
+                    block[name] = link
+        return changed
+
+    def bounds(
+        self, targets: Iterable[str], source: Path
+    ) -> dict[str, tuple[str, str]]:
+        """Find each campaign's earliest and latest Session among some links.
+
+        Args:
+            targets: Link contents, such as an Appearances list's links.
+            source: The record holding them.
+
+        Returns:
+            dict[str, tuple[str, str]]: Each campaign directory name to the
+                names of its earliest and latest Session, by session_number,
+                among the links that name a Session that stays. Links to
+                anything else are left out.
+        """
+        if self._index is None:
+            self._index = VaultIndex(self.root)
+        found: dict[str, list[tuple[int, str]]] = {}
+        for contents in targets:
+            session = self._index.resolve_link(contents, source)
+            if session is None or self.moves.get(session, session) is None:
+                continue
+            order = self._index.session_order(session)
+            if order is not None:
+                found.setdefault(order[0], []).append((order[1], session.stem))
+        return {
+            campaign: (min(sessions)[1], max(sessions)[1])
+            for campaign, sessions in found.items()
+        }
 
     def _value(
         self,

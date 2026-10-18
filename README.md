@@ -34,6 +34,7 @@ for details.
 | `armarium find` | looks a record up by name or alias | [Finding records](docs/find.md) |
 | `armarium trace` | lists the records that link to a record, or the files it links to | [Tracing links to a record](docs/trace.md) |
 | `armarium rename` | renames a record and rewrites every link to it | [Renaming a record](docs/rename.md) |
+| `armarium delete` | deletes a record, refusing while links to it remain | [Deleting a record](docs/delete.md) |
 | `armarium transcribe` | turns a session recording into raw transcript text | [Transcribing a recording](docs/transcribe.md) |
 | `armarium illustrate` | illustrates a record with a picture | [Illustrating a record](docs/illustrate.md) |
 | `armarium handout` | prints records as player handouts in a PDF | [Printing handouts](docs/handout.md) |

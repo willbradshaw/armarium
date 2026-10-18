@@ -1133,3 +1133,31 @@ class TestRecordParse:
         record, diagnostics = Record.parse(path, tmp_path)
         assert record is None and len(diagnostics) == 1
         assert diagnostics[0].rule == "parse.invalid"
+
+
+class TestBodyTitled:
+    TEXT = "# Notes\n## Appearances\n### Appearances\n## Appearances\n## Other\n"
+
+    @pytest.mark.parametrize(("level", "lines"), [(2, [2, 4]), (3, [3]), (1, [])])
+    def test_titled(self, level: int, lines: list[int]) -> None:
+        sections = Body(self.TEXT).titled("Appearances", level)
+        assert [section.line for section in sections] == lines
+
+
+class TestBodyListItems:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("## Appearances\n- [[A]]: x\n- [[B]]: y\n", ["[[A]]: x", "[[B]]: y"]),
+            ("## Appearances\n- a\n\nText.\n\n- b\n## Appearances\n- c\n", ["a", "b"]),
+            ("## Appearances\nText.\n", []),
+            ("## Notes\n- a\n", []),
+            ("# Appearances\n- a\n", []),
+        ],
+    )
+    def test_items(self, text: str, expected: list[str]) -> None:
+        assert [item.text for item in Body(text).list_items("Appearances")] == expected
+
+    def test_lines(self) -> None:
+        items = Body("## Appearances\n- a\n- b\n", 5).list_items("Appearances")
+        assert [item.line for item in items] == [6, 7]

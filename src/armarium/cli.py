@@ -11,6 +11,7 @@ from jsonschema.exceptions import SchemaError
 from armarium.add import add_campaign
 from armarium.clue import add_clue
 from armarium.content import add_content
+from armarium.delete import StillLinked, delete
 from armarium.extensions import (
     content_subtypes,
     enable_extension,
@@ -353,6 +354,41 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="list the changes without making them",
     )
     renaming.add_argument(
+        "--vault",
+        type=Path,
+        help="vault root (default: discovered from the path)",
+    )
+    deleting = commands.add_parser(
+        "delete",
+        help="delete a record, refusing while links to it remain",
+        description=(
+            "Delete a record. While links to it remain, list them as armarium "
+            "trace does and change nothing, unless --unlink is given. Each line "
+            "of output holds a changed file's path, the frontmatter field or "
+            "body headings where a link sits, its line number and the change, "
+            "separated by tabs."
+        ),
+    )
+    deleting.add_argument(
+        "path",
+        type=Path,
+        help="record to delete; with --vault, relative to the vault root",
+    )
+    deleting.add_argument(
+        "--unlink",
+        action="store_true",
+        help=(
+            "remove the links to the record: body links become plain text, "
+            "Appearances items naming it go, frontmatter links leave their "
+            "lists or become null"
+        ),
+    )
+    deleting.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="list the changes without making them",
+    )
+    deleting.add_argument(
         "--vault",
         type=Path,
         help="vault root (default: discovered from the path)",
@@ -705,7 +741,7 @@ def main() -> None:
     Raises:
         SystemExit: Status 1 when creation fails, files fail validation,
             find matches nothing, trace cannot locate its file, rename cannot
-            rename or a changed record fails validation,
+            rename, delete cannot delete, a changed record fails validation,
             transcribe cannot write its text or illustrate cannot take its
             picture in.
             Creation reports validation warnings and errors; validate also reports
@@ -754,6 +790,20 @@ def main() -> None:
             applied = plan.files.apply(dry_run=args.dry_run)
         except (OSError, ValueError) as exc:
             logger.error("Cannot rename %s: %s", args.path, exc)
+            sys.exit(1)
+        plan.report(applied, dry_run=args.dry_run)
+        return
+    if args.command == "delete":
+        try:
+            plan = delete(args.path, args.vault, unlink=args.unlink)
+            applied = plan.files.apply(dry_run=args.dry_run)
+        except StillLinked as exc:
+            for reference in exc.references:
+                print(reference.text)
+            logger.error("Cannot delete %s: %s", args.path, exc)
+            sys.exit(1)
+        except (OSError, ValueError) as exc:
+            logger.error("Cannot delete %s: %s", args.path, exc)
             sys.exit(1)
         plan.report(applied, dry_run=args.dry_run)
         return

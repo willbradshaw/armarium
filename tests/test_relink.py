@@ -413,6 +413,127 @@ class TestRelinkerRelink:
             relinked.relink(vault / "notes/Plans.md", "---\n[[Quay Nine]]\n")
 
 
+HISTORY = """---
+type: "[[types/Content]]"
+campaign_1:
+  first_session: "[[S-1-001]]"
+  last_session: "[[S-1-003]]"
+campaign_2:
+  first_session: "[[S-2-001]]"
+  last_session: "[[S-2-001]]"
+---
+## Notes
+Seen in [[S-1-003]].
+## Appearances
+- [[S-1-001]]: Arrived.
+- [[S-1-003]]: Left.
+- [[S-2-001]]: Returned.
+"""
+
+
+@pytest.fixture
+def sessions(vault: Path) -> Path:
+    for campaign, number in ((1, 1), (1, 3), (2, 1)):
+        write(
+            vault,
+            f"campaigns/campaign_{campaign}/sessions/S-{campaign}-00{number}.md",
+            f"---\nsession_number: {number}\n---\n",
+        )
+    return vault
+
+
+class TestRelinkerAppearances:
+    def test_removes_items_and_moves_bounds(self, sessions: Path) -> None:
+        relinked = relinker(
+            sessions, {"campaigns/campaign_1/sessions/S-1-003.md": None}
+        )
+        result = relinked.relink(sessions / "content/Gull.md", HISTORY)
+        assert result is not None
+        text, changes = result
+        assert text == HISTORY.replace(
+            'last_session: "[[S-1-003]]"', 'last_session: "[[S-1-001]]"'
+        ).replace("Seen in [[S-1-003]]", "Seen in S-1-003").replace(
+            "- [[S-1-003]]: Left.\n", ""
+        )
+        assert [(c.where, c.line, c.text) for c in changes] == [
+            ("campaign_1.last_session", 0, "[[S-1-003]] → [[S-1-001]]"),
+            ("Notes", 11, "[[S-1-003]] → S-1-003"),
+            ("Appearances", 14, "- [[S-1-003]]: Left. removed"),
+        ]
+
+    def test_last_appearance_leaves_na(self, sessions: Path) -> None:
+        text = HISTORY.replace("- [[S-1-001]]: Arrived.\n", "").replace(
+            "- [[S-2-001]]: Returned.\n", ""
+        )
+        relinked = relinker(
+            sessions, {"campaigns/campaign_1/sessions/S-1-003.md": None}
+        )
+        result = relinked.relink(sessions / "content/Gull.md", text)
+        assert result is not None
+        assert result[0].endswith("## Appearances\n- N/A\n")
+        assert "  first_session:\n  last_session:\n" in result[0]
+        assert [(c.where, c.text) for c in result[1][:3]] == [
+            ("campaign_1.last_session", "[[S-1-003]] removed"),
+            ("campaign_1.first_session", "[[S-1-001]] → null"),
+            ("campaign_2.first_session", "[[S-2-001]] → null"),
+        ]
+
+    def test_only_content_records(self, sessions: Path) -> None:
+        text = HISTORY.replace("types/Content", "types/Note")
+        relinked = relinker(
+            sessions, {"campaigns/campaign_1/sessions/S-1-003.md": None}
+        )
+        result = relinked.relink(sessions / "notes/Gull.md", text)
+        assert result is not None
+        assert 'last_session: "[[S-1-003]]"' not in result[0]
+        assert "last_session:\n" in result[0]
+
+    def test_moved_session_items_stay(self, sessions: Path) -> None:
+        relinked = relinker(
+            sessions,
+            {
+                "campaigns/campaign_1/sessions/S-1-003.md": "campaigns/campaign_1/sessions/S-1-004.md"
+            },
+        )
+        result = relinked.relink(sessions / "content/Gull.md", HISTORY)
+        assert result is not None
+        assert "- [[S-1-004]]: Left." in result[0]
+
+
+class TestRelinkerBounds:
+    def test_bounds(self, sessions: Path) -> None:
+        write(
+            sessions,
+            "campaigns/campaign_1/sessions/S-1-009.md",
+            "---\nsession_number: x\n---\n",
+        )
+        relinked = relinker(
+            sessions, {"campaigns/campaign_1/sessions/S-1-003.md": None}
+        )
+        found = relinked.bounds(
+            [
+                "S-1-003",
+                "S-1-001|first",
+                "S-2-001",
+                "S-1-009",
+                "Port Briselle",
+                "Nowhere",
+                "#Notes",
+                "assets/map.png",
+            ],
+            sessions / "content/Gull.md",
+        )
+        assert found == {
+            "campaign_1": ("S-1-001", "S-1-001"),
+            "campaign_2": ("S-2-001", "S-2-001"),
+        }
+
+    def test_orders_by_session_number(self, sessions: Path) -> None:
+        relinked = relinker(sessions, {"content/Port Briselle.md": None})
+        found = relinked.bounds(["S-1-003", "S-1-001"], sessions / "content/Gull.md")
+        assert found == {"campaign_1": ("S-1-001", "S-1-003")}
+
+
 class TestRelinkerValue:
     @pytest.mark.parametrize(
         ("value", "listed", "expected", "texts"),
@@ -568,6 +689,12 @@ class TestCheckMovable:
     def test_fixed_type(self, kind: str) -> None:
         with pytest.raises(ValueError, match=f"content/Mara.md is a {kind} record"):
             check_movable("content/Mara.md", Frontmatter({"type": f"[[{kind}]]"}))
+
+    def test_refused_types(self) -> None:
+        refused = ("Status", "Type")
+        check_movable("content/S.md", Frontmatter({"type": "[[Session]]"}), refused)
+        with pytest.raises(ValueError, match="content/S.md is a Status record"):
+            check_movable("content/S.md", Frontmatter({"type": "[[Status]]"}), refused)
 
     @pytest.mark.parametrize(
         "relative",

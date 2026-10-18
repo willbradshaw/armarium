@@ -632,6 +632,41 @@ class Body(Section):
             (entries if entries else blocks).append(block)
         super().__init__("", 0, start_line, tuple(blocks), Section.nest(entries))
 
+    def titled(self, title: str, level: int = 2) -> list[Section]:
+        """List the sections with a title at a heading level.
+
+        Args:
+            title: The heading's text.
+            level: The heading's level.
+
+        Returns:
+            list[Section]: The sections, in document order.
+        """
+        return [s for s in self.walk() if s.level == level and s.title == title]
+
+    def list_items(self, title: str) -> tuple[Block, ...]:
+        """Give the items of the lists in the first level-2 section with a title.
+
+        Such a section holds a list of entries, as a Content record's
+        Appearances does.
+
+        Args:
+            title: The section's heading text.
+
+        Returns:
+            tuple[Block, ...]: The items, in order; empty when no section
+                has the title.
+        """
+        sections = self.titled(title)
+        if not sections:
+            return ()
+        return tuple(
+            item
+            for block in sections[0].blocks
+            if block.kind == "list"
+            for item in block.children
+        )
+
     def callout(self, kind: str) -> str:
         """Read a callout of one type, such as the rules callout of Gear.
 
