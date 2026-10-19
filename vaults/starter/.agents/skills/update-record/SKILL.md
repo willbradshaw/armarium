@@ -123,14 +123,17 @@ those links. They are described in [Renaming a record](https://github.com/willbr
      asks for the record to go.
 3. Run the command without `--dry-run` once the user agrees.
 
-When `merge` lists conflicts, show each one to the user and ask which is
-right; do not choose. Edit the records as the user decides, so that they
-agree, then merge again. After the merge, the merged Notes may repeat
-themselves; tidy them only if the user asks.
+When `merge` lists conflicts, show each one to the user with the value you
+recommend and why, and let the user decide. Edit the records as the user
+decides, so that they agree, then merge again. After the merge, read the
+merged Notes; if they repeat themselves, recommend how to tidy them, and
+edit them only as the user agrees.
 
-When `delete` lists the links that remain, show them to the user. Change
-each one as the user decides or, if the user agrees that they should become
-plain text, run `armarium delete "PATH" --unlink`.
+When `delete` lists the links that remain, show them to the user with what
+you recommend for each: point it at another record, reword it, or let it
+become plain text. Change each one as the user decides or, if the user
+agrees that they should all become plain text, run
+`armarium delete "PATH" --unlink`.
 
 Then validate the vault and report, as in step 6. Also report each warning
 about a link the command left as written, for the user to check.
