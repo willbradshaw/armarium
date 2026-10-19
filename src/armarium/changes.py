@@ -4,6 +4,7 @@ import codecs
 import os
 import shutil
 import tempfile
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -33,21 +34,28 @@ class FileChange:
     destination: str | None = None
 
 
-def report_changes(changes: list[FileChange], *, dry_run: bool) -> None:
+def report_changes(
+    changes: list[FileChange],
+    *,
+    dry_run: bool,
+    notes: Mapping[str, str] | None = None,
+) -> None:
     """Log each file change, then how many files changed.
 
     Args:
         changes: The changes, as apply returns them.
         dry_run: Whether the changes were only planned.
+        notes: Words to add to a change's line, such as how its new contents
+            were made, by the change's path.
     """
     for change in changes:
         verb = ACTIONS[change.action]
         if dry_run:
             verb = f"would be {verb}"
-        if change.destination is None:
-            logger.info("%s: %s", change.path, verb)
-        else:
-            logger.info("%s: %s to %s", change.path, verb, change.destination)
+        if change.destination is not None:
+            verb = f"{verb} to {change.destination}"
+        note = (notes or {}).get(change.path)
+        logger.info("%s: %s", change.path, f"{verb}, {note}" if note else verb)
     count = len({change.path for change in changes})
     logger.info(
         "%s %s %s",

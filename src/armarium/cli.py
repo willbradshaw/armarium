@@ -1072,8 +1072,13 @@ def main() -> None:
             update.previous or "(no record)",
             update.version,
         )
+        notes = {}
         for entry in update.changes:
-            if entry.action in DESCRIPTIONS:
+            if entry.action not in DESCRIPTIONS:
+                continue
+            if entry.writes:
+                notes[entry.path] = DESCRIPTIONS[entry.action]
+            else:
                 report = logger.warning if entry.action == "conflict" else logger.info
                 report("%s: %s", entry.path, DESCRIPTIONS[entry.action])
         applied = not args.dry_run and not update.conflicts
@@ -1089,6 +1094,7 @@ def main() -> None:
                 *(f for files in update.extensions.values() for f in files),
             ],
             dry_run=not applied,
+            notes=notes,
         )
         if args.dry_run:
             return
@@ -1099,7 +1105,7 @@ def main() -> None:
                 "marker lines, then run armarium update again",
                 count,
                 "file conflicts" if count == 1 else "files conflict",
-                (update.root / PENDING).as_posix(),
+                PENDING.as_posix(),
             )
             sys.exit(1)
         destination = update.root

@@ -29,13 +29,14 @@ PENDING = Path(".scratch/armarium-update")
 INPUTS = PENDING / "conflicts.json"
 # Actions that write or delete the vault's file.
 WRITES = frozenset({"added", "updated", "merged", "resolved", "removed"})
-# What each action does, for reports, where its file change does not say.
+# What each action does, for reports, where its file change does not say: a
+# note on the file change for an action that writes, otherwise its own line.
 DESCRIPTIONS = {
     "merged": "merged with the vault's changes",
     "conflict": (
         f"conflicts with the vault's changes; resolve it in {PENDING.as_posix()}/"
     ),
-    "resolved": f"merged with its resolution from {PENDING.as_posix()}/",
+    "resolved": f"as resolved in {PENDING.as_posix()}/",
     "released": "kept as the vault's own, as Armarium no longer supplies it",
     "omitted": "left out, as the vault deleted it",
     "local": "left as the vault's own",
@@ -205,6 +206,8 @@ def _classify(
     if new == base:
         return Change(path, "kept") if adopting else None
     merged, conflicted = merge3(base or b"", vault, new)
+    if merged == vault:
+        return Change(path, "kept")
     return Change(path, "conflict" if conflicted else "merged", merged)
 
 
@@ -307,9 +310,10 @@ def plan_update(
                 inputs.get(path) == _inputs(vault, new.get(path))
                 and resolution.is_file()
                 and not resolution.is_symlink()
-                and not _marked(resolution.read_bytes())
+                and not _marked(content := resolution.read_bytes())
             ):
-                change = Change(path, "resolved", resolution.read_bytes())
+                action = "kept" if content == vault else "resolved"
+                change = Change(path, action, None if content == vault else content)
         if change is not None:
             changes.append(change)
     return Update(root, previous, version, changes)
