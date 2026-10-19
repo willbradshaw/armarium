@@ -48,7 +48,7 @@ from armarium.lib import (
     relative_parts,
     relative_posix,
 )
-from armarium.parse import Record, Section, load_yaml
+from armarium.parse import Record, load_yaml
 from armarium.schemas import Schema, select_schema
 from armarium.style import is_style, parse_style
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
@@ -1285,10 +1285,7 @@ def linked_record(
 def _check_anchor(record: Record, anchor: str) -> tuple[str, str] | None:
     """Check that a record contains the heading path or block id an anchor names.
 
-    Headings match Obsidian's link rules: case-insensitively, ignoring the
-    characters ``# | [ ] ^`` and runs of whitespace, on the heading text as
-    written. ``A#B`` names heading B beneath heading A. A block id matches any
-    paragraph or item ending in ``^id`` anywhere in the record.
+    Headings and block ids match as Body.missing_anchor describes.
 
     Args:
         record: Parsed record the link resolved to.
@@ -1297,32 +1294,11 @@ def _check_anchor(record: Record, anchor: str) -> tuple[str, str] | None:
     Returns:
         tuple[str, str] | None: A link.anchor problem, or None when found.
     """
-    stem = record.path.stem
-    if anchor.startswith("^"):
-        wanted = anchor[1:].casefold()
-        blocks = record.body.iter_blocks()
-        if any(
-            b.block_id is not None and b.block_id.casefold() == wanted for b in blocks
-        ):
-            return None
-        return "link.anchor", f"[[{stem}#{anchor}]]: no block {anchor}"
-    within: list[Section] = [record.body]
-    for segment in anchor.split("#"):
-        wanted = _heading_key(segment)
-        within = [
-            s
-            for c in within
-            for s in c.walk()
-            if s is not c and _heading_key(s.title) == wanted
-        ]
-        if not within:
-            return "link.anchor", f"[[{stem}#{anchor}]]: no heading {segment}"
-    return None
-
-
-def _heading_key(text: str) -> str:
-    """Normalise heading text the way Obsidian matches heading links."""
-    return " ".join(re.sub(r"[#|\[\]^]", "", text).split()).casefold()
+    missing = record.body.missing_anchor(anchor)
+    if missing is None:
+        return None
+    kind = "block" if anchor.startswith("^") else "heading"
+    return "link.anchor", f"[[{record.path.stem}#{anchor}]]: no {kind} {missing}"
 
 
 def _validate_wikilink_status(

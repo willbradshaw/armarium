@@ -5,7 +5,13 @@ from pathlib import Path
 from armarium.changes import FileChanges
 from armarium.index import read_record
 from armarium.lib import relative_posix
-from armarium.relink import RelinkChange, Relinker, RelinkPlan, check_movable
+from armarium.relink import (
+    Refused,
+    RelinkChange,
+    Relinker,
+    RelinkPlan,
+    check_movable,
+)
 from armarium.trace import Reference, trace_record
 from armarium.validate import IMAGE_URL
 
@@ -13,7 +19,7 @@ from armarium.validate import IMAGE_URL
 DEFINING_TYPES = ("Status", "Type")
 
 
-class StillLinked(ValueError):
+class StillLinked(Refused):
     """A record to delete still has links to it.
 
     Attributes:
@@ -31,7 +37,8 @@ class StillLinked(ValueError):
         super().__init__(
             f"{count} {'link' if count == 1 else 'links'} to {relative} "
             f"{'remains' if count == 1 else 'remain'}; "
-            "change them, or pass --unlink to make them plain text"
+            "change them, or pass --unlink to make them plain text",
+            [reference.text for reference in references],
         )
         self.references = references
 

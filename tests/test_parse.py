@@ -21,6 +21,7 @@ from armarium.parse import (
     Link,
     Record,
     Section,
+    heading_key,
     load_yaml,
     require_libyaml,
 )
@@ -1161,3 +1162,72 @@ class TestBodyListItems:
     def test_lines(self) -> None:
         items = Body("## Appearances\n- a\n- b\n", 5).list_items("Appearances")
         assert [item.line for item in items] == [6, 7]
+
+
+class TestBodyDivide:
+    def test_divides_at_level_two(self) -> None:
+        text = (
+            "Start\n## Notes\nA\n### Sub\n```\n## Not a heading\n```\n## Appearances\n"
+        )
+        assert Body(text).divide() == (
+            "Start\n",
+            [
+                ("Notes", "## Notes\nA\n### Sub\n```\n## Not a heading\n```\n"),
+                ("Appearances", "## Appearances\n"),
+            ],
+        )
+
+    @pytest.mark.parametrize(
+        ("text", "level", "expected"),
+        [
+            ("Only text\n", 2, ("Only text\n", [])),
+            ("# A\n## B\nb\n", 1, ("", [("A", "# A\n## B\nb\n")])),
+            (
+                "## A\r\na\r\n## B\r\n",
+                2,
+                ("", [("A", "## A\r\na\r\n"), ("B", "## B\r\n")]),
+            ),
+        ],
+    )
+    def test_levels(
+        self, text: str, level: int, expected: tuple[str, list[tuple[str, str]]]
+    ) -> None:
+        assert Body(text).divide(level) == expected
+
+    def test_after_frontmatter(self) -> None:
+        assert Body("a\n## B\nb\n", 5).divide() == ("a\n", [("B", "## B\nb\n")])
+
+
+class TestBodyMissingAnchor:
+    TEXT = "# Notes\n## Secrets & Clues\nText ^Block-1\n# Other\n- item ^two\n"
+
+    @pytest.mark.parametrize(
+        ("anchor", "expected"),
+        [
+            ("Notes", None),
+            ("notes#secrets  &  clues", None),
+            ("Secrets & Clues", None),
+            ("^block-1", None),
+            ("^two", None),
+            ("^three", "^three"),
+            ("Missing", "Missing"),
+            ("Other#Secrets & Clues", "Secrets & Clues"),
+            ("Notes#Nowhere#Deeper", "Nowhere"),
+        ],
+    )
+    def test_anchor(self, anchor: str, expected: str | None) -> None:
+        assert Body(self.TEXT).missing_anchor(anchor) == expected
+
+
+class TestHeadingKey:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("Notes", "notes"),
+            ("  Secrets   &  Clues ", "secrets & clues"),
+            ("[[Link]] | Pipe ^id #tag", "link pipe id tag"),
+            ("", ""),
+        ],
+    )
+    def test_normalises(self, text: str, expected: str) -> None:
+        assert heading_key(text) == expected

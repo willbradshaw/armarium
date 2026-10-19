@@ -48,6 +48,24 @@ _DROP = object()
 FIXED_TYPES = ("Clue", "Session", "Status", "Transcript", "Type")
 
 
+class Refused(ValueError):
+    """A relinking command refused, with lines that say what stands in its way.
+
+    Attributes:
+        details: Lines to print, one each, such as the links that remain.
+    """
+
+    def __init__(self, message: str, details: list[str]) -> None:
+        """Hold the refusal and its details.
+
+        Args:
+            message: Why the command refused.
+            details: Lines to print, one each.
+        """
+        super().__init__(message)
+        self.details = details
+
+
 @dataclass(frozen=True)
 class RelinkChange:
     """One change to a file, as a line of a relinking command's output.
@@ -169,6 +187,7 @@ class Relinker:
             dict.fromkeys([p for p in after if p is not None] + arrivals),
         )
         self.targets = set(self.moves) | set(sharing(files, arriving))
+        self.arrivals = set(arrivals)
         self._index: VaultIndex | None = None
 
     def destination(
@@ -189,6 +208,20 @@ class Relinker:
         if found is None or found not in self.targets:
             return None
         return found, self.moves.get(found, found)
+
+    def landing(self, contents: str, source: Path) -> Path | None:
+        """Tell which arriving file a link names after the change.
+
+        Args:
+            contents: What lies between the link's brackets, after the change.
+            source: The record holding the link.
+
+        Returns:
+            Path | None: The file a moved file goes to, when the link names
+                it; otherwise None.
+        """
+        found = self.after.resolve_link(contents, source)
+        return found if found in self.arrivals else None
 
     def spell(self, target: str, old: Path, new: Path, source: Path) -> str:
         """Spell a link to a file's new path in the form of its old spelling.
@@ -492,7 +525,28 @@ class Relinker:
                 self._value(item, location, source, relative, changes, listed=True)
                 for item in value
             ]
-            return [item for item in items if item is not _DROP]
+            kept: list[Any] = []
+            named: dict[Path, str] = {}
+            for item, before in zip(items, value):
+                if item is _DROP:
+                    continue
+                # A merge can leave two items naming one file; keep the first.
+                whole = WIKILINK.fullmatch(item) if isinstance(item, str) else None
+                landed = None if whole is None else self.landing(whole[1], source)
+                if landed is not None and landed in named:
+                    changes.append(
+                        RelinkChange(
+                            relative,
+                            location,
+                            0,
+                            f"{before} removed: repeats {named[landed]}",
+                        )
+                    )
+                    continue
+                if landed is not None:
+                    named[landed] = item
+                kept.append(item)
+            return kept
         if not isinstance(value, str):
             return value
         whole = WIKILINK.fullmatch(value)

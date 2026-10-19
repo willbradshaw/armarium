@@ -667,6 +667,68 @@ class Body(Section):
             for item in block.children
         )
 
+    def divide(self, level: int = 2) -> tuple[str, list[tuple[str, str]]]:
+        """Divide the body's text at its headings of one level.
+
+        Headings inside code are text, as in the parsed structure.
+
+        Args:
+            level: The heading level to divide at.
+
+        Returns:
+            tuple[str, list[tuple[str, str]]]: The text before the first such
+                heading, and each division's heading text with its text,
+                heading line included; deeper headings stay in the division
+                they fall in.
+        """
+        lines = self.text.splitlines(keepends=True)
+        starts = [s.line - self.line for s in self.walk() if s.level == level]
+        titles = [s.title for s in self.walk() if s.level == level]
+        ends = [*starts[1:], len(lines)]
+        head = "".join(lines[: starts[0] if starts else len(lines)])
+        return head, [
+            (title, "".join(lines[start:end]))
+            for title, start, end in zip(titles, starts, ends)
+        ]
+
+    def missing_anchor(self, anchor: str) -> str | None:
+        """Tell which part of a link's anchor the body lacks, if any.
+
+        Headings match Obsidian's link rules: case-insensitively, ignoring
+        the characters ``# | [ ] ^`` and runs of whitespace, on the heading
+        text as written. ``A#B`` names heading B beneath heading A. A block
+        id matches any paragraph or item ending in ``^id`` anywhere in the
+        body.
+
+        Args:
+            anchor: Heading path or ``^block-id`` after a link's ``#``.
+
+        Returns:
+            str | None: The block id, with its ``^``, or the first heading of
+                the path that cannot be found; None when the body has it.
+        """
+        if anchor.startswith("^"):
+            wanted = anchor[1:].casefold()
+            blocks = self.iter_blocks()
+            if any(
+                b.block_id is not None and b.block_id.casefold() == wanted
+                for b in blocks
+            ):
+                return None
+            return anchor
+        within: list[Section] = [self]
+        for segment in anchor.split("#"):
+            wanted = heading_key(segment)
+            within = [
+                s
+                for c in within
+                for s in c.walk()
+                if s is not c and heading_key(s.title) == wanted
+            ]
+            if not within:
+                return segment
+        return None
+
     def callout(self, kind: str) -> str:
         """Read a callout of one type, such as the rules callout of Gear.
 
@@ -726,6 +788,11 @@ class Body(Section):
                 else:
                     links.append(Link(parsed[0], "", line, anchor=parsed[1]))
         return tuple(links)
+
+
+def heading_key(text: str) -> str:
+    """Normalise heading text the way Obsidian matches heading links."""
+    return " ".join(re.sub(r"[#|\[\]^]", "", text).split()).casefold()
 
 
 @dataclass(frozen=True)

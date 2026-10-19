@@ -14,11 +14,13 @@ from pathlib import Path
 import pytest
 
 from armarium import cli
+from armarium.changes import FileChanges
 from armarium.cli import (
     _jobs,
     _mark,
     _min_repeats,
     _positive,
+    _relink,
     _subtype_choices,
     main,
     parse_args,
@@ -27,6 +29,7 @@ from armarium.handout import Handout, Page
 from armarium.illustrate import Candidate, Generation
 from armarium.lib import SUBTYPES, Diagnostic, Result, VaultNotFoundError
 from armarium.logging import logger
+from armarium.relink import Refused, RelinkChange, RelinkPlan
 from armarium.transcribe import (
     DEFAULT_LANGUAGE,
     DEFAULT_MIN_REPEATS,
@@ -3079,3 +3082,149 @@ class TestDeleteCommand:
             ["delete", "a.md", "--unlink", "--dry-run", "--vault", str(tmp_path)]
         )
         assert (args.unlink, args.dry_run, args.vault) == (True, True, tmp_path)
+
+
+class TestMergeCommand:
+    SILAS = "campaigns/campaign_2/content/Silas Rook.md"
+    OREN = "campaigns/campaign_2/content/Oren Vale.md"
+
+    def test_lists_conflicts(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["--from", self.SILAS, "--into", self.OREN, "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "merge", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert [line.split(":")[0] for line in output.out.splitlines()] == [
+            "summary",
+            "Appearances",
+        ]
+        assert f"ERROR: Cannot merge {self.SILAS}: 2 conflicts" in output.err
+        assert (example / self.SILAS).exists()
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_merges(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+    ) -> None:
+        notes = example / "notes"
+        (notes / "A.md").write_text('---\ntype: "[[types/Note]]"\n---\nFirst.\n')
+        (notes / "B.md").write_text('---\ntype: "[[types/Note]]"\n---\nSecond.\n')
+        arguments = [
+            "--from",
+            "notes/A.md",
+            "--into",
+            "notes/B.md",
+            "--vault",
+            str(example),
+        ]
+        arguments += ["--dry-run"] if dry_run else []
+        monkeypatch.setattr(sys, "argv", ["armarium", "merge", *arguments])
+        main()
+        output = capsys.readouterr()
+        assert output.out.splitlines()[0] == "notes/A.md\t\t\tmerged into notes/B.md"
+        assert "WARNING: notes/B.md: review the text merged from notes/A.md" in (
+            output.err
+        )
+        assert (notes / "A.md").exists() is dry_run
+
+    def test_exits_with_one(
+        self,
+        example: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments = ["--from", self.OREN, "--into", self.OREN, "--vault", str(example)]
+        monkeypatch.setattr(sys, "argv", ["armarium", "merge", *arguments])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert "cannot be merged into itself" in output.err
+
+    @pytest.mark.parametrize(
+        "arguments",
+        [
+            [],
+            ["a.md", "b.md"],
+            ["--from", "a.md"],
+            ["--into", "b.md"],
+            ["--from", "a.md", "--into", "b.md", "c.md"],
+            ["--from", "a.md", "--into", "b.md", "--unlink"],
+        ],
+    )
+    def test_usage_errors(
+        self, arguments: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["merge", *arguments])
+        assert exc.value.code == 2
+        assert "usage: armarium" in capsys.readouterr().err
+
+    def test_options(self, tmp_path: Path) -> None:
+        args = parse_args(["merge", "--into", "b.md", "--from", "a.md"])
+        assert (args.source, args.target, args.dry_run, args.vault) == (
+            Path("a.md"),
+            Path("b.md"),
+            False,
+            None,
+        )
+        args = parse_args(
+            [
+                "merge",
+                "--from",
+                "a.md",
+                "--into",
+                "b.md",
+                "--dry-run",
+                "--vault",
+                str(tmp_path),
+            ]
+        )
+        assert (args.dry_run, args.vault) == (True, tmp_path)
+
+
+class TestRelink:
+    @pytest.mark.parametrize(
+        ("error", "printed"),
+        [
+            (Refused("blocked", ["a\t1", "b\t2"]), "a\t1\nb\t2\n"),
+            (ValueError("bad"), ""),
+            (OSError("unreadable"), ""),
+        ],
+    )
+    def test_refuses(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        caplog: pytest.LogCaptureFixture,
+        error: Exception,
+        printed: str,
+    ) -> None:
+        def plan() -> RelinkPlan:
+            raise error
+
+        with pytest.raises(SystemExit) as exc:
+            _relink("merge", Path("a.md"), plan, dry_run=False)
+        assert exc.value.code == 1
+        assert capsys.readouterr().out == printed
+        assert f"Cannot merge a.md: {error}" in caplog.text
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_makes_and_reports(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], dry_run: bool
+    ) -> None:
+        planned = RelinkPlan(FileChanges(tmp_path))
+        planned.files.write_text(tmp_path / "a.md", "text")
+        planned.changes.append(RelinkChange("a.md", "", 0, "written"))
+        _relink("rename", Path("a.md"), lambda: planned, dry_run=dry_run)
+        assert capsys.readouterr().out == "a.md\t\t\twritten\n"
+        assert (tmp_path / "a.md").exists() is not dry_run
