@@ -3233,13 +3233,48 @@ class TestRelink:
 class TestUpdateCommand:
     def test_arguments(self) -> None:
         args = parse_args(["update"])
-        assert (args.vault, args.dry_run, args.allow_downgrade) == (None, False, False)
-        args = parse_args(["update", "--vault", "v", "--dry-run", "--allow-downgrade"])
-        assert (args.vault, args.dry_run, args.allow_downgrade) == (
+        assert (args.vault, args.dry_run, args.allow_downgrade, args.extensions) == (
+            None,
+            False,
+            False,
+            False,
+        )
+        args = parse_args(
+            ["update", "--vault", "v", "--dry-run", "--allow-downgrade", "--extensions"]
+        )
+        assert (args.vault, args.dry_run, args.allow_downgrade, args.extensions) == (
             Path("v"),
             True,
             True,
+            True,
         )
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    def test_extensions(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault", extensions=["example"])
+        readme = root / "reference/extensions/example/README.md"
+        readme.write_text("Edited\n")
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "update", "--vault", str(root), "--extensions"]
+            + (["--dry-run"] if dry_run else []),
+        )
+        main()
+        output = capsys.readouterr().err
+        replaced = "would be replaced" if dry_run else "replaced"
+        assert f"Extension example: {replaced} with its current files" in output
+        assert f"reference/extensions/example/README.md: {replaced}" in output
+        assert f"1 file {'would change' if dry_run else 'changed'}" in output
+        assert (readme.read_text() == "Edited\n") == dry_run
 
     @pytest.mark.parametrize("dry_run", [False, True])
     @pytest.mark.parametrize("conflict", [False, True])

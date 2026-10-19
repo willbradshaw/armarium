@@ -4331,7 +4331,7 @@ class TestValidateCopies:
                 "vault.outdated",
                 "extension example differs from Armarium "
                 f"{armarium_version()}'s; "
-                "run armarium extension update example",
+                "run armarium update --extensions",
             )
         ]
 

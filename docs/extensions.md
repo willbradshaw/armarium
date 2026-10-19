@@ -51,7 +51,8 @@ armarium extension update EXTENSION --vault ../my-vault
 After upgrading Armarium, run this command to replace an installed extension with
 its current files, rules and skill addenda. Until then, validation reports
 `vault.outdated` for any extension whose installed files differ from those
-Armarium supplies. Local edits to installed files are
+Armarium supplies. [`armarium update --extensions`](update.md#extensions)
+updates every such extension along with the vault's other copied files. Local edits to installed files are
 overwritten; records, separate custom schemas and the vault's own addenda are
 preserved. Installation failures restore
 the previous extension. Validation runs afterward; failures leave the updated

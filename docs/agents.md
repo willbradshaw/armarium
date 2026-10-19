@@ -27,7 +27,8 @@ A skill reads every file in its `addenda/` directory, where there is one, as
 part of its procedure. An addendum holds what a game system or a vault adds to
 the skill, so the skill itself stays as Armarium ships it and
 [`armarium update`](update.md) can replace it with a newer copy. The update
-never changes `addenda/`.
+never changes `addenda/vault.md`, and replaces an extension's addendum only
+with `--extensions`, as `armarium extension update` does.
 
 | File | Holds |
 | --- | --- |
