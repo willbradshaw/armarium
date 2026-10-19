@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from armarium.init import _starter, init_vault, write_record
+from armarium.init import init_vault, starter, write_record
 from armarium.lib import RECORD, managed_files
 from armarium.validate import validate
 
@@ -46,7 +46,7 @@ class TestStarter:
         monkeypatch.setattr(
             "armarium.init.__file__", str(checkout / "src/armarium/init.py")
         )
-        assert _starter() == (package / "starter" if packaged else source)
+        assert starter() == (package / "starter" if packaged else source)
 
     def test_missing_resources(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -56,7 +56,7 @@ class TestStarter:
             "armarium.init.__file__", str(tmp_path / "src/armarium/init.py")
         )
         with pytest.raises(FileNotFoundError, match="reinstall Armarium"):
-            _starter()
+            starter()
 
 
 class TestInitVault:
@@ -209,7 +209,7 @@ class TestInitVault:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
-            "armarium.init._starter",
+            "armarium.init.starter",
             Mock(side_effect=FileNotFoundError("Missing starter")),
         )
         with pytest.raises(FileNotFoundError, match="Missing starter"):

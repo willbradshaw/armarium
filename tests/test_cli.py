@@ -716,7 +716,7 @@ class TestMain:
         starter = tmp_path / "starter"
         shutil.copytree(Path(__file__).resolve().parents[1] / "vaults/starter", starter)
         (starter / "content/Broken.md").write_text("Missing frontmatter")
-        monkeypatch.setattr("armarium.init._starter", lambda: starter)
+        monkeypatch.setattr("armarium.init.starter", lambda: starter)
         destination = tmp_path / "New vault"
         monkeypatch.setattr(sys, "argv", ["armarium", "init", str(destination)])
         with pytest.raises(SystemExit) as exc:
@@ -3228,3 +3228,102 @@ class TestRelink:
         _relink("rename", Path("a.md"), lambda: planned, dry_run=dry_run)
         assert capsys.readouterr().out == "a.md\t\t\twritten\n"
         assert (tmp_path / "a.md").exists() is not dry_run
+
+
+class TestUpdateCommand:
+    def test_arguments(self) -> None:
+        args = parse_args(["update"])
+        assert (args.vault, args.dry_run, args.allow_downgrade) == (None, False, False)
+        args = parse_args(["update", "--vault", "v", "--dry-run", "--allow-downgrade"])
+        assert (args.vault, args.dry_run, args.allow_downgrade) == (
+            Path("v"),
+            True,
+            True,
+        )
+
+    @pytest.mark.parametrize("dry_run", [False, True])
+    @pytest.mark.parametrize("conflict", [False, True])
+    def test_reports_and_validates(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+        conflict: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        upstream = tmp_path / "upstream"
+        shutil.copytree(
+            Path(__file__).resolve().parents[1] / "vaults/starter", upstream
+        )
+        (upstream / "AGENTS.md").write_text("Armarium's\n")
+        if conflict:
+            (root / "AGENTS.md").write_text("Vault's\n")
+        monkeypatch.setattr("armarium.update.starter", lambda: upstream)
+        monkeypatch.chdir(root / "content")
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "update"] + (["--dry-run"] if dry_run else [])
+        )
+        if conflict and not dry_run:
+            with pytest.raises(SystemExit) as exc:
+                main()
+            assert exc.value.code == 1
+        else:
+            main()
+        output = capsys.readouterr().err
+        action = (
+            "conflicts with the vault's changes"
+            if conflict
+            else "AGENTS.md: would be replaced"
+            if dry_run
+            else "AGENTS.md: replaced"
+        )
+        assert action in output
+        assert "Updating from Armarium" in output
+        changed = "0 files" if conflict else "1 file"
+        tense = "would change" if dry_run or conflict else "changed"
+        assert f"{changed} {tense}" in output
+        validated = not dry_run and not conflict
+        assert ("Validation completed successfully" in output) == validated
+        assert ("Nothing changed: 1 file conflicts" in output) == (
+            conflict and not dry_run
+        )
+        assert (root / "AGENTS.md").read_text() == (
+            "Vault's\n"
+            if conflict
+            else "Armarium's\n"
+            if not dry_run
+            else (root / ".armarium/base/AGENTS.md").read_text()
+        )
+
+    def test_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.setattr(
+            sys, "argv", ["armarium", "update", "--vault", str(tmp_path)]
+        )
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        assert "Cannot update the vault" in capsys.readouterr().err
+
+    def test_validation_failure(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        shutil.rmtree(root / "bases")
+        monkeypatch.setattr(sys, "argv", ["armarium", "update", "--vault", str(root)])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        assert "Update retained" in capsys.readouterr().err

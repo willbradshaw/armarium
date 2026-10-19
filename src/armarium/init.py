@@ -13,7 +13,7 @@ from armarium.lib import RECORD, managed_files
 from armarium.logging import logger
 
 
-def _starter() -> Traversable:
+def starter() -> Traversable:
     """Find packaged starter files, or their source in a development checkout.
 
     Returns:
@@ -82,7 +82,7 @@ def init_vault(
         KeyboardInterrupt: An interrupted copy is cleaned up before propagating.
     """
     destination = destination.expanduser().absolute()
-    with as_file(_starter()) as source:
+    with as_file(starter()) as source:
         if force and destination.is_dir() and not destination.is_symlink():
             logger.warning("Directory already exists; overwriting")
             workspace = Path(

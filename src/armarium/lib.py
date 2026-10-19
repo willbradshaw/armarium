@@ -1,5 +1,6 @@
 """Shared utilities and data types for Armarium."""
 
+import json
 import logging
 import os
 import re
@@ -8,7 +9,7 @@ import unicodedata
 from collections.abc import Collection, Iterable, Iterator
 from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from armarium.logging import logger
 
@@ -548,6 +549,26 @@ def managed_files(source: Path) -> dict[str, bytes]:
         ):
             copies[relative.as_posix()] = path.read_bytes()
     return copies
+
+
+def read_settings(record: Path) -> dict[str, Any]:
+    """Read a record's settings, refusing any not in the form init writes.
+
+    Raises:
+        ValueError: The settings are not an object with a string
+            ``armarium_version`` and a ``local`` list of paths.
+        OSError: The settings cannot be read.
+    """
+    path = record / "vault.json"
+    settings = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        not isinstance(settings, dict)
+        or not isinstance(settings.get("armarium_version"), str)
+        or not isinstance(settings.get("local"), list)
+        or not all(isinstance(p, str) for p in settings["local"])
+    ):
+        raise ValueError(f"invalid vault record settings {path}")
+    return settings
 
 
 def check_destination(
