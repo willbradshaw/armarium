@@ -4,6 +4,7 @@ import os
 import re
 from collections.abc import Callable, Iterable, Set
 from concurrent.futures import ProcessPoolExecutor
+from importlib.resources import as_file
 from pathlib import Path
 from typing import overload
 
@@ -14,8 +15,12 @@ from armarium.extensions import (
     CONFIG,
     ExtensionRule,
     ExtensionSet,
+    armarium_version,
+    installed_extensions,
+    installed_files,
     is_template,
     load_extension_set,
+    supplied_files,
 )
 from armarium.index import (
     STRUCTURAL_TYPES,
@@ -25,8 +30,10 @@ from armarium.index import (
     read_aliases,
     session_number,
 )
+from armarium.init import starter
 from armarium.lib import (
     CAMPAIGN_NAME,
+    RECORD,
     UNSCANNED_DIRECTORIES,
     UNSCANNED_FILES,
     WIKILINK,
@@ -41,9 +48,11 @@ from armarium.lib import (
     find_vault,
     image_size,
     iter_wikilinks,
+    managed_files,
     parse_directories,
     parse_subtype_directories,
     parse_wikilink,
+    read_settings,
     record_files,
     relative_parts,
     relative_posix,
@@ -442,6 +451,68 @@ def _validate_in_worker(file: Path) -> Result:
     return validate_markdown(file, _WORKER_INDEX.root, index=_WORKER_INDEX)
 
 
+def validate_copies(root: Path) -> Findings:
+    """Check a vault's copies of Armarium files against the running Armarium.
+
+    Args:
+        root: Resolved vault directory.
+
+    Returns:
+        Findings: Problems attributed to the vault itself. vault.outdated
+            reports managed copies recorded in .armarium/ that differ from the
+            running Armarium's, apart from the vault's local paths, and each
+            installed extension whose files differ from those it supplies.
+            A vault without .armarium/ has no managed copies to check; an
+            unreadable extension configuration is reported as
+            extension.invalid by validate_vault.
+    """
+    findings = Findings("")
+    record = root / RECORD
+    if record.is_dir() and not record.is_symlink():
+        try:
+            settings = read_settings(record)
+            base = managed_files(record / "base")
+        except (OSError, ValueError) as exc:
+            findings.add("vault.outdated", f"cannot check managed copies: {exc}")
+        else:
+            local = set(settings["local"])
+            with as_file(starter()) as source:
+                new = managed_files(source)
+            stale = sorted(
+                path
+                for path in base.keys() | new.keys()
+                if path not in local and base.get(path) != new.get(path)
+            )
+            if stale:
+                count = (
+                    "1 managed file differs"
+                    if len(stale) == 1
+                    else f"{len(stale)} managed files differ"
+                )
+                findings.add(
+                    "vault.outdated",
+                    f"{count} from Armarium {armarium_version()}'s, such as "
+                    f"{stale[0]}; run armarium update",
+                )
+    try:
+        extensions = installed_extensions(root)
+    except OSError, ValueError:
+        extensions = []
+    for name in extensions:
+        try:
+            current = installed_files(root, name) == supplied_files(root, name)
+        except (OSError, ValueError) as exc:
+            findings.add("vault.outdated", f"cannot check extension {name}: {exc}")
+            continue
+        findings.diagnose(
+            not current,
+            "vault.outdated",
+            f"extension {name} differs from Armarium {armarium_version()}'s; "
+            f"run armarium extension update {name}",
+        )
+    return findings
+
+
 def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
     """Check a vault root's shared infrastructure and campaign layout.
 
@@ -455,9 +526,10 @@ def validate_vault(root: Path, index: VaultIndex | None = None) -> Findings:
             which directory validation rebases onto the vault), each naming
             the affected entry. Every entry must lie inside a required
             directory, fixed or declared by a Type record; record contents
-            are validated separately.
+            are validated separately. The vault's copies of Armarium files
+            are checked by validate_copies.
     """
-    findings = Findings("")
+    findings = validate_copies(root)
     required: dict[str, bool] = {}
     # Directories a required directory lies beneath; they exist by implication.
     ancestors: set[Path] = set()

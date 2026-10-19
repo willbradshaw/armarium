@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Report in validation a vault's copies of Armarium files or installed extensions that differ from the running Armarium's (`vault.outdated`).
 - Add `armarium update` to bring the files Armarium copied into a vault up to date, merging the vault's own changes to them.
 - Record in a new vault's `.armarium/` a copy of each starter file Armarium keeps up to date, and the Armarium version that supplied them.
 - Make the `update-record` skill rename, merge and delete records with the commands, and list them in the vault guide.

@@ -24,10 +24,13 @@ from armarium.extensions import (
     _write_config,
     content_subtypes,
     enable_extension,
+    installed_extensions,
+    installed_files,
     is_template,
     load_extension_set,
     load_extensions,
     remove_extension,
+    supplied_files,
 )
 from armarium.lib import REFERENCE_SUBTYPES, SUBTYPES
 from armarium.parse import Record
@@ -2035,3 +2038,48 @@ class TestDndSkillAddenda:
         text = (ROOT / f"extensions/dnd-5-5/skills/{skill}.md").read_text()
         for page in re.findall(r"`reference/extensions/dnd-5-5/([^`]+)`", text):
             assert (ROOT / "extensions/dnd-5-5" / page).is_file(), page
+
+
+class TestInstalledExtensions:
+    def test_names_installed(self, enabled: Path) -> None:
+        config = enabled / CONFIG
+        data = json.loads(config.read_text())
+        data["house-rules"] = {"rules": [{"type": "Note", "schema": "x.json"}]}
+        config.write_text(json.dumps(data))
+        assert installed_extensions(enabled) == ["example"]
+
+    def test_without_configuration(self, vault: Path) -> None:
+        assert installed_extensions(vault) == []
+
+
+class TestInstalledFiles:
+    def test_reads_files_and_addenda(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        (vault / "reference/extensions/dnd-5-5/.DS_Store").write_text("x")
+        files = installed_files(vault, "dnd-5-5")
+        assert ".agents/skills/prepare-session/addenda/dnd-5-5.md" in files
+        assert "reference/extensions/dnd-5-5/extension.json" in files
+        assert not any(path.endswith(".DS_Store") for path in files)
+
+    def test_refuses_symlinks(self, vault: Path, tmp_path: Path) -> None:
+        (vault / "reference/extensions").mkdir()
+        (vault / "reference/extensions/example").symlink_to(tmp_path)
+        with pytest.raises(ValueError, match="symlinks"):
+            installed_files(vault, "example")
+
+
+class TestSuppliedFiles:
+    @pytest.mark.parametrize("name", ["example", "dnd-5-5"])
+    def test_matches_installation(self, vault: Path, name: str) -> None:
+        enable_extension(name, vault)
+        assert supplied_files(vault, name) == installed_files(vault, name)
+
+    def test_skips_missing_skills(self, vault: Path) -> None:
+        shutil.rmtree(vault / ".agents/skills/prepare-session")
+        files = supplied_files(vault, "dnd-5-5")
+        assert ".agents/skills/write-up-session/addenda/dnd-5-5.md" in files
+        assert not any("prepare-session" in path for path in files)
+
+    def test_unknown(self, vault: Path) -> None:
+        with pytest.raises(ValueError, match="unknown extension"):
+            supplied_files(vault, "missing")

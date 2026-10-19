@@ -19,6 +19,7 @@ from packaging.version import Version
 
 from armarium.lib import (
     CAMPAIGN_NAME,
+    IGNORED,
     REFERENCE_SUBTYPES,
     SUBTYPES,
     relative_parts,
@@ -317,6 +318,80 @@ def _addenda(root: Path, name: str) -> dict[Path, bytes]:
         )
         for path in sorted((root / SKILLS).glob(f"*/addenda/{name}.md"))
     }
+
+
+def installed_extensions(root: Path) -> list[str]:
+    """Name the extensions installed in a vault, as opposed to registered locally.
+
+    Raises:
+        ValueError: The configuration is invalid or reached through a symlink.
+        OSError: The configuration cannot be read.
+    """
+    config = _local_path(root, "reference", "extensions.json")
+    if not config.exists():
+        return []
+    return [
+        name
+        for name, declaration in _declarations(config).items()
+        if declaration.get("installed", False)
+    ]
+
+
+def installed_files(root: Path, name: str) -> dict[str, bytes]:
+    """Read the files and skill addenda an extension has installed in a vault.
+
+    Args:
+        root: Vault root.
+        name: Extension name.
+
+    Returns:
+        dict[str, bytes]: Each file's contents by its vault-relative POSIX path.
+
+    Raises:
+        ValueError: The installation is reached through a symlink.
+    """
+    directory = _local_path(root, "reference/extensions", name)
+    contents = {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(directory.rglob("*"))
+        if path.is_file() and not IGNORED.intersection(path.relative_to(root).parts)
+    }
+    for path, content in _addenda(root, name).items():
+        contents[path.relative_to(root).as_posix()] = content
+    return contents
+
+
+def supplied_files(root: Path, name: str) -> dict[str, bytes]:
+    """Read the files the running Armarium installs for an extension in a vault.
+
+    Args:
+        root: Vault root, whose skills decide which addenda install.
+        name: Extension name.
+
+    Returns:
+        dict[str, bytes]: Each file's contents by the vault-relative POSIX
+            path it installs at, as installed_files reads them.
+
+    Raises:
+        ValueError: Armarium does not supply the extension.
+    """
+    contents: dict[str, bytes] = {}
+    with as_file(_extension(name)) as source:
+        for path in sorted(source.rglob("*")):
+            relative = path.relative_to(source)
+            if not path.is_file() or IGNORED.intersection(relative.parts):
+                continue
+            if relative.parts[0] != "skills":
+                contents[f"reference/extensions/{name}/{relative.as_posix()}"] = (
+                    path.read_bytes()
+                )
+            elif (
+                len(relative.parts) == 2
+                and path.suffix == ".md"
+                and (root / SKILLS / path.stem / "SKILL.md").is_file()
+            ):
+                contents[f"{SKILLS}/{path.stem}/addenda/{name}.md"] = path.read_bytes()
+    return contents
 
 
 def _set_addenda(root: Path, name: str, contents: Mapping[Path, bytes]) -> None:

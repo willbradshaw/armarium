@@ -3261,7 +3261,8 @@ class TestUpdateCommand:
         (upstream / "AGENTS.md").write_text("Armarium's\n")
         if conflict:
             (root / "AGENTS.md").write_text("Vault's\n")
-        monkeypatch.setattr("armarium.update.starter", lambda: upstream)
+        for module in ("update", "validate"):
+            monkeypatch.setattr(f"armarium.{module}.starter", lambda: upstream)
         monkeypatch.chdir(root / "content")
         monkeypatch.setattr(
             sys, "argv", ["armarium", "update"] + (["--dry-run"] if dry_run else [])

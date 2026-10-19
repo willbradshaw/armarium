@@ -48,7 +48,8 @@ def upstream(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A copy of the starter that the running Armarium supplies."""
     source = tmp_path / "upstream"
     shutil.copytree(STARTER, source)
-    monkeypatch.setattr("armarium.update.starter", lambda: source)
+    for module in ("update", "validate"):
+        monkeypatch.setattr(f"armarium.{module}.starter", lambda: source)
     return source
 
 

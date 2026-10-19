@@ -62,6 +62,14 @@ A file that still holds markers stays a conflict. If the vault's file or
 Armarium's changes before the next run, the update writes that merge afresh.
 `--dry-run` reports conflicts without writing anything.
 
+## Validation
+
+[Validation](validate.md) reports `vault.outdated` when the files recorded in
+`.armarium/` differ from the running Armarium's, apart from `local` paths, or an
+installed extension's files differ from those Armarium supplies. Upgrading
+Armarium therefore fails validation until the vault is updated, including
+while conflicts wait to be resolved.
+
 ## Keeping a file as the vault's own
 
 To stop updates to a managed file, add its path to `local` in
