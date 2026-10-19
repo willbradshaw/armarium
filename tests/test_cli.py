@@ -3277,6 +3277,42 @@ class TestUpdateCommand:
         assert (readme.read_text() == "Edited\n") == dry_run
 
     @pytest.mark.parametrize("dry_run", [False, True])
+    def test_notes_merged_file(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        dry_run: bool,
+    ) -> None:
+        from armarium.init import init_vault
+
+        root = init_vault(tmp_path / "vault")
+        upstream = tmp_path / "upstream"
+        shutil.copytree(
+            Path(__file__).resolve().parents[1] / "vaults/starter", upstream
+        )
+        agents = upstream / "AGENTS.md"
+        agents.write_text(agents.read_text() + "Armarium's\n")
+        agents = root / "AGENTS.md"
+        agents.write_text("Vault's\n" + agents.read_text())
+        for module in ("update", "validate"):
+            monkeypatch.setattr(f"armarium.{module}.starter", lambda: upstream)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["armarium", "update", "--vault", str(root)]
+            + (["--dry-run"] if dry_run else []),
+        )
+        main()
+        lines = [
+            line.split(": ", 1)[1]
+            for line in capsys.readouterr().err.splitlines()
+            if "AGENTS.md" in line
+        ]
+        replaced = "would be replaced" if dry_run else "replaced"
+        assert lines == [f"AGENTS.md: {replaced}, merged with the vault's changes"]
+
+    @pytest.mark.parametrize("dry_run", [False, True])
     @pytest.mark.parametrize("conflict", [False, True])
     def test_reports_and_validates(
         self,
@@ -3323,9 +3359,10 @@ class TestUpdateCommand:
         assert f"{changed} {tense}" in output
         validated = not dry_run and not conflict
         assert ("Validation completed successfully" in output) == validated
-        assert ("Nothing changed: 1 file conflicts" in output) == (
-            conflict and not dry_run
-        )
+        assert (
+            "Nothing changed: 1 file conflicts. Resolve each in "
+            ".scratch/armarium-update/, removing" in output
+        ) == (conflict and not dry_run)
         assert (root / "AGENTS.md").read_text() == (
             "Vault's\n"
             if conflict

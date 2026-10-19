@@ -215,6 +215,7 @@ class TestClassify:
             (b"o", b"v", b"o", False, None),
             (b"o", b"v", b"o", True, Change("p", "kept")),
             (b"a\n", b"v\na\n", b"a\nn\n", False, Change("p", "merged", b"v\na\nn\n")),
+            (b"a\n", b"v\na\nn\n", b"a\nn\n", False, Change("p", "kept")),
             (
                 b"a\n",
                 b"v\n",
@@ -320,21 +321,24 @@ class TestPlanUpdate:
             (b"Resolved\n", False, "resolved"),
             (b"<<<<<<< vault\nx\n=======\ny\n>>>>>>> armarium\n", False, "conflict"),
             (b"Resolved\n", True, "conflict"),
+            ("the vault's file", False, "kept"),
         ],
     )
     def test_resolution(
-        self, vault: Path, resolution: bytes | None, stale: bool, action: str
+        self, vault: Path, resolution: bytes | str | None, stale: bool, action: str
     ) -> None:
         new = conflicting(vault)
         _write_pending(plan_update(vault, new), new)
+        if isinstance(resolution, str):
+            resolution = (vault / AGENTS).read_bytes()
         if resolution is not None:
             (vault / PENDING / AGENTS).write_bytes(resolution)
         if stale:
             append(vault / AGENTS, "Later edit\n")
         [change] = plan_update(vault, new).changes
         assert change.action == action
-        if action == "resolved":
-            assert change.content == resolution
+        if action != "conflict":
+            assert change.content == (resolution if action == "resolved" else None)
 
 
 class TestMarked:

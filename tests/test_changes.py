@@ -171,6 +171,27 @@ class TestReportChanges:
             )
         assert caplog.messages == lines
 
+    @pytest.mark.parametrize(
+        ("dry_run", "line"),
+        [
+            (False, "a.md: replaced, merged with the vault's changes"),
+            (True, "a.md: would be replaced, merged with the vault's changes"),
+        ],
+    )
+    def test_notes(
+        self, caplog: pytest.LogCaptureFixture, dry_run: bool, line: str
+    ) -> None:
+        with caplog.at_level(logging.INFO, logger="armarium"):
+            report_changes(
+                [FileChange("replace", "a.md"), FileChange("create", "b.md")],
+                dry_run=dry_run,
+                notes={"a.md": "merged with the vault's changes"},
+            )
+        assert caplog.messages[:2] == [
+            line,
+            f"b.md: {'would be ' if dry_run else ''}created",
+        ]
+
     def test_one_file(self, caplog: pytest.LogCaptureFixture) -> None:
         with caplog.at_level(logging.INFO, logger="armarium"):
             report_changes([FileChange("delete", "a.md")], dry_run=False)

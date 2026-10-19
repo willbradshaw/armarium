@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Report each file `armarium update` merges on one line, count a merge or resolution that leaves the vault's file unchanged as kept, and name the conflicts folder relative to the vault.
 - Add `armarium update --extensions` to also update every out-of-date installed extension.
 - Report in validation a vault's copies of Armarium files or installed extensions that differ from the running Armarium's (`vault.outdated`).
 - Add `armarium update` to bring the files Armarium copied into a vault up to date, merging the vault's own changes to them.
