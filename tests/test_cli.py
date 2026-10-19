@@ -1507,7 +1507,7 @@ class TestUpdateExtensionCommand:
             data["properties"]["frontmatter"]["required"].append("region")
             schema.write_text(json.dumps(data))
         monkeypatch.setattr(extensions, "_extension", lambda name: replacement)
-        monkeypatch.setattr(extensions, "_armarium_version", lambda: "2.0.0")
+        monkeypatch.setattr(extensions, "armarium_version", lambda: "2.0.0")
         monkeypatch.chdir(root / "content")
         monkeypatch.setattr(sys, "argv", ["armarium", "extension", "update", "example"])
         if requires_migration:
@@ -1566,7 +1566,7 @@ class TestDowngradeOption:
         data = json.loads(config.read_text())
         data["example"]["armarium_version"] = "2.0.0"
         config.write_text(json.dumps(data))
-        monkeypatch.setattr(extensions, "_armarium_version", lambda: "1.0.0")
+        monkeypatch.setattr(extensions, "armarium_version", lambda: "1.0.0")
         monkeypatch.setattr(
             sys,
             "argv",

@@ -1084,7 +1084,7 @@ class TestArmariumVersion:
             extensions, "__file__", str(project / "src/armarium/extensions.py")
         )
         monkeypatch.setattr(extensions, "version", lambda name: "3.4.5")
-        assert extensions._armarium_version() == ("3.4.5" if packaged else "2.3.4")
+        assert extensions.armarium_version() == ("3.4.5" if packaged else "2.3.4")
 
 
 class TestInstallExtension:
@@ -1093,7 +1093,7 @@ class TestInstallExtension:
     ) -> None:
         import armarium.extensions as extensions
 
-        monkeypatch.setattr(extensions, "_armarium_version", lambda: "2.0.0")
+        monkeypatch.setattr(extensions, "armarium_version", lambda: "2.0.0")
         extensions._install_extension("example", vault, {})
         assert _declarations(vault / CONFIG)["example"]["armarium_version"] == "2.0.0"
         assert not validate(vault).failed
@@ -1106,7 +1106,7 @@ def replacement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     source = tmp_path / "replacement"
     shutil.copytree(ROOT / "extensions/example", source)
     monkeypatch.setattr(extensions, "_extension", lambda name: source)
-    monkeypatch.setattr(extensions, "_armarium_version", lambda: "2.0.0")
+    monkeypatch.setattr(extensions, "armarium_version", lambda: "2.0.0")
     return source
 
 
@@ -1331,7 +1331,7 @@ class TestUpdateDowngrade:
         declarations = _declarations(config)
         declarations["example"]["armarium_version"] = previous
         config.write_text(json.dumps(declarations))
-        monkeypatch.setattr(extensions, "_armarium_version", lambda: available)
+        monkeypatch.setattr(extensions, "armarium_version", lambda: available)
         before = {p: p.read_bytes() for p in enabled.rglob("*") if p.is_file()}
         if downgrade and not allow:
             with pytest.raises(ValueError, match="--allow-downgrade"):
