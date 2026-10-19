@@ -45,6 +45,7 @@ Run these from the vault root, or add `--vault PATH`.
 | `armarium illustrate ingest "PATH" "PICTURE"` | takes a picture into `assets/` as a record's image and sets its `image` field |
 | `armarium handout "PATH" ... -o FILE.pdf` | prints records as player handouts, a page each, with a callout's text and their picture |
 | `armarium transcribe "FILE"` | turns a session recording, or raw speech-to-text, into text ready to clean into a Transcript |
+| `armarium update` | brings the files Armarium copied into the vault, such as Type records, schemas, skills and this page, up to date, keeping the vault's edits; `--dry-run` lists the changes |
 | `armarium validate .` | checks the whole vault; give a file to check one record |
 
 ## Rules to keep
@@ -52,5 +53,10 @@ Run these from the vault root, or add `--vault PATH`.
 - Every link must resolve to exactly one file.
 - Rename, merge and delete records with the commands, never by hand.
 - Validate before you commit; fix what it reports.
+- Bring the files Armarium copied in up to date with `armarium update`,
+  never by hand. Where it reports a conflict, resolve the file it names under
+  `.scratch/armarium-update/`, removing the conflict markers, and run it again.
+- Do not edit `.armarium/`. It holds the copies `armarium update` merges
+  against.
 - Do not edit the files under `reference/extensions/NAME/`. They are installed
   by Armarium and replaced by `armarium extension update`.

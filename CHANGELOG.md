@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Tell agents in the vault guide and `AGENTS.md` to bring Armarium's files up to date with `armarium update`, dry-running it first, and to leave `.armarium/` alone.
 - Report each file `armarium update` merges on one line, count a merge or resolution that leaves the vault's file unchanged as kept, and name the conflicts folder relative to the vault.
 - Add `armarium update --extensions` to also update every out-of-date installed extension.
 - Report in validation a vault's copies of Armarium files or installed extensions that differ from the running Armarium's (`vault.outdated`).

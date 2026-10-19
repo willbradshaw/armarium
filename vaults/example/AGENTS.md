@@ -31,6 +31,10 @@ and what belongs where, and it is the authority for this vault.
 - `reference/extensions/NAME/`: installed extension files, replaced by
   `armarium extension update`.
 - `.obsidian/`: the Obsidian settings the records rely on.
+- `.armarium/`: Armarium's copies of the files it supplied, which
+  `armarium update` merges the vault's edits against. When validation
+  reports `vault.outdated`, run `armarium update --dry-run`, report what it
+  would change and any conflicts, and update only when the GM says so.
 
 ## This vault
 
