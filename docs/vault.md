@@ -127,6 +127,10 @@ This includes Obsidian's own `workspace.json` and `workspace-mobile.json` in
 `.agents/skills/` and `.claude/skills/`, which hold the vault's
 [agent skills](agents.md).
 
+`.scratch/` is working space for commands and their users, kept out of Git.
+`.gitkeep` files keep otherwise empty directories in Git. A vault can be its own
+Git repository; keep `.obsidian/` in it, apart from the workspace files above.
+
 Optional [extensions](extensions.md) are declared in `reference/extensions.json`;
 their schemas, templates and reference pages live in `reference/extensions/NAME/`.
 Illustration [styles](illustrate.md#styles) are Reference records of subtype
