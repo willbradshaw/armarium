@@ -37,6 +37,9 @@ Run these from the vault root, or add `--vault PATH`.
 | `armarium add content "NAME" --subtype SUBTYPE` | creates a record from the vault's template; also `session`, `clue`, `note`, `player`, `transcript` and `campaign` |
 | `armarium find "NAME"` | lists the records with that name or alias |
 | `armarium trace "PATH"` | lists every link to a record, and where each one sits |
+| `armarium rename "PATH" "NAME"` | renames a record and rewrites every link to it; `--alias` keeps the old name |
+| `armarium merge --from "SOURCE" --into "TARGET"` | merges a record into another and repoints its links, listing where the two disagree |
+| `armarium delete "PATH"` | deletes a record, refusing while links to it remain; `--unlink` turns them into text |
 | `armarium illustrate prompt "PATH"` | prints what an image model should be told to paint a record's picture |
 | `armarium illustrate generate "PATH" --prompt FILE` | paints candidate pictures for a record with an image model, into `.scratch/illustrate/` |
 | `armarium illustrate ingest "PATH" "PICTURE"` | takes a picture into `assets/` as a record's image and sets its `image` field |
@@ -47,6 +50,7 @@ Run these from the vault root, or add `--vault PATH`.
 ## Rules to keep
 
 - Every link must resolve to exactly one file.
+- Rename, merge and delete records with the commands, never by hand.
 - Validate before you commit; fix what it reports.
 - Do not edit the files under `reference/extensions/NAME/`. They are installed
   by Armarium and replaced by `armarium extension update`.
