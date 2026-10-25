@@ -54,6 +54,8 @@ a small vault with two campaigns.
 The [documentation](https://github.com/willbradshaw/armarium/blob/main/docs/README.md)
 covers every command, the vault's layout and record types, extensions and agent
 support.
+[Running a campaign](https://github.com/willbradshaw/armarium/blob/main/docs/running.md)
+shows how the pieces fit together.
 
 Armarium is MIT licensed. See the
 [changelog](https://github.com/willbradshaw/armarium/blob/main/CHANGELOG.md)
