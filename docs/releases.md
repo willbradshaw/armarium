@@ -45,5 +45,4 @@ major version removes it.
 
 Within a major version, `armarium update` and `armarium extension update` bring
 a vault up to date without edits to records that follow the documentation. A
-major version's changelog
-lists the record edits it requires.
+major version's changelog lists the record edits it requires.
