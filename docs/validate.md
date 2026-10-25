@@ -1,6 +1,8 @@
 # Validation
 
-`armarium validate` is a read-only command which validates one or more paths against the rules defined in these documents, reporting each way they depart from expectations.
+`armarium validate` checks records, directories and vaults against the rules
+these pages set out, and reports each way they depart from them. It changes
+nothing.
 
 ## Usage
 
@@ -9,16 +11,18 @@ armarium validate [--vault VAULT] [--jobs N] PATH
 ```
 
 `PATH` is a record, a directory or a vault; [Scope](#scope) says what each
-gets. A vault is recognised by its `reference/types/` and `campaigns/`
-directories, so a vault missing either is not found: a directory run passes
-over it as not a vault and reports nothing checked, and a single record
-inside it is refused. `--vault VAULT` names the vault directory explicitly so
-that such a vault is validated anyway and what it lacks is reported.
+gets. The command recognises a vault by its `reference/types/` and
+`campaigns/` directories, so it does not find a vault missing either: a
+directory run passes over it as not a vault and reports nothing checked, and
+the command refuses a single record inside it. `--vault VAULT` names the vault
+directory explicitly, so that the command validates such a vault anyway and
+reports what it lacks.
+
 `--jobs N` validates a directory's records with `N` worker processes; the
 findings and their order are the same as with one. Without it, a vault's
-records get one worker per 500, up to one per CPU, so fewer than 1,000 are
-validated in one process: every worker indexes the vault first, which slows
-small runs. `--help` prints the usage.
+records get one worker per 500, up to one per CPU, so one process validates
+fewer than 1,000: every worker indexes the vault first, which slows small
+runs. `--help` prints the usage.
 
 ```sh
 armarium validate .                                    # the vault in the current directory
@@ -30,35 +34,43 @@ armarium validate . --jobs 1                           # a large vault, in one p
 
 ## Scope
 
-What is validated depends on the path given:
+What the command validates depends on the path:
 
-- Passing a single [record](record.md) validates that file alone, in the context of the [vault](vault.md) that contains it.
-- Passing a directory inside a vault validates every record within it.
-- Passing a vault root validates every record within it, as well as the vault's layout.
-- Passing a directory that contains one or more vault roots validates each vault root within it, ignoring any files outside a vault.
+- A single [record](record.md): that file alone, in the context of the
+  [vault](vault.md) that contains it.
+- A directory inside a vault: every record in it.
+- A vault root: every record in the vault, and the vault's layout.
+- A directory that contains one or more vault roots: each of those vaults,
+  ignoring files outside a vault.
 
-Hidden files, symlinks, `__pycache__` and `node_modules` are never read.
-Templates in `reference/templates/` are parsed but not validated, and are
-counted as skipped.
+The command never reads hidden files, symlinks, `__pycache__` or
+`node_modules`. It parses templates in `reference/templates/` but does not
+validate them, and counts them as skipped.
 
 ## Order
 
-Each record is first parsed, then checked for a valid [type](type.md), then validated against that type's schema, then given further checks. A record that fails at one stage does not go through later stages. A vault root's layout is checked once, after its records.
+The command parses each record, then checks that it has a valid
+[type](type.md), then validates it against that type's schema, then runs the
+further checks. A record that fails one stage goes through no later stage. The
+command checks a vault root's layout once, after its records.
 
 ## Checks
 
-Some checks are run for every record of every type:
+Every record of every type must:
 
-- The record must have a valid type and validate against that type's schema
-- The record must be placed correctly in the filetree given its type
-- The record must have a valid filename for its type
-- Every wikilink in the record must resolve uniquely, and any heading or block anchor it names must exist
+- have a valid type and satisfy that type's schema;
+- sit where its type places it in the vault;
+- have a valid filename for its type;
+- have every wikilink resolve to one file, and every heading or block anchor
+  a link names exist.
 
-Beyond this, some types of record undergo additional checks to ensure they obey the rules defined in their [Type documentation](type.md). For example, some frontmatter fields must link to valid records of a particular type.
+Some types have further checks for the rules their [Type records](type.md)
+set out. For example, some frontmatter fields must link to valid records of a
+particular type.
 
 ## Output
 
-Each finding is one line on standard error, with a standard format:
+Each finding is one line on standard error, in this format:
 
 ```text
 [TIME] SEVERITY: PATH:FIELD:LINE - ID - MESSAGE
@@ -66,13 +78,15 @@ Each finding is one line on standard error, with a standard format:
 
 where:
 
-- `TIME` is the logging time, with format `YYYY-MM-DD HH:MM:SS.SS UTC`
-- `SEVERITY` is `ERROR`, `WARNING` or `INFO`
-- `PATH` is the offending file's path, relative to the directory passed to `armarium validate`, or to the vault root when a single record is passed; `.` for a finding about the vault itself
-- `FIELD` is the offending frontmatter field, if any, or blank otherwise
-- `LINE` is the offending line number in the file body, if any, or blank otherwise
-- `ID` is the rule identifier causing the finding, such as `link.missing`
-- `MESSAGE` is the human-readable finding message
+- `TIME` is when the finding was logged, as `YYYY-MM-DD HH:MM:SS.SS UTC`;
+- `SEVERITY` is `ERROR`, `WARNING` or `INFO`;
+- `PATH` is the file's path, relative to the directory given to
+  `armarium validate`, or to the vault root when it was given a single
+  record; it is `.` for a finding about the vault itself;
+- `FIELD` is the frontmatter field at fault, or blank;
+- `LINE` is the line number in the file body at fault, or blank;
+- `ID` is the identifier of the rule, such as `link.missing`;
+- `MESSAGE` describes the finding.
 
 For example:
 
@@ -84,9 +98,9 @@ For example:
 [2026-09-25 19:35:32.83 UTC] INFO: 66 checked, 8 skipped, 0 unsupported
 ```
 
-Findings are sorted by path and rule, so runs are comparable. The final line
-counts records: `N checked, N skipped, N unsupported` — validated, skipped
-templates, and records whose type has no schema.
+The command sorts findings by path and rule, so runs are comparable. The final
+line counts records: `N checked, N skipped, N unsupported` — validated,
+skipped templates, and records whose type has no schema.
 
 Only `ERROR` findings fail the run. The command exits with `0` when nothing
 failed, `1` after reporting when any record has an error, ending with an

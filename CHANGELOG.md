@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Reword the init, add, extensions, validate, campaign and schemas pages in plain, active sentences.
 - Say in the release guide what counts as a breaking change from 1.0.
 - Add a guide to developing Armarium, and run the schema tests in the project's uv environment rather than a separate venv.
 - Add a guide to running a campaign, `docs/running.md`, which walks through preparing, playing and recording Sessions with the example vault.

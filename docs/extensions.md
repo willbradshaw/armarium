@@ -1,8 +1,8 @@
 # Extensions
 
-Extensions add schemas, templates and reference pages across the whole vault,
-including existing records and every campaign. Multiple game systems in one vault
-are not supported; use separate vaults for different systems.
+An extension adds schemas, templates and reference pages to the whole vault,
+including its existing records and every campaign. Armarium does not support
+several game systems in one vault; use a separate vault for each.
 
 | Extension | Content |
 | --- | --- |
@@ -16,21 +16,25 @@ armarium init ../my-vault --extension EXTENSION
 armarium extension enable EXTENSION --vault ../my-vault
 ```
 
-Repeat `--extension` to select several during initialization. For an existing
-vault, `--vault` defaults to the vault containing the current directory.
+Repeat `--extension` to install several when creating a vault. For an
+existing vault, `--vault` defaults to the vault containing the current
+directory.
 
-Files install into `reference/extensions/NAME/`, grouped into `schemas/`,
-`templates/` and reference documentation. Records must satisfy both core and
-extension schemas. Matching extension templates supply defaults for new records;
-conflicting templates are rejected.
+The extension's files go in `reference/extensions/NAME/`, grouped into
+`schemas/`, `templates/` and reference pages. Records must satisfy both the
+core schemas and the extension's. An extension's template for a type or
+subtype supplies the defaults for new records of it; the command refuses
+templates that conflict.
 
-An extension can also [add to the vault's agent skills](agents.md#adding-to-a-skill).
-Each addition installs as `.agents/skills/SKILL/addenda/NAME.md`. If the vault
-doesn't have that skill, the addition is skipped and the command logs a warning.
+An extension can also
+[add to the vault's agent skills](agents.md#adding-to-a-skill). Each addition
+goes in `.agents/skills/SKILL/addenda/NAME.md`. If the vault doesn't have that
+skill, the command skips the addition and logs a warning.
 
-Both commands validate the completed vault. Validation failures leave the new
-vault or enabled extension in place for correction. Installation failures roll
-back the operation, including all selected extensions during initialization.
+Both commands validate the vault once they finish. If validation fails, the
+new vault or the enabled extension stays in place for you to correct. If
+installing fails, the command undoes everything, including every extension
+selected for a new vault.
 
 ## Removing
 
@@ -38,9 +42,10 @@ back the operation, including all selected extensions during initialization.
 armarium extension remove EXTENSION --vault ../my-vault
 ```
 
-Removal unregisters the extension and deletes its installed directory and skill
-addenda, including any local edits. Records and their fields are preserved. The command then validates
-the vault; validation failures leave the removal in place for correction.
+`remove` unregisters the extension and deletes its installed directory and
+skill addenda, including any local edits to them. It keeps records and their
+fields. It then validates the vault; if validation fails, the extension stays
+removed for you to correct the records.
 
 ## Updating
 
@@ -48,27 +53,27 @@ the vault; validation failures leave the removal in place for correction.
 armarium extension update EXTENSION --vault ../my-vault
 ```
 
-After upgrading Armarium, run this command to replace an installed extension with
-its current files, rules and skill addenda. Until then, validation reports
-`vault.outdated` for any extension whose installed files differ from those
-Armarium supplies. [`armarium update --extensions`](update.md#extensions)
-updates every such extension along with the vault's other copied files. Local edits to installed files are
-overwritten; records, separate custom schemas and the vault's own addenda are
-preserved. Installation failures restore
-the previous extension. Validation runs afterward; failures leave the updated
-extension installed for record corrections.
+After upgrading Armarium, run this command to replace an installed extension
+with its current files, rules and skill addenda. Until then, validation
+reports `vault.outdated` for any extension whose installed files differ from
+those Armarium supplies. [`armarium update --extensions`](update.md#extensions)
+updates every such extension along with the vault's other copied files.
 
-`reference/extensions.json` records the supplying `armarium_version` on enable
-and update. Updating is allowed even when versions match. Replacing an
-extension installed by a newer Armarium version requires `--allow-downgrade`.
-The command
-does not upgrade Armarium or migrate records automatically.
+The update overwrites local edits to the installed files, and keeps records,
+separate custom schemas and the vault's own addenda. If installing fails, it
+restores the previous extension. It then validates the vault; if validation
+fails, the updated extension stays installed for you to correct the records.
+
+`reference/extensions.json` records the `armarium_version` that supplied the
+extension, on enable and on update. An update runs even when the versions
+match. Replacing an extension installed by a newer Armarium requires
+`--allow-downgrade`. The command does not upgrade Armarium or migrate records.
 
 ## Custom schemas
 
-Do not edit installed extension files. Store custom constraints separately, for
-example in `reference/schemas/custom.schema.json`. Register them by adding an entry
-to `reference/extensions.json`, alongside the installed extensions:
+Do not edit installed extension files. Keep your own constraints in a separate
+schema, such as `reference/schemas/custom.schema.json`, and register it with
+an entry in `reference/extensions.json`, beside the installed extensions:
 
 ```json
 {
@@ -80,31 +85,36 @@ to `reference/extensions.json`, alongside the installed extensions:
 }
 ```
 
-This applies the custom schema to Content records in addition to their existing
-schemas. The path names a file inside the vault's `reference/` directory. Removing
-this local registration leaves the custom schema file intact.
+This entry applies the custom schema to Content records, on top of their
+existing schemas. The path names a file in the vault's `reference/` directory.
+Removing the entry leaves the schema file in place.
 
 ## Defining an extension
 
-Put files in `extensions/NAME/` and declare rules in `extension.json`; see the
-[example declaration](../extensions/example/extension.json). Each rule requires
-`type` and `schema`. Optional `subtype` limits its scope to an existing subtype;
-optional `template` selects a template. Optional `yaml_blocks` lists code block
-info strings, such as `statblock`, whose fenced blocks must hold a YAML mapping
-in matching records; validation reports `extension.yaml` otherwise. Optional
-`links` [declares link targets](#declaring-link-targets). Source
-declaration paths are relative to the extension directory. Schemas and templates
-belong in their respective subdirectories.
+Put the extension's files in `extensions/NAME/` and declare its rules in
+`extension.json`, as in the
+[example declaration](../extensions/example/extension.json). Each rule
+requires `type` and `schema`, and may also have:
 
-To add to an agent skill, put a Markdown file named for the skill in `skills/`,
-such as `skills/update-record.md`. It needs no declaration, and installs as that
-skill's addendum, not with the reference files.
+- `subtype`, limiting the rule to an existing subtype;
+- `template`, the template for new records the rule matches;
+- `yaml_blocks`, a list of code block info strings, such as `statblock`. A
+  fenced block with one of them in a matching record must hold a YAML mapping,
+  or validation reports `extension.yaml`;
+- `links`, [declaring link targets](#declaring-link-targets).
+
+Paths in the declaration are relative to the extension directory. Schemas go
+in `schemas/` and templates in `templates/`.
+
+To add to an agent skill, put a Markdown file named for the skill in
+`skills/`, such as `skills/update-record.md`. It needs no declaration, and
+installs as that skill's addendum, not with the reference files.
 
 ### Declaring subtypes
 
-An extension can add Content subtypes not present in the base package. List them
-under `subtypes`, keyed by type, and give each a rule in the same extension that
-supplies a template:
+An extension can add Content subtypes that Armarium itself does not have. List
+them under `subtypes`, keyed by type, and give each one a rule in the same
+extension that supplies a template:
 
 ```json
 {
@@ -122,17 +132,17 @@ supplies a template:
 }
 ```
 
-Only Content subtypes can be declared; Reference has a fixed set. Names start with a letter and contain
-only letters and digits, and may not repeat a core subtype or one another
-enabled extension declares. Records of a declared subtype meet the core Content
-requirements and the extension's schema.
+Only Content takes new subtypes; Reference has a fixed set. A name starts with
+a letter and holds only letters and digits, and may not repeat a core subtype
+or one that another enabled extension declares. A record of a declared
+subtype must meet the core Content requirements and the extension's schema.
 
 ### Declaring link targets
 
 A rule's `links` restricts which records the wikilinks in a frontmatter field
-may point to. Each key is a top-level field; its value gives the record `type`
-a link in that field must target and, when that type is Content or Reference,
-optionally the `subtypes` allowed:
+may point to. Each key is a top-level field. Its value gives the record `type`
+that a link in the field must target and, when that type is Content or
+Reference, may list the `subtypes` allowed:
 
 ```json
 {
@@ -146,11 +156,11 @@ optionally the `subtypes` allowed:
 }
 ```
 
-In matching records, every link in a declared field must resolve to a
+In a matching record, every link in a declared field must resolve to a
 correctly placed record of that type and subtype, in the same campaign as the
-linking record or, for Content, shared; a list may not name the same record
+linking record or, for Content, shared. A list may not name the same record
 twice. Validation reports `link.type`, `campaign.mismatch` and
-`link.duplicate` as it does for [built-in fields](type.md). A value without
+`link.duplicate`, as it does for [built-in fields](type.md). A value without
 links, such as null or a URL, is left to the schema.
 
 A rule may not declare a field whose target the core already fixes for its
