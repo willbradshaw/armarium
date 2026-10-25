@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Link the update guide to what a version promises.
 - Reword the init, add, extensions, validate, campaign and schemas pages in plain, active sentences.
 - Say in the release guide what counts as a breaking change from 1.0.
 - Add a guide to developing Armarium, and run the schema tests in the project's uv environment rather than a separate venv.
