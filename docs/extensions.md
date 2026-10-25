@@ -59,9 +59,9 @@ the previous extension. Validation runs afterward; failures leave the updated
 extension installed for record corrections.
 
 `reference/extensions.json` records the supplying `armarium_version` on enable
-and update. Older installations without this field remain supported and acquire
-it on update. Updating is allowed even when versions match. Replacing an extension
-installed by a newer Armarium version requires `--allow-downgrade`. The command
+and update. Updating is allowed even when versions match. Replacing an
+extension installed by a newer Armarium version requires `--allow-downgrade`.
+The command
 does not upgrade Armarium or migrate records automatically.
 
 ## Custom schemas
