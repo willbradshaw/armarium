@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.0.0 (2026-10-25)
+
 The first stable release. From here, versions follow semantic versioning; see
 [What a version promises](https://github.com/willbradshaw/armarium/blob/main/docs/releases.md#what-a-version-promises).
 

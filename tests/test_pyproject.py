@@ -887,7 +887,7 @@ class TestPyproject:
                 str(python),
                 "-I",
                 "-c",
-                "from pathlib import Path; import armarium, sys; from importlib.metadata import version; assert Path(armarium.__file__).is_relative_to(Path(sys.prefix)); assert version('armarium') == '0.1.0'",
+                "from pathlib import Path; import armarium, sys; from importlib.metadata import version; assert Path(armarium.__file__).is_relative_to(Path(sys.prefix)); assert version('armarium') == '1.0.0'",
             ],
             cwd=tmp_path,
             capture_output=True,
