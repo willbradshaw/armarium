@@ -45,13 +45,17 @@ Then:
    `armarium add content "Port Briselle" --subtype Location`.
 4. Check the vault with `armarium validate .`.
 
-To see what a vault looks like in use, browse [vaults/example](vaults/example),
+To see what a vault looks like in use, browse
+[vaults/example](https://github.com/willbradshaw/armarium/tree/main/vaults/example),
 a small vault with two campaigns.
 
 ## Learn more
 
-The [documentation](docs/README.md) covers every command, the vault's layout
-and record types, extensions and agent support.
+The [documentation](https://github.com/willbradshaw/armarium/blob/main/docs/README.md)
+covers every command, the vault's layout and record types, extensions and agent
+support.
 
-Armarium is MIT licensed. See the [changelog](CHANGELOG.md) for what's new, and
-the [issues](https://github.com/willbradshaw/armarium/issues) for planned work.
+Armarium is MIT licensed. See the
+[changelog](https://github.com/willbradshaw/armarium/blob/main/CHANGELOG.md)
+for what's new, and the
+[issues](https://github.com/willbradshaw/armarium/issues) for planned work.

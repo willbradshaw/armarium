@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Link the README to the documentation, changelog and example vault by absolute GitHub URLs, so the links work on PyPI.
 - Point the vault layout page to `armarium init` for creating a vault, rather than to copying the starter vault.
 - Rewrite the README for new users, and move the command reference into a documentation index at `docs/README.md`.
 - Tell agents in the vault guide and `AGENTS.md` to bring Armarium's files up to date with `armarium update`, dry-running it first, and to leave `.armarium/` alone.
