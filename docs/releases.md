@@ -44,5 +44,6 @@ minor version: both forms work, and the old one draws a warning. The next
 major version removes it.
 
 Within a major version, `armarium update` and `armarium extension update` bring
-a vault up to date without edits to its records. A major version's changelog
+a vault up to date without edits to records that follow the documentation. A
+major version's changelog
 lists the record edits it requires.
