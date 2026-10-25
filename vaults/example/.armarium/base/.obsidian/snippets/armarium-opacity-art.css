@@ -1,0 +1,9 @@
+/* Art stored as black opacity is black on a transparent ground, which a dark
+   theme would hide. On a dark theme, show the art in assets/art/ink/ inverted,
+   as white. Print and PDF export are left alone, so it still prints black.
+   To cover another folder of black-opacity art, add a selector for it. */
+@media screen {
+  .theme-dark img[src*="/assets/art/ink/"] {
+    filter: invert(1);
+  }
+}

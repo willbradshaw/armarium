@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Reference record",
+  "description": "A completed record (including permitted stubs) as JSON-compatible parsed frontmatter and Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[Reference]]"
+        },
+        "subtype": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+          "description": "Optional. Style for an illustration style, Layout for a handout layout. Membership requires a separate vault-aware check."
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Style"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "properties": {
+              "illustrates": {
+                "$ref": "#/$defs/kinds",
+                "description": "The record kinds the style applies to, each a type or Type/Subtype, such as Content/Gear."
+              },
+              "directory": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^assets(?:/(?!\\.\\.?(?:/|$))[^/]+)+$",
+                "description": "The folder inside assets/ that the style's art goes in."
+              },
+              "opacity": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the style's art is a drawing on white stored as black opacity on a transparent ground."
+              },
+              "max_bytes": {
+                "$ref": "#/$defs/count",
+                "description": "The largest art file allowed, in bytes."
+              },
+              "max_edge": {
+                "$ref": "#/$defs/count",
+                "description": "The largest long edge allowed, in pixels."
+              },
+              "references": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "Links to images that show the style, or to records whose image does.",
+                "items": {
+                  "$ref": "#/$defs/wikilink"
+                }
+              },
+              "sample": {
+                "$ref": "#/$defs/count",
+                "description": "How many references to send with each candidate, drawn at random."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subtype": {
+                "const": "Layout"
+              }
+            },
+            "required": [
+              "subtype"
+            ]
+          },
+          "then": {
+            "properties": {
+              "prints": {
+                "$ref": "#/$defs/kinds",
+                "description": "The record kinds the layout applies to, each a type or Type/Subtype, such as Content/Gear."
+              },
+              "callout": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "description": "The type of the callout whose text prints, such as rules or handout."
+              },
+              "title": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the record's name prints at the top of the page."
+              },
+              "page": {
+                "enum": [
+                  "letter",
+                  "a4",
+                  null
+                ],
+                "description": "The paper size."
+              },
+              "margin": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9]+(?:\\.[0-9]+)?(?:in|mm|cm|pt)$",
+                "description": "The margin on every side, as a length such as 0.7in or 18mm."
+              },
+              "font": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "\\S",
+                "description": "A standard PDF font, such as Times-Roman, or the path of a TrueType font file, absolute or relative to the vault root."
+              },
+              "title_size": {
+                "$ref": "#/$defs/size",
+                "description": "The title's font size, in points."
+              },
+              "min_text_size": {
+                "$ref": "#/$defs/size",
+                "description": "The smallest font size the rules text may take, in points."
+              },
+              "max_text_size": {
+                "$ref": "#/$defs/size",
+                "description": "The largest font size the rules text may take, in points."
+              },
+              "line_spacing": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "The distance between lines of text, as a multiple of the font size."
+              },
+              "image_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "description": "The share of the space below the title that the rules text leaves to the picture."
+              },
+              "mark": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "required": [
+                  "field",
+                  "text"
+                ],
+                "properties": {
+                  "field": {
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "The frontmatter field that, when true, puts the mark on the page."
+                  },
+                  "text": {
+                    "type": "string",
+                    "pattern": "\\S",
+                    "description": "The text of the mark, printed in the page's top right corner."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "underline_links": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the text of a link is underlined."
+              },
+              "lowercase_links": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "Whether the text of a link is printed in lowercase."
+              }
+            }
+          }
+        }
+      ]
+    },
+    "body": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "wikilink": {
+      "type": "string",
+      "pattern": "^\\[\\[(?!\\s*\\]\\])[^\\[\\]#|\\r\\n]+\\]\\]$",
+      "description": "Canonical internal wikilink without an alias or anchor. Existence and target kind must be checked separately."
+    },
+    "count": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "size": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "exclusiveMinimum": 0
+    },
+    "kinds": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "pattern": "^[^/\\s](?:[^/]*[^/\\s])?(?:/[^/\\s](?:[^/]*[^/\\s])?)?$"
+      }
+    }
+  }
+}

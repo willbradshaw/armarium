@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Note record",
+  "description": "A freeform working document as JSON-compatible parsed frontmatter and Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[types/Note]]"
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string"
+    }
+  }
+}

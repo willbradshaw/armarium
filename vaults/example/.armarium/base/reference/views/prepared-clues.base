@@ -1,0 +1,22 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Clue")'
+    - 'file.folder == "campaigns/" + this.file.folder.split("/")[1] + "/clues"'
+    - 'list(this.prepared_clues).contains(file)'
+formulas:
+  text: 'note.text'
+  selection_order: 'list(this.prepared_clues).map(if(value == file, index, -1)).filter(value >= 0)[0]'
+properties:
+  file.name:
+    displayName: ID
+  formula.text:
+    displayName: Text
+views:
+  - type: table
+    name: Secrets & Clues
+    order: [file.name, formula.text]
+    rowHeight: medium
+    sort:
+      - property: formula.selection_order
+        direction: ASC

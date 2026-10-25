@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Record the example vault's copies of Armarium's files in `.armarium/`, so `armarium update` keeps it up to date.
 - Link the update guide to what a version promises.
 - Reword the init, add, extensions, validate, campaign and schemas pages in plain, active sentences.
 - Say in the release guide what counts as a breaking change from 1.0.
