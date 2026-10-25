@@ -19,14 +19,6 @@ comes as an extension.
   `armarium validate` tells you when something has drifted.
 - **Links that hold.** Rename, merge or delete a record, and Armarium rewrites
   every link to it.
-- **Preparation kept apart from play.** A Session separates what you prepared
-  from what happened at the table, and each character, place and item lists the
-  sessions it actually appeared in.
-- **Clues you can follow.** Each clue moves from pending through hinted to
-  revealed, and every character, place and item shows the clues still open
-  about it.
-- **More than one campaign.** Campaigns in one vault can share a setting while
-  keeping their own state.
 - **Help at the table and after it.** Turn a session recording into a
   transcript, print handouts for the players, and illustrate records.
 - **Ready for AI assistants.** Every vault carries instructions and skills, so
