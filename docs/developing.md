@@ -1,0 +1,95 @@
+# Developing Armarium
+
+For contributors changing Armarium itself. Pull requests run the same checks
+as the commands below; a release runs them all again before publishing.
+
+## Setting up
+
+From a checkout, create the development environment with
+[uv](https://docs.astral.sh/uv/):
+
+```sh
+uv sync --extra dev
+```
+
+This installs Armarium in editable mode with its development tools in `.venv/`.
+Run every command below through `uv run`, which uses that environment. To have
+the checkout's `armarium` on your PATH outside the repository, install it as a
+tool instead:
+
+```sh
+uv tool install --reinstall-package armarium .
+```
+
+## Tests
+
+```sh
+uv run python -m pytest -q
+```
+
+Tests marked `package` build the distributions and install the wheel in a fresh
+environment, so they check what users install rather than the checkout. They
+are slower, and CI runs them as a separate job:
+
+```sh
+uv run python -m pytest -q -m "not package"
+uv run python -m pytest -q -m package
+```
+
+`tests/schemas/` tests the starter vault's JSON schemas and views on their own,
+and runs in about a second:
+
+```sh
+uv run python -m pytest tests/schemas -q
+```
+
+Tests for `src/armarium/X.py` go in `tests/test_X.py`; [AGENTS.md](../AGENTS.md)
+sets out how they are organised.
+
+## Lint and type checks
+
+```sh
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy --strict src
+```
+
+`uv run ruff format .` and `uv run ruff check --fix .` fix what they can.
+
+## Validating the vaults
+
+```sh
+uv run armarium validate .
+```
+
+This validates the starter and example vaults, which must report no errors.
+
+## Where things live
+
+| Path | Holds |
+| --- | --- |
+| `src/armarium/` | the package: one module per command, with shared code in `lib.py`, `parse.py` and `index.py`, and checks in `validate.py` |
+| `tests/` | the tests, with the schema tests in `tests/schemas/` |
+| `vaults/starter/` | the vault `armarium init` copies; the wheel ships it as `armarium/starter` |
+| `vaults/example/` | the starter vault with example records, used in tests and docs; only the source distribution ships it |
+| `extensions/` | the bundled [extensions](extensions.md); the wheel ships them as `armarium/extensions` |
+| `docs/` | these guides |
+
+## Keeping the starter and example vaults in sync
+
+The example vault is the starter vault plus records. Every file outside
+`content/`, `notes/`, `campaigns/` and `assets/` must be the same, byte for
+byte, in both vaults, and `tests/test_vaults.py` fails when one differs or is
+missing. Make a change in `vaults/starter/`, copy the changed files to the same
+paths in `vaults/example/`, and add or change example records where the change
+needs them.
+
+The example vault also enables the `example` extension, whose installed copy
+lives in `vaults/example/reference/extensions/`. After changing
+`extensions/example/`, refresh that copy:
+
+```sh
+uv run armarium extension update example --vault vaults/example
+```
+
+Until then, validation reports the copy as out of date (`vault.outdated`).

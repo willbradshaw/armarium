@@ -47,8 +47,6 @@ restart your terminal. To move to a newer release, run
 
 | Guide | Covers |
 | --- | --- |
+| [Developing Armarium](developing.md) | setting up, testing, checking and where things live |
 | [Schema development](schemas.md) | how the JSON schemas are built, integrated and tested |
 | [Releases](releases.md) | how a release is made |
-
-To work on Armarium itself, install it from a checkout with
-`uv tool install --reinstall-package armarium .`.
