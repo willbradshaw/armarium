@@ -28,15 +28,21 @@ a valid vault invalid or a working script fail:
 - removing or renaming a type, field, vault folder, command or option;
 - changing a command's tab-separated output, the layout of validation
   findings, a rule ID or an exit status;
-- adding a check that fails records the previous version accepted.
+- adding a rule, such as a required field, that fails records the
+  documentation allowed.
 
 These changes are not breaking:
 
 - new types, optional fields and options;
 - new warnings;
+- fixes to validation that report records already breaking a documented rule;
 - changes to message wording and log lines;
 - changes to Armarium's Python modules, which are not a public interface.
 
+A field, option or command to be removed or renamed is first deprecated in a
+minor version: both forms work, and the old one draws a warning. The next
+major version removes it.
+
 Within a major version, `armarium update` and `armarium extension update` bring
-a vault up to date without edits to its records. A major version's changelog
-lists the record edits it requires.
+a vault up to date without edits to records that follow the documentation. A
+major version's changelog lists the record edits it requires.
