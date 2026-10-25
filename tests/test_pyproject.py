@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tomllib
 import venv
 import zipfile
 from pathlib import Path
@@ -14,6 +15,10 @@ from pathlib import Path
 import pytest
 
 from armarium.lib import managed_files
+
+VERSION = tomllib.loads(
+    (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
+)["project"]["version"]
 
 
 @pytest.fixture(scope="module")
@@ -887,7 +892,8 @@ class TestPyproject:
                 str(python),
                 "-I",
                 "-c",
-                "from pathlib import Path; import armarium, sys; from importlib.metadata import version; assert Path(armarium.__file__).is_relative_to(Path(sys.prefix)); assert version('armarium') == '1.0.0'",
+                "from pathlib import Path; import armarium, sys; from importlib.metadata import version; assert Path(armarium.__file__).is_relative_to(Path(sys.prefix)); assert version('armarium') == sys.argv[1]",
+                VERSION,
             ],
             cwd=tmp_path,
             capture_output=True,
@@ -1120,17 +1126,11 @@ class TestInstalledExtensions:
         )
         assert updated.returncode == 0, updated.stderr
         assert not (installed_extension / "obsolete.md").exists()
-        import tomllib
-
-        with (Path(__file__).resolve().parents[1] / "pyproject.toml").open(
-            "rb"
-        ) as stream:
-            expected_version = tomllib.load(stream)["project"]["version"]
         assert (
             json.loads((root / "reference/extensions.json").read_text())[extension][
                 "armarium_version"
             ]
-            == expected_version
+            == VERSION
         )
         path = root / "content/Harbor.md"
         initial = {
