@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Armarium Type definition",
+  "description": "A typed definition represented by JSON-compatible frontmatter and a Markdown body.",
+  "type": "object",
+  "required": [
+    "frontmatter",
+    "body"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "frontmatter": {
+      "type": "object",
+      "required": [
+        "type",
+        "directories"
+      ],
+      "properties": {
+        "type": {
+          "const": "[[Type]]"
+        },
+        "directories": {
+          "type": "object",
+          "description": "Where records of this type live: shared paths are relative to the vault root, campaign paths to each campaigns/campaign_N. Declare one or both.",
+          "minProperties": 1,
+          "properties": {
+            "shared": {
+              "$ref": "#/$defs/directory"
+            },
+            "campaign": {
+              "$ref": "#/$defs/directory"
+            }
+          },
+          "additionalProperties": false
+        },
+        "subtype_directories": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "On the Content and Reference Type records, the subfolder of each of the type's directories that holds records of a subtype. Subtypes left out may sit anywhere in the type's directory.",
+          "propertyNames": {
+            "pattern": "^[A-Za-z][A-Za-z0-9]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/directory"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "body": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "directory": {
+      "type": "string",
+      "pattern": "^(?!\\.\\.?(?:/|$))[^/]+(?:/(?!\\.\\.?(?:/|$))[^/]+)*$",
+      "description": "Relative path without a leading /, empty segments, or . and .. segments."
+    }
+  }
+}

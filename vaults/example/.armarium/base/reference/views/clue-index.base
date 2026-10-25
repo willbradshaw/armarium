@@ -1,0 +1,33 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Clue")'
+    - 'file.folder == "campaigns/" + this.file.folder.split("/")[1] + "/clues"'
+formulas:
+  text: 'note.text'
+properties:
+  file.name:
+    displayName: ID
+  note.status:
+    displayName: Status
+  note.last_session:
+    displayName: Last Session
+  formula.text:
+    displayName: Text
+views:
+  - type: table
+    name: Active
+    filters: '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
+    order: [file.name, status, last_session, formula.text]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Closed
+    filters: '[link("reference/statuses/Revealed"), link("reference/statuses/Abandoned"), link("reference/statuses/Dormant"), link("reference/statuses/Superseded")].contains(status)'
+    order: [file.name, status, last_session, formula.text]
+    rowHeight: medium
+    sort:
+      - property: file.name
+        direction: ASC

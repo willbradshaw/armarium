@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from armarium.lib import RECORD, managed_files
 from armarium.parse import Frontmatter
+from armarium.update import plan_update
 from armarium.validate import validate
 
 VAULTS = Path(__file__).resolve().parents[1] / "vaults"
@@ -25,11 +27,11 @@ def skill_metadata(path: Path) -> tuple[dict[str, object], str]:
 
 
 def shared_files(vault: Path) -> dict[Path, Path]:
-    """Map each non-content file's vault-relative path to its absolute path."""
+    """Map each file outside the content and record to its absolute path."""
     files: dict[Path, Path] = {}
     for path in sorted(vault.rglob("*")):
         relative = path.relative_to(vault)
-        if path.is_dir() or relative.parts[0] in CONTENT_DIRECTORIES:
+        if path.is_dir() or relative.parts[0] in CONTENT_DIRECTORIES | {RECORD.name}:
             continue
         files[relative] = path
     return files
@@ -45,6 +47,11 @@ class TestSharedFiles:
             Path(".gitignore"): tmp_path / ".gitignore",
             Path("reference/sub/a.md"): tmp_path / "reference/sub/a.md",
         }
+
+    def test_excludes_the_record(self, tmp_path: Path) -> None:
+        (tmp_path / RECORD / "base").mkdir(parents=True)
+        (tmp_path / RECORD / "vault.json").write_text("{}")
+        assert shared_files(tmp_path) == {}
 
     def test_keeps_hidden_directories(self, tmp_path: Path) -> None:
         (tmp_path / ".obsidian").mkdir()
@@ -79,6 +86,11 @@ class TestVaultParity:
             assert starter[relative].read_bytes() == example[relative].read_bytes(), (
                 f"differs: {relative}"
             )
+
+
+class TestExampleRecord:
+    def test_update_changes_nothing(self) -> None:
+        assert plan_update(EXAMPLE, managed_files(STARTER)).changes == []
 
 
 class TestSkillMetadata:

@@ -77,12 +77,19 @@ This validates the starter and example vaults, which must report no errors.
 
 ## Keeping the starter and example vaults in sync
 
-The example vault is the starter vault plus records. Every file outside
-`content/`, `notes/`, `campaigns/` and `assets/` must be the same, byte for
-byte, in both vaults, and `tests/test_vaults.py` fails when one differs or is
-missing. Make a change in `vaults/starter/`, copy the changed files to the same
-paths in `vaults/example/`, and add or change example records where the change
-needs them.
+The example vault is the starter vault plus records, kept up to date as any
+vault is. Every file outside `content/`, `notes/`, `campaigns/`, `assets/` and
+`.armarium/` must be the same, byte for byte, in both vaults, and
+`tests/test_vaults.py` fails when one differs or is missing. After changing
+`vaults/starter/`, bring the example vault up to date:
+
+```sh
+uv run armarium update --vault vaults/example
+```
+
+Then add or change example records where the change needs them. Until the
+update, validation reports the example vault as out of date
+(`vault.outdated`).
 
 The example vault also enables the `example` extension, whose installed copy
 lives in `vaults/example/reference/extensions/`. After changing

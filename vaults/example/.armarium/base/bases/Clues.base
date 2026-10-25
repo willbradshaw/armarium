@@ -1,0 +1,50 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - '!file.inFolder("reference")'
+    - 'type == link("reference/types/Clue")'
+formulas:
+  campaign: 'file.folder.split("/")[1]'
+  text: 'note.text'
+  status_order: '[link("reference/statuses/Pending"), link("reference/statuses/Hinted"), link("reference/statuses/Revealed"), link("reference/statuses/Dormant"), link("reference/statuses/Abandoned"), link("reference/statuses/Superseded")].map(if(value == status, index, -1)).filter(value >= 0)[0]'
+properties:
+  file.name:
+    displayName: ID
+  formula.campaign:
+    displayName: Campaign
+  note.status:
+    displayName: Status
+  formula.text:
+    displayName: Text
+  note.subjects:
+    displayName: Subjects
+  note.first_session:
+    displayName: First Session
+  note.last_session:
+    displayName: Last Session
+views:
+  - type: table
+    name: All
+    groupBy:
+      property: formula.campaign
+      direction: ASC
+    order: [file.name, status, formula.text, subjects, first_session, last_session]
+    rowHeight: medium
+    sort:
+      - property: formula.status_order
+        direction: ASC
+      - property: file.name
+        direction: ASC
+  - type: table
+    name: Active
+    filters: '[link("reference/statuses/Pending"), link("reference/statuses/Hinted")].contains(status)'
+    groupBy:
+      property: formula.campaign
+      direction: ASC
+    order: [file.name, status, formula.text, subjects, first_session, last_session]
+    rowHeight: medium
+    sort:
+      - property: formula.status_order
+        direction: ASC
+      - property: file.name
+        direction: ASC

@@ -1,0 +1,23 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Content")'
+    - 'file.inFolder("content") || file.inFolder("campaigns/" + this.file.folder.split("/")[1] + "/content")'
+    - 'list(this.prepared_npcs).contains(file)'
+    - 'subtype == "NPC"'
+formulas:
+  summary: 'note.summary'
+  selection_order: 'list(this.prepared_npcs).map(if(value == file, index, -1)).filter(value >= 0)[0]'
+properties:
+  file.name:
+    displayName: Name
+  formula.summary:
+    displayName: Summary
+views:
+  - type: table
+    name: Important NPCs
+    order: [file.name, formula.summary]
+    rowHeight: medium
+    sort:
+      - property: formula.selection_order
+        direction: ASC

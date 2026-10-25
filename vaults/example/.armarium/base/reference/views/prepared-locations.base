@@ -1,0 +1,23 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'type == link("reference/types/Content")'
+    - 'file.inFolder("content") || file.inFolder("campaigns/" + this.file.folder.split("/")[1] + "/content")'
+    - 'list(this.prepared_locations).contains(file)'
+    - 'subtype == "Location"'
+formulas:
+  summary: 'note.summary'
+  selection_order: 'list(this.prepared_locations).map(if(value == file, index, -1)).filter(value >= 0)[0]'
+properties:
+  file.name:
+    displayName: Location
+  formula.summary:
+    displayName: Description
+views:
+  - type: table
+    name: Locations
+    order: [file.name, formula.summary]
+    rowHeight: medium
+    sort:
+      - property: formula.selection_order
+        direction: ASC
