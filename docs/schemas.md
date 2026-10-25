@@ -1,15 +1,16 @@
 # Schema development
 
-For contributors changing and testing schemas. Record authoring rules
-live in the vault's `reference/types/` Type records.
+This page is for contributors who change and test the schemas. The rules for
+writing records are in the vault's Type records, in `reference/types/`.
 
 ## Input and schema selection
 
-Draft 2020-12 schemas validate `{frontmatter, body}`: parsed frontmatter and the
-Markdown body. Dates are represented as ISO date strings; Session `date` accepts
-`YYYY-MM-DD` or null. Custom frontmatter fields are allowed.
+The schemas are Draft 2020-12 and validate `{frontmatter, body}`: the parsed
+frontmatter and the Markdown body. Dates are ISO date strings; Session `date`
+takes `YYYY-MM-DD` or null. Custom frontmatter fields are allowed.
 
-Each supported `type` has a schema in the vault's `reference/schemas/` directory:
+Each supported `type` has a schema in the vault's `reference/schemas/`
+directory:
 
 | `type` | Schema |
 | --- | --- |
@@ -23,23 +24,24 @@ Each supported `type` has a schema in the vault's `reference/schemas/` directory
 | `[[Type]]` | `type.schema.json` |
 | `[[Status]]` | `status.schema.json` |
 
-Enabled [extensions](extensions.md) add schemas to the
-checks selected by type. Matching records must pass every applicable schema.
+Enabled [extensions](extensions.md) add schemas to those selected by type. A
+record must pass every schema that applies to it.
 
-Schemas apply to typed records; unfinished templates are a separate category.
-References are local. The tests enable URI and date format assertions.
+The schemas apply to typed records, not to unfinished templates. Their
+references are local. The tests turn on URI and date format assertions.
 
 ## Limits
 
-Body regexes check basic structure. Duplicate headings and matching fenced text
-can satisfy Content/Session heading checks; Transcript checks only one heading
-and attributed entry. Clue requires Sessions plus one Base embed, but cannot establish that
-it executes or that the embedded Base exists. Content’s Active Clues and each
-Session preparation view section also require exactly one Base embed; other
-sections retain their free Markdown content. Link existence, target kinds, campaign and
-filename identity, chronology, reciprocal relationships, history consistency and
-the structure of every Transcript section and entry require
-[vault-aware validation](validate.md).
+The body regexes check only the basic structure. Duplicate headings and
+matching text in fenced code can satisfy the Content and Session heading
+checks, and the Transcript check looks for only one heading and attributed
+entry. The Clue schema requires a Sessions heading and one Base embed, but
+cannot tell whether the Base exists or runs. Content's Active Clues and each
+of a Session's preparation view sections also require exactly one Base embed;
+the other sections hold free Markdown. Checking that links exist and target
+the right kind of record, campaign and filename identity, chronology,
+reciprocal relationships, consistent history and the structure of every
+Transcript section and entry takes [vault-aware validation](validate.md).
 
 ## Tests
 
@@ -50,6 +52,7 @@ From the repository root, with the
 uv run python -m pytest tests/schemas -q
 ```
 
-Tests cover meta-schemas, offline references, parsed JSON fixtures, committed
-Markdown records and identical schema/type-reference copies in both vaults.
-The PyYAML fixture loader is test support, not a production parser.
+The tests cover the meta-schemas, offline references, parsed JSON fixtures,
+committed Markdown records, and the identical copies of the schemas and Type
+and Status records in both vaults. The PyYAML fixture loader supports the
+tests; it is not the parser Armarium uses.
