@@ -1,11 +1,13 @@
 # Campaigns
 
-Each [vault](vault.md) holds one or more **campaigns**, each in its own directory
-`campaigns/campaign_N/` (with `N` a positive integer). Each campaign describes a series of TTRPG [sessions](type.md#session) in the vault's setting, along with their shared context and metadata.
+Each [vault](vault.md) holds one or more **campaigns**, each in its own
+directory `campaigns/campaign_N/`, where `N` is a positive integer. A campaign
+is a series of [sessions](type.md#session) in the vault's setting, with their
+shared context and metadata.
 
 This page summarises what the [Type records](type.md) and their schemas say
-about campaigns. Where records live and what a campaign block holds are set by
-those records, which are the authority.
+about campaigns. Those records, which are the authority, set where records
+live and what a campaign block holds.
 
 ## Directory
 
@@ -23,12 +25,13 @@ campaigns/campaign_N/
     transcripts/          Transcript records, S-N-NNN Transcript.md
 ```
 
-The starter vault ships `campaign_1`. Use [`armarium add campaign`](add.md#adding-a-campaign)
-to add another.
+The starter vault has `campaign_1`. Use
+[`armarium add campaign`](add.md#adding-a-campaign) to add another.
 
 ## State
 
-[Content](type.md#content) records carry `campaign_N` blocks in their frontmatter describing their campaign-related state:
+A [Content](type.md#content) record holds its state in each campaign in a
+`campaign_N` block in its frontmatter:
 
 ```yaml
 campaign_1:
@@ -59,4 +62,5 @@ which records who holds the object now:
 Once the object has entered play, `held_by` must name a holder or `GONE`. The
 Sessions record how it was acquired and passed on.
 
-In addition to the `campaign_N` blocks, a Content entry must also describe its subject's appearances in each campaign in its Appearances section; see [Content](type.md#content) for more details.
+Besides its `campaign_N` blocks, a Content record lists its appearances in
+every campaign in its Appearances section; see [Content](type.md#content).
