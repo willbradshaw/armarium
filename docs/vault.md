@@ -5,8 +5,10 @@ skeleton, with the Obsidian settings the records rely on. A folder is a vault
 when it contains `reference/types/` and `campaigns/`;
 [`armarium validate`](validate.md) checks the whole skeleton below.
 
-`vaults/starter/` in this repository is the smallest vault that passes; copy it
-to start a new one. `vaults/example/` is a populated vault with two campaigns.
+Create a vault with [`armarium init`](init.md), which copies
+`vaults/starter/`, the smallest vault that passes, and records what it copied
+so that [`armarium update`](update.md) can bring it up to date.
+`vaults/example/` is a populated vault with two campaigns.
 
 ## Skeleton
 
