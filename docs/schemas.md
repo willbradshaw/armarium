@@ -37,17 +37,17 @@ and attributed entry. Clue requires Sessions plus one Base embed, but cannot est
 it executes or that the embedded Base exists. Content’s Active Clues and each
 Session preparation view section also require exactly one Base embed; other
 sections retain their free Markdown content. Link existence, target kinds, campaign and
-filename identity, chronology, reciprocal relationships and history consistency
-require vault-aware validation.
+filename identity, chronology, reciprocal relationships, history consistency and
+the structure of every Transcript section and entry require
+[vault-aware validation](validate.md).
 
 ## Tests
 
-From the repository root, without installing Armarium:
+From the repository root, with the
+[development environment](developing.md#setting-up) set up:
 
 ```sh
-python3 -m venv /tmp/armarium-schema-venv
-/tmp/armarium-schema-venv/bin/pip install -r tests/schemas/requirements.txt
-/tmp/armarium-schema-venv/bin/python -m pytest tests/schemas -q
+uv run python -m pytest tests/schemas -q
 ```
 
 Tests cover meta-schemas, offline references, parsed JSON fixtures, committed

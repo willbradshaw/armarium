@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a guide to developing Armarium, and run the schema tests in the project's uv environment rather than a separate venv.
 - Add a guide to running a campaign, `docs/running.md`, which walks through preparing, playing and recording Sessions with the example vault.
 - Fix the campaign page's account of a `held_by` list, and say on the types and campaign pages that the Type records are the authority.
 - Fix the wording of numbering in subfolders, a fragile link to the Transcript body format and the title of the handouts page.
