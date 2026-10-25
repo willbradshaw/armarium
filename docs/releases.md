@@ -18,3 +18,17 @@ Review and publish the draft on GitHub. The `publish` workflow checks out the
 release tag, checks that it matches the package version, runs lint, type checks,
 tests and vault validation, then builds and publishes to PyPI. Tags use the
 package version without a `v` prefix, for example `0.1.0`.
+
+## What a version promises
+
+From 1.0, versions follow [semantic versioning](https://semver.org/). A
+breaking change, which needs a new major version, is one that makes a valid
+vault invalid or a working script fail: removing or renaming a type, field,
+vault folder, command or option; changing a command's tab-separated output, the
+layout of validation findings, a rule ID or an exit status; or adding a check
+that fails records the previous version accepted. New types, optional fields
+and options are not breaking, nor are new warnings or changes to message
+wording and log lines. Armarium's Python modules are not a public interface and
+may change in any release. Within a major version, `armarium update` and
+`armarium extension update` bring a vault up to date without edits to its
+records; a major version's changelog lists the record edits it requires.
