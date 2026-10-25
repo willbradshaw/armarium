@@ -4,10 +4,16 @@ Each [record](record.md) has a type, declared in its `type` field, that
 determines where it lives, which frontmatter fields it has and what its body
 contains. A type is defined by a Type record in `reference/types/` and its
 schema in `reference/schemas/`. Each Type record's body also says how records
-of its type are used, such as what counts as an appearance or a Clue. The
-built-in types follow, in alphabetical order. In the frontmatter tables, a *required* field must be present and an
-*optional* one may be omitted; a field may hold null only where null is
-listed among its values.
+of its type are used, such as what counts as an appearance or a Clue.
+
+This page summarises the built-in Type records and their schemas, which are
+the authority on each type. They are in the
+[starter vault](../vaults/starter/reference/types/), and every new vault has a
+copy.
+
+The built-in types follow, in alphabetical order. In the frontmatter tables, a
+*required* field must be present and an *optional* one may be omitted; a field
+may hold null only where null is listed among its values.
 
 ## Clue
 
