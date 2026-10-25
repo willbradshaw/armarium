@@ -3,6 +3,10 @@
 Each [vault](vault.md) holds one or more **campaigns**, each in its own directory
 `campaigns/campaign_N/` (with `N` a positive integer). Each campaign describes a series of TTRPG [sessions](type.md#session) in the vault's setting, along with their shared context and metadata.
 
+This page summarises what the [Type records](type.md) and their schemas say
+about campaigns. Where records live and what a campaign block holds are set by
+those records, which are the authority.
+
 ## Directory
 
 ```text
@@ -41,6 +45,18 @@ Session of that campaign in the record's Appearances. `N` must be an existing
 campaign, and a record under `campaigns/campaign_N/content` may carry only that
 campaign's block; shared Content may carry a block for any campaign.
 
-A Content record with the Object or Gear subtype has an additional field in its campaign blocks: `held_by`. This is null before the object enters play; then a link to a Content entry denoting the PC, NPC or Faction holding the object, or a list thereof for shared possession; then `GONE` if the object has left play.
+An Object or Gear record's campaign blocks have one more field, `held_by`,
+which records who holds the object now:
+
+- null, allowed only before the object enters play in that campaign;
+- a link to the PC, NPC or Faction Content that holds it. When the party holds
+  it together, link to the party's Faction;
+- a list of such links when the object is a set split between holders. A
+  list item may be `GONE` for a part that has left play;
+- `GONE` once the whole object has left play, for example through sale, loss,
+  destruction or consumption.
+
+Once the object has entered play, `held_by` must name a holder or `GONE`. The
+Sessions record how it was acquired and passed on.
 
 In addition to the `campaign_N` blocks, a Content entry must also describe its subject's appearances in each campaign in its Appearances section; see [Content](type.md#content) for more details.
