@@ -2,12 +2,15 @@
 
 ## Unreleased
 
+The first stable release. From here, versions follow semantic versioning; see
+[What a version promises](https://github.com/willbradshaw/armarium/blob/main/docs/releases.md#what-a-version-promises).
+
 ### Breaking changes
 
 - **`armarium update` cannot update vaults made with 0.1.0.** It needs the
   `.armarium/` record that `armarium init` now writes. To move such a vault to
-  this release, create a new vault with `armarium init` and copy its records
-  across.
+  this release, create a new vault with `armarium init`, copy in `content/`,
+  `notes/`, `campaigns/` and `assets/`, and redo any edits to its other files.
 - Require a `bases/` directory in every vault.
 - Require each record's filename and aliases to be unique among the records one
   campaign can see: its own and the shared ones.
