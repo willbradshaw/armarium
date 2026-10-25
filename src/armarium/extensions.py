@@ -599,13 +599,9 @@ def update_extension(
     declarations = _declarations(config) if config.exists() else {}
     if name not in declarations or not declarations[name].get("installed", False):
         raise ValueError(f"extension is not installed: {name}")
-    previous = declarations[name].get("armarium_version")
+    previous = declarations[name]["armarium_version"]
     available = armarium_version()
-    if (
-        previous is not None
-        and Version(previous) > Version(available)
-        and not allow_downgrade
-    ):
+    if Version(previous) > Version(available) and not allow_downgrade:
         raise ValueError(
             f"extension {name} was installed with newer Armarium {previous}; "
             f"current version is {available}. Use --allow-downgrade to replace it."

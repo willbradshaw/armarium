@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Refuse to update a vault without `.armarium/`, and require an installed extension's `armarium_version` in `reference/extensions.json`.
 - Remove the notes on extensions installed without a recorded version and on updating vaults without `.armarium/`.
 - Link the README to the documentation, changelog and example vault by absolute GitHub URLs, so the links work on PyPI.
 - Point the vault layout page to `armarium init` for creating a vault, rather than to copying the starter vault.
