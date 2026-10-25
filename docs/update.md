@@ -90,7 +90,9 @@ restore it, copy it from `.armarium/base/`.
 ## Versions
 
 `.armarium/vault.json` records the `armarium_version` of the last update.
-Updating with an older Armarium requires `--allow-downgrade`.
+Updating with an older Armarium requires `--allow-downgrade`. Within a major
+version, an update needs no edits to the vault's records; see
+[What a version promises](releases.md#what-a-version-promises).
 
 ## Extensions
 
