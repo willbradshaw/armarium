@@ -87,12 +87,6 @@ To stop updates to a managed file, add its path to `local` in
 To leave a file out of the vault, delete it; updates do not add it back. To
 restore it, copy it from `.armarium/base/`.
 
-## Vaults without a record
-
-A vault without `.armarium/` is taken to hold the running Armarium's files. The
-update records them, changes nothing else, and lists each managed file that
-differs or is missing, to check by hand.
-
 ## Versions
 
 `.armarium/vault.json` records the `armarium_version` of the last update.
