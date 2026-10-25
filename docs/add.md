@@ -75,9 +75,10 @@ sessions and content are not copied from existing campaigns.
 [Content](#content), [Players](#players) and [Notes](#notes) take a name, which becomes
 the filename. Names may contain spaces; omit `.md`.
 
-[Sessions](#sessions) and [Clues](#clues) use numbered filenames. By default, the number
-is one greater than the largest existing number of that type in the campaign, including
-archives. Use `--number N` to choose an unused number within the type's range.
+[Sessions](#sessions) and [Clues](#clues) use numbered filenames. By default,
+the number is one greater than the largest existing number of that type in the
+campaign, including records in subfolders. Use `--number N` to choose an unused
+number within the type's range.
 
 [References to existing records](record.md#links) must resolve uniquely; use
 vault-relative paths when names are ambiguous.
@@ -202,7 +203,7 @@ Transcript.md`. No Session is selected automatically.
 - [Player] Who is there?
 ```
 
-Follow the [Transcript body format](type.md#body-7): titled level-two sections, each
+Follow the body format of a [Transcript](type.md#transcript): titled level-two sections, each
 containing one bullet list of attributed, single-paragraph utterances. The supplied body
 replaces the template's instructional sample. The command imports already-formatted text
 without transcribing audio, editing speech or changing the source file or Session. Body

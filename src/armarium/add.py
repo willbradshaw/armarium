@@ -170,7 +170,7 @@ def record_number(
     prefix: str,
     digits: int,
 ) -> int:
-    """Choose an unused bounded number, including records in archive directories.
+    """Choose an unused bounded number, including records in subfolders.
 
     When omitted, use the largest existing number plus one. Explicit numbers
     must be unused and in the range representable by the filename's digits.

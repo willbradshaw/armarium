@@ -1,4 +1,4 @@
-# Handouts
+# Printing handouts
 
 A handout prints records for the players: each on a page of its own, in the
 order given, in one PDF. A page holds the record's name, the text of one of its
