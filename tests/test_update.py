@@ -201,26 +201,23 @@ class TestMerge3:
 
 class TestClassify:
     @pytest.mark.parametrize(
-        ("base", "vault", "new", "adopting", "expected"),
+        ("base", "vault", "new", "expected"),
         [
-            (b"o", b"o", None, False, Change("p", "removed")),
-            (b"o", b"v", None, False, Change("p", "released")),
-            (b"o", None, None, False, None),
-            (None, None, b"n", False, Change("p", "added", b"n")),
-            (b"o", None, b"n", False, Change("p", "omitted")),
-            (b"o", None, b"o", False, None),
-            (b"o", None, b"o", True, Change("p", "omitted")),
-            (b"o", b"n", b"n", False, None),
-            (b"o", b"o", b"n", False, Change("p", "updated", b"n")),
-            (b"o", b"v", b"o", False, None),
-            (b"o", b"v", b"o", True, Change("p", "kept")),
-            (b"a\n", b"v\na\n", b"a\nn\n", False, Change("p", "merged", b"v\na\nn\n")),
-            (b"a\n", b"v\na\nn\n", b"a\nn\n", False, Change("p", "kept")),
+            (b"o", b"o", None, Change("p", "removed")),
+            (b"o", b"v", None, Change("p", "released")),
+            (b"o", None, None, None),
+            (None, None, b"n", Change("p", "added", b"n")),
+            (b"o", None, b"n", Change("p", "omitted")),
+            (b"o", None, b"o", None),
+            (b"o", b"n", b"n", None),
+            (b"o", b"o", b"n", Change("p", "updated", b"n")),
+            (b"o", b"v", b"o", None),
+            (b"a\n", b"v\na\n", b"a\nn\n", Change("p", "merged", b"v\na\nn\n")),
+            (b"a\n", b"v\na\nn\n", b"a\nn\n", Change("p", "kept")),
             (
                 b"a\n",
                 b"v\n",
                 b"n\n",
-                False,
                 Change(
                     "p", "conflict", b"<<<<<<< vault\nv\n=======\nn\n>>>>>>> armarium\n"
                 ),
@@ -229,7 +226,6 @@ class TestClassify:
                 None,
                 b"v\n",
                 b"n\n",
-                False,
                 Change(
                     "p", "conflict", b"<<<<<<< vault\nv\n=======\nn\n>>>>>>> armarium\n"
                 ),
@@ -241,10 +237,9 @@ class TestClassify:
         base: bytes | None,
         vault: bytes | None,
         new: bytes | None,
-        adopting: bool,
         expected: Change | None,
     ) -> None:
-        assert _classify("p", base, vault, new, adopting=adopting) == expected
+        assert _classify("p", base, vault, new) == expected
 
 
 class TestVaultFile:
@@ -289,13 +284,10 @@ class TestPlanUpdate:
             Change(STYLE, "local"),
         ]
 
-    def test_adopts_vault_without_record(self, vault: Path) -> None:
+    def test_refuses_vault_without_record(self, vault: Path) -> None:
         shutil.rmtree(vault / RECORD)
-        (vault / SNIPPET).unlink()
-        append(vault / AGENTS, "Vault's own\n")
-        update = plan_update(vault, managed_files(STARTER))
-        assert update.previous is None
-        assert update.changes == [Change(SNIPPET, "omitted"), Change(AGENTS, "kept")]
+        with pytest.raises(ValueError, match="no .armarium/"):
+            plan_update(vault, managed_files(STARTER))
 
     @pytest.mark.parametrize("allow", [False, True])
     def test_downgrade(
@@ -544,26 +536,12 @@ class TestUpdateVault:
         assert not validate(vault).failed
         assert update_vault(vault).changes == []
 
-    @pytest.mark.parametrize("recorded", [False, True])
-    def test_dry_run_changes_nothing(
-        self, vault: Path, upstream: Path, recorded: bool
-    ) -> None:
-        if not recorded:
-            shutil.rmtree(vault / RECORD)
+    def test_dry_run_changes_nothing(self, vault: Path, upstream: Path) -> None:
         prepend(upstream / AGENTS, "New\n")
         before = files(vault)
         update = update_vault(vault, dry_run=True)
-        assert (update.previous is None) is not recorded
-        assert [(c.path, c.action) for c in update.changes] == [
-            (AGENTS, "updated" if recorded else "kept")
-        ]
+        assert [(c.path, c.action) for c in update.changes] == [(AGENTS, "updated")]
         assert files(vault) == before
-
-    def test_adopts_vault_without_record(self, vault: Path, upstream: Path) -> None:
-        shutil.rmtree(vault / RECORD)
-        update_vault(vault)
-        assert managed_files(vault / RECORD / "base") == managed_files(upstream)
-        assert read_settings(vault / RECORD)["local"] == []
 
     @pytest.mark.parametrize(
         ("extensions", "dry_run", "replaced"),

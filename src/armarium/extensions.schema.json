@@ -97,7 +97,22 @@
           "pattern": "\\S"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": {
+        "required": [
+          "installed"
+        ],
+        "properties": {
+          "installed": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "armarium_version"
+        ]
+      }
     }
   },
   "additionalProperties": false,

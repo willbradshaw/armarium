@@ -66,14 +66,14 @@ class Change:
 class Update:
     """A vault's update to the running Armarium's managed files.
 
-    previous is the version the vault's record names, or None for a vault
-    without a record. files are the file changes that make the update,
-    including the record's, once planned in full. extensions maps each
-    installed extension the update replaces to its file changes.
+    previous is the version the vault's record names. files are the file
+    changes that make the update, including the record's, once planned in
+    full. extensions maps each installed extension the update replaces to its
+    file changes.
     """
 
     root: Path
-    previous: str | None
+    previous: str
     version: str
     changes: list[Change]
     files: list[FileChange] = field(default_factory=list)
@@ -175,8 +175,6 @@ def _classify(
     base: bytes | None,
     vault: bytes | None,
     new: bytes | None,
-    *,
-    adopting: bool,
 ) -> Change | None:
     """Decide what an update does to one managed file.
 
@@ -185,8 +183,6 @@ def _classify(
         base: Its recorded copy, or None when the record has none.
         vault: The vault's file, or None when it is missing.
         new: The running Armarium's file, or None when Armarium dropped it.
-        adopting: The vault had no record, so base is the running Armarium's
-            file; every way the vault differs is reported.
 
     Returns:
         Change | None: The change, or None when there is nothing to do or report.
@@ -198,13 +194,13 @@ def _classify(
     if vault is None:
         if base is None:
             return Change(path, "added", new)
-        return Change(path, "omitted") if adopting or new != base else None
+        return Change(path, "omitted") if new != base else None
     if vault == new:
         return None
     if vault == base:
         return Change(path, "updated", new)
     if new == base:
-        return Change(path, "kept") if adopting else None
+        return None
     merged, conflicted = merge3(base or b"", vault, new)
     if merged == vault:
         return Change(path, "kept")
@@ -271,28 +267,25 @@ def plan_update(
         Update: The changes, ordered by path.
 
     Raises:
-        ValueError: The record is invalid or newer than the running Armarium
-            without allow_downgrade, or a managed path is unusable.
+        ValueError: The record is missing, invalid or newer than the running
+            Armarium without allow_downgrade, or a managed path is unusable.
         OSError: The record or a managed file cannot be read.
     """
     record = root / RECORD
     version = armarium_version()
     if record.is_symlink():
         raise ValueError(f"{RECORD} must not be a symlink")
-    if record.exists():
-        settings = read_settings(record)
-        previous: str | None = settings["armarium_version"]
-        local = set(settings["local"])
-        base = managed_files(record / "base")
-        if Version(settings["armarium_version"]) > Version(version) and not (
-            allow_downgrade
-        ):
-            raise ValueError(
-                f"vault was updated with newer Armarium {previous}; current "
-                f"version is {version}. Use --allow-downgrade to update it."
-            )
-    else:
-        previous, local, base = None, set(), new
+    if not record.exists():
+        raise ValueError(f"vault has no {RECORD}/")
+    settings = read_settings(record)
+    previous = settings["armarium_version"]
+    local = set(settings["local"])
+    base = managed_files(record / "base")
+    if Version(previous) > Version(version) and not allow_downgrade:
+        raise ValueError(
+            f"vault was updated with newer Armarium {previous}; current "
+            f"version is {version}. Use --allow-downgrade to update it."
+        )
     inputs = _pending_inputs(root)
     changes = []
     for path in sorted(base.keys() | new.keys()):
@@ -301,9 +294,7 @@ def plan_update(
                 changes.append(Change(path, "local"))
             continue
         vault = _vault_file(root, path)
-        change = _classify(
-            path, base.get(path), vault, new.get(path), adopting=previous is None
-        )
+        change = _classify(path, base.get(path), vault, new.get(path))
         if change is not None and change.action == "conflict":
             resolution = root / PENDING / path
             if (
@@ -429,8 +420,7 @@ def update_vault(
 
     A file the vault has not changed is replaced; one both have changed is
     merged by line. Files the vault deleted or keeps as its own are left
-    alone. A vault without a record is taken to have been copied from the
-    running Armarium. The record is rewritten even when no file changes. With
+    alone. The record is rewritten even when no file changes. With
     extensions, each out-of-date installed extension is then replaced, as
     update_extension does, after the managed files.
 
@@ -454,8 +444,8 @@ def update_vault(
             unless this is a dry run or the update has conflicts.
 
     Raises:
-        ValueError: The vault, its record, a managed path or an extension is
-            invalid, or the record is newer than the running Armarium without
+        ValueError: The record is missing, the vault, its record, a managed
+            path or an extension is invalid, or the record is newer than the running Armarium without
             allow_downgrade.
         OSError: Reading or writing fails; the managed files, or the
             extension being updated, are restored. Extensions updated before

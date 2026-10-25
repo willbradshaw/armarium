@@ -218,6 +218,12 @@ class TestDeclarations:
                     "installed": "yes",
                 }
             },
+            {
+                "custom": {
+                    "rules": [{"type": "Content", "schema": "x"}],
+                    "installed": True,
+                }
+            },
             {"custom": [{"type": "Content"}]},
             {"custom": [{"type": "Content", "schema": "x", "typo": True}]},
             *[
@@ -1114,18 +1120,15 @@ def replacement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 class TestUpdateExtension:
-    @pytest.mark.parametrize("previous", [None, "1.0.0", "2.0.0"])
+    @pytest.mark.parametrize("previous", ["1.0.0", "2.0.0"])
     def test_replaces_files_and_tracks_version(
-        self, enabled: Path, replacement: Path, previous: str | None
+        self, enabled: Path, replacement: Path, previous: str
     ) -> None:
         from armarium.extensions import update_extension
 
         config = enabled / CONFIG
         data = _declarations(config)
-        if previous is None:
-            data["example"].pop("armarium_version", None)
-        else:
-            data["example"]["armarium_version"] = previous
+        data["example"]["armarium_version"] = previous
         config.write_text(json.dumps(data))
         directory = enabled / "reference/extensions/example"
         (directory / "obsolete.md").write_text("Local addition")

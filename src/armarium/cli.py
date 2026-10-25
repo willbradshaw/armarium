@@ -1067,11 +1067,7 @@ def main() -> None:
         except (OSError, ValueError) as exc:
             logger.error("Cannot update the vault: %s", exc)
             sys.exit(1)
-        logger.info(
-            "Updating from Armarium %s to %s",
-            update.previous or "(no record)",
-            update.version,
-        )
+        logger.info("Updating from Armarium %s to %s", update.previous, update.version)
         notes = {}
         for entry in update.changes:
             if entry.action not in DESCRIPTIONS:
