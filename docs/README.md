@@ -17,6 +17,7 @@ restart your terminal. To move to a newer release, run
 
 | Guide | Covers |
 | --- | --- |
+| [Running a campaign](running.md) | the cycle of play, from setting up a campaign to recording each Session, with the example vault |
 | [Vault layout](vault.md) | the folders a vault holds and where each kind of record lives |
 | [Records](record.md) | what every record shares: frontmatter, body, links and names |
 | [Types](type.md) | the fields, body and rules of each record type |
