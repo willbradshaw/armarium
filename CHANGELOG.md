@@ -6,6 +6,8 @@
 
 - Add `paragraph_spacing` and `title_spacing` layout fields, with matching
   `armarium handout` flags.
+- Add `ARMARIUM_WHISPER_MODEL`, `ARMARIUM_WHISPER_VAD_MODEL` and
+  `ARMARIUM_WHISPER_MODEL_DIR` to set `armarium transcribe`'s defaults.
 
 ## 1.0.0 (2026-10-25)
 

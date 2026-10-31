@@ -10,6 +10,7 @@ import pytest
 from armarium.cli import parse_args
 from armarium.index import VaultIndex
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS
+from armarium.transcribe import MODEL_DIR_ENV, MODEL_ENV, VAD_MODEL_ENV
 from armarium.validate import (
     CAMPAIGN_DIRECTORIES,
     CAMPAIGN_FILES,
@@ -134,6 +135,12 @@ class TestValidationDocument:
         usage = capsys.readouterr().out
         options = set(re.findall(r"(--[a-z-]+)", usage))
         assert options and all(option in self.TEXT for option in options)
+
+
+class TestTranscribeDocument:
+    @pytest.mark.parametrize("variable", [MODEL_ENV, VAD_MODEL_ENV, MODEL_DIR_ENV])
+    def test_names_every_variable(self, variable: str) -> None:
+        assert f"`{variable}`" in (DOCS / "transcribe.md").read_text()
 
 
 class TestCampaignDocument:

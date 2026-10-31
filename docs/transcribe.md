@@ -89,6 +89,23 @@ Given a `.txt` file of raw transcript text, the command only collapses repeated
 runs, into `notes/s52-export.collapsed.txt` or `--output PATH`. This needs
 neither whisper.cpp nor a model.
 
+## Choosing models
+
+To use another model or cache directory on every run on a machine, set an
+environment variable in your shell profile:
+
+| Variable | Sets | Instead of |
+| --- | --- | --- |
+| `ARMARIUM_WHISPER_MODEL` | Whisper model | `--model` |
+| `ARMARIUM_WHISPER_VAD_MODEL` | voice-detection model | `--vad-model` |
+| `ARMARIUM_WHISPER_MODEL_DIR` | where downloaded models are kept | `--model-dir` |
+
+Each takes what its option takes. An option given on the command line wins over
+its variable, and a variable that is unset or empty leaves the default in place.
+
+A run downloads only a model it is missing. It never checks for a newer model,
+so once the models are cached it works offline.
+
 ## Options
 
 | Option | Does |

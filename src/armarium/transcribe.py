@@ -6,6 +6,7 @@ steps: whisper.cpp writes the raw text, and the repeated runs in it are then
 collapsed to one copy and a marker. Neither step creates a Transcript record.
 """
 
+import os
 import re
 import shutil
 import subprocess
@@ -27,6 +28,10 @@ DEFAULT_VAD_MODEL = "ggml-silero-v6.2.0.bin"
 DEFAULT_MODEL_DIR = Path.home() / ".cache" / "whisper-cpp"
 DEFAULT_LANGUAGE = "en"
 DEFAULT_MIN_REPEATS = 4
+
+MODEL_ENV = "ARMARIUM_WHISPER_MODEL"
+VAD_MODEL_ENV = "ARMARIUM_WHISPER_VAD_MODEL"
+MODEL_DIR_ENV = "ARMARIUM_WHISPER_MODEL_DIR"
 
 # Voice-detection settings that keep quieter speech: a lower speech threshold,
 # and more padding around each stretch of speech.
@@ -63,6 +68,19 @@ class Transcription:
     lines: int
     kept: int
     loops: tuple[str, ...]
+
+
+def environment_default(variable: str, default: str) -> str:
+    """Return an environment variable's value, or a default in its place.
+
+    Args:
+        variable: Name of the environment variable.
+        default: Value to use when the variable is unset or empty.
+
+    Returns:
+        str: The value to use.
+    """
+    return os.environ.get(variable) or default
 
 
 def model_url(filename: str) -> str:
