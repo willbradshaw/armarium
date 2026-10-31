@@ -330,7 +330,7 @@ def body(
         fontName=font.name,
         fontSize=size,
         leading=size * layout.line_spacing,
-        spaceAfter=size * 0.35,
+        spaceAfter=size * layout.paragraph_spacing,
         alignment=TA_LEFT,
     )
     return _flowables(tokens, 0, len(tokens), style, _Inline(layout, font), width)
@@ -478,7 +478,7 @@ def page(root: Path, record: Record, layout: Layout) -> tuple[list[Flowable], Pa
             fontName=font.name,
             fontSize=layout.title_size,
             leading=layout.title_size * 1.15,
-            spaceAfter=layout.title_size * 0.15,
+            spaceAfter=layout.title_size * layout.title_spacing,
         )
         mark = layout.mark
         if mark is not None and record.frontmatter.get(mark.field) is True:

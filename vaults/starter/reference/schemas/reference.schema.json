@@ -143,6 +143,14 @@
                 "$ref": "#/$defs/size",
                 "description": "The title's font size, in points."
               },
+              "title_spacing": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "The space after the title, as a multiple of its font size."
+              },
               "min_text_size": {
                 "$ref": "#/$defs/size",
                 "description": "The smallest font size the rules text may take, in points."
@@ -158,6 +166,14 @@
                 ],
                 "minimum": 1,
                 "description": "The distance between lines of text, as a multiple of the font size."
+              },
+              "paragraph_spacing": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "The space after each paragraph, as a multiple of the font size."
               },
               "image_share": {
                 "type": [

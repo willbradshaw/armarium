@@ -205,9 +205,11 @@
         "margin": "18mm",
         "font": "/Library/Fonts/Lora.ttf",
         "title_size": 48,
+        "title_spacing": 0.3,
         "min_text_size": 16,
         "max_text_size": 36.5,
         "line_spacing": 1.16,
+        "paragraph_spacing": 0.8,
         "image_share": 0.6,
         "mark": {
           "field": "attunement",
@@ -236,9 +238,11 @@
         "margin": null,
         "font": null,
         "title_size": null,
+        "title_spacing": null,
         "min_text_size": null,
         "max_text_size": null,
         "line_spacing": null,
+        "paragraph_spacing": null,
         "image_share": null,
         "mark": null,
         "underline_links": null,
@@ -367,6 +371,31 @@
       "frontmatter": {
         "subtype": "Layout",
         "line_spacing": 0.9
+      }
+    },
+    {
+      "name": "handout paragraph spacing below zero",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Layout",
+        "paragraph_spacing": -0.1
+      }
+    },
+    {
+      "name": "handout title spacing below zero",
+      "valid": false,
+      "frontmatter": {
+        "subtype": "Layout",
+        "title_spacing": -0.1
+      }
+    },
+    {
+      "name": "handout spacing of zero",
+      "valid": true,
+      "frontmatter": {
+        "subtype": "Layout",
+        "paragraph_spacing": 0,
+        "title_spacing": 0
       }
     },
     {
