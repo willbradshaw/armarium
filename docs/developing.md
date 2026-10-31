@@ -75,6 +75,26 @@ This validates the starter and example vaults, which must report no errors.
 | `extensions/` | the bundled [extensions](extensions.md); the wheel ships them as `armarium/extensions` |
 | `docs/` | these guides |
 
+## Bumping the transcription models
+
+Each week the `model-staleness` workflow compares the defaults in
+`src/armarium/transcribe.py` with the Hugging Face listings of
+`ggerganov/whisper.cpp` and `ggml-org/whisper-vad`. It flags a newer Silero
+version or a higher `ggml-large-vN-turbo-q8_0.bin` by opening an issue, or
+updating the open one. Run it at any time with:
+
+```sh
+gh workflow run model-staleness.yml
+```
+
+To bump a default, change its constant and add a CHANGELOG entry in a PR that
+closes the issue. Leave the issue open until then: if it is closed with the
+default unchanged, the next run opens another.
+
+A failed run means the check itself broke: a listing could not be fetched, or no
+longer holds the pinned default. The check cannot see a Whisper generation that
+drops the `large-vN-turbo` naming.
+
 ## Keeping the starter and example vaults in sync
 
 The example vault is the starter vault plus records, kept up to date as any

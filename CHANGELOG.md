@@ -6,6 +6,8 @@
 
 - Add `paragraph_spacing` and `title_spacing` layout fields, with matching
   `armarium handout` flags.
+- Add a weekly workflow that opens an issue when a newer default transcription
+  model is published.
 
 ## 1.0.0 (2026-10-25)
 

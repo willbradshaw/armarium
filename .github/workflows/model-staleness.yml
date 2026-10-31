@@ -1,0 +1,52 @@
+name: model-staleness
+
+# Once a week, compare transcription's pinned default models with what Hugging
+# Face lists. A newer model opens an issue, or updates the open one, and leaves
+# the run green. A red run means the check itself broke.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-python
+
+      - name: Fetch the listings
+        run: |
+          fetch() {
+            curl --fail --silent --show-error --location --retry 3 \
+              --output "$2" "https://huggingface.co/api/models/$1/tree/main"
+          }
+          fetch ggerganov/whisper.cpp whisper.json
+          fetch ggml-org/whisper-vad vad.json
+
+      - name: Compare them with the pinned defaults
+        run: python -m armarium.stale_models whisper.json vad.json > report.md
+
+      - name: Open or update the issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: Newer transcription models are available
+        run: |
+          if [ ! -s report.md ]; then
+            echo "The pinned models are current."
+            exit 0
+          fi
+          number=$(gh issue list --state open --limit 1000 --json number,title \
+            | jq -r --arg title "$TITLE" 'map(select(.title == $title))[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file report.md
+          else
+            gh issue create --title "$TITLE" --body-file report.md
+          fi
