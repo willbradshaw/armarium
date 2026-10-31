@@ -2,7 +2,8 @@ name: model-staleness
 
 # Once a week, compare transcription's pinned default models with what Hugging
 # Face lists. A newer model opens an issue, or updates the open one, and leaves
-# the run green. A red run means the check itself broke.
+# the run green. If the check itself breaks, the run goes red and a separate
+# issue says so, because a failed scheduled run is otherwise easy to miss.
 on:
   schedule:
     - cron: '17 6 * * 1'
@@ -23,7 +24,7 @@ jobs:
       - name: Fetch the listings
         run: |
           fetch() {
-            curl --fail --silent --show-error --location --retry 3 \
+            curl --fail --silent --show-error --location --retry 3 --max-time 60 \
               --output "$2" "https://huggingface.co/api/models/$1/tree/main"
           }
           fetch ggerganov/whisper.cpp whisper.json
@@ -49,4 +50,22 @@ jobs:
             gh issue edit "$number" --body-file report.md
           else
             gh issue create --title "$TITLE" --body-file report.md
+          fi
+
+      - name: Report a failed check
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: Transcription model check failed
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body="The weekly model check could not finish, so it cannot show whether the pinned defaults are current. Latest failed run: $RUN_URL"
+          number=$(gh issue list --state open --limit 1000 --json number,title \
+            | jq -r --arg title "$TITLE" 'map(select(.title == $title))[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
           fi

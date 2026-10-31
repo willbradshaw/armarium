@@ -92,8 +92,13 @@ closes the issue. Leave the issue open until then: if it is closed with the
 default unchanged, the next run opens another.
 
 A failed run means the check itself broke: a listing could not be fetched, or no
-longer holds the pinned default. The check cannot see a Whisper generation that
-drops the `large-vN-turbo` naming.
+longer holds the pinned default. The run opens an issue saying so, or updates
+the open one. Close it once a run succeeds. The check cannot see a Whisper
+generation that drops the `large-vN-turbo` naming.
+
+GitHub turns off scheduled workflows after 60 days without repository activity,
+and a run that never starts reports nothing. If the workflow has no recent runs
+under the repository's Actions tab, enable it there again.
 
 ## Keeping the starter and example vaults in sync
 
