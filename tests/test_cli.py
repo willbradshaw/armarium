@@ -36,6 +36,9 @@ from armarium.transcribe import (
     DEFAULT_MODEL,
     DEFAULT_MODEL_DIR,
     DEFAULT_VAD_MODEL,
+    MODEL_DIR_ENV,
+    MODEL_ENV,
+    VAD_MODEL_ENV,
     Transcription,
 )
 
@@ -1916,6 +1919,59 @@ class TestTraceCommand:
 
 class TestTranscribeCommand:
     LOOP = "lines 2-6: line x5: 'Agreed.'"
+    OPTIONS = (
+        ("model", "--model", MODEL_ENV, DEFAULT_MODEL, "env.bin", "flag.bin"),
+        (
+            "vad_model",
+            "--vad-model",
+            VAD_MODEL_ENV,
+            DEFAULT_VAD_MODEL,
+            "env.bin",
+            "flag.bin",
+        ),
+        (
+            "model_dir",
+            "--model-dir",
+            MODEL_DIR_ENV,
+            DEFAULT_MODEL_DIR,
+            Path("env"),
+            Path("flag"),
+        ),
+    )
+
+    @pytest.fixture(autouse=True)
+    def clear_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        for variable in (MODEL_ENV, VAD_MODEL_ENV, MODEL_DIR_ENV):
+            monkeypatch.delenv(variable, raising=False)
+
+    @pytest.mark.parametrize(
+        ("dest", "flag", "variable", "default", "from_env", "from_flag"), OPTIONS
+    )
+    def test_flag_then_environment_then_default(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dest: str,
+        flag: str,
+        variable: str,
+        default: object,
+        from_env: object,
+        from_flag: object,
+    ) -> None:
+        recording = ["transcribe", "s52.wav"]
+        assert getattr(parse_args(recording), dest) == default
+        monkeypatch.setenv(variable, "")
+        assert getattr(parse_args(recording), dest) == default
+        monkeypatch.setenv(variable, str(from_env))
+        assert getattr(parse_args(recording), dest) == from_env
+        chosen = parse_args([*recording, flag, str(from_flag)])
+        assert getattr(chosen, dest) == from_flag
+
+    def test_help_names_the_variables(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit):
+            parse_args(["transcribe", "--help"])
+        output = " ".join(capsys.readouterr().out.split())
+        for variable in (MODEL_ENV, VAD_MODEL_ENV, MODEL_DIR_ENV):
+            assert f"${variable}, else" in output
 
     @pytest.mark.parametrize(
         ("loops", "summary"),

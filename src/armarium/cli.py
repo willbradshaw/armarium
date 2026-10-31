@@ -41,6 +41,10 @@ from armarium.transcribe import (
     DEFAULT_MODEL,
     DEFAULT_MODEL_DIR,
     DEFAULT_VAD_MODEL,
+    MODEL_DIR_ENV,
+    MODEL_ENV,
+    VAD_MODEL_ENV,
+    environment_default,
     transcribe,
 )
 from armarium.transcript import add_transcript
@@ -748,22 +752,28 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     recording.add_argument(
         "--model",
-        default=DEFAULT_MODEL,
-        help=f"Whisper ggml model file or filename (default: {DEFAULT_MODEL})",
+        default=environment_default(MODEL_ENV, DEFAULT_MODEL),
+        help=(
+            "Whisper ggml model file or filename "
+            f"(default: ${MODEL_ENV}, else {DEFAULT_MODEL})"
+        ),
     )
     recording.add_argument(
         "--vad-model",
-        default=DEFAULT_VAD_MODEL,
+        default=environment_default(VAD_MODEL_ENV, DEFAULT_VAD_MODEL),
         help=(
             "voice-detection ggml model file or filename "
-            f"(default: {DEFAULT_VAD_MODEL})"
+            f"(default: ${VAD_MODEL_ENV}, else {DEFAULT_VAD_MODEL})"
         ),
     )
     recording.add_argument(
         "--model-dir",
         type=Path,
-        default=DEFAULT_MODEL_DIR,
-        help="directory for downloaded models (default: ~/.cache/whisper-cpp)",
+        default=environment_default(MODEL_DIR_ENV, str(DEFAULT_MODEL_DIR)),
+        help=(
+            "directory for downloaded models "
+            f"(default: ${MODEL_DIR_ENV}, else ~/.cache/whisper-cpp)"
+        ),
     )
     recording.add_argument(
         "--language",

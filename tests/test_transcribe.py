@@ -13,6 +13,7 @@ from armarium.transcribe import (
     DEFAULT_MODEL,
     DEFAULT_VAD_MODEL,
     LOOSE_VAD_ARGS,
+    MODEL_ENV,
     VAD_MODEL_REPO,
     WHISPER_MODEL_REPO,
     Transcription,
@@ -21,6 +22,7 @@ from armarium.transcribe import (
     collapse_loops,
     download,
     ensure_model,
+    environment_default,
     model_url,
     normalise,
     run_backend,
@@ -50,6 +52,20 @@ class Response:
         if self.error is not None:
             raise self.error
         return b""
+
+
+class TestEnvironmentDefault:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [(None, "default.bin"), ("", "default.bin"), ("mine.bin", "mine.bin")],
+    )
+    def test_uses_a_value_that_is_set(
+        self, monkeypatch: pytest.MonkeyPatch, value: str | None, expected: str
+    ) -> None:
+        monkeypatch.delenv(MODEL_ENV, raising=False)
+        if value is not None:
+            monkeypatch.setenv(MODEL_ENV, value)
+        assert environment_default(MODEL_ENV, "default.bin") == expected
 
 
 class TestModelUrl:
