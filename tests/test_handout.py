@@ -263,6 +263,25 @@ class TestBody:
         assert paragraph.style.leading == 30
         assert paragraph.style.fontName == "Times-Roman"
 
+    @pytest.mark.parametrize(
+        ("layout", "space"),
+        [
+            (Layout(), 7),
+            (Layout(paragraph_spacing=1), 20),
+            (Layout(paragraph_spacing=0), 0),
+        ],
+    )
+    def test_sets_the_space_after_each_paragraph(
+        self, layout: Layout, space: float
+    ) -> None:
+        (paragraph,) = body("Text.", layout, TIMES, 20, WIDTH)
+        assert paragraph.style.spaceAfter == pytest.approx(space)
+
+    def test_a_list_takes_the_paragraph_spacing(self) -> None:
+        (bullets,) = body("- One\n- Two", Layout(paragraph_spacing=1), TIMES, 20, WIDTH)
+        assert isinstance(bullets, ListFlowable)
+        assert bullets.getSpaceAfter() == 20
+
 
 class TestHeight:
     def test_sums_heights_and_space(self) -> None:
@@ -389,6 +408,25 @@ class TestPage:
         ]
         assert isinstance(flowables[-1], PageBreak)
         assert account.picture is None
+
+    @pytest.mark.parametrize(
+        ("layout", "space"),
+        [(Layout(), 5.4), (Layout(title_spacing=1), 36), (Layout(title_spacing=0), 0)],
+    )
+    def test_sets_the_space_after_the_title(
+        self, vault: Path, layout: Layout, space: float
+    ) -> None:
+        path = write_record(vault, "Ring")
+        title = page(vault, parsed(vault, path), layout)[0][0]
+        assert title.style.spaceAfter == pytest.approx(space)
+
+    def test_the_space_after_the_title_comes_from_the_text(self, vault: Path) -> None:
+        text = "> [!rules]\n" + "> A long line of rules text runs on.\n" * 40
+        path = write_record(vault, "Ring", text)
+        record = parsed(vault, path)
+        tight = page(vault, record, Layout(max_text_size=40))[1]
+        spaced = page(vault, record, Layout(max_text_size=40, title_spacing=4))[1]
+        assert spaced.text_size < tight.text_size
 
     def test_without_a_name_the_text_has_more_room(self, vault: Path) -> None:
         text = "> [!rules]\n" + "> A long line of rules text runs on.\n" * 40

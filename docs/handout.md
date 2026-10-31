@@ -112,6 +112,7 @@ font: assets/fonts/HomemadeApple-Regular.ttf
 margin: 1.5in
 max_text_size: 18
 line_spacing: 1.8
+paragraph_spacing: 1
 ---
 ```
 
@@ -126,9 +127,11 @@ Every field is optional:
 | `margin` | `--margin` | the margin on every side, as a length such as `0.7in`, `18mm`, `2cm` or `50pt` | `0.7in` |
 | `font` | `--font` | a standard PDF font, or the path of a TrueType font file | `Times-Roman` |
 | `title_size` | `--title-size` | the name's font size, in points | 36 |
+| `title_spacing` | `--title-spacing` | the space after the name, as a multiple of its font size | 0.15 |
 | `min_text_size` | `--min-text-size` | the text's smallest font size, in points | 12 |
 | `max_text_size` | `--max-text-size` | the text's largest font size, in points | 24 |
 | `line_spacing` | `--line-spacing` | the distance between lines, as a multiple of the font size | 1.2 |
+| `paragraph_spacing` | `--paragraph-spacing` | the space after each paragraph, as a multiple of the font size | 0.35 |
 | `image_share` | `--image-share` | the share of the space below the name that the text leaves to the picture, between 0 and 1 | 0.5 |
 | `mark` | `--mark FIELD=TEXT`, `--no-mark` | a `field` and `text`: the text prints beside the name, in the page's top right corner, when the record's field is `true` | none |
 | `underline_links` | `--[no-]underline-links` | `true` to underline link text | `false` |

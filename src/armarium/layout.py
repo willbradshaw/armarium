@@ -21,9 +21,14 @@ OVERRIDES = {
     "margin": ("text", "the margin on every side, such as 0.7in or 18mm"),
     "font": ("text", "a standard PDF font, or the path of a TrueType font file"),
     "title_size": ("number", "the name's font size, in points"),
+    "title_spacing": ("number", "the space after the name, times its font size"),
     "min_text_size": ("number", "the text's smallest font size, in points"),
     "max_text_size": ("number", "the text's largest font size, in points"),
     "line_spacing": ("number", "the distance between lines, times the font size"),
+    "paragraph_spacing": (
+        "number",
+        "the space after each paragraph, times the font size",
+    ),
     "image_share": (
         "number",
         "the share of the space below the name left to the picture, 0 to 1",
@@ -86,9 +91,12 @@ class Layout:
         font: A standard PDF font's name, or the path of a TrueType font
             file, absolute or relative to the vault root.
         title_size: The title's font size, in points.
+        title_spacing: The space after the title, as a multiple of its size.
         min_text_size: The smallest font size of the text, in points.
         max_text_size: The largest font size of the text, in points.
         line_spacing: The distance between lines, as a multiple of the size.
+        paragraph_spacing: The space after each paragraph, as a multiple of
+            the size.
         image_share: The share of the space below the title that the text
             leaves to the picture.
         mark: Text printed in the top right corner when a field is true, or
@@ -105,9 +113,11 @@ class Layout:
     margin: float = 0.7 * POINTS["in"]
     font: str = "Times-Roman"
     title_size: float = 36
+    title_spacing: float = 0.15
     min_text_size: float = 12
     max_text_size: float = 24
     line_spacing: float = 1.2
+    paragraph_spacing: float = 0.35
     image_share: float = 0.5
     mark: Mark | None = None
     underline_links: bool = False

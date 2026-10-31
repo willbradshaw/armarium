@@ -2641,6 +2641,10 @@ class TestHandoutCommand:
             ),
             (["--image-share", "0.3"], {"image_share": 0.3}),
             (
+                ["--title-spacing", "0.4", "--paragraph-spacing", "0"],
+                {"title_spacing": 0.4, "paragraph_spacing": 0.0},
+            ),
+            (
                 ["--mark", "attunement=A"],
                 {"mark": {"field": "attunement", "text": "A"}},
             ),

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- Add `paragraph_spacing` and `title_spacing` layout fields, with matching
+  `armarium handout` flags.
+
 ## 1.0.0 (2026-10-25)
 
 The first stable release. From here, versions follow semantic versioning; see
