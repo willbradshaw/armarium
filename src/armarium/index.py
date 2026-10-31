@@ -68,6 +68,7 @@ class VaultIndex:
         self._declarations: dict[str, dict[str, str]] | None = None
         self._names: dict[str, list[Name]] | None = None
         self._subtype_directories: dict[str, dict[str, str]] = {}
+        self._sessions: dict[str, list[tuple[int, Record]]] = {}
         for path in find_files(self.root) if files is None else files:
             relative = "/".join(relative_parts(path, self.root))
             # Markdown links may include or omit .md; asset extensions matter.
@@ -199,6 +200,33 @@ class VaultIndex:
         if number is None or campaign is None:
             return None
         return campaign, number
+
+    def sessions(self, campaign: str) -> list[tuple[int, Record]]:
+        """List a campaign's Sessions in the order of their session numbers.
+
+        Args:
+            campaign: The campaign directory name, campaign_N.
+
+        Returns:
+            list[tuple[int, Record]]: Each Session directly in the campaign's
+                sessions directory with its number. A file that does not
+                parse or has no whole session_number is left out.
+        """
+        if campaign not in self._sessions:
+            directory = self.root / "campaigns" / campaign / "sessions"
+            sessions = []
+            usable = directory.is_dir() and not directory.is_symlink()
+            for path in find_records(self.root, directory) if usable else ():
+                if path.parent != directory:
+                    continue
+                record = self.parse(path)[0]
+                if record is None or record.frontmatter.type != "Session":
+                    continue
+                number = session_number(record.frontmatter)
+                if number is not None:
+                    sessions.append((number, record))
+            self._sessions[campaign] = sorted(sessions, key=lambda s: s[0])
+        return self._sessions[campaign]
 
     def resolve_field(
         self, record: Record, field: str

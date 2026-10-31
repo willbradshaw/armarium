@@ -1038,3 +1038,42 @@ class TestVaultIndexSessionOrder:
     ) -> None:
         path = write_named(example, relative, f"---\n{text}\n---\n")
         assert VaultIndex(example).session_order(path) == expected
+
+
+class TestVaultIndexSessions:
+    @pytest.fixture
+    def sessions(self, tmp_path: Path) -> Path:
+        root = tmp_path.resolve() / "vault"
+        directory = root / "campaigns/campaign_2/sessions"
+        (directory / "transcripts").mkdir(parents=True)
+        for name, text in (
+            ("S-2-010", 'type: "[[Session]]"\nsession_number: 10'),
+            ("S-2-002", 'type: "[[Session]]"\nsession_number: 2'),
+            ("S-2-003", 'type: "[[Session]]"\nsession_number: three'),
+            ("S-2-004", "session_number: ["),
+            ("Other", 'type: "[[Note]]"\nsession_number: 5'),
+            ("transcripts/S-2-001", 'type: "[[Session]]"\nsession_number: 1'),
+        ):
+            (directory / f"{name}.md").write_text(f"---\n{text}\n---\n")
+        return root
+
+    def test_in_order(self, sessions: Path) -> None:
+        listed = VaultIndex(sessions).sessions("campaign_2")
+        assert [(n, r.path.stem) for n, r in listed] == [
+            (2, "S-2-002"),
+            (10, "S-2-010"),
+        ]
+
+    def test_read_once(self, sessions: Path) -> None:
+        index = VaultIndex(sessions)
+        assert index.sessions("campaign_2") is index.sessions("campaign_2")
+
+    def test_no_directory(self, sessions: Path) -> None:
+        assert VaultIndex(sessions).sessions("campaign_9") == []
+
+    def test_symlinked_directory(self, sessions: Path) -> None:
+        (sessions / "campaigns/campaign_3").mkdir()
+        (sessions / "campaigns/campaign_3/sessions").symlink_to(
+            sessions / "campaigns/campaign_2/sessions"
+        )
+        assert VaultIndex(sessions).sessions("campaign_3") == []

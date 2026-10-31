@@ -6,6 +6,7 @@
 
 - Add `paragraph_spacing` and `title_spacing` layout fields, with matching
   `armarium handout` flags.
+- Warn about wrong sums and carry-overs in the XP section of `dnd-5-5` Sessions.
 
 ## 1.0.0 (2026-10-25)
 

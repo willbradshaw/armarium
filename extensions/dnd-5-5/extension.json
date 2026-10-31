@@ -1,5 +1,8 @@
 {
   "dnd-5-5": {
+    "checks": [
+      "xp-tables"
+    ],
     "subtypes": {
       "Content": [
         "Spell",

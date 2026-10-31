@@ -4,6 +4,7 @@ import json
 import shutil
 from collections.abc import Callable
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -18,8 +19,15 @@ from armarium.extensions import (
     load_extension_set,
 )
 from armarium.index import VaultIndex
-from armarium.lib import SUBTYPES, Result, check_vault, find_files, find_vault
-from armarium.parse import Body, Frontmatter, Record
+from armarium.lib import (
+    SUBTYPES,
+    Findings,
+    Result,
+    check_vault,
+    find_files,
+    find_vault,
+)
+from armarium.parse import Block, Body, Frontmatter, Record, Section
 from armarium.schemas import Schema
 from armarium.targets import LINK_TARGETS, Target
 from armarium.validate import (
@@ -31,13 +39,20 @@ from armarium.validate import (
     VAULT_STATUSES,
     VAULT_TEMPLATES,
     VAULT_TYPES,
+    XP_TABLES,
     _check_anchor,
     _check_campaign_history,
+    _check_campaign_xp,
+    _check_xp_carry_over,
+    _check_xp_sources,
+    _check_xp_totals,
     _link_targets,
     _read_appearances,
     _start_worker,
     _validate_in_worker,
     _validate_wikilink_status,
+    _warn_xp,
+    _xp_figure,
     auto_jobs,
     is_campaign_file,
     linked_record,
@@ -60,6 +75,7 @@ from armarium.validate import (
     validate_vault,
     validate_wikilink,
     validate_wikilinks,
+    validate_xp_tables,
     validate_yaml_blocks,
 )
 
@@ -670,6 +686,7 @@ class TestRecordChecks:
             "validate_subdirectory",
             "validate_transcript",
             "validate_wikilinks",
+            "validate_xp_tables",
         ]
 
 
@@ -4356,3 +4373,415 @@ class TestValidateCopies:
         assert "vault.outdated" in {
             d.rule for d in validate(vault).diagnostics if d.severity == "error"
         }
+
+
+XP_SECTION = """\
+## Rewards
+### XP
+| Combat Encounter | Total XP | XP per PC |
+| ---------------- | -------- | --------- |
+| Ambush at the ford | 450 | 150 |
+| **Total** | **450** | **150** |
+
+| Source | XP per PC |
+| ------ | --------- |
+| Combat | 150 |
+| **Total** | **150** |
+| Previous Campaign Total | 2,850 |
+| ***Total for Campaign*** | ***3,000*** |
+"""
+
+QUESTS = """\
+
+| Quest Milestone | Full XP | Part | XP per PC |
+| ----------------------- | ------ | ---- | --------- |
+| Returned the bell | 1000 | 30 | 300 |
+| Freed the ferryman | 1000 | 20 | 200 |
+| **Total** | | **50** | **500** |
+"""
+
+WITH_QUESTS = (
+    (XP_SECTION + QUESTS)
+    .replace("| Combat | 150 |\n", "| Combat | 150 |\n| Quest | 500 |\n")
+    .replace("**150** |\n| Previous", "**650** |\n| Previous")
+    .replace("***3,000***", "***3,500***")
+)
+
+
+def xp_of(text: str) -> Section:
+    """Return the XP section of a Session body."""
+    section = Body(text).titled("Rewards")[0].children[0]
+    assert section.title == "XP"
+    return section
+
+
+def table_of(text: str, heading: str = "Source") -> Block:
+    """Return the table with a first header in a Session body's XP section."""
+    return next(t for t in xp_of(text).tables if t.heading == heading)
+
+
+def messages(findings: Findings) -> list[str]:
+    """Return the messages of warnings, requiring each to be extension.xp."""
+    assert {(d.rule, d.severity) for d in findings.diagnostics} <= {
+        ("extension.xp", "warning")
+    }
+    return [d.message for d in findings.diagnostics]
+
+
+@pytest.fixture
+def xp_vault(tmp_path: Path) -> Path:
+    root = tmp_path.resolve() / "xp vault"
+    make_vault(root)
+    (root / "reference/extensions.json").write_text(
+        json.dumps(
+            {
+                "house": {
+                    "checks": [XP_TABLES],
+                    "rules": [{"type": "Note", "schema": "schemas/note.schema.json"}],
+                }
+            }
+        )
+    )
+    return root
+
+
+def write_session(root: Path, number: int, body: str = XP_SECTION) -> Path:
+    """Write Session number of campaign_1 with a body."""
+    path = root / f"campaigns/campaign_1/sessions/S-1-{number:03}.md"
+    path.write_text(f'---\ntype: "[[Session]]"\nsession_number: {number}\n---\n{body}')
+    return path
+
+
+def check_session(root: Path, path: Path) -> list[str]:
+    """Run validate_xp_tables on a Session, returning its warnings' messages."""
+    index = VaultIndex(root)
+    record = index.parse(path)[0]
+    assert record is not None
+    return messages(validate_xp_tables(record, index))
+
+
+class TestValidateXpTables:
+    @pytest.mark.parametrize(
+        "body",
+        [
+            XP_SECTION,
+            WITH_QUESTS,
+            # A vault's own rows and tables.
+            XP_SECTION.replace(
+                "| Combat | 150 |\n", "| Combat | 100 |\n| Bounty | 50 |\n"
+            )
+            .replace("| 450 | 150 |", "| 300 | 100 |")
+            .replace("**450** | **150**", "**300** | **100**"),
+            XP_SECTION + "\n| Bounty | Paid by |\n| --- | --- |\n| 50 | Mayor |\n",
+            XP_SECTION + "| Notes for the GM | see above |\n",
+            # Figures the addenda allow.
+            XP_SECTION.replace("| 450 | 150 |", "| 450 (?) | 150 (?) |"),
+            # An empty row, as a Session with no fights leaves it.
+            XP_SECTION.replace("Ambush at the ford | 450 | 150", " | | ")
+            .replace("**450** | **150**", "**0** | **0**")
+            .replace("| Combat | 150 |", "| Combat | 0 |")
+            .replace(
+                "| **Total** | **150** |\n| Previous",
+                "| **Total** | **0** |\n| Previous",
+            )
+            .replace("***3,000***", "***2,850***"),
+            # No XP section at all.
+            "## Rewards\n### Loot\n",
+            "## Notes\n",
+        ],
+    )
+    def test_clean(self, xp_vault: Path, body: str) -> None:
+        assert check_session(xp_vault, write_session(xp_vault, 1, body)) == []
+
+    def test_clean_form_of_the_skill_addendum(self, xp_vault: Path) -> None:
+        addendum = ROOT / "extensions/dnd-5-5/skills/write-up-session.md"
+        form = addendum.read_text().split("```markdown\n")[1].split("```")[0]
+        body = f"## Rewards\n{form}"
+        assert check_session(xp_vault, write_session(xp_vault, 1, body)) == []
+
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            (
+                XP_SECTION.replace("**450**", "**460**"),
+                ["Combat Encounter table's Total XP Total is 460"],
+            ),
+            (
+                XP_SECTION.replace("| Combat | 150 |", "| Combat | 140 |"),
+                ["Source table's XP per PC Total is 150, but its rows add up to 140"]
+                + ["source Combat is 140"],
+            ),
+            (
+                XP_SECTION.replace("***3,000***", "***3,100***"),
+                ["Total for Campaign is 3100"],
+            ),
+            (
+                XP_SECTION.split("| Source")[0],
+                ["XP section has no Source table"],
+            ),
+            (
+                XP_SECTION.replace("| Previous Campaign Total | 2,850 |\n", ""),
+                ["Source table has no Previous Campaign Total row"],
+            ),
+            (
+                XP_SECTION.replace("| Source | XP per PC |", "| Source | XP |"),
+                ["Source table has no XP per PC column"],
+            ),
+        ],
+    )
+    def test_warns(self, xp_vault: Path, body: str, expected: list[str]) -> None:
+        found = check_session(xp_vault, write_session(xp_vault, 1, body))
+        assert len(found) == len(expected)
+        for message, text in zip(found, expected, strict=True):
+            assert text in message
+
+    @pytest.mark.parametrize(("kind", "checks"), [("Note", True), ("Session", False)])
+    def test_reads_only_sessions_when_turned_on(
+        self, xp_vault: Path, kind: str, checks: bool
+    ) -> None:
+        if not checks:
+            (xp_vault / "reference/extensions.json").write_text("{}")
+        path = write_session(xp_vault, 1, XP_SECTION.replace("**450**", "**1**"))
+        path.write_text(path.read_text().replace("[[Session]]", f"[[{kind}]]"))
+        assert check_session(xp_vault, path) == []
+
+    def test_warning_does_not_fail_validation(self, tmp_path: Path) -> None:
+        root = tmp_path / "example"
+        shutil.copytree(ROOT / "vaults/example", root)
+        config = root / "reference/extensions.json"
+        declarations = json.loads(config.read_text())
+        declarations["example"]["checks"] = [XP_TABLES]
+        config.write_text(json.dumps(declarations))
+        path = next((root / "campaigns").glob("*/sessions/S-*.md"))
+        wrong = XP_SECTION.replace("**450**", "**1**")
+        path.write_text(path.read_text().replace("## Rewards\n", wrong, 1))
+        result = validate_markdown(path)
+        assert [d.severity for d in result.diagnostics] == ["warning"]
+        assert result.diagnostics[0].rule == "extension.xp"
+        assert not result.failed
+
+
+class TestWarnXp:
+    def test_warning_at_a_line(self) -> None:
+        findings = Findings("campaigns/campaign_1/sessions/S-1-001.md")
+        _warn_xp(findings, "wrong", 7)
+        diagnostic = findings.diagnostics[0]
+        assert (diagnostic.rule, diagnostic.message, diagnostic.line) == (
+            "extension.xp",
+            "wrong",
+            7,
+        )
+        assert diagnostic.severity == "warning"
+
+
+class TestXpFigure:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [("**2,850**", Decimal(2850)), ("", Decimal(0)), ("–", Decimal(0))],
+    )
+    def test_figure(self, text: str, expected: Decimal) -> None:
+        row = Block(
+            "row", 1, children=(Block("cell", 1, "Total"), Block("cell", 1, text))
+        )
+        assert _xp_figure(row, 1) == expected
+
+    def test_unreadable(self) -> None:
+        row = Block("row", 1, children=(Block("cell", 1, "N/A"),))
+        with pytest.raises(ValueError, match="is not a number"):
+            _xp_figure(row, 0)
+
+
+class TestCheckXpTotals:
+    @pytest.mark.parametrize(
+        ("old", "new", "expected"),
+        [
+            ("**500**", "**500**", []),
+            # A Total left blank or dashed states nothing.
+            ("**50**", "", []),
+            ("**50**", "**–**", []),
+            # Blank and dashed rows count as nothing.
+            (
+                "| Freed the ferryman | 1000 | 20 | 200 |",
+                "| Freed the ferryman | | – | |",
+                [
+                    "Part Total is 50, but its rows add up to 30",
+                    "XP per PC Total is 500, but its rows add up to 300",
+                ],
+            ),
+            ("**50**", "**45**", ["Part Total is 45, but its rows add up to 50"]),
+            ("| 30 |", "| some |", ["cannot check Quest Milestone table's Part"]),
+            ("**500**", "**lots**", ["'**lots**' is not a number"]),
+        ],
+    )
+    def test_columns(self, old: str, new: str, expected: list[str]) -> None:
+        findings = Findings("S.md")
+        text = "## Rewards\n### XP\n" + QUESTS.replace(old, new)
+        _check_xp_totals(table_of(text, "Quest Milestone"), findings)
+        found = messages(findings)
+        assert len(found) == len(expected)
+        for message, part in zip(found, expected, strict=True):
+            assert part in message
+
+    def test_rows_below_the_total_are_not_summed(self) -> None:
+        findings = Findings("S.md")
+        _check_xp_totals(table_of(XP_SECTION), findings)
+        assert findings.diagnostics == []
+
+    def test_table_without_total_is_not_read(self) -> None:
+        findings = Findings("S.md")
+        text = "## Rewards\n### XP\n| A | B |\n| - | - |\n| x | y |\n"
+        _check_xp_totals(table_of(text, "A"), findings)
+        assert findings.diagnostics == []
+
+
+class TestCheckXpSources:
+    @pytest.mark.parametrize(
+        ("old", "new", "expected"),
+        [
+            ("| Quest | 500 |", "| Quest | 500 |", []),
+            ("| Combat | 150 |", "| Combat | – |", ["source Combat is 0"]),
+            ("| Quest | 500 |", "| Quest | 400 |", ["source Quest"]),
+            ("| Combat | 150 |", "| Combat | many |", ["cannot check source Combat"]),
+            # A source naming no table, and a table no source names.
+            ("| Combat | 150 |", "| Bounty | 150 |", []),
+            ("| Combat Encounter |", "| Combatants |", []),
+            # A table with no share to compare, or no Total.
+            ("| Total XP | XP per PC |", "| Total XP | XP |", []),
+            ("| **Total** | **450** | **150** |\n", "", []),
+        ],
+    )
+    def test_sources(self, old: str, new: str, expected: list[str]) -> None:
+        text = WITH_QUESTS.replace(old, new)
+        findings = Findings("S.md")
+        _check_xp_sources(table_of(text), xp_of(text), findings)
+        found = messages(findings)
+        assert len(found) == len(expected)
+        for message, part in zip(found, expected, strict=True):
+            assert part in message
+
+    def test_exact_name(self) -> None:
+        text = WITH_QUESTS.replace("| Combat Encounter |", "| Combat |")
+        text = text.replace("| Combat | 150 |", "| Combat | 1 |")
+        findings = Findings("S.md")
+        _check_xp_sources(table_of(text), xp_of(text), findings)
+        assert "source Combat is 1" in messages(findings)[0]
+
+    def test_no_column(self) -> None:
+        text = XP_SECTION.replace("| Source | XP per PC |", "| Source | XP |")
+        findings = Findings("S.md")
+        _check_xp_sources(table_of(text), xp_of(text), findings)
+        assert messages(findings) == ["Source table has no XP per PC column"]
+
+
+class TestCheckCampaignXp:
+    @pytest.mark.parametrize(
+        ("old", "new", "carried", "expected"),
+        [
+            ("2,850", "2,850", Decimal(2850), []),
+            ("2,850", "", Decimal(0), ["Previous Campaign Total plus Total is 150"]),
+            ("***3,000***", "***1***", Decimal(2850), ["Total for Campaign is 1"]),
+            ("2,850", "some", None, ["cannot check Total for Campaign"]),
+            ("***Total for Campaign***", "Other", None, ["no Total for Campaign row"]),
+            ("| **Total** | **150** |\n", "", None, ["no Total row"]),
+        ],
+    )
+    def test_campaign(
+        self, old: str, new: str, carried: Decimal | None, expected: list[str]
+    ) -> None:
+        findings = Findings("S.md")
+        read = _check_campaign_xp(table_of(XP_SECTION.replace(old, new)), findings)
+        assert (read and read[0]) == carried
+        found = messages(findings)
+        assert len(found) == len(expected)
+        for message, part in zip(found, expected, strict=True):
+            assert part in message
+
+    def test_gives_the_line_of_the_carried_figure(self) -> None:
+        source = table_of(XP_SECTION)
+        row = source.row("Previous Campaign Total")
+        assert row is not None
+        assert _check_campaign_xp(source, Findings("S.md")) == (Decimal(2850), row.line)
+
+    def test_no_column_is_left_to_the_source_check(self) -> None:
+        text = XP_SECTION.replace("| Source | XP per PC |", "| Source | XP |")
+        findings = Findings("S.md")
+        assert _check_campaign_xp(table_of(text), findings) is None
+        assert findings.diagnostics == []
+
+
+class TestCheckXpCarryOver:
+    def carry(self, root: Path, path: Path, carried: int = 2850) -> list[str]:
+        index = VaultIndex(root)
+        record = index.parse(path)[0]
+        assert record is not None
+        findings = Findings.from_record(record, index)
+        _check_xp_carry_over(record, Decimal(carried), 9, index, findings)
+        assert {d.line for d in findings.diagnostics} <= {9}
+        return messages(findings)
+
+    @pytest.mark.parametrize(
+        ("earlier", "carried", "expected"),
+        [
+            # Nothing earlier to compare with.
+            ({}, 2850, []),
+            ({1: "## Notes\n"}, 2850, []),
+            # The nearest earlier Session, across a gap in the numbers.
+            ({2: XP_SECTION.replace("3,000", "2,850")}, 2850, []),
+            (
+                {1: XP_SECTION.replace("3,000", "2,850"), 2: XP_SECTION},
+                2850,
+                ["Previous Campaign Total is 2850, but S-1-002's Total for Campaign"],
+            ),
+            # A Session left without a section between two that have one.
+            (
+                {1: XP_SECTION.replace("3,000", "2,850"), 2: "## Notes\n"},
+                2850,
+                ["S-1-002 has no XP section"],
+            ),
+            (
+                {1: XP_SECTION, 2: "## Notes\n", 3: "## Notes\n"},
+                3000,
+                ["S-1-002 has no XP section", "S-1-003 has no XP section"],
+            ),
+            # An earlier total that cannot be read.
+            (
+                {2: XP_SECTION.replace("***3,000***", "lots")},
+                2850,
+                ["cannot check Previous Campaign Total: S-1-002"],
+            ),
+        ],
+    )
+    def test_earlier_sessions(
+        self,
+        xp_vault: Path,
+        earlier: dict[int, str],
+        carried: int,
+        expected: list[str],
+    ) -> None:
+        for number, body in earlier.items():
+            write_session(xp_vault, number, body)
+        path = write_session(xp_vault, 5)
+        found = self.carry(xp_vault, path, carried)
+        assert len(found) == len(expected)
+        for message, part in zip(found, expected, strict=True):
+            assert part in message
+
+    def test_later_sessions_are_not_read(self, xp_vault: Path) -> None:
+        write_session(xp_vault, 6, XP_SECTION.replace("3,000", "1"))
+        assert self.carry(xp_vault, write_session(xp_vault, 5)) == []
+
+    def test_other_campaigns_are_not_read(self, xp_vault: Path) -> None:
+        other = xp_vault / "campaigns/campaign_2/sessions"
+        other.mkdir(parents=True)
+        (other / "S-2-001.md").write_text(
+            f'---\ntype: "[[Session]]"\nsession_number: 1\n---\n{XP_SECTION}'
+        )
+        assert self.carry(xp_vault, write_session(xp_vault, 5)) == []
+
+    def test_session_without_a_place(self, xp_vault: Path) -> None:
+        path = write_session(xp_vault, 5)
+        path.write_text(
+            path.read_text().replace("session_number: 5", "session_number: x")
+        )
+        write_session(xp_vault, 1, XP_SECTION.replace("3,000", "1"))
+        assert self.carry(xp_vault, path) == []

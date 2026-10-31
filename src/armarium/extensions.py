@@ -40,6 +40,7 @@ class ExtensionDeclaration(TypedDict):
 
     rules: list[dict[str, Any]]
     subtypes: NotRequired[dict[str, list[str]]]
+    checks: NotRequired[list[str]]
     installed: NotRequired[bool]
     armarium_version: NotRequired[str]
 
@@ -122,10 +123,18 @@ def _declarations(path: Path) -> dict[str, ExtensionDeclaration]:
 
 @dataclass(frozen=True)
 class ExtensionSet:
-    """A vault's enabled extension rules and the Content subtypes it permits."""
+    """A vault's enabled extension rules, permitted subtypes and turned-on checks.
+
+    Attributes:
+        rules: The enabled rules.
+        subtypes: The Content subtypes the vault permits.
+        checks: Names of Armarium's optional checks that enabled extensions
+            turn on, as ``checks`` declares them.
+    """
 
     rules: list[ExtensionRule]
     subtypes: tuple[str, ...]
+    checks: frozenset[str] = frozenset()
 
     def subtypes_of(self, kind: str | None) -> tuple[str, ...]:
         """Return the subtypes a type permits.
@@ -161,7 +170,9 @@ def load_extension_set(root: Path) -> ExtensionSet:
         return ExtensionSet([], SUBTYPES)
     rules: list[ExtensionRule] = []
     declared: dict[str, str] = {}
+    checks: set[str] = set()
     for extension, declarations in _declarations(config).items():
+        checks.update(declarations.get("checks", []))
         for name in declarations.get("subtypes", {}).get("Content", []):
             if name in SUBTYPES:
                 raise ValueError(
@@ -238,7 +249,7 @@ def load_extension_set(root: Path) -> ExtensionSet:
                     links,
                 )
             )
-    extension_set = ExtensionSet(rules, (*SUBTYPES, *declared))
+    extension_set = ExtensionSet(rules, (*SUBTYPES, *declared), frozenset(checks))
     for rule in rules:
         for name, target in rule.links.items():
             permitted = extension_set.subtypes_of(target.record_type)

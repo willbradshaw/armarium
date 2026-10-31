@@ -181,6 +181,22 @@ Encounter Difficulty describes. In a campaign that awards XP, a Session's
 Rewards record the XP gained and the campaign's running total. Rewards also
 record any levels the characters gained.
 
+Validation checks the sums in a Session's `### XP` section under Rewards, and
+reports each problem as an `extension.xp` warning:
+
+- a filled Total cell must be the sum of the rows above it, in any table of the
+  section with a Total row;
+- a source row must match the XP per PC Total of the table it names, as Combat
+  names Combat Encounter;
+- Total for Campaign must be Previous Campaign Total plus Total;
+- Previous Campaign Total must be the Total for Campaign of the nearest earlier
+  Session with an XP section.
+
+A Session with no XP section between two that have one also draws a warning. A
+campaign that writes no XP sections draws none. Tables and rows a vault adds
+are read by the same rules: a table without a Total row is not read, and a row
+below the Total is not summed.
+
 ## Attribution
 
 This work includes material from the System Reference Document 5.2.1 (“SRD

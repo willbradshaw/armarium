@@ -35,7 +35,7 @@ from armarium.extensions import (
 from armarium.lib import REFERENCE_SUBTYPES, SUBTYPES
 from armarium.parse import Record
 from armarium.targets import LINK_TARGETS, Target
-from armarium.validate import validate
+from armarium.validate import XP_TABLES, validate
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -409,6 +409,28 @@ class TestExtensionSetSubtypesOf:
 class TestLoadExtensionSet:
     def test_absent(self, vault: Path) -> None:
         assert load_extension_set(vault) == ExtensionSet([], SUBTYPES)
+
+    def test_checks(self, enabled: Path) -> None:
+        assert load_extension_set(enabled).checks == frozenset()
+        config = enabled / "reference/extensions.json"
+        declarations = json.loads(config.read_text())
+        for declaration in declarations.values():
+            declaration["checks"] = ["xp-tables"]
+        config.write_text(json.dumps(declarations))
+        assert load_extension_set(enabled).checks == {"xp-tables"}
+
+    def test_refuses_unknown_check(self, enabled: Path) -> None:
+        config = enabled / "reference/extensions.json"
+        declarations = json.loads(config.read_text())
+        for declaration in declarations.values():
+            declaration["checks"] = ["no-such-check"]
+        config.write_text(json.dumps(declarations))
+        with pytest.raises(ValueError, match="invalid extension declaration"):
+            load_extension_set(enabled)
+
+    def test_dnd_turns_on_its_check(self, vault: Path) -> None:
+        enable_extension("dnd-5-5", vault)
+        assert load_extension_set(vault).checks == {XP_TABLES}
 
     def test_without_declared_subtypes(self, enabled: Path) -> None:
         extensions = load_extension_set(enabled)

@@ -3,6 +3,7 @@
 from collections.abc import Iterator
 from dataclasses import FrozenInstanceError
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -21,9 +22,14 @@ from armarium.parse import (
     Link,
     Record,
     Section,
+    campaign_xp,
     heading_key,
     load_yaml,
     require_libyaml,
+    table_label,
+    table_number,
+    xp_section,
+    xp_sources,
 )
 
 # The pure-Python loader and its libyaml counterpart.
@@ -1231,3 +1237,160 @@ class TestHeadingKey:
     )
     def test_normalises(self, text: str, expected: str) -> None:
         assert heading_key(text) == expected
+
+
+TABLE = """\
+| **Source** | Note | XP per PC |
+| --- | --- | --- |
+| Combat | \\| piped | 150 |
+| ***Total*** | | 150 |
+| Total | | 999 |
+"""
+
+XP_BODY = """\
+## Prepared rewards
+### XP
+| Source | XP per PC |
+| --- | --- |
+| Prepared | 1 |
+## Rewards
+### Loot
+| Item | Acquired by |
+| --- | --- |
+| Rope | |
+### XP
+| Combat Encounter | XP per PC |
+| --- | --- |
+| Ambush | 150 |
+
+| Source | XP per PC |
+| --- | --- |
+| Combat | 150 |
+| ***Total for Campaign*** | ***3,000*** |
+"""
+
+
+class TestBlockHeading:
+    def test_first_header_cell(self) -> None:
+        assert Body(TABLE).tables[0].heading == "**Source**"
+
+
+class TestBlockColumn:
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [("Source", 0), ("XP per PC", 2), ("Number", None)],
+    )
+    def test_column(self, name: str, expected: int | None) -> None:
+        assert Body(TABLE).tables[0].column(name) == expected
+
+
+class TestBlockRow:
+    @pytest.mark.parametrize(
+        ("label", "expected"),
+        [("Combat", "150"), ("Total", "150"), ("Source", None), ("Absent", None)],
+    )
+    def test_first_matching_row_below_the_header(
+        self, label: str, expected: str | None
+    ) -> None:
+        row = Body(TABLE).tables[0].row(label)
+        assert (row and row.children[2].text) == expected
+
+
+class TestSectionTables:
+    def test_includes_subsections_in_order(self) -> None:
+        tables = Body(XP_BODY).titled("Rewards")[0].tables
+        assert [table.heading for table in tables] == [
+            "Item",
+            "Combat Encounter",
+            "Source",
+        ]
+
+    def test_none(self) -> None:
+        assert Body("## Notes\n- N/A\n").tables == ()
+
+
+class TestTableLabel:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("Total", "Total"),
+            ("**Total**", "Total"),
+            ("***Total for Campaign***", "Total for Campaign"),
+            ("_Total_", "Total"),
+            ("  Total ", "Total"),
+        ],
+    )
+    def test_label(self, text: str, expected: str) -> None:
+        assert table_label(text) == expected
+
+
+class TestTableNumber:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("450", Decimal(450)),
+            ("2,850", Decimal(2850)),
+            ("***3,000***", Decimal(3000)),
+            ("150 (?)", Decimal(150)),
+            ("-5", Decimal(-5)),
+            ("12.5", Decimal("12.5")),
+            ("", None),
+            ("  ", None),
+            ("-", None),
+            ("–", None),
+            ("**—**", None),
+        ],
+    )
+    def test_number(self, text: str, expected: Decimal | None) -> None:
+        assert table_number(text) == expected
+
+    @pytest.mark.parametrize("text", ["N/A", "30%", "1e5", "(?)x"])
+    def test_rejects_other_text(self, text: str) -> None:
+        with pytest.raises(ValueError, match="is not a number"):
+            table_number(text)
+
+
+class TestXpSection:
+    def test_under_rewards(self) -> None:
+        section = xp_section(Body(XP_BODY))
+        assert section is not None
+        assert section.tables[0].heading == "Combat Encounter"
+
+    @pytest.mark.parametrize(
+        "text",
+        ["## Rewards\n### Loot\n", "## Prepared rewards\n### XP\n", "## Notes\n"],
+    )
+    def test_absent(self, text: str) -> None:
+        assert xp_section(Body(text)) is None
+
+
+class TestXpSources:
+    def test_finds_the_source_table(self) -> None:
+        section = xp_section(Body(XP_BODY))
+        assert section is not None
+        source = xp_sources(section)
+        assert source is not None
+        assert source.heading == "Source"
+
+    def test_absent(self) -> None:
+        section = xp_section(Body("## Rewards\n### XP\n"))
+        assert section is not None
+        assert xp_sources(section) is None
+
+
+class TestCampaignXp:
+    @pytest.mark.parametrize(
+        ("old", "new", "expected"),
+        [
+            ("***3,000***", "***3,000***", Decimal(3000)),
+            ("***3,000***", "unknown", None),
+            ("***3,000***", "", None),
+            ("***Total for Campaign***", "Other", None),
+            ("| Source | XP per PC |", "| Source | XP |", None),
+            ("| Source | XP per PC |", "| Sources | XP per PC |", None),
+        ],
+    )
+    def test_read(self, old: str, new: str, expected: Decimal | None) -> None:
+        section = xp_section(Body(XP_BODY.replace(old, new)))
+        assert section is not None
+        assert campaign_xp(section) == expected

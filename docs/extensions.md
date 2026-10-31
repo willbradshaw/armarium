@@ -106,6 +106,10 @@ requires `type` and `schema`, and may also have:
 Paths in the declaration are relative to the extension directory. Schemas go
 in `schemas/` and templates in `templates/`.
 
+An extension can also turn on one of Armarium's optional checks by listing its
+name under `checks`, beside `rules`. The one available is `xp-tables`, which
+[`dnd-5-5`](../extensions/dnd-5-5/README.md#sessions) uses.
+
 To add to an agent skill, put a Markdown file named for the skill in
 `skills/`, such as `skills/update-record.md`. It needs no declaration, and
 installs as that skill's addendum, not with the reference files.

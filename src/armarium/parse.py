@@ -5,6 +5,7 @@ import re
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from datetime import date, datetime
+from decimal import Decimal
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -367,6 +368,39 @@ class Block:
     block_id: str | None = None
     info: str = ""
 
+    @property
+    def heading(self) -> str:
+        """Return the text of a table's first header cell."""
+        return self.children[0].children[0].text
+
+    def column(self, name: str) -> int | None:
+        """Find a table column by its header.
+
+        Args:
+            name: The header's text.
+
+        Returns:
+            int | None: The column's position, or None when no header has it.
+        """
+        for position, cell in enumerate(self.children[0].children):
+            if table_label(cell.text) == name:
+                return position
+        return None
+
+    def row(self, label: str) -> "Block | None":
+        """Find a table's first row with a label in its first cell.
+
+        Args:
+            label: The label, without emphasis.
+
+        Returns:
+            Block | None: The row, or None when no row below the header has it.
+        """
+        for row in self.children[1:]:
+            if table_label(row.children[0].text) == label:
+                return row
+        return None
+
     def walk(self) -> Iterator["Block"]:
         """Yield this block and every block nested inside it, in order.
 
@@ -500,6 +534,11 @@ class Section:
     line: int
     blocks: tuple[Block, ...] = ()
     children: tuple["Section", ...] = ()
+
+    @property
+    def tables(self) -> tuple[Block, ...]:
+        """Return the tables under this section and its descendants, in order."""
+        return tuple(b for b in self.iter_blocks() if b.kind == "table")
 
     def walk(self) -> Iterator["Section"]:
         """Yield this section and every descendant in document order.
@@ -793,6 +832,89 @@ class Body(Section):
 def heading_key(text: str) -> str:
     """Normalise heading text the way Obsidian matches heading links."""
     return " ".join(re.sub(r"[#|\[\]^]", "", text).split()).casefold()
+
+
+def table_label(text: str) -> str:
+    """Return a table cell's text without surrounding emphasis.
+
+    Args:
+        text: The cell's text, such as ``***Total for Campaign***``.
+
+    Returns:
+        str: The text without the asterisks, underscores and spaces around it.
+    """
+    return text.strip("*_ ")
+
+
+def table_number(text: str) -> Decimal | None:
+    """Read a number from a table cell.
+
+    Args:
+        text: The cell's text. Emphasis, thousands separators and a ``(?)``
+            marking the figure as unsure are ignored.
+
+    Returns:
+        Decimal | None: The number, or None for a blank cell or a dash.
+
+    Raises:
+        ValueError: The cell holds something else.
+    """
+    plain = re.sub(r"\(\?\)|[*_,\s]", "", text)
+    if plain in ("", "-", "–", "—"):
+        return None
+    if not re.fullmatch(r"-?[0-9]+(\.[0-9]+)?", plain):
+        raise ValueError(f"{text.strip()!r} is not a number")
+    return Decimal(plain)
+
+
+def xp_section(body: Body) -> Section | None:
+    """Find the XP section a campaign that awards XP writes under Rewards.
+
+    Args:
+        body: A Session's body.
+
+    Returns:
+        Section | None: The first ``XP`` subsection of a ``Rewards`` section,
+            or None when there is none.
+    """
+    for rewards in body.titled("Rewards"):
+        for section in rewards.children:
+            if section.title == "XP":
+                return section
+    return None
+
+
+def xp_sources(section: Section) -> Block | None:
+    """Find the table of XP sources in an XP section.
+
+    Args:
+        section: The XP section.
+
+    Returns:
+        Block | None: The first table headed ``Source``, or None.
+    """
+    return next((t for t in section.tables if t.heading == "Source"), None)
+
+
+def campaign_xp(section: Section) -> Decimal | None:
+    """Read the Total for Campaign from an XP section.
+
+    Args:
+        section: The XP section.
+
+    Returns:
+        Decimal | None: The total, or None when the section does not state a
+            readable one.
+    """
+    source = xp_sources(section)
+    row = None if source is None else source.row("Total for Campaign")
+    column = None if source is None else source.column("XP per PC")
+    if row is None or column is None:
+        return None
+    try:
+        return table_number(row.children[column].text)
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)

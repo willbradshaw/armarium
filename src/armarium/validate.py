@@ -4,6 +4,7 @@ import os
 import re
 from collections.abc import Callable, Iterable, Set
 from concurrent.futures import ProcessPoolExecutor
+from decimal import Decimal
 from importlib.resources import as_file
 from pathlib import Path
 from typing import overload
@@ -57,7 +58,17 @@ from armarium.lib import (
     relative_parts,
     relative_posix,
 )
-from armarium.parse import Record, load_yaml
+from armarium.parse import (
+    Block,
+    Record,
+    Section,
+    campaign_xp,
+    load_yaml,
+    table_label,
+    table_number,
+    xp_section,
+    xp_sources,
+)
 from armarium.schemas import Schema, select_schema
 from armarium.style import is_style, parse_style
 from armarium.targets import LINK_TARGETS, RECORD_LINK_TARGETS, Target
@@ -116,6 +127,8 @@ CAMPAIGN_DIRECTORIES = (
     "sessions/transcripts",
 )
 CAMPAIGN_FILES = ("reference/Campaign.md", "reference/indexes/Clues.md")
+# The optional check an extension's ``checks`` turns on for the XP section.
+XP_TABLES = "xp-tables"
 
 # Where non-Markdown files may live outside assets/, by extension.
 ASSET_EXCEPTIONS = {
@@ -1807,6 +1820,245 @@ def validate_style(record: Record, index: VaultIndex) -> Findings:
 
 
 # Checks every typed record receives, in the order validate_markdown runs them.
+def validate_xp_tables(record: Record, index: VaultIndex) -> Findings:
+    """Check the sums in a Session's XP section and its carry-over.
+
+    Runs when an enabled extension turns on ``xp-tables``. A Session without
+    an XP section has nothing to check, so a campaign that awards no XP draws
+    no findings. Every finding is a warning.
+
+    Args:
+        record: Record to check; only Sessions are read.
+        index: Vault index supplying the enabled checks and earlier Sessions.
+
+    Returns:
+        Findings: An ``extension.xp`` warning for each Total that is not the
+            sum of its column, source that differs from its table, wrong
+            Total for Campaign, carry-over that differs from the previous
+            Session, Session left without a section between two that have
+            one, and figure or row that could not be read.
+
+    Raises:
+        OSError, ValueError, SchemaError, RecursionError: The vault's extension
+            set is invalid.
+    """
+    findings = Findings.from_record(record, index)
+    if (
+        record.frontmatter.type != "Session"
+        or XP_TABLES not in index.extension_set().checks
+    ):
+        return findings
+    section = xp_section(record.body)
+    if section is None:
+        return findings
+    for table in section.tables:
+        _check_xp_totals(table, findings)
+    source = xp_sources(section)
+    if source is None:
+        _warn_xp(findings, "XP section has no Source table", section.line)
+        return findings
+    _check_xp_sources(source, section, findings)
+    previous = _check_campaign_xp(source, findings)
+    if previous is not None:
+        _check_xp_carry_over(record, *previous, index, findings)
+    return findings
+
+
+def _warn_xp(findings: Findings, message: str, line: int) -> None:
+    """Record a warning about a Session's XP section.
+
+    Args:
+        findings: Collection to add to.
+        message: Human-readable explanation.
+        line: One-based source line.
+    """
+    findings.add("extension.xp", message, line=line, severity="warning")
+
+
+def _xp_figure(row: Block, column: int) -> Decimal:
+    """Read a figure from a row of an XP table, a blank cell counting as zero.
+
+    Args:
+        row: The table row.
+        column: The cell's position in the row.
+
+    Returns:
+        Decimal: The figure.
+
+    Raises:
+        ValueError: The cell does not hold a number.
+    """
+    return table_number(row.children[column].text) or Decimal(0)
+
+
+def _check_xp_totals(table: Block, findings: Findings) -> None:
+    """Require a table's filled Total cells to be the sums of their columns.
+
+    Only the rows above the Total row count, and a table without one is not
+    read, so a vault can add rows and tables of its own.
+
+    Args:
+        table: A table in the XP section.
+        findings: Collection to add warnings to.
+    """
+    total = table.row("Total")
+    if total is None:
+        return
+    rows = table.children[1 : table.children.index(total)]
+    header = table.children[0].children
+    for column, cell in enumerate(total.children):
+        if column == 0:
+            continue
+        name = f"{table.heading} table's {header[column].text} Total"
+        try:
+            stated = table_number(cell.text)
+            if stated is None:
+                continue
+            summed = sum((_xp_figure(row, column) for row in rows), Decimal(0))
+        except ValueError as exc:
+            _warn_xp(findings, f"cannot check {name}: {exc}", total.line)
+            continue
+        if stated != summed:
+            _warn_xp(
+                findings,
+                f"{name} is {stated}, but its rows add up to {summed}",
+                total.line,
+            )
+
+
+def _check_xp_sources(source: Block, section: Section, findings: Findings) -> None:
+    """Require each source row to match the Total of the table it names.
+
+    A row names a table when the table's first header is the row's label,
+    alone or followed by more words: Combat names Combat Encounter. Other
+    rows are left alone, as are tables that no row names.
+
+    Args:
+        source: The table of sources.
+        section: The XP section.
+        findings: Collection to add warnings to.
+    """
+    column = source.column("XP per PC")
+    if column is None:
+        _warn_xp(findings, "Source table has no XP per PC column", source.line)
+        return
+    for row in source.children[1:]:
+        label = table_label(row.children[0].text)
+        for table in section.tables:
+            total = table.row("Total")
+            share = table.column("XP per PC")
+            if (
+                table is source
+                or total is None
+                or share is None
+                or not f"{table.heading} ".startswith(f"{label} ")
+            ):
+                continue
+            try:
+                stated, expected = _xp_figure(row, column), _xp_figure(total, share)
+            except ValueError as exc:
+                _warn_xp(findings, f"cannot check source {label}: {exc}", row.line)
+                continue
+            if stated != expected:
+                _warn_xp(
+                    findings,
+                    f"source {label} is {stated}, but the {table.heading} "
+                    f"table's XP per PC Total is {expected}",
+                    row.line,
+                )
+
+
+def _check_campaign_xp(source: Block, findings: Findings) -> tuple[Decimal, int] | None:
+    """Require Total for Campaign to be Previous Campaign Total plus Total.
+
+    Args:
+        source: The table of sources.
+        findings: Collection to add warnings to.
+
+    Returns:
+        tuple[Decimal, int] | None: The Previous Campaign Total and its line,
+            or None when a warning says why it could not be read.
+    """
+    column = source.column("XP per PC")
+    if column is None:
+        return None  # _check_xp_sources reports the missing column.
+    rows = []
+    for label in ("Total", "Previous Campaign Total", "Total for Campaign"):
+        row = source.row(label)
+        if row is None:
+            _warn_xp(findings, f"Source table has no {label} row", source.line)
+            return None
+        rows.append(row)
+    total, previous, campaign = rows
+    try:
+        added, carried = _xp_figure(total, column), _xp_figure(previous, column)
+        stated = _xp_figure(campaign, column)
+    except ValueError as exc:
+        _warn_xp(findings, f"cannot check Total for Campaign: {exc}", campaign.line)
+        return None
+    if stated != carried + added:
+        _warn_xp(
+            findings,
+            f"Total for Campaign is {stated}, but Previous Campaign Total plus "
+            f"Total is {carried + added}",
+            campaign.line,
+        )
+    return carried, previous.line
+
+
+def _check_xp_carry_over(
+    record: Record, carried: Decimal, line: int, index: VaultIndex, findings: Findings
+) -> None:
+    """Compare a Previous Campaign Total with the previous Session's total.
+
+    The nearest earlier Session with an XP section is the one compared. A
+    Session passed over on the way has no section between two that do, which
+    is reported here: nothing else tells it from a campaign that awards no XP.
+
+    Args:
+        record: The Session being checked.
+        carried: Its Previous Campaign Total.
+        line: The line of that figure.
+        index: Vault index supplying the campaign's Sessions.
+        findings: Collection to add warnings to.
+    """
+    order = index.session_order(record.path)
+    if order is None:
+        return
+    campaign, number = order
+    passed: list[str] = []
+    for other, session in reversed(index.sessions(campaign)):
+        if other >= number:
+            continue
+        section = xp_section(session.body)
+        if section is None:
+            passed.append(session.path.stem)
+            continue
+        for name in reversed(passed):
+            _warn_xp(
+                findings,
+                f"{name} has no XP section, though Sessions before and after it do",
+                line,
+            )
+        name = session.path.stem
+        stated = campaign_xp(section)
+        if stated is None:
+            _warn_xp(
+                findings,
+                f"cannot check Previous Campaign Total: {name} has no readable "
+                "Total for Campaign",
+                line,
+            )
+        elif stated != carried:
+            _warn_xp(
+                findings,
+                f"Previous Campaign Total is {carried}, but {name}'s Total for "
+                f"Campaign is {stated}",
+                line,
+            )
+        return
+
+
 RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_wikilinks,
     validate_placement,
@@ -1821,4 +2073,5 @@ RECORD_CHECKS: tuple[Callable[[Record, VaultIndex], Findings], ...] = (
     validate_appearances,
     validate_clue,
     validate_transcript,
+    validate_xp_tables,
 )

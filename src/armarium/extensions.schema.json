@@ -75,6 +75,16 @@
             "additionalProperties": false
           }
         },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "xp-tables"
+            ]
+          }
+        },
         "subtypes": {
           "type": "object",
           "properties": {
