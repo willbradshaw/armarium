@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 1.1.0 (2026-11-01)
+
 ### Added
 
 - Add `paragraph_spacing` and `title_spacing` layout fields, with matching
@@ -10,6 +12,11 @@
   `ARMARIUM_WHISPER_MODEL_DIR` to set `armarium transcribe`'s defaults.
 - Add a weekly workflow that opens an issue when a newer default transcription
   model is published.
+
+### Changed
+
+- Say which changes need a minor version and which a patch, and add updating
+  the example vault to the release steps.
 
 ## 1.0.0 (2026-10-25)
 

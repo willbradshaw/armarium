@@ -4,7 +4,8 @@ Every PR updates [CHANGELOG.md](../CHANGELOG.md), normally under `Unreleased`.
 
 To prepare a release, update `version` in [pyproject.toml](../pyproject.toml),
 rename the `Unreleased` heading to `VERSION (YYYY-MM-DD)`, and add a fresh
-`Unreleased` heading above it. Merge the PR to create a draft GitHub release
+`Unreleased` heading above it. Then run `uv run armarium update --vault
+vaults/example`, so the example vault records the new version. Merge the PR to create a draft GitHub release
 whose text comes from that version's changelog section. The draft targets the
 commit that triggered the workflow. The `draft-release` workflow can also be
 run manually to retry draft creation.
@@ -38,6 +39,10 @@ These changes are not breaking:
 - fixes to validation that report records already breaking a documented rule;
 - changes to message wording and log lines;
 - changes to Armarium's Python modules, which are not a public interface.
+
+A change that adds something without breaking anything, such as a type,
+optional field, option or warning, needs a new minor version. A patch version
+only fixes bugs and changes wording or documentation.
 
 A field, option or command to be removed or renamed is first deprecated in a
 minor version: both forms work, and the old one draws a warning. The next
